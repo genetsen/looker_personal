@@ -1,5 +1,5 @@
 view: prisma_expanded_full_view {
-  sql_table_name: `20250327_data_model.prismaExpandedFull_view` ;;
+  sql_table_name: `looker-studio-pro-452620.20250327_data_model.prismaExpandedFull_view` ;;
 
   dimension: daily_impressions {
     type: number
@@ -56,6 +56,19 @@ view: prisma_expanded_full_view {
     type: number
     sql: ${TABLE}.planned_imps_pk ;;
   }
+
+
+  dimension: primary_key {
+    primary_key: yes
+    type: string
+    sql: CONCAT(CAST(${date_date} AS STRING), ${placement_id}) ;;
+  }
+
+  measure:  pl_planned_daily_spend{
+    type: sum
+    sql: case when ${package_id} != ${placement_id} then ${planned_daily_spend_pk}/${n_of_placements} else 0 end;;
+  }
+
   measure: count {
     type: count
   }
