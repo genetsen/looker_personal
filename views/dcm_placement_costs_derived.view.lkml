@@ -44,6 +44,7 @@ view: dcm_placement_costs_derived {
       p_total_days,
       date
       )
+      
       SELECT *,
       SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_recalculated_cost,
 
