@@ -1,0 +1,197 @@
+-- Direct comparison of v4.0 and v4.1 results for package P2R44S2
+-- This approach runs the test queries and compares results
+
+WITH v4_0_results AS (
+  -- Run the v4.0 query
+  WITH 
+  base_delivery_metadata AS (
+    SELECT
+      a.date, a.package_id, a.placement_id, a.impressions, a.clicks, a.total_conversions,
+      a.package_roadblock, b.cost_method AS p_cost_method, b.p_package_friendly,
+      b.start_date AS p_start_date,
+      CASE WHEN a.package_roadblock LIKE '%email%' THEN DATE_ADD(b.end_date, INTERVAL 60 DAY)
+           ELSE b.end_date END AS p_end_date,
+      b.total_days AS p_total_days, b.planned_cost_pk AS p_pkg_total_planned_cost,
+      b.planned_imps_pk AS p_pkg_total_planned_imps
+    FROM `giant-spoon-299605.data_model_2025.new_md` a
+    LEFT JOIN `looker-studio-pro-452620.20250327_data_model.prisma_porcessed` b
+      ON a.package_id = b.package_id
+    WHERE a.impressions > 0 AND a.package_id = 'P2R44S2'
+  ),
+  delivery_rollups AS (
+    SELECT package_id, MIN(date) AS d_min_date, MAX(date) AS d_max_date,
+      MIN(CASE WHEN date BETWEEN p_start_date AND p_end_date THEN date ELSE NULL END) AS min_flight_date,
+      MAX(CASE WHEN date BETWEEN p_start_date AND p_end_date THEN date ELSE NULL END) AS max_flight_date,
+      SUM(impressions) AS total_impressions, COUNT(DISTINCT placement_id) AS n_of_placements
+    FROM base_delivery_metadata GROUP BY package_id
+  ),
+  calculated_fields AS (
+    SELECT 
+      bd.date, bd.package_id, bd.placement_id, bd.impressions, bd.clicks, bd.total_conversions,
+      bd.p_cost_method, bd.p_pkg_total_planned_cost, bd.p_pkg_total_planned_imps, bd.p_total_days,
+      dr.total_impressions AS pkg_total_imps,
+      SAFE_DIVIDE(bd.impressions, dr.total_impressions) AS pkg_total_imps_perc,
+      CASE WHEN bd.p_total_days IS NULL OR bd.p_total_days = 0 THEN NULL
+           ELSE LEAST(DATE_DIFF(dr.d_max_date, dr.d_min_date, DAY) + 1, bd.p_total_days) 
+                * bd.p_pkg_total_planned_cost / bd.p_total_days END AS prorated_planned_cost_pk,
+      CASE WHEN bd.date BETWEEN bd.p_start_date AND bd.p_end_date THEN 0 ELSE 1 END AS flight_date_flag,
+      REGEXP_EXTRACT(bd.package_roadblock, r'(\d+\.?\d*)\D*$') AS rate_raw
+    FROM base_delivery_metadata bd
+    LEFT JOIN delivery_rollups dr ON bd.package_id = dr.package_id
+  ),
+  final_v4_0 AS (
+    SELECT 
+      cf.date, cf.package_id, cf.placement_id, cf.impressions, cf.p_cost_method,
+      -- V4.0 Cost calculation
+      CASE
+        WHEN cf.flight_date_flag = 1 THEN 0
+        WHEN cf.p_cost_method = 'CPM' THEN
+          CASE WHEN cf.pkg_total_imps > SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC)
+               THEN SAFE_DIVIDE(cf.p_pkg_total_planned_cost, cf.pkg_total_imps) * cf.impressions
+               ELSE SAFE_CAST(cf.rate_raw AS NUMERIC) * cf.impressions / 1000 END
+        WHEN cf.p_cost_method = 'CPC' THEN SAFE_CAST(cf.rate_raw AS NUMERIC) * cf.clicks
+        WHEN cf.p_cost_method = 'CPA' THEN SAFE_CAST(cf.rate_raw AS NUMERIC) * cf.total_conversions
+        WHEN cf.p_cost_method = 'Flat' THEN
+          CASE WHEN SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC) = 0
+               THEN SAFE_DIVIDE(cf.p_pkg_total_planned_cost, SAFE_CAST(cf.p_total_days AS NUMERIC))
+               ELSE SAFE_CAST(cf.prorated_planned_cost_pk AS NUMERIC) * 
+                    SAFE_DIVIDE(cf.impressions, cf.pkg_total_imps) END
+        ELSE 0
+      END AS cost_v4_0,
+      -- V4.0 Logic path
+      CASE
+        WHEN cf.flight_date_flag = 1 THEN 'OUT_OF_FLIGHT'
+        WHEN cf.p_cost_method = 'CPM' AND cf.pkg_total_imps > SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC) 
+          THEN 'CPM_OVERDELIVERY'
+        WHEN cf.p_cost_method = 'CPM' THEN 'CPM_STANDARD'
+        WHEN cf.p_cost_method = 'CPC' THEN 'CPC'
+        WHEN cf.p_cost_method = 'CPA' THEN 'CPA'
+        WHEN cf.p_cost_method = 'Flat' AND SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC) = 0 
+          THEN 'FLAT_DAILY'
+        WHEN cf.p_cost_method = 'Flat' THEN 'FLAT_RATIO'
+        ELSE 'UNKNOWN'
+      END AS path_v4_0
+    FROM calculated_fields cf
+  )
+  SELECT * FROM final_v4_0
+),
+
+v4_1_results AS (
+  -- Run the v4.1 query
+  WITH 
+  base_delivery_metadata AS (
+    SELECT
+      a.date, a.package_id, a.placement_id, a.impressions, a.clicks, a.total_conversions,
+      a.package_roadblock, b.cost_method AS p_cost_method, b.p_package_friendly,
+      b.start_date AS p_start_date,
+      CASE WHEN a.package_roadblock LIKE '%email%' THEN DATE_ADD(b.end_date, INTERVAL 60 DAY)
+           ELSE b.end_date END AS p_end_date,
+      b.total_days AS p_total_days, b.planned_cost_pk AS p_pkg_total_planned_cost,
+      b.planned_imps_pk AS p_pkg_total_planned_imps,
+      CASE WHEN a.date BETWEEN b.start_date AND
+                CASE WHEN a.package_roadblock LIKE '%email%' THEN DATE_ADD(b.end_date, INTERVAL 60 DAY)
+                     ELSE b.end_date END THEN 0 ELSE 1 END AS flight_date_flag,
+      CASE WHEN CURRENT_DATE() BETWEEN b.start_date AND
+                CASE WHEN a.package_roadblock LIKE '%email%' THEN DATE_ADD(b.end_date, INTERVAL 60 DAY)
+                     ELSE b.end_date END THEN 'live' ELSE 'ended' END AS flight_status_flag,
+      REGEXP_EXTRACT(a.package_roadblock, r'(\d+\.?\d*)\D*$') AS rate_raw
+    FROM `giant-spoon-299605.data_model_2025.new_md` a
+    LEFT JOIN `looker-studio-pro-452620.20250327_data_model.prisma_porcessed` b
+      ON a.package_id = b.package_id
+    WHERE a.impressions > 0 AND a.package_id = 'P2R44S2'
+  ),
+  delivery_rollups AS (
+    SELECT 
+      package_id, MIN(date) AS d_min_date, MAX(date) AS d_max_date,
+      MIN(CASE WHEN date BETWEEN p_start_date AND p_end_date THEN date ELSE NULL END) AS min_flight_date,
+      MAX(CASE WHEN date BETWEEN p_start_date AND p_end_date THEN date ELSE NULL END) AS max_flight_date,
+      SUM(impressions) AS total_impressions, COUNT(DISTINCT placement_id) AS n_of_placements,
+      SUM(CASE WHEN date BETWEEN p_start_date AND p_end_date THEN impressions ELSE 0 END) 
+        AS total_inflight_impressions
+    FROM base_delivery_metadata GROUP BY package_id
+  ),
+  calculated_fields AS (
+    SELECT 
+      bd.date, bd.package_id, bd.placement_id, bd.impressions, bd.clicks, bd.total_conversions,
+      bd.p_cost_method, bd.p_pkg_total_planned_cost, bd.p_pkg_total_planned_imps, bd.p_total_days,
+      bd.flight_date_flag, bd.flight_status_flag, bd.rate_raw,
+      dr.total_impressions AS pkg_total_imps, dr.total_inflight_impressions,
+      SAFE_DIVIDE(bd.impressions, dr.total_impressions) AS pkg_total_imps_perc,
+      CASE
+        WHEN bd.p_total_days IS NULL OR bd.p_total_days = 0 THEN NULL
+        WHEN bd.flight_status_flag = 'live' 
+          THEN (bd.p_pkg_total_planned_cost/bd.p_total_days) *
+               (DATE_DIFF(dr.d_max_date, dr.d_min_date, DAY) + 1)
+        ELSE LEAST(DATE_DIFF(dr.d_max_date, dr.d_min_date, DAY) + 1, bd.p_total_days) *
+             (bd.p_pkg_total_planned_cost / 
+             LEAST(DATE_DIFF(dr.d_max_date, dr.d_min_date, DAY) + 1, bd.p_total_days))
+      END AS prorated_planned_cost_pk
+    FROM base_delivery_metadata bd
+    LEFT JOIN delivery_rollups dr ON bd.package_id = dr.package_id
+  ),
+  final_v4_1 AS (
+    SELECT 
+      cf.date, cf.package_id, cf.placement_id, cf.impressions, cf.p_cost_method,
+      cf.total_inflight_impressions,
+      -- V4.1 Cost calculation  
+      CASE
+        WHEN cf.flight_date_flag = 1 THEN 0
+        WHEN cf.p_cost_method = 'CPM' THEN
+          CASE WHEN cf.total_inflight_impressions > SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC)
+               THEN SAFE_DIVIDE(cf.p_pkg_total_planned_cost, cf.total_inflight_impressions) * cf.impressions
+               ELSE SAFE_CAST(cf.rate_raw AS NUMERIC) * cf.impressions / 1000 END
+        WHEN cf.p_cost_method = 'CPC' THEN SAFE_CAST(cf.rate_raw AS NUMERIC) * cf.clicks
+        WHEN cf.p_cost_method = 'CPA' THEN SAFE_CAST(cf.rate_raw AS NUMERIC) * cf.total_conversions
+        WHEN cf.p_cost_method = 'Flat' THEN
+          CASE WHEN SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC) = 0
+               THEN (cf.prorated_planned_cost_pk * SAFE_CAST(cf.pkg_total_imps_perc AS NUMERIC))
+               ELSE SAFE_CAST(cf.prorated_planned_cost_pk AS NUMERIC) *
+                    SAFE_DIVIDE(cf.impressions, NULLIF(cf.total_inflight_impressions, 0)) END
+        ELSE 0
+      END AS cost_v4_1,
+      -- V4.1 Logic path
+      CASE
+        WHEN cf.flight_date_flag = 1 THEN 'OUT_OF_FLIGHT'
+        WHEN cf.p_cost_method = 'CPM' AND cf.pkg_total_imps > SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC) 
+          THEN 'CPM_OVERDELIVERY'
+        WHEN cf.p_cost_method = 'CPM' THEN 'CPM_STANDARD'
+        WHEN cf.p_cost_method = 'CPC' THEN 'CPC'
+        WHEN cf.p_cost_method = 'CPA' THEN 'CPA'
+        WHEN cf.p_cost_method = 'Flat' AND SAFE_CAST(cf.p_pkg_total_planned_imps AS NUMERIC) = 0 
+          THEN 'FLAT_DAILY'
+        WHEN cf.p_cost_method = 'Flat' THEN 'FLAT_RATIO'
+        ELSE 'UNKNOWN'
+      END AS path_v4_1
+    FROM calculated_fields cf
+  )
+  SELECT * FROM final_v4_1
+)
+
+-- Join and compare results
+SELECT
+  v40.date,
+  v40.package_id,
+  v40.placement_id,
+  v40.impressions,
+  v40.p_cost_method,
+  v41.total_inflight_impressions,
+  -- Cost from each version
+  v40.cost_v4_0,
+  v41.cost_v4_1,
+  -- Difference calculations  
+  ROUND(v41.cost_v4_1 - v40.cost_v4_0, 4) AS cost_difference,
+  CASE WHEN v40.cost_v4_0 = 0 THEN NULL
+       ELSE ROUND((v41.cost_v4_1 - v40.cost_v4_0) / v40.cost_v4_0 * 100, 2) 
+  END AS cost_diff_pct,
+  -- Logic path flags
+  v40.path_v4_0,
+  v41.path_v4_1,
+  CASE WHEN v40.path_v4_0 != v41.path_v4_1 THEN 'CHANGED' ELSE 'SAME' END AS path_changed
+FROM v4_0_results v40
+FULL OUTER JOIN v4_1_results v41
+  ON v40.date = v41.date
+  AND v40.package_id = v41.package_id
+  AND v40.placement_id = v41.placement_id
+ORDER BY 
+  ABS(COALESCE(v41.cost_v4_1, 0) - COALESCE(v40.cost_v4_0, 0)) DESC,
+  v40.date

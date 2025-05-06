@@ -1,5 +1,5 @@
-    WITH base_costs AS (
-      SELECT
+WITH base_costs AS (
+    SELECT
         -- Dimensional fields for grouping and analysis
         package_id,
         placement_id,
@@ -22,7 +22,13 @@
         SUM(clicks) AS clicks,                    -- Total daily clicks
         SUM(total_conversions) AS total_conversions,  -- Total daily conversions
         SUM(media_cost) AS cost,                  -- Actual media cost
-
+        -- Calculate total impressions within flight dates
+        CASE 
+          WHEN date BETWEEN SAFE_CAST(p_start_date AS DATE) AND SAFE_CAST(p_end_date AS DATE) THEN
+            SUM(impressions) OVER (PARTITION BY package_id)
+          ELSE 0 
+        END AS total_impressions_new,
+        
         /*******************************************************
          * DAILY COST CALCULATION
          * Handles different pricing models with specific logic for each:
@@ -32,8 +38,8 @@
          * - Flat: Either even daily distribution or impression-based
          *******************************************************/
         CASE
-          -- CPM: Rate per 1000 impressions with recalculated CPM
-          -- Based on actual delivery within flight dates
+        -- CPM: Rate per 1000 impressions with recalculated CPM
+        -- Based on actual delivery within flight dates
           WHEN p_cost_method = 'CPM' THEN
             -- Check if date is within flight period
             CASE WHEN date BETWEEN SAFE_CAST(p_start_date AS DATE) AND SAFE_CAST(p_end_date AS DATE) THEN
@@ -96,6 +102,7 @@
           ELSE 0
         END AS daily_recalculated_cost
       FROM `looker-studio-pro-452620.DCM.dcm_linkedView2`
+      where package_id in  ('P2ZY2QB')
       GROUP BY
         package_id,
         placement_id,

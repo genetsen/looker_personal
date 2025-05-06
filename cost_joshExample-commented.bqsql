@@ -1,0 +1,156 @@
+-- cost_joshExample.bqsql
+/***************************************************************************
+ * COMPREHENSIVE COST CALCULATION AND BUDGET ENFORCEMENT FOR DIGITAL MEDIA
+ * 
+ * Purpose: 
+ *   This query calculates and enforces budget constraints for digital media placements,
+ *   specifically for package 'P2ZY2QB'. It implements a sophisticated cost calculation 
+ *   model that respects planned budgets while accounting for actual delivery metrics.
+ *
+ * Business Context:
+ *   In digital advertising, placements are purchased under various pricing models (CPM, CPC, CPA, Flat).
+ *   This query ensures costs are calculated accurately and that total spend doesn't exceed
+ *   the planned budget, which is critical for campaign profitability and financial reporting.
+ *
+ * Technical Approach:
+ *   1. Inner subquery (a): Calculate base costs using pricing models and delivery metrics
+ *   2. Middle subquery (b): Apply budget constraints via window functions
+ *   3. Outer query: Calculate performance metrics (actualized CPM)
+ ***************************************************************************/
+
+-- Outer query: Calculate actualized CPM based on the budget-constrained costs
+SELECT 
+  b.*,  
+  -- Calculate actualized CPM (Cost Per Mille/thousand impressions)
+  -- Formula: (actual cost / impressions) * 1000
+  -- Purpose: Provides a standardized cost metric for comparison across different pricing models
+  -- Business value: Helps assess the efficiency of media spend regardless of original purchase method
+  (placement_actualized_cost_by_day/impressions * 1000) as actualize_CPM 
+FROM (
+  -- Middle query: Apply budget constraints to ensure we don't exceed planned costs
+  SELECT 
+    a.*,
+    -- Calculate running total of costs for each package across dates
+    -- Technical details: Window function partitions data by package_id and creates a running sum
+    -- Purpose: Track cumulative spend to determine when budget caps are reached
+    SUM(daily_recalculated_cost) OVER (
+      PARTITION BY package_id 
+      ORDER BY date 
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS cumulative_recalculated_cost,
+
+    -- Budget enforcement logic - determines the actual cost to be applied for each day
+    -- This complex CASE statement implements a "waterfall" approach to budget allocation
+    CASE
+      -- Scenario 1: Budget not yet exhausted - use full calculated daily cost
+      -- When the running total including today is still under budget, use the full daily cost
+      -- Business logic: Early in campaign, spend normally until approaching budget cap
+      WHEN SUM(daily_recalculated_cost) OVER (
+        PARTITION BY package_id 
+        ORDER BY date 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      ) <= planned_cost_numeric THEN daily_recalculated_cost
+
+      -- Scenario 2: Budget partially exhausted today - use only remaining budget
+      -- When previous days' total is under budget but adding today would exceed it
+      -- Business logic: On the day budget would be exceeded, only spend what's left
+      WHEN SUM(daily_recalculated_cost) OVER (
+        PARTITION BY package_id 
+        ORDER BY date 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+      ) < planned_cost_numeric 
+      -- Calculate exact remaining budget by subtracting previous spend from total budget
+      THEN planned_cost_numeric - SUM(daily_recalculated_cost) OVER (
+        PARTITION BY package_id 
+        ORDER BY date 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+      )
+
+      -- Scenario 3: Budget already exhausted - no additional spend allowed
+      -- When previous days have already consumed the entire budget
+      -- Business logic: Prevents overspending beyond planned budget
+      ELSE 0
+    END AS placement_actualized_cost_by_day,
+
+    -- Flag to indicate which budget scenario applies to each day
+    -- Purpose: Enables easy filtering and analysis of budget allocation patterns
+    -- Business value: Helps identify when campaigns hit budget thresholds
+    CASE
+      -- Flag A: Full cost applied (budget not yet reached)
+      WHEN SUM(daily_recalculated_cost) OVER (
+        PARTITION BY package_id 
+        ORDER BY date 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      ) <= planned_cost_numeric THEN 'A'
+      
+      -- Flag B: Partial cost applied (budget reached on this day)
+      WHEN SUM(daily_recalculated_cost) OVER (
+        PARTITION BY package_id 
+        ORDER BY date 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+      ) < planned_cost_numeric THEN 'B'
+      
+      -- Flag C: No cost applied (budget already exhausted)
+      ELSE 'C'
+    END AS placement_actualized_cost_by_day_flag 
+       
+  FROM (
+    -- Inner query: Base cost calculation using different pricing models
+    -- This subquery handles the raw data aggregation and initial cost calculations
+    SELECT
+      -- Dimensional fields for grouping and analysis
+      package_id,              -- Unique identifier for campaign package
+      placement_id,            -- Unique identifier for media placement
+      p_cost_method,           -- Pricing model (CPM, CPC, CPA, Flat)
+      rate_raw,                -- Rate specified in the contract
+      p_pkg_total_planned_cost, -- Total planned budget for the package
+      p_pkg_total_planned_imps, -- Total planned impressions for the package
+      p_total_days,            -- Duration of the campaign in days
+      p_start_date,            -- Campaign start date
+      p_end_date,              -- Campaign end date
+      date,                    -- Date of the delivery metrics
+      
+
+      -- Safe type casting to prevent query failures from malformed data
+      -- SAFE_CAST returns NULL instead of error when conversion fails
+      -- Critical for production reliability with potentially inconsistent data
+      SAFE_CAST(rate_raw AS NUMERIC) AS rate_numeric,               -- Numeric rate for calculations
+      SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) AS planned_cost_numeric,  -- Numeric planned cost
+      SAFE_CAST(p_total_days AS INT64) AS total_days_int,           -- Integer days for calculations
+
+      -- Daily metric aggregations for cost calculations
+      SUM(impressions) AS impressions,              -- Ad views count
+      SUM(clicks) AS clicks,                        -- User clicks count
+      SUM(total_conversions) AS total_conversions,  -- Completed actions count
+      SUM(media_cost) AS cost,                      -- Actual reported cost
+
+      -- Daily cost calculation based on pricing model
+      -- This CASE statement implements the core business logic for different pricing models
+      CASE
+        -- CPM (Cost Per Mille): Cost per thousand impressions
+        -- Formula: (rate * impressions) / 1000
+        -- Used when buying media based on exposure volume
+        WHEN p_cost_method = 'CPM' THEN 
+          SAFE_CAST(rate_raw AS NUMERIC) * SUM(impressions) / 1000
+          
+        -- CPC (Cost Per Click): Fixed cost for each click
+        -- Formula: rate * clicks
+        -- Used when buying media based on user engagement
+        WHEN p_cost_method = 'CPC' THEN 
+          SAFE_CAST(rate_raw AS NUMERIC) * SUM(clicks)
+          
+        -- CPA (Cost Per Acquisition): Fixed cost for each conversion
+        -- Formula: rate * conversions
+        -- Used when buying media based on performance outcomes
+        WHEN p_cost_method = 'CPA' THEN 
+          SAFE_CAST(rate_raw AS NUMERIC) * SUM(total_conversions)
+          
+        -- Flat Rate: Fixed cost distributed either evenly or by impression ratio
+        -- Used for sponsorships or guaranteed placements
+        WHEN p_cost_method = 'Flat' THEN
+          CASE
+            -- If no planned impressions, distribute cost evenly across days
+            -- Formula: planned_cost / total_days
+            -- Typically used for time-based sponsorships
+            WHEN SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC) = 0 THEN 
+              SAFE_CAST(p_pkg

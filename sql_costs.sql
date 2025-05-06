@@ -1,3 +1,11 @@
+-- derived_table: {
+--   persist_for: "24 hours"
+--   sql: 
+    /*******************************************************
+     * BASE COSTS CALCULATION
+     * Purpose: Calculate daily costs for each placement based on its pricing model
+     * Includes data validation and safe type casting
+     *******************************************************/
     WITH base_costs AS (
       SELECT
         -- Dimensional fields for grouping and analysis
@@ -32,65 +40,34 @@
          * - Flat: Either even daily distribution or impression-based
          *******************************************************/
         CASE
-          -- CPM: Rate per 1000 impressions with recalculated CPM
-          -- Based on actual delivery within flight dates
-          WHEN p_cost_method = 'CPM' THEN
-            -- Check if date is within flight period
-            CASE WHEN date BETWEEN SAFE_CAST(p_start_date AS DATE) AND SAFE_CAST(p_end_date AS DATE) THEN
-              -- Only calculate if we have impressions and valid planned values
-              CASE
-                WHEN SUM(impressions) > 0
-                  AND SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC) > 0
-                  AND SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) > 0
-                THEN
-                  -- Calculate effective CPM based on planned cost and actual delivery
-                  -- Formula: (planned_cost / actual_impressions_in_flight) * 1000 * daily_impressions / 1000
-                  -- This distributes the planned cost proportionally to daily impressions
-                  (SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) / NULLIF(SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC), 0))
-                  * SUM(impressions)
-                
-                -- Fallback to standard calculation if planned values are invalid
-                WHEN SUM(impressions) > 0 AND SAFE_CAST(rate_raw AS NUMERIC) > 0 THEN
-                  SAFE_CAST(rate_raw AS NUMERIC) * SUM(impressions) / 1000
-                
-                ELSE 0
-              END
-            ELSE 0 END -- Date outside flight period
+          -- CPM: Rate per 1000 impressions
+          -- Formula: (rate * impressions) / 1000
+          WHEN p_cost_method = 'CPM' 
+            THEN SAFE_CAST(rate_raw AS NUMERIC) * SUM(impressions) / 1000
 
           -- CPC: Rate per click
           -- Formula: rate * number of clicks
-          WHEN p_cost_method = 'CPC' THEN
-            -- Use SAFE_CAST for rate calculation
-            CASE WHEN SUM(clicks) > 0 AND SAFE_CAST(rate_raw AS NUMERIC) > 0 THEN
-              SAFE_CAST(rate_raw AS NUMERIC) * SUM(clicks)
-            ELSE 0 END
+          WHEN p_cost_method = 'CPC' 
+            THEN SAFE_CAST(rate_raw AS NUMERIC) * SUM(clicks)
 
           -- CPA: Rate per conversion/acquisition
           -- Formula: rate * number of conversions
-          WHEN p_cost_method = 'CPA' THEN
-            -- Use SAFE_CAST for rate calculation
-            CASE WHEN SUM(total_conversions) > 0 AND SAFE_CAST(rate_raw AS NUMERIC) > 0 THEN
-              SAFE_CAST(rate_raw AS NUMERIC) * SUM(total_conversions)
-            ELSE 0 END
+          WHEN p_cost_method = 'CPA' 
+            THEN SAFE_CAST(rate_raw AS NUMERIC) * SUM(total_conversions)
 
           -- Flat Rate: Two possible distribution methods
           WHEN p_cost_method = 'Flat' THEN
             CASE
               -- If no planned impressions, distribute cost evenly across days
               -- Formula: planned_cost / total_days
-              WHEN SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC) = 0 AND SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) > 0 THEN
-                -- Use NULL protection for division
-                SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) / NULLIF(SAFE_CAST(p_total_days AS NUMERIC), 0)
+              WHEN SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC) = 0 
+                THEN SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) / 
+                     SAFE_CAST(p_total_days AS NUMERIC)
 
               -- With planned impressions, distribute cost based on delivery ratio
               -- Formula: planned_cost * (actual_impressions / planned_impressions)
-              WHEN SUM(impressions) > 0 AND SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC) > 0 AND SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) > 0 THEN
-                -- Use NULL protection for division
-                SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) *
-                (SUM(impressions) / NULLIF(SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC), 0))
-              
-              -- Default to 0 if conditions aren't met
-              ELSE 0
+              ELSE SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) * 
+                   (SUM(impressions) / SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC))
             END
           -- Default to 0 for unknown cost methods
           ELSE 0
@@ -104,8 +81,6 @@
         p_pkg_total_planned_cost,
         p_pkg_total_planned_imps,
         p_total_days,
-        p_start_date,  -- Added for flight date filtering
-        p_end_date,    -- Added for flight date filtering
         date
     )
 
@@ -127,21 +102,21 @@
       CASE
         -- Scenario 1: Full daily cost if cumulative is still under budget
         WHEN SUM(daily_recalculated_cost) OVER (
-          PARTITION BY package_id
-          ORDER BY date
+          PARTITION BY package_id 
+          ORDER BY date 
           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) <= SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) THEN daily_recalculated_cost
+        ) <= planned_cost_numeric THEN daily_recalculated_cost
 
         -- Scenario 2: Partial cost if some budget remains from previous days
         WHEN SUM(daily_recalculated_cost) OVER (
-          PARTITION BY package_id
-          ORDER BY date
+          PARTITION BY package_id 
+          ORDER BY date 
           ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-        ) < SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC)
+        ) < planned_cost_numeric 
         -- Use only the remaining budget
-        THEN SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) - SUM(daily_recalculated_cost) OVER (
-          PARTITION BY package_id
-          ORDER BY date
+        THEN planned_cost_numeric - SUM(daily_recalculated_cost) OVER (
+          PARTITION BY package_id 
+          ORDER BY date 
           ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         )
 
@@ -149,3 +124,4 @@
         ELSE 0
       END AS placement_actualized_cost_by_day
     FROM base_costs
+-- ;;}

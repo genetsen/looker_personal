@@ -1,0 +1,69 @@
+Select b.*,  (placement_actualized_cost_by_day/impressions* 1000) as actualize_CPM 
+from(
+SELECT a.*,
+        SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_recalculated_cost,
+
+        CASE
+          WHEN SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) <= planned_cost_numeric THEN daily_recalculated_cost
+          WHEN SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) < planned_cost_numeric THEN planned_cost_numeric - SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)
+          ELSE 0
+        END AS placement_actualized_cost_by_day,
+
+        CASE
+          WHEN SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) <= planned_cost_numeric THEN 'A'
+          WHEN SUM(daily_recalculated_cost) OVER (PARTITION BY package_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) < planned_cost_numeric THEN  'B'
+          ELSE 'C'
+        END AS placement_actualized_cost_by_day_flag 
+       
+        FROM (
+
+   SELECT
+          package_id,
+          placement_id,
+          p_cost_method,
+          rate_raw,
+          p_pkg_total_planned_cost,
+          p_pkg_total_planned_imps,
+          p_total_days,
+          p_start_date,
+          p_end_date,
+          date,
+
+          SAFE_CAST(rate_raw AS NUMERIC) AS rate_numeric,
+          SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) AS planned_cost_numeric,
+          SAFE_CAST(p_total_days AS INT64) AS total_days_int,
+
+          SUM(impressions) AS impressions,
+          SUM(clicks) AS clicks,
+          SUM(total_conversions) AS total_conversions,
+          SUM(media_cost) AS cost,
+
+          CASE
+            WHEN p_cost_method = 'CPM' THEN SAFE_CAST(rate_raw AS NUMERIC) * SUM(impressions) / 1000
+            WHEN p_cost_method = 'CPC' THEN SAFE_CAST(rate_raw AS NUMERIC) * SUM(clicks)
+            WHEN p_cost_method = 'CPA' THEN SAFE_CAST(rate_raw AS NUMERIC) * SUM(total_conversions)
+            WHEN p_cost_method = 'Flat' THEN
+            CASE
+              WHEN SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC) = 0 THEN SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) / SAFE_CAST(p_total_days AS NUMERIC)
+              ELSE SAFE_CAST(p_pkg_total_planned_cost AS NUMERIC) * (SUM(impressions) / SAFE_CAST(p_pkg_total_planned_imps AS NUMERIC))
+            END
+          ELSE 0
+          END AS daily_recalculated_cost
+      FROM `looker-studio-pro-452620.DCM.dcm_linkedView2`
+where package_id in  ('P2ZY2QB')
+
+      GROUP BY
+        package_id,
+        placement_id,
+        p_cost_method,
+        rate_raw,
+        p_pkg_total_planned_cost,
+        p_pkg_total_planned_imps,
+        p_total_days,
+        p_start_date,
+        p_end_date,
+        date
+            ) a
+            )b
+
+            order by package_id, date
