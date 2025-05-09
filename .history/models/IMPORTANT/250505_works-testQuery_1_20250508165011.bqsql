@@ -49,7 +49,9 @@ SELECT * FROM looker-studio-pro-452620.DCM.cost_model_temp
 where package_id = 'P2SXFYS' AND placement_id ='P2T86SL';
 
 SELECT
-  daily_recalculated_cost_flag,
+
+  --daily_recalculated_cost_flag,
+  
   SUM(daily_recalculated_cost) AS total_recalculated_cost,
   MAX(p_pkg_total_planned_cost) AS planned_cost_pk,
   MAX(p_cost_method) AS cost_method,
@@ -61,10 +63,11 @@ SELECT
   round(ABS(round(SUM(daily_recalculated_cost)) - MAX(p_pkg_total_planned_cost)),2) AS cost_diff
 FROM looker-studio-pro-452620.DCM.cost_model_temp
 --WHERE package_id = 'P2SXFYS'
-GROUP BY daily_recalculated_cost_flag
+
 ORDER BY cost_diff DESC;
 
 SELECT
+
   --daily_recalculated_cost_flag,
   SUM(daily_recalculated_cost) AS total_recalculated_cost,
   MAX(p_pkg_total_planned_cost) AS planned_cost_pk,
@@ -77,4 +80,5 @@ SELECT
   round(ABS(round(SUM(daily_recalculated_cost)) - MAX(p_pkg_total_planned_cost)),2) AS cost_diff
 FROM looker-studio-pro-452620.DCM.20250430_dcmCostmodel_v4
 --WHERE package_id = 'P2SXFYS'
+
 ORDER BY cost_diff DESC;
