@@ -26,7 +26,7 @@ data_sources <- data.frame(
     '/Users/eugenetsenter/Downloads/Flight 3 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
   ),
   sheet_name = c(
-    "Flight 1",
+    "Q1 Tsheet",
     "Flight 2_Updated", 
     "Flight 3"
   ),
@@ -454,7 +454,8 @@ cat("Success rate:", round((successful_sources / total_sources) * 100, 1), "%\n"
 
 # Display detailed results
 cat("\nDETAILED RESULTS:\n")
-cat(rep("-", 80), "\n", sep = "")
+cat(rep("-", 80), "\n", sep = "") # Header separator
+
 
 for (source_id in names(processing_results)) {
   result <- processing_results[[source_id]]
