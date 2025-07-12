@@ -158,26 +158,34 @@ extract_creative_names <- function(file_config) {
       stringsAsFactors = FALSE
     )
     
-    cat("Total unique creative names found:", length(unique_names), "\n\n")
+    # Get unique creative names for display
+    unique_creative_names <- unique(comparison_df$original_name)
     
-    # Display the comparison table
+    cat("Total unique creative names found:", length(unique_creative_names), "\n\n")
+    
+    # Display just the unique creative names (not all placement pairs)
     cat("ORIGINAL vs CLEANED CREATIVE NAMES:\n")
     cat(rep("-", 100), "\n")
     cat(sprintf("%-12s | %-40s | %-40s\n", "FILE SOURCE", "ORIGINAL NAME", "CLEANED NAME"))
     cat(rep("-", 100), "\n")
     
-    for (i in 1:nrow(comparison_df)) {
+    # Create unique creative display dataframe
+    unique_display_df <- comparison_df %>%
+      select(file_source, original_name, cleaned_name) %>%
+      distinct()
+    
+    for (i in 1:nrow(unique_display_df)) {
       cat(sprintf("%-12s | %-40s | %-40s\n", 
-                  comparison_df$file_source[i],
-                  substr(comparison_df$original_name[i], 1, 40),
-                  substr(comparison_df$cleaned_name[i], 1, 40)))
+                  unique_display_df$file_source[i],
+                  substr(unique_display_df$original_name[i], 1, 40),
+                  substr(unique_display_df$cleaned_name[i], 1, 40)))
     }
     
     return(list(
       file_id = file_id,
-      creative_names = unique_names,
-      comparison_df = comparison_df,
-      count = length(unique_names)
+      creative_names = unique_creative_names,
+      comparison_df = comparison_df,  # This still contains all placement-creative pairs
+      count = length(unique_creative_names)
     ))
     
   }, error = function(e) {
