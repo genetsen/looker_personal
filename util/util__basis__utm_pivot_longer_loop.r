@@ -478,3 +478,4 @@ if (failed_sources == 0) {
 }
 
 debug_print("Script execution completed.")
+
