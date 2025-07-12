@@ -8,6 +8,8 @@ library(readxl)
 library(dplyr)
 library(janitor)
 library(stringr)
+library(DBI)
+library(bigrquery)
 
 # Function to clean creative names (same logic as main script)
 clean_creative_name <- function(name) {
