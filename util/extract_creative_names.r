@@ -96,50 +96,94 @@ extract_creative_names <- function(file_config) {
     name_columns <- grep("creative.*name", names(data), value = TRUE, ignore.case = TRUE)
     cat("Found", length(name_columns), "creative name columns\n")
     
+    # Find placement/tag columns
+    placement_columns <- grep("^(tag|line_item|placement)$", names(data), value = TRUE, ignore.case = TRUE)
+    cat("Found", length(placement_columns), "placement columns:", paste(placement_columns, collapse = ", "), "\n")
+    
     if (length(name_columns) == 0) {
       cat("No creative name columns found\n")
       return(NULL)
     }
     
-    # Extract unique creative names and create comparison data
-    all_names <- c()
-    for (col in name_columns) {
-      names_in_col <- data[[col]][!is.na(data[[col]]) & data[[col]] != ""]
-      all_names <- c(all_names, names_in_col)
+    # Extract creative names with their corresponding placements
+    creative_placement_pairs <- data.frame()
+    
+    # Get all rows with creative names and their placements
+    for (i in 1:nrow(data)) {
+      row_placements <- c()
+      row_names <- c()
+      
+      # Get placement for this row
+      if (length(placement_columns) > 0) {
+        for (p_col in placement_columns) {
+          if (!is.na(data[i, p_col]) && data[i, p_col] != "") {
+            row_placements <- c(row_placements, data[i, p_col])
+          }
+        }
+      }
+      
+      # Get creative names for this row
+      for (n_col in name_columns) {
+        if (!is.na(data[i, n_col]) && data[i, n_col] != "") {
+          row_names <- c(row_names, data[i, n_col])
+        }
+      }
+      
+      # Create pairs for this row
+      if (length(row_placements) > 0 && length(row_names) > 0) {
+        for (placement in row_placements) {
+          for (name in row_names) {
+            creative_placement_pairs <- rbind(creative_placement_pairs, data.frame(
+              placement = placement,
+              original_name = name,
+              cleaned_name = clean_creative_name(name),
+              utm_key = paste(placement, clean_creative_name(name), sep = " || "),
+              stringsAsFactors = FALSE
+            ))
+          }
+        }
+      }
     }
     
-    # Get unique names and clean them
-    unique_names <- unique(all_names)
-    unique_names <- unique_names[!is.na(unique_names) & unique_names != ""]
+    # Remove duplicates
+    creative_placement_pairs <- unique(creative_placement_pairs)
     
     # Create comparison dataframe
     comparison_df <- data.frame(
       file_source = file_id,
-      original_name = unique_names,
-      cleaned_name = sapply(unique_names, clean_creative_name),
+      placement = creative_placement_pairs$placement,
+      original_name = creative_placement_pairs$original_name,
+      cleaned_name = creative_placement_pairs$cleaned_name,
+      utm_key = creative_placement_pairs$utm_key,
       stringsAsFactors = FALSE
     )
     
-    cat("Total unique creative names found:", length(unique_names), "\n\n")
+    cat("Total unique creative-placement pairs found:", nrow(comparison_df), "\n\n")
     
-    # Display the comparison table
-    cat("ORIGINAL vs CLEANED CREATIVE NAMES:\n")
-    cat(rep("-", 100), "\n")
-    cat(sprintf("%-12s | %-40s | %-40s\n", "FILE SOURCE", "ORIGINAL NAME", "CLEANED NAME"))
-    cat(rep("-", 100), "\n")
+    # Display the comparison table with UTM keys
+    cat("PLACEMENT + CREATIVE NAMES + UTM KEYS:\n")
+    cat(rep("-", 150), "\n")
+    cat(sprintf("%-12s | %-25s | %-30s | %-30s | %-40s\n", "FILE SOURCE", "PLACEMENT", "ORIGINAL NAME", "CLEANED NAME", "UTM KEY"))
+    cat(rep("-", 150), "\n")
     
-    for (i in 1:nrow(comparison_df)) {
-      cat(sprintf("%-12s | %-40s | %-40s\n", 
+    for (i in 1:min(nrow(comparison_df), 20)) {  # Show first 20 rows
+      cat(sprintf("%-12s | %-25s | %-30s | %-30s | %-40s\n", 
                   comparison_df$file_source[i],
-                  substr(comparison_df$original_name[i], 1, 40),
-                  substr(comparison_df$cleaned_name[i], 1, 40)))
+                  substr(comparison_df$placement[i], 1, 25),
+                  substr(comparison_df$original_name[i], 1, 30),
+                  substr(comparison_df$cleaned_name[i], 1, 30),
+                  substr(comparison_df$utm_key[i], 1, 40)))
+    }
+    
+    if (nrow(comparison_df) > 20) {
+      cat("... (showing first 20 of", nrow(comparison_df), "pairs)\n")
     }
     
     return(list(
       file_id = file_id,
-      creative_names = unique_names,
+      creative_names = unique(comparison_df$original_name),
       comparison_df = comparison_df,
-      count = length(unique_names)
+      count = length(unique(comparison_df$original_name))
     ))
     
   }, error = function(e) {
