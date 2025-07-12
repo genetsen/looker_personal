@@ -1,27 +1,25 @@
 create or replace view `looker-studio-pro-452620.repo_stg.basis_utms_stg_view` as
 
 -- @code:        [EDIT HERE] stg__basis__utms.sql
--- @code:        repo_stg__basis_utms_stg_view.sql
 -- @layer:       staging
--- @description: Parses UTM parameters from raw Basis URL strings into structured columns.
---               Extracts utm_source, utm_medium, utm_campaign, utm_term, utm_content, and a
---               unique ID from the URL for downstream joining. Also generates a cleaned 
---               creative name (`cleaned_creative_name`) to serve as a robust join key 
---               with delivery data.
+-- @description: - Parses UTM parameters from raw Basis URL strings into structured columns.
+--               - Extracts utm and a unique ID from the URL for downstream joining. 
+--               - generates a cleaned creative name (`cleaned_creative_name`) to serve as a robust join key 
+--                 with delivery data.
 -- @source:      looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted
 -- @target:      looker-studio-pro-452620.repo_stg.basis_utms_stg_view
 -- @join_key:    id + cleaned_creative_name 
 
 
 SELECT
-`line_item` as package_name,
-`tag_placement` as placement,
+`line_item`                                 as package_name,
+`tag_placement`                             as placement,
 `formats`,
 `size`,
 `start_date`,
 `end_date`,
 `creative_num`,
-`name` as creative_name,
+`name`                                      as creative_name,
 -- [cleaned_creative_name] standardizes creative names to DCM Creative
   -- Extracts the core creative name by:
   --   1. Removing any leading numeric prefix (e.g., "123_")
@@ -33,23 +31,26 @@ SELECT
       ' ' ,
       ''
       )
-) AS cleaned_creative_name,
+)                                           AS cleaned_creative_name,
 `asset_link`,
 `edo_tag`,
 `disqo_tag`,
 `video_amp_tag`,
 `3p_or_1p_tag`,
 url,
-REGEXP_EXTRACT(url, r'-(\d+)&utm_term') AS id,
-REGEXP_EXTRACT(url, 'utm_source=(.*?)&') AS utm_source,
-REGEXP_EXTRACT(url, 'utm_medium=(.*?)&') AS utm_medium,
-REGEXP_EXTRACT(url, 'utm_campaign=(.*?)&') AS utm_campaign,
-REGEXP_EXTRACT(url, 'utm_term=(.*)') AS utm_term,
-REGEXP_EXTRACT(url, 'utm_content=(.*?)&') AS utm_content
+REGEXP_EXTRACT(url, r'-(\d+)&utm_term')     AS id,
+REGEXP_EXTRACT(url, 'utm_source=(.*?)&')    AS utm_source,
+REGEXP_EXTRACT(url, 'utm_medium=(.*?)&')    AS utm_medium,
+REGEXP_EXTRACT(url, 'utm_campaign=(.*?)&')  AS utm_campaign,
+REGEXP_EXTRACT(url, 'utm_term=(.*)')        AS utm_term,
+REGEXP_EXTRACT(url, 'utm_content=(.*?)&')   AS utm_content
 
 FROM
- -- `looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted`;
- `looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted_unioned`;
+
+ `looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted_unioned`
+  -- `looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted`  ## using unioned data from 2 files now
+  ;
+
  
 
 --ARCHIVE
