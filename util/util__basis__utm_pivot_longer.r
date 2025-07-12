@@ -259,9 +259,10 @@ utms_table <- utms_table %>%
     name = str_replace_all(name, "1x1", ""), # Remove "1x1"
     name = str_replace_all(name, "0x0", ""), # Remove "0x0"
     name = gsub("(?:_?\\d+x\\d+.*)?$", "", name), # Remove "NxN" patterns
-    name = str_to_title(name), # Convert to title case
+    name = str_to_lower(name), # Convert to lower case
     name = str_replace_all(name, "[^A-Za-z0-9]", ""), # Remove special characters
     name = str_replace_all(name, "\\s+", "_") # Replace spaces with underscores
+    
   )
 cat(paste0("`", unique((utms_table$name)), "`", collapse = ",\n"))
 

@@ -234,7 +234,8 @@ tryCatch({
   SELECT DISTINCT
     creative_name,
     cleaned_creative_name,
-    del_key
+    del_key,
+    placement_name
   FROM `looker-studio-pro-452620.repo_stg.basis_delivery`
   WHERE creative_name IS NOT NULL 
     AND creative_name != ''
@@ -280,7 +281,7 @@ tryCatch({
   excel_cleaned_names <- unique(all_comparisons$cleaned_name)
   
   # Get unique creative names from BigQuery
-  bq_original_names <- unique(bq_data$creative_names)
+  bq_original_names <- unique(bq_data$creative_name)
   bq_cleaned_names <- unique(bq_data$cleaned_creative_name)
   
   # Find matches and differences using CLEANED names
