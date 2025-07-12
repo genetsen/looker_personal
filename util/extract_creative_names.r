@@ -210,4 +210,120 @@ cat(sprintf("%-10s: %d total unique names across all files\n", "OVERALL", length
 overall_cleaned <- unique(all_comparisons$cleaned_name)
 cat(sprintf("%-10s: %d unique cleaned names across all files\n", "CLEANED", length(overall_cleaned)))
 
-cat("\nExtraction completed!\n")
+# =============================================================================
+# PULL DATA FROM BIGQUERY TABLE
+# =============================================================================
+
+cat("\n", rep("=", 80), "\n")
+cat("PULLING DATA FROM BIGQUERY TABLE")
+cat("\n", rep("=", 80), "\n")
+
+# Connect to BigQuery
+tryCatch({
+  bq_connection <- dbConnect(
+    bigrquery::bigquery(),
+    project = "looker-studio-pro-452620",
+    dataset = "repo_stg",
+    billing = "looker-studio-pro-452620"
+  )
+  
+  cat("Connected to BigQuery successfully\n")
+  
+  # Query to get creative names data
+  query <- "
+  SELECT DISTINCT
+    creative_names,
+    cleaned_creative_name,
+    del_key
+  FROM `looker-studio-pro-452620.repo_stg.basis_delivery`
+  WHERE creative_names IS NOT NULL 
+    AND creative_names != ''
+  ORDER BY creative_names
+  "
+  
+  cat("Executing query to fetch creative names data...\n")
+  
+  # Execute query
+  bq_data <- dbGetQuery(bq_connection, query)
+  
+  cat("Query completed successfully\n")
+  cat("Records retrieved:", nrow(bq_data), "\n\n")
+  
+  # Display BigQuery data
+  cat("BIGQUERY DATA - CREATIVE NAMES:\n")
+  cat(rep("-", 120), "\n")
+  cat(sprintf("%-40s | %-40s | %-30s\n", "CREATIVE_NAMES", "CLEANED_CREATIVE_NAME", "DEL_KEY"))
+  cat(rep("-", 120), "\n")
+  
+  for (i in 1:min(nrow(bq_data), 50)) {  # Show first 50 records
+    cat(sprintf("%-40s | %-40s | %-30s\n", 
+                substr(bq_data$creative_names[i], 1, 40),
+                substr(bq_data$cleaned_creative_name[i], 1, 40),
+                substr(bq_data$del_key[i], 1, 30)))
+  }
+  
+  if (nrow(bq_data) > 50) {
+    cat("... (showing first 50 of", nrow(bq_data), "records)\n")
+  }
+  
+  # =============================================================================
+  # COMPARE EXCEL DATA WITH BIGQUERY DATA
+  # =============================================================================
+  
+  cat("\n", rep("=", 80), "\n")
+  cat("COMPARISON: EXCEL vs BIGQUERY DATA")
+  cat("\n", rep("=", 80), "\n")
+  
+  # Get unique creative names from Excel files
+  excel_original_names <- unique(all_comparisons$original_name)
+  excel_cleaned_names <- unique(all_comparisons$cleaned_name)
+  
+  # Get unique creative names from BigQuery
+  bq_original_names <- unique(bq_data$creative_names)
+  bq_cleaned_names <- unique(bq_data$cleaned_creative_name)
+  
+  # Find matches and differences
+  excel_in_bq <- excel_original_names[excel_original_names %in% bq_original_names]
+  excel_not_in_bq <- excel_original_names[!excel_original_names %in% bq_original_names]
+  bq_not_in_excel <- bq_original_names[!bq_original_names %in% excel_original_names]
+  
+  # Summary statistics
+  cat("COMPARISON SUMMARY:\n")
+  cat(rep("-", 60), "\n")
+  cat(sprintf("Excel files - Total unique original names: %d\n", length(excel_original_names)))
+  cat(sprintf("Excel files - Total unique cleaned names:  %d\n", length(excel_cleaned_names)))
+  cat(sprintf("BigQuery    - Total unique original names: %d\n", length(bq_original_names)))
+  cat(sprintf("BigQuery    - Total unique cleaned names:  %d\n", length(bq_cleaned_names)))
+  cat(sprintf("Names found in both Excel and BigQuery:    %d\n", length(excel_in_bq)))
+  cat(sprintf("Names in Excel but NOT in BigQuery:       %d\n", length(excel_not_in_bq)))
+  cat(sprintf("Names in BigQuery but NOT in Excel:       %d\n", length(bq_not_in_excel)))
+  
+  # Show names that are in Excel but not in BigQuery
+  if (length(excel_not_in_bq) > 0) {
+    cat("\nNAMES IN EXCEL BUT NOT IN BIGQUERY:\n")
+    cat(rep("-", 60), "\n")
+    for (i in 1:min(length(excel_not_in_bq), 20)) {
+      cat(sprintf("%2d. %s\n", i, excel_not_in_bq[i]))
+    }
+    if (length(excel_not_in_bq) > 20) {
+      cat("... (showing first 20 of", length(excel_not_in_bq), "names)\n")
+    }
+  }
+  
+  # Show names that are in BigQuery but not in Excel
+  if (length(bq_not_in_excel) > 0) {
+    cat("\nNAMES IN BIGQUERY BUT NOT IN EXCEL:\n")
+    cat(rep("-", 60), "\n")
+    for (i in 1:min(length(bq_not_in_excel), 20)) {
+      cat(sprintf("%2d. %s\n", i, bq_not_in_excel[i]))
+    }
+    if (length(bq_not_in_excel) > 20) {
+      cat("... (showing first 20 of", length(bq_not_in_excel), "names)\n")
+    }
+  }
+  
+}, error = function(e) {
+  cat("ERROR connecting to BigQuery or executing query:", e$message, "\n")
+})
+
+cat("\nExtraction and comparison completed!\n")
