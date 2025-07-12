@@ -330,7 +330,7 @@ process_utm_data <- function(source_config) {
     DBI::dbWriteTable(
       bq_connection,
       name = bq_table_name,
-      value = utm_data_final,  # Using utm_data_final (change to utm_data_with_clean_names if you want cleaned names)
+      value = utm_data_with_clean_names,  # Using utm_data_final (change to utm_data_with_clean_names if you want cleaned names)
       overwrite = TRUE         # Set to FALSE and use append=TRUE to append instead of overwrite
     )
     
