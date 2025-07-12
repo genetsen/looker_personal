@@ -144,7 +144,7 @@ process_utm_data <- function(source_config) {
     debug_print("Raw data loaded successfully", type = "step", source_id = source_id)
     debug_print("Column names", colnames(utm_data_raw), source_id = source_id)
     
-    # ==========================================================================
+    
     # SECTION 2: CLEAN UP COLUMN NAMES
     # ==========================================================================
     
@@ -182,7 +182,7 @@ process_utm_data <- function(source_config) {
     
     debug_print("Column names cleaned and applied", type = "step", source_id = source_id)
     
-    # ==========================================================================
+    
     # SECTION 3: STANDARDIZE CREATIVE COLUMN NAMING
     # ==========================================================================
     
@@ -236,7 +236,7 @@ process_utm_data <- function(source_config) {
     
     debug_print("Final column name cleanup completed", type = "step", source_id = source_id)
     
-    # ==========================================================================
+    
     # SECTION 4: PIVOT DATA FROM WIDE TO LONG FORMAT
     # ==========================================================================
     
@@ -264,7 +264,7 @@ process_utm_data <- function(source_config) {
     debug_print("Pivot operation completed", type = "step", source_id = source_id)
     debug_print("Long format data dimensions", dim(utm_data_long), source_id = source_id)
     
-    # ==========================================================================
+    
     # SECTION 5: FINAL DATA CLEANUP AND PREPARATION
     # ==========================================================================
     
@@ -288,7 +288,7 @@ process_utm_data <- function(source_config) {
       debug_print("Renamed 'tag' column to 'tag_placement'", type = "step", source_id = source_id)
     }
     
-    # ==========================================================================
+    
     # SECTION 6: CREATIVE NAME STANDARDIZATION
     # ==========================================================================
     
@@ -310,7 +310,7 @@ process_utm_data <- function(source_config) {
     debug_print("Unique cleaned names", unique(utm_data_with_clean_names$name), source_id = source_id)
     debug_print("Sample original names", head(unique(utm_data_final$name)), source_id = source_id)
     
-    # ==========================================================================
+    
     # SECTION 7: WRITE DATA TO BIGQUERY
     # ==========================================================================
     
@@ -338,7 +338,7 @@ process_utm_data <- function(source_config) {
     debug_print(paste("Final data dimensions:", nrow(utm_data_final), "rows,", ncol(utm_data_final), "columns"), 
                 source_id = source_id)
     
-    # ==========================================================================
+    
     # SECTION 8: COMPLETION
     # ==========================================================================
     
