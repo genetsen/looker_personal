@@ -1,13 +1,28 @@
 # =============================================================================
-# EXTRACT CREATIVE NAMES FROM ALL 3 UTM FILES
+# EXTRACT AND COMPARE CREATIVE NAMES FROM ALL 3 UTM FILES
 # =============================================================================
-# Purpose: Quick extraction of creative names from all 3 Excel files
+# Purpose: Show original vs cleaned creative names from all 3 Excel files
 # =============================================================================
 
 library(readxl)
 library(dplyr)
 library(janitor)
 library(stringr)
+
+# Function to clean creative names (same logic as main script)
+clean_creative_name <- function(name) {
+  if (is.na(name) || name == "") return(name)
+  
+  cleaned <- name %>%
+    str_replace_all("1x1", "") %>%               # Remove "1x1" size indicators
+    str_replace_all("0x0", "") %>%               # Remove "0x0" size indicators  
+    gsub("(?:_?\\d+x\\d+.*)?$", "", .) %>%       # Remove "NxN" size patterns
+    str_to_title() %>%                           # Convert to title case
+    str_replace_all("[^A-Za-z0-9]", "") %>%      # Remove special characters
+    str_replace_all("\\s+", "_")                 # Replace spaces with underscores
+  
+  return(cleaned)
+}
 
 # File configurations
 files_config <- data.frame(
@@ -84,7 +99,7 @@ extract_creative_names <- function(file_config) {
       return(NULL)
     }
     
-    # Extract unique creative names
+    # Extract unique creative names and create comparison data
     all_names <- c()
     for (col in name_columns) {
       names_in_col <- data[[col]][!is.na(data[[col]]) & data[[col]] != ""]
@@ -95,18 +110,33 @@ extract_creative_names <- function(file_config) {
     unique_names <- unique(all_names)
     unique_names <- unique_names[!is.na(unique_names) & unique_names != ""]
     
+    # Create comparison dataframe
+    comparison_df <- data.frame(
+      file_source = file_id,
+      original_name = unique_names,
+      cleaned_name = sapply(unique_names, clean_creative_name),
+      stringsAsFactors = FALSE
+    )
+    
     cat("Total unique creative names found:", length(unique_names), "\n\n")
     
-    # Display the names
-    cat("CREATIVE NAMES:\n")
-    cat(rep("-", 40), "\n")
-    for (i in seq_along(unique_names)) {
-      cat(sprintf("%2d. %s\n", i, unique_names[i]))
+    # Display the comparison table
+    cat("ORIGINAL vs CLEANED CREATIVE NAMES:\n")
+    cat(rep("-", 100), "\n")
+    cat(sprintf("%-12s | %-40s | %-40s\n", "FILE SOURCE", "ORIGINAL NAME", "CLEANED NAME"))
+    cat(rep("-", 100), "\n")
+    
+    for (i in 1:nrow(comparison_df)) {
+      cat(sprintf("%-12s | %-40s | %-40s\n", 
+                  comparison_df$file_source[i],
+                  substr(comparison_df$original_name[i], 1, 40),
+                  substr(comparison_df$cleaned_name[i], 1, 40)))
     }
     
     return(list(
       file_id = file_id,
       creative_names = unique_names,
+      comparison_df = comparison_df,
       count = length(unique_names)
     ))
     
