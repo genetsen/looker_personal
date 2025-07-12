@@ -159,10 +159,37 @@ for (i in 1:nrow(files_config)) {
   }
 }
 
-# Summary
+# Create consolidated comparison table
 cat("\n\n")
-cat(rep("=", 80), "\n")
-cat("SUMMARY OF ALL CREATIVE NAMES")
+cat(rep("=", 120), "\n")
+cat("CONSOLIDATED COMPARISON TABLE - ALL FILES")
+cat("\n", rep("=", 120), "\n")
+
+# Combine all comparison dataframes
+all_comparisons <- data.frame()
+for (file_id in names(all_results)) {
+  result <- all_results[[file_id]]
+  if (!is.null(result$comparison_df)) {
+    all_comparisons <- rbind(all_comparisons, result$comparison_df)
+  }
+}
+
+# Display consolidated table
+if (nrow(all_comparisons) > 0) {
+  cat(sprintf("%-12s | %-40s | %-40s\n", "FILE SOURCE", "ORIGINAL NAME", "CLEANED NAME"))
+  cat(rep("-", 120), "\n")
+  
+  for (i in 1:nrow(all_comparisons)) {
+    cat(sprintf("%-12s | %-40s | %-40s\n", 
+                all_comparisons$file_source[i],
+                substr(all_comparisons$original_name[i], 1, 40),
+                substr(all_comparisons$cleaned_name[i], 1, 40)))
+  }
+}
+
+# Summary statistics
+cat("\n", rep("=", 80), "\n")
+cat("SUMMARY STATISTICS")
 cat("\n", rep("=", 80), "\n")
 
 total_unique_across_all <- c()
@@ -177,12 +204,8 @@ for (file_id in names(all_results)) {
 overall_unique <- unique(total_unique_across_all)
 cat(sprintf("%-10s: %d total unique names across all files\n", "OVERALL", length(overall_unique)))
 
-cat("\n", rep("-", 80), "\n")
-cat("ALL UNIQUE CREATIVE NAMES ACROSS ALL FILES:\n")
-cat(rep("-", 80), "\n")
-
-for (i in seq_along(overall_unique)) {
-  cat(sprintf("%2d. %s\n", i, overall_unique[i]))
-}
+# Show unique cleaned names
+overall_cleaned <- unique(all_comparisons$cleaned_name)
+cat(sprintf("%-10s: %d unique cleaned names across all files\n", "CLEANED", length(overall_cleaned)))
 
 cat("\nExtraction completed!\n")
