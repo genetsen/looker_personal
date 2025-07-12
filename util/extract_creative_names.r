@@ -158,32 +158,26 @@ extract_creative_names <- function(file_config) {
       stringsAsFactors = FALSE
     )
     
-    cat("Total unique creative-placement pairs found:", nrow(comparison_df), "\n\n")
+    cat("Total unique creative names found:", length(unique_names), "\n\n")
     
-    # Display the comparison table with UTM keys
-    cat("PLACEMENT + CREATIVE NAMES + UTM KEYS:\n")
-    cat(rep("-", 150), "\n")
-    cat(sprintf("%-12s | %-25s | %-30s | %-30s | %-40s\n", "FILE SOURCE", "PLACEMENT", "ORIGINAL NAME", "CLEANED NAME", "UTM KEY"))
-    cat(rep("-", 150), "\n")
+    # Display the comparison table
+    cat("ORIGINAL vs CLEANED CREATIVE NAMES:\n")
+    cat(rep("-", 100), "\n")
+    cat(sprintf("%-12s | %-40s | %-40s\n", "FILE SOURCE", "ORIGINAL NAME", "CLEANED NAME"))
+    cat(rep("-", 100), "\n")
     
-    for (i in 1:min(nrow(comparison_df), 20)) {  # Show first 20 rows
-      cat(sprintf("%-12s | %-25s | %-30s | %-30s | %-40s\n", 
+    for (i in 1:nrow(comparison_df)) {
+      cat(sprintf("%-12s | %-40s | %-40s\n", 
                   comparison_df$file_source[i],
-                  substr(comparison_df$placement[i], 1, 25),
-                  substr(comparison_df$original_name[i], 1, 30),
-                  substr(comparison_df$cleaned_name[i], 1, 30),
-                  substr(comparison_df$utm_key[i], 1, 40)))
-    }
-    
-    if (nrow(comparison_df) > 20) {
-      cat("... (showing first 20 of", nrow(comparison_df), "pairs)\n")
+                  substr(comparison_df$original_name[i], 1, 40),
+                  substr(comparison_df$cleaned_name[i], 1, 40)))
     }
     
     return(list(
       file_id = file_id,
-      creative_names = unique(comparison_df$original_name),
+      creative_names = unique_names,
       comparison_df = comparison_df,
-      count = length(unique(comparison_df$original_name))
+      count = length(unique_names)
     ))
     
   }, error = function(e) {
