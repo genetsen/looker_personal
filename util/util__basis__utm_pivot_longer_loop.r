@@ -31,14 +31,14 @@ data_sources <- data.frame(
     "Flight 3"
   ),
   bq_table_name = c(
-    "basis_utms_pivoted_flight1_v2",
-    "basis_utms_pivoted_flight2_v2",
-    "basis_utms_pivoted_flight3_v2"
+    "basis_utms_pivoted_flight1_2",
+    "basis_utms_pivoted_flight2_2",
+    "basis_utms_pivoted_flight3_2"
   ),
   stringsAsFactors = FALSE
 )
 
-# GLOBAL CONFIGURATION ========================================================
+# GLOBAL CONFIGURATION =======================================================
 # BigQuery configuration (same for all data sources)
 bq_project_id <- "looker-studio-pro-452620"
 bq_dataset <- "landing"
