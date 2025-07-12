@@ -3,8 +3,8 @@
 # =============================================================================
 # Purpose: Loop through multiple data sources to load UTM data from Excel files,
 #          clean column names, pivot to long format, and upload to BigQuery
-# Author: [Your Name]
-# Date: [Current Date]
+
+# ! use util/extract_creative_names.r to test creative name extraction
 # =============================================================================
 
 # LOAD REQUIRED LIBRARIES ====================================================
