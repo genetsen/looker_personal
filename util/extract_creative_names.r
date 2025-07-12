@@ -30,7 +30,7 @@ files_config <- data.frame(
   excel_file_path = c(
     '/Users/eugenetsenter/Downloads/Flight 1_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
     '/Users/eugenetsenter/Downloads/Flight 2_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
-    '/Users/eugenetsenter/Downloads/Flight 3_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
+    '/Users/eugenetsenter/Downloads/Flight 3 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
   ),
   sheet_name = c(
     "Flight 1",
