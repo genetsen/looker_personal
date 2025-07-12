@@ -235,7 +235,7 @@ tryCatch({
     creative_name,
     cleaned_creative_name,
     del_key,
-    placement_name
+    placement
   FROM `looker-studio-pro-452620.repo_stg.basis_delivery`
   WHERE creative_name IS NOT NULL 
     AND creative_name != ''
