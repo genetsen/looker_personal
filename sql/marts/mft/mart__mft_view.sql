@@ -49,7 +49,9 @@ SELECT
   
 FROM
   --`looker-studio-pro-452620.repo_stg.basis_plus_utms` update 6/17
-  `looker-studio-pro-452620.repo_stg.basis_plus_utms_v2`
+ -- `looker-studio-pro-452620.repo_stg.basis_plus_utms_v3` updated 7/14
+ looker-studio-pro-452620.repo_stg.basis_plus_utms_v4_PnS_table
+  
   WHERE date >= DATE '2025-01-01' 
   and package_roadblock like '%MASS%'
   and impressions >10;

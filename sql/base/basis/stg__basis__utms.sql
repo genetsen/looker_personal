@@ -1,4 +1,4 @@
-create or replace view `looker-studio-pro-452620.repo_stg.basis_utms_stg_view` as
+create or replace view `looker-studio-pro-452620.repo_stg.basis_utms_stg_view_2507` as
 
 -- @code:        [EDIT HERE] stg__basis__utms.sql
 -- @code:        repo_stg__basis_utms_stg_view.sql
@@ -20,7 +20,7 @@ SELECT
 `size`,
 `start_date`,
 `end_date`,
-`creative_num`,
+--`creative_num`,
 `name` as creative_name,
 -- [cleaned_creative_name] standardizes creative names to DCM Creative
   -- Extracts the core creative name by:
@@ -29,28 +29,42 @@ SELECT
   --   3. Removing all spaces from the result
   --   4. Converting to lowercase for normalization
   -- Example: "123_Spring Sale_300x250" → "springsale"
-  lower(replace(REGEXP_EXTRACT(name, r'^(?:\d+_)?([^_]+.*?)(?:_\d+x\d+.*)?$'),
+  lower(replace(REGEXP_EXTRACT(name, r'^(?:\d+_)?([^_]+.*?)(?:\d+x\d+.*)?$'),
       ' ' ,
       ''
       )
-) AS cleaned_creative_name,
-`asset_link`,
-`edo_tag`,
-`disqo_tag`,
-`video_amp_tag`,
-`3p_or_1p_tag`,
+    ) AS cleaned_creative_name,
+
+  LOWER(
+    REPLACE(
+      REGEXP_EXTRACT(name, r'^([A-Za-z0-9\s_]+?)(?:_?\d+x\d+.*)?$'),
+      ' ',
+      ''
+    )
+  ) AS cleaned_creative_name2,
+--`asset_link`,
+--`edo_tag`,
+--`disqo_tag`,
+--`video_amp_tag`,
+--`3p_or_1p_tag`,
 url,
 REGEXP_EXTRACT(url, r'-(\d+)&utm_term') AS id,
 REGEXP_EXTRACT(url, 'utm_source=(.*?)&') AS utm_source,
 REGEXP_EXTRACT(url, 'utm_medium=(.*?)&') AS utm_medium,
 REGEXP_EXTRACT(url, 'utm_campaign=(.*?)&') AS utm_campaign,
 REGEXP_EXTRACT(url, 'utm_term=(.*)') AS utm_term,
-REGEXP_EXTRACT(url, 'utm_content=(.*?)&') AS utm_content
+--REGEXP_EXTRACT(url, 'utm_content=(.*?)&') AS utm_content,
+REGEXP_EXTRACT(
+  url,
+  r'[?&]utm_content=([^&#]*)'
+) AS utm_content
 
 FROM
  -- `looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted`;
- `looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted_unioned`;
+ --`looker-studio-pro-452620.20250327_data_model.basis_utms_pivoted_unioned`;
+ looker-studio-pro-452620.landing.basis_utms_unioned
  
+# where tag_placement = "MASSMUTUAL003CP_3188385_[CPM]_CTV_MidFunnel_PMP(Peacock)_Q2_National"
 
 --ARCHIVE
   -- create or replace table `looker-studio-pro-452620.repo_stg.basis_utms` as
