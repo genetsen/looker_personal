@@ -252,7 +252,7 @@ if ("tag" %in% colnames(utms_table)) {
 
 # Clean up creative names ###############################################
 
-cat(paste0("`", utms_table$name, "`", collapse = ",\n"))
+cat(paste0("`", unique(utms_table$name), "`", collapse = ",\n"))
 utms_table <- utms_table %>%
   mutate(
     name_original = name, # Keep original values
@@ -281,21 +281,21 @@ con <- dbConnect(
 )
 # 4.3  Write the data to BigQuery
 
-DBI::dbWriteTable(
-  con,
-  name = "basis_utms_pivoted_flight3",
-  #name = "basis_utms_pivoted",
-  value = utms_table,
-  overwrite = TRUE, # set to FALSE and use append=TRUE to append instead
-  #append = TRUE # set to TRUE to append instead of overwrite
-)
+#! DBI::dbWriteTable(
+#   con,
+#   name = "basis_utms_pivoted_flight3",
+#   #name = "basis_utms_pivoted",
+#   value = utms_table,
+#   overwrite = TRUE, # set to FALSE and use append=TRUE to append instead
+#   #append = TRUE # set to TRUE to append instead of overwrite
+# )
 
-peak <- head((DBI::dbReadTable(
-  con,
-  name = "basis_utms_pivoted_flight3"
-)), 10) # Read the first 10 rows of the table
-view(peak)
+#! peak <- head((DBI::dbReadTable(
+#   con,
+#   name = "basis_utms_pivoted_flight3"
+# )), 10) # Read the first 10 rows of the table
+# view(peak)
 
 # delete basis_utms_pivoted table
-   query <- "DROP TABLE basis_utms_pivoted_flight3"
-   dbExecute(con, query)
+  #  query <- "DROP TABLE basis_utms_pivoted_flight3"
+  #  dbExecute(con, query)

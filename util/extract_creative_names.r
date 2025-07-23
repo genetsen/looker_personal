@@ -256,7 +256,7 @@ cat(sprintf("%-10s: %d total unique names across all files\n", "OVERALL", length
 overall_cleaned <- unique(all_comparisons$cleaned_name)
 cat(sprintf("%-10s: %d unique cleaned names across all files\n", "CLEANED", length(overall_cleaned)))
 
-# =============================================================================
+
 # PULL DATA FROM BIGQUERY TABLE
 # =============================================================================
 
@@ -281,11 +281,13 @@ tryCatch({
     creative_name,
     cleaned_creative_name,
     del_key,
-    placement
+    placement,
+    sum(impressions) AS total_impressions,
   FROM `looker-studio-pro-452620.repo_stg.basis_delivery`
   WHERE creative_name IS NOT NULL 
     AND creative_name != ''
     AND date >= '2025-01-01'  -- Adjust date filter as needed
+  GROUP BY creative_name, cleaned_creative_name, del_key, placement
   ORDER BY creative_name
   "
   
@@ -314,7 +316,7 @@ tryCatch({
     cat("... (showing first 50 of", nrow(bq_data), "records)\n")
   }
   
-  # =============================================================================
+  
   # COMPARE EXCEL DATA WITH BIGQUERY DATA
   # =============================================================================
   
