@@ -1,11 +1,9 @@
 # =============================================================================
-# BASIS UTM DATA PROCESSING SCRIPT - CLEANED VERSION
-# =============================================================================
-# Purpose: Load UTM data from Excel, clean column names, pivot to long format,
-#          and upload to BigQuery
-# Author: [Your Name]
-# Date: [Current Date]
-# =============================================================================
+# BASIS UTM DATA PROCESSING SCRIPT - CLEANED VERSION # =============================================================================
+  # Purpose: Load UTM data from Excel, clean column names, pivot to long format,
+  #          and upload to BigQuery
+  # Author: [Your Name]
+  # Date: [Current Date]
 
 # LOAD REQUIRED LIBRARIES ====================================================
 library(readxl)    # For reading Excel files
