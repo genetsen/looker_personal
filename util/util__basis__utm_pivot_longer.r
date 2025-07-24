@@ -5,15 +5,23 @@ library(janitor)
 library(stringr)
 library("DBI")
 
-# LOAD NEW UTM DATA FROM EXCEL FILE
+# LOAD NEW UTM DATA FROM EXCEL FILE ##################################################################
   # Autodetect how many rows to skip by finding the header row with "Property" in first column
-  file_path <- '/Users/eugenetsenter/Docs/Clients/MassMutual_files/MMM 2025/Basis_UTMS/Mass Mutual_Full Funnel Branding FY25_Q2 UTMs.xlsx'
-  sheet_name <- "Original Q2 Tsheet + UTMs"
+    file_path1 <- '/Users/eugenetsenter/Downloads/Flight 1_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
+    file_path2 <- '/Users/eugenetsenter/Downloads/Flight 2_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
+    file_path3 <- '/Users/eugenetsenter/Downloads/Flight 3 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
+    
+    #! file_path <- '/Users/eugenetsenter/Docs/Clients/MassMutual_files/MMM 2025/Basis_UTMS/Mass Mutual_Full Funnel Branding FY25_Q2 UTMs.xlsx'
+    #! sheet_name <- "Original Q2 Tsheet + UTMs"
+    sheet_name1 <- "Q1 Tsheet"
+    sheet_name2 <- "Flight 2_Updated"
+    sheet_name3 <- "Flight 3"
+    
 
   # Read first 20 rows to find the header row
   temp_df <- read_excel(
-    file_path,
-    sheet = sheet_name,
+    file_path1,
+    sheet = sheet_name1,
     n_max = 20,
     col_names = FALSE
   )
@@ -31,40 +39,48 @@ library("DBI")
 
   # Now read the actual data with the correct skip value
   new_df <- read_excel(
-    file_path,
-    sheet = sheet_name,
+    file_path1,
+    sheet = sheet_name1,
     skip = skip_rows,
   ) %>%
     clean_names()
 
   colnames(new_df)
- new_df <- new_df[-c(1),]
+  new_df <- new_df[-c(1),] 
 
-new_df <- new_df %>%
-  mutate(across(everything(), as.character)) # Convert all columns to character type
+  new_df <- new_df %>% mutate(across(everything(), as.character)) # Convert all columns to character type
 
-#data.frame(colnames(new_df))
-df_cleanup <- data.frame(orig = colnames(new_df)) 
-df_cleanup[43,"orig"] <- "asset_link_number_5"
-df_cleanup[52,"orig"] <- "asset_link_number_6"
-df_cleanup <- df_cleanup %>%
-  mutate(
-    creative_number_new = paste0("creative",str_extract(orig, "_number_\\d+")),
-    creative_fieldname_new = gsub("creative_", "", gsub("_number_\\d+", "", df_cleanup$orig)) # Remove the "creative_number_" part
-  )
+  data.frame(colnames(new_df))
+  df_cleanup <- data.frame(orig = colnames(new_df)) # Create a dataframe to hold original column names for cleanup
+  #! df_cleanup[43,"orig"] <- "asset_link_number_5"
+  #!df_cleanup[52,"orig"] <- "asset_link_number_6"
 
-df_cleanup$cleaned_name <- paste(df_cleanup$creative_number_new,df_cleanup$creative_fieldname_new,sep="_")
-df_cleanup$cleaned_name[1:7] <- df_cleanup$orig[1:7] # Keep the first 7 columns unchanged
-colnames(new_df) <- df_cleanup$cleaned_name
-# LOAD OLD UTM DATA FROM BIGQUERY TABLE
+# Clean up column names to make them more readable and consistent ###################################################
+    
+    
+    df_cleanup <- df_cleanup %>%
+      mutate(
+        #!creative_number_new = paste0("creative",str_extract(orig, "_number_\\d+")),
+        creative_number_new = paste0("creative",str_extract(orig, "_(\\d+)(?=_|$)")), # Extract the number after "_" and before "_" or end of string
+        creative_fieldname_new = gsub("creative_", "", gsub("_number_\\d+", "", df_cleanup$orig)),  # Remove the "creative_number_" part
+        creative_fieldname_new = gsub("number_||\\d+_", "", creative_fieldname_new), # Remove the "_number_X" part
+        creative_fieldname_new = gsub("_number", "", creative_fieldname_new) # Remove the "_number_X" part
+      )
+  
+    # Combine the creative number and fieldname to create a cleaned name 
+      df_cleanup$cleaned_name <- paste(df_cleanup$creative_number_new,df_cleanup$creative_fieldname_new,sep="_")
+      df_cleanup$cleaned_name[1:7] <- df_cleanup$orig[1:7] # Keep the first 7 columns unchanged
+      colnames(new_df) <- df_cleanup$cleaned_name
+
+#! LOAD OLD UTM DATA FROM BIGQUERY TABLE| NOT USED ################################################################## 
 
   #try(con <- bq_con)
-  con <- dbConnect(
-    bigrquery::bigquery(),
-    project = "looker-studio-pro-452620",
-    dataset = "20250327_data_model",
-    billing = "looker-studio-pro-452620"
-  )
+  # con <- dbConnect(
+  #   bigrquery::bigquery(),
+  #   project = "looker-studio-pro-452620",
+  #   dataset = "20250327_data_model",
+  #   billing = "looker-studio-pro-452620"
+  # )
 
   # old_df <- dbGetQuery(con, "SELECT * FROM basis_utms_raw_25Q1_v2")
   # # Check if the column names in the dataframe match the BigQuery table schema
@@ -122,93 +138,109 @@ colnames(new_df) <- df_cleanup$cleaned_name
 
 # TODO: upload df to bq table "basis_utms_raw_25Q1_v2"
 # Upload raw df to BigQuery table "basis_utms_raw_25Q2_v2"
-dbWriteTable(
-  con,
-  name = "basis_utms_raw_25Q2_v2",
-  value = new_df,
-  overwrite = TRUE # set to FALSE and use append=TRUE to append instead
-)
-
-
-
-df <- new_df
-
-# bq_table_create(
-#   project = "looker-studio-pro-452620",
-#   dataset = "20250327_data_model",
-#   table = "basis_utms_raw_25Q1_v2",
-#   schema = list(
-#     list(name = "creative_num", type = "INTEGER"),
-#     list(name = "creative_name", type = "STRING"),
-#     list(name = "creative_url", type = "STRING"),
-#     list(name = "creative_asset_link", type = "STRING"),
-#     list(name = "creative_edo_tag", type = "STRING"),
-#     list(name = "creative_disqo_tag", type = "STRING"),
-#     list(name = "creative_video_amp_tag", type = "STRING"),
-#     list(name = "creative_3p_or_1p_tag", type = "STRING")
-#   )
+# dbWriteTable(
+#   con,
+#   name = "basis_utms_raw_25Q2_v2",
+#   value = new_df,
+#   overwrite = TRUE # set to FALSE and use append=TRUE to append instead
 # )
 
-names(df)
-# Make all creative columns follow creative_<number>_<attribute>
-names_test <- str_remove(
-  str_replace(
-    str_replace(
-      names(df),
-      "creative_",
+# PIVOT LONGER ##############################################################
+  # Create a new dataframe with the cleaned column names
+  df <- new_df
+
+  #! bq_table_create(
+  #   project = "looker-studio-pro-452620",
+  #   dataset = "20250327_data_model",
+  #   table = "basis_utms_raw_25Q1_v2",
+  #   schema = list(
+  #     list(name = "creative_num", type = "INTEGER"),
+  #     list(name = "creative_name", type = "STRING"),
+  #     list(name = "creative_url", type = "STRING"),
+  #     list(name = "creative_asset_link", type = "STRING"),
+  #     list(name = "creative_edo_tag", type = "STRING"),
+  #     list(name = "creative_disqo_tag", type = "STRING"),
+  #     list(name = "creative_video_amp_tag", type = "STRING"),
+  #     list(name = "creative_3p_or_1p_tag", type = "STRING")
+  #   )
+  # )
+
+  names(df)
+  # output names(df) in a list
+  cat(paste0("`", names(df), "`", collapse = ",\n"))
+
+
+  # Make all CREATIVE columns follow creative_<number>_<attribute> 
+  col_names_main <- str_replace( #4 remove leading underscore
+    str_remove( # 3 any trailing numbers
+      str_replace( # 2 Remove the "number_" prefix and 
+        str_replace( # 1 Remove the "creative_" prefix
+          names(df),
+          "creative_",
+          ""
+        ),
+      "number_",
       ""
       ),
-    "number_",
-    ""
-    ),
-    "\\d*"
+      "^[\\d_]+|[\\d_]+$"
+    ), "^_", "" # remove leading underscore
   )
-unique(names_test)
-names_prefix <- paste0("creative_",str_extract(names(df),"-?\\d*\\.?\\d+"),"_", names_test)
-names(df) <- names_prefix
+  unique(col_names_main)
 
+  # Create a new prefix for the creative columns
+  # This will replace the old creative_<number>_<attribute> with creative_<number>_<attribute>
+  # where <number> is the number extracted from the original column names
+  names_prefix <- 
+    (paste0(
+      "creative_",
+      str_extract(names(df),"-?\\d*\\.?\\d+"), # Extract the number from the original column names
+      "_", 
+      col_names_main)) # Add the new prefix
+  cat(paste0("`", names_prefix, "`", collapse = ",\n"))
+  names(df) <- names_prefix
+  cat(paste0("`", names(df), "`", collapse = ",\n"))
 
-names(df) <- names(df) |>
+  # Clean up column names to make them more readable and consistent
   # Remove trailing numbers from names: creative_1__name_1 → creative_1__name
-  str_replace("(_name|_url|_asset_link|_edo_tag|_disqo_tag|_video_amp_tag|_3p_or_1p_tag)_\\d+$", "\\1") |>
   # Remove all sequences of 2 or more underscores: creative_1__name → creative_1_name
-  str_replace_all("_+", "_") |>
   # Fix creative_3__url_3_number → creative_3_url
-  str_replace("_url_3_number", "_url")
+  names(df) <- names(df) |>
+    # Remove trailing numbers from names: creative_1__name_1 → creative_1__name
+    str_replace("(_name|_url|_asset_link|_edo_tag|_disqo_tag|_video_amp_tag|_3p_or_1p_tag)_\\d+$", "\\1") |>
+    # Remove all sequences of 2 or more underscores: creative_1__name → creative_1_name
+    str_replace_all("_+", "_") |>
+    # Fix creative_3__url_3_number → creative_3_url
+    str_replace("_url_3_number", "_url")
 
+# START PIVOT LONGER ##############################################################
+  # 2️⃣  Identify all creative columns 
+  cre_cols <- grep("(name|url|asset_link|edo_tag|disqo_tag|samba_tag|video_amp_tag|3p_or_1p_tag)",
+                  names(df), value = TRUE)
 
-# 2️⃣  Identify all creative columns ---------------------------------------
-cre_cols <- grep("(name|url|asset_link|edo_tag|disqo_tag|samba_tag|video_amp_tag|3p_or_1p_tag)",
-                 names(df), value = TRUE)
+  # 3️⃣  Pivot longer 
+  creative_long <- df %>%                             # Start a pipeline with the dataframe 'df'
+    pivot_longer(                                     # Reshape data from wide to long format
+      cols = matches("^creative_\\d+_"),              # Select columns that start with 'creative_' followed by digits and an underscore
+      names_to = c("creative_num", ".value"),         # Split column names into 'creative_num' and the rest as new columns
+      names_pattern = "^creative_(\\d+)_(.*)$",       # Regex to extract the creative number and attribute from column names
+      values_drop_na = TRUE                           # Drop rows where the value is NA
+    ) %>%
+    mutate(creative_num = as.integer(creative_num))   # Convert 'creative_num' from character to integer
 
-# 3️⃣  Pivot longer ---------------------------------------------------------
-creative_long <- df %>%                             # Start a pipeline with the dataframe 'df'
-  pivot_longer(                                     # Reshape data from wide to long format
-    cols = matches("^creative_\\d+_"),              # Select columns that start with 'creative_' followed by digits and an underscore
-    names_to = c("creative_num", ".value"),         # Split column names into 'creative_num' and the rest as new columns
-    names_pattern = "^creative_(\\d+)_(.*)$",       # Regex to extract the creative number and attribute from column names
-    values_drop_na = TRUE                           # Drop rows where the value is NA
-  ) %>%
-  mutate(creative_num = as.integer(creative_num))   # Convert 'creative_num' from character to integer
+# clean up column names again & create final DF ##############################################################
 
-names(creative_long) <-
-  str_replace_all(names(creative_long), "creative_NA_", "") # Replace underscores with dots in column names
+  names(creative_long) <-
+    str_replace_all(names(creative_long), "creative_NA_", "") # Remove 'creative_NA_' prefix from column names
 
+  cat(paste0("`", names(creative_long), "`", collapse = ",\n"))
 
+  utms_table <- creative_long %>% select( # Select relevant columns
+    #-contains("rotation")
+    2:16
+    )
 
-
-utms_table <- creative_long %>% select(
-  #-contains("rotation")
-  2:16
-  )
-
-#print as tidy list of columns
-cat(paste0("`", colnames(utms_table), "`", collapse = ",\n"))
-
-project <- "looker-studio-pro-452620"
-dataset <- "20250327_data_model"
-billing <- "looker-studio-pro-452620"
-table <- "basis_utms_pivoted_q2"
+  #print as tidy list of columns
+  cat(paste0("`", colnames(utms_table), "`", collapse = ",\n"))
 
 
 
@@ -218,24 +250,23 @@ if ("tag" %in% colnames(utms_table)) {
     rename(tag_placement = tag)
 }
 
+# Clean up creative names ###############################################
 
-# standardize values in name column
-cr_cleanup <-data.frame(orig = (utms_table$name))  # Check unique values in the 'name' column
-cr_cleanup$cleaned_name <- str_to_title(cr_cleanup$orig)
-
-cr_cleanup$cleaned_name <- str_replace_all(cr_cleanup$cleaned_name, "[^A-Za-z0-9]", "") # Remove special characters
-
+cat(paste0("`", unique(utms_table$name), "`", collapse = ",\n"))
 utms_table <- utms_table %>%
   mutate(
-    name = str_to_title(name), # Convert to title case
+    name_original = name, # Keep original values
+    name = str_replace_all(name, "1x1", ""), # Remove "1x1"
+    name = str_replace_all(name, "0x0", ""), # Remove "0x0"
+    name = gsub("(?:_?\\d+x\\d+.*)?$", "", name), # Remove "NxN" patterns
+    name = str_to_lower(name), # Convert to lower case
     name = str_replace_all(name, "[^A-Za-z0-9]", ""), # Remove special characters
     name = str_replace_all(name, "\\s+", "_") # Replace spaces with underscores
+    
   )
+cat(paste0("`", unique((utms_table$name)), "`", collapse = ",\n"))
 
-colnames(utms_table)
-unique(utms_table$name) # Check unique values in the 'name' column
 
-# TODO: use bigrquery to write to table "basis_utms_pivoted"
 
 # 4️⃣  Write to BigQuery ---------------------------------------
 # 4.1  Create a connection to BigQuery using bigrquery
@@ -245,20 +276,26 @@ library(bigrquery)
 con <- dbConnect(
   bigrquery::bigquery(),
   project = "looker-studio-pro-452620",
-  dataset = "20250327_data_model",
+  dataset = "landing",
   billing = "looker-studio-pro-452620"
 )
 # 4.3  Write the data to BigQuery
 
-DBI::dbWriteTable(
-  con,
-  name = "basis_utms_pivoted_q2_v2",
-  #name = "basis_utms_pivoted",
-  value = utms_table,
-  overwrite = TRUE, # set to FALSE and use append=TRUE to append instead
-  #append = TRUE # set to TRUE to append instead of overwrite
-)
+#! DBI::dbWriteTable(
+#   con,
+#   name = "basis_utms_pivoted_flight3",
+#   #name = "basis_utms_pivoted",
+#   value = utms_table,
+#   overwrite = TRUE, # set to FALSE and use append=TRUE to append instead
+#   #append = TRUE # set to TRUE to append instead of overwrite
+# )
+
+#! peak <- head((DBI::dbReadTable(
+#   con,
+#   name = "basis_utms_pivoted_flight3"
+# )), 10) # Read the first 10 rows of the table
+# view(peak)
 
 # delete basis_utms_pivoted table
-   #query <- "DROP TABLE basis_utms_pivoted_q2"
-   #dbExecute(con, query)
+  #  query <- "DROP TABLE basis_utms_pivoted_flight3"
+  #  dbExecute(con, query)
