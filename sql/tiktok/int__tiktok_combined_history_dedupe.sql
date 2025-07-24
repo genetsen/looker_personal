@@ -17,7 +17,7 @@
 -- @last_updated: [Insert Date]
 -- @target:       combined_history_dedupe (final SELECT)
 -- ────────────────────────────────────────────────────────────────────────────────
-create or replace table `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe` as
+create or replace view `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view` as
 -- ────────────────────────────────────────────────────────────────────────────────
 -- STEP 1: Deduplicate campaign-level history
 -- Logic: For each `campaign_id`, select the most recent row based on `updated_at`
