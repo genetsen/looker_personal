@@ -1,4 +1,4 @@
-create or REPLACE table looker-studio-pro-452620.utm_scrap.stg3_b_plus_utms_PnS_table as (
+create or temp table looker-studio-pro-452620.utm_scrap.stg3_b_plus_utms_PnS_table as (
 WITH
 -- Extract and filter delivery data
 del AS (
