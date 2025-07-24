@@ -6,72 +6,6 @@
 
 ## Research Query
 
-Investigate the "dcm_utms" component in detail. Provide a comprehensive analysis of its architecture, responsibilities, and implementation details.
-
-*Session: 6f0a2ab5b84bc9c68b87107e7690292f | Generated: 7/7/2025, 4:43:27 PM*
-
-### Analysis Summary
-
-# DCM UTMs Component Analysis
-
-## High-Level Architecture
-
-The **DCM UTMs** component primarily facilitates the enrichment of DoubleClick Campaign Manager (DCM) delivery data with Urchin Tracking Module (UTM) parameters. This integration is crucial for providing a unified view of campaign performance, aligning delivery metrics with marketing attribution data. The core of this component is a SQL transformation that joins DCM data with a dedicated UTMs dataset, ultimately contributing to a comprehensive delivery model.
-
-## Mid-Level Component Interaction
-
-The **DCM UTMs** component is a key dependency for the **Delivery Mart** (`mart__delivery__join_dcm_utms_prisma`), which unifies delivery data with UTM enrichment and Prisma metadata.
-
-*   **Input Data Sources:**
-    *   **DCM Daily Campaign Data**: This is the primary source of delivery metrics from DCM, likely sourced from `looker-studio-pro-452620.repo_stg.dcm_daily_campaign_data` [CLAUDE.md](CLAUDE.md:49).
-    *   **DCM UTMs**: This component provides the UTM parameters, likely from a staging table such as `looker-studio-pro-452620.repo_stg.dcm_utms` [CLAUDE.md](CLAUDE.md:49). The specific view used in the join is `looker-studio-pro-452620.final_views.utms_view` [sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql](sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql).
-
-*   **Core Transformation**: The `mart__delivery__join_dcm_utms_prisma.sql` script performs the central join operation.
-
-*   **Output**: The result of this join is a unified delivery model, which is then used for further analysis and reporting. The target table for this transformation is `looker-studio-pro-452620.repo_tables.dcm` [sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql](sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql).
-
-## Low-Level Implementation Details
-
-The primary implementation of the **DCM UTMs** integration is found within the SQL script [sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql](sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql). This script is also present in the Jupyter notebooks [sql/joins/mft.dc.ipynb](sql/joins/mft.dc.ipynb) and [sql/joins/mft.ipynb](sql/joins/mft.ipynb).
-
-### `mart__delivery__join_dcm_utms_prisma.sql`
-
-*   **Purpose**: This SQL file is responsible for creating a unified delivery model by joining DCM data with UTM enrichment. It aligns placement and creative-level reporting with campaign planning, actualized delivery, and cost model metrics.
-*   **Source Tables**:
-    *   `looker-studio-pro-452620.final_views.dcm` (aliased as `dcm`)
-    *   `looker-studio-pro-452620.final_views.utms_view` (aliased as `utm`)
-*   **Join Condition**: The join between the `dcm` and `utm` tables is performed on `dcm.ad` and `utm.Ad_Name` [sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql](sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql).
-    ```sql
-    on concat(dcm.ad) = utm.Ad_Name
-    ```
-    There is also a commented-out join condition that suggests an alternative join key:
-    ```sql
-    -- on concat(dcm.placement_id, " || ", dcm.creative) = utm.placement_creative
-    ```
-*   **Selected Columns**: The script selects numerous columns from the `dcm` table, including `date`, `campaign`, `impressions`, `media_cost`, and various planned cost/impression metrics. From the `utm` table, it selects:
-    *   `_UTM_Source` as `utm_source`
-    *   `Ad_Name` as `ad_name`
-    *   `Placement_Name` as `placement_name`
-    *   `_UTM_Campaign` as `utm_campaign`
-    *   `_UTM_Medium` as `utm_medium`
-    *   `_UTM_Content` as `utm_content`
-    *   `_UTM_Term` as `utm_term`
-    Additionally, a new column `utm_key` is created by concatenating `dcm.placement_id` and `dcm.creative` [sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql](sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql).
-*   **Output Table**: The result of this query is stored in the table `looker-studio-pro-452620.repo_tables.dcm` [sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql](sql/base/dcm/mart__delivery__join_dcm_utms_prisma.sql).
-
-### Related Files
-
-*   **`CLAUDE.md`**: This documentation file provides a high-level overview of the data dependencies, explicitly stating that `mart__delivery__join_dcm_utms_prisma.sql` depends on `looker-studio-pro-452620.repo_stg.dcm_daily_campaign_data` and `looker-studio-pro-452620.repo_stg.dcm_utms` [CLAUDE.md](CLAUDE.md:49).
-*   **`omni/bigquery_connection_v2/DCM/dcm_linkedview2.view.yaml`**: While not directly referencing `dcm_utms`, this file is part of the DCM views and might be related to how DCM data is structured before being joined with UTMs. Further investigation would be needed to confirm its direct relevance to the `dcm_utms` component.
-*   **`omni/bigquery_connection_v2/giant-spoon-299605.data_model_2025/utms2.view.yaml`**: This file likely defines the `utms2` view, which could be the source for the `utms_view` used in the join. This would be the definition of the `dcm_utms` component itself.
-*   **`util/basis_utms/union_basis_utms.ipynb`**: This Jupyter notebook suggests that there's a process for unioning basis UTMs, which might contribute to the `utms_view` used in the `dcm_utms` component.
-*   **`sql/base/basis/stg__basis__utms.sql`**: This staging SQL file likely processes raw UTM data from the "basis" source, which could feed into the `utms_view`.
-*   **`util/util__basis__utm_pivot_longer.r`**: This R script suggests a transformation of UTM data, possibly pivoting it to a longer format, which could be part of the `dcm_utms` data preparation.
-
----
-
-## Research Query
-
 Investigate the "dcm" component in detail. Provide a comprehensive analysis of its architecture, responsibilities, and implementation details.
 
 *Session: 4d8dc8480d25f967fdc1381df900ef87 | Generated: 7/7/2025, 4:49:11 PM*
@@ -244,4 +178,44 @@ The script creates the following views:
 *   **`looker-studio-pro-452620.repo_stg.basis_plus_utms_v3`**: This view is created by the first query, joining `del` with `basis_utms_stg_view_2507`. Cited in [stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql:4).
 *   **`looker-studio-pro-452620.repo_stg.basis_plus_utms_v3_PnS_table`**: This view is created by the second query, joining `del` with `utm` (derived from `utm1`). Cited in [stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql:49).
 *   **`looker-studio-pro-452620.repo_stg.basis_plus_utms_v4_PnS_table`**: This view is created by the third query, which includes deduplication logic and combines UTM data from both `utm1` and `utm4`. Cited in [stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql:96).
+
+---
+
+## Research Query
+
+Investigate the "b_sup_pivt_unioned_tab" component in detail. Provide a comprehensive analysis of its architecture, responsibilities, and implementation details.
+
+*Session: ed74c3cfa48d0c28296076d9c48b529b | Generated: 7/24/2025, 4:16:31 PM*
+
+### Analysis Summary
+
+# b_sup_pivt_unioned_tab Component Analysis
+
+The **`b_sup_pivt_unioned_tab`** component is a BigQuery table that serves as a crucial source for supplementary UTM (Urchin Tracking Module) data within the codebase. Its primary responsibility is to provide raw, un-processed UTM information that is then integrated and transformed by downstream staging processes.
+
+## Architecture and Responsibilities
+
+The **`b_sup_pivt_unioned_tab`** is a foundational data source, acting as a repository for pivoted and unioned UTM data. It is not directly responsible for data transformation or cleaning but rather for making the raw, supplementary UTM data available for consumption by other SQL scripts.
+
+### External Relationships
+
+This table is primarily consumed by SQL staging scripts, notably [stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql) and [stg3_b_plus_utms_PnS.sql](util/basis_utms/stg3_b_plus_utms_PnS.sql). It is referenced by its fully qualified BigQuery path: `looker-studio-pro-452620.utm_scrap.b_sup_pivt_unioned_tab`.
+
+## Implementation Details
+
+The **`b_sup_pivt_unioned_tab`** is directly queried within the `FROM` clause of SQL statements to retrieve its data.
+
+### Integration with `stg2__basis__plus_utms.sql`
+
+In [stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql), the `b_sup_pivt_unioned_tab` is a key input for the `utm1` Common Table Expression (CTE). The `utm1` CTE is responsible for selecting and processing various UTM parameters from this table, including `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term`. It also performs data cleaning and standardization, such as converting `utm_source` to lowercase and handling `NULL` values.
+
+For example, the table is referenced in the `utm1` CTE as seen in [stg2__basis__plus_utms.sql:110](sql/base/basis/stg2__basis__plus_utms.sql:110) and [stg2__basis__plus_utms.sql:245](sql/base/basis/stg2__basis__plus_utms.sql:245).
+
+### Integration with `stg3_b_plus_utms_PnS.sql`
+
+Similarly, the [stg3_b_plus_utms_PnS.sql](util/basis_utms/stg3_b_plus_utms_PnS.sql) script also directly queries `b_sup_pivt_unioned_tab` to retrieve supplementary UTM data, as shown in [stg3_b_plus_utms_PnS.sql:47](util/basis_utms/stg3_b_plus_utms_PnS.sql:47). This indicates its consistent role as a raw data provider for subsequent staging layers.
+
+### Usage in `utm_validation_scrap.sql`
+
+The table is also used in [utm_validation_scrap.sql](util/basis_utms/utm_validation_scrap.sql:43), likely for validation or testing purposes related to UTM data.
 
