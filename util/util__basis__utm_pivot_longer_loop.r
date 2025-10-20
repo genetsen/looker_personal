@@ -18,21 +18,29 @@ library(bigrquery) # For BigQuery operations
 # DATA SOURCES CONFIGURATION =================================================
 # Define all data sources to process - modify these as needed
 data_sources <- data.frame(
-  source_id = c("flight1", "flight2", "flight3"),
+  source_id = c("flight1", "flight2", "flight3", "flight4_1", "flight4_2"),
   excel_file_path = c(
     '/Users/eugenetsenter/Downloads/Flight 1_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
     '/Users/eugenetsenter/Downloads/Flight 2_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
-    '/Users/eugenetsenter/Downloads/Flight 3 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
+    '/Users/eugenetsenter/Downloads/Flight 3 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
+    '/Users/eugenetsenter/Downloads/Flight 4 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx_Flight 9.10-9.30.xlsx',
+    '/Users/eugenetsenter/Downloads/Flight 4 Trafficking Sheet_MASSMUTUAL003CP_DSP_10.1 Launch_Flight 10.1-12.31.xlsx'
+    
   ),
   sheet_name = c(
     "Q1 Tsheet",
     "Flight 2_Updated", 
-    "Flight 3"
+    "Flight 3",
+    "MASSMUTUAL003CP",
+    "10.1_Updated"
+
   ),
   bq_table_name = c(
     "basis_utms_pivoted_flight1_2",
     "basis_utms_pivoted_flight2_2",
-    "basis_utms_pivoted_flight3_2"
+    "basis_utms_pivoted_flight3_2",
+    "basis_utms_pivoted_flight4_1",
+    "basis_utms_pivoted_flight4_2"
   ),
   stringsAsFactors = FALSE
 )
@@ -46,7 +54,7 @@ bq_dataset <- "landing"
 # Processing configuration
 debug_mode <- TRUE              # Set to TRUE to enable detailed output
 continue_on_error <- TRUE       # Set to TRUE to continue processing other sources if one fails
-sources_to_process <- c("flight1", "flight2", "flight3")  # Specify which sources to process
+sources_to_process <- c("flight1", "flight2", "flight3", "flight4_1", "flight4_2")  # Specify which sources to process
 
 
 # DEBUGGING CONFIGURATION =====================================================

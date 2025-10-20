@@ -53,3 +53,4 @@ tmp/
 scrap/
 .DS_Store
 .aider*
+*.csv
