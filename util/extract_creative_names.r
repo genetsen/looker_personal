@@ -377,3 +377,39 @@ tryCatch({
 })
 
 cat("\nExtraction and comparison completed!\n")
+as_tibble(colnames(bq_data))
+as_tibble(colnames(all_comparisons))
+bq_data <- bq_data %>% select(
+  original_name = creative_name,
+  cleaned_name = cleaned_creative_name,
+  key = del_key,
+  placement = placement,
+  total_impressions = total_impressions) %>%
+  mutate(
+    source = "BigQuery"
+  )
+
+all_comparisons <- all_comparisons %>%
+  select(
+    original_name,
+    cleaned_name,
+    key = utm_key,
+    placement,
+    source =file_source
+  )
+#lower key names for consistency
+bq_data$key <- tolower(bq_data$key)
+all_comparisons$key <- tolower(all_comparisons$key)
+
+bq_excl_comp <- bind_rows(all_comparisons, bq_data)
+
+bq_excl_joined <- bq_excl_comp %>%
+  group_by(key) %>%
+  summarise(
+    original_name = first(original_name),
+    cleaned_name = first(cleaned_name),
+    placement = first(placement),
+    source = paste(unique(source), collapse = ", "),
+    total_impressions = sum(total_impressions, na.rm = TRUE)
+  ) %>%
+  ungroup()
