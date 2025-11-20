@@ -34,7 +34,8 @@ FROM
   `giant-spoon-299605.data_model_2025.new_md`
 UNION ALL
 SELECT
-  `impressions`,
+  safe_cast(`impressions` AS INT64) AS `impressions`,
+  
   `placement`,
   `clicks`,
   `creative`,
