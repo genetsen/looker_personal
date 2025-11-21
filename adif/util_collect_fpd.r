@@ -104,6 +104,7 @@
 #
 #### Main Code - 2 - fix dates ####
 str(gdrive_data)
+fpd_raw <- gdrive_data
 # add start_date, end_date, impressions, clicks, sends, opens, pageviews, views, completed_views columns if missing
 if (!"date" %in% colnames(gdrive_data)) {
   gdrive_data <- gdrive_data %>%
@@ -147,31 +148,39 @@ if (!"completed_views" %in% colnames(gdrive_data)) {
 }
 
 
-# remove rows with NA in date columns
+# remove rows with NA in all date columns
 gdrive_data_filtered <- gdrive_data %>%
-  filter(!(is.na(start_date) & is.na(end_date) & is.na(week)))
+  filter(!(is.na(start_date) & is.na(end_date) & is.na(week) & is.na(date)))
+
 # expand date ranges into individual dates
 ranged_data <- gdrive_data_filtered %>%
   rowwise() %>%
   mutate(
-    start_date = case_when(
-      !is.na(date) ~ (date),
-      !is.na(week) ~ (week),
-        !is.na(start_date) ~ (start_date),
+    # Determine start_date: prioritize date > week > start_date
+    start_date_final = case_when(
+      !is.na(date) ~ date,
+      !is.na(week) ~ week,
+      !is.na(start_date) ~ start_date,
+      TRUE ~ as.Date(NA)
     ),
-    end_date = case_when(
-      !is.na(end_date) ~ (end_date),
-      !is.na(week) ~ week + 6,
-      #!is.na(date) ~ (date),
-    ),
-    date_final = case_when(
-      #!is.na(date) ~ (date),
-      !is.na(start_date) & !is.na(end_date) ~ list(seq(start_date, end_date, by = "day")),
-    )) %>%
-  unnest(date_final) %>%
-  group_by(start_date,end_date,week) %>%
+    # Determine end_date: if date exists use it, if week use week+6, else use end_date
+    end_date_final = case_when(
+      !is.na(date) ~ date,  # single day
+      !is.na(week) ~ week + 6,  # week range
+      !is.na(end_date) ~ end_date,
+      TRUE ~ as.Date(NA)
+    )
+  ) %>%
+  # Filter out rows where we couldn't establish valid date range
+  filter(!is.na(start_date_final) & !is.na(end_date_final)) %>%
   mutate(
-    days_in_range = as.numeric(end_date - start_date + 1),
+    # Create sequence of dates
+    date_final = list(seq(start_date_final, end_date_final, by = "day"))
+  ) %>%
+  unnest(date_final) %>%
+  group_by(start_date_final, end_date_final, week) %>%
+  mutate(
+    days_in_range = as.numeric(end_date_final - start_date_final + 1),
     spend = spend / days_in_range,
     impressions = impressions / days_in_range,
     clicks = clicks / days_in_range,
@@ -181,7 +190,11 @@ ranged_data <- gdrive_data_filtered %>%
     views = views / days_in_range,
     completed_views = completed_views / days_in_range
   ) %>%
-  ungroup()
+  ungroup() 
+  
+  # Rename back to original column names for consistency
+    # %>% rename(start_date = start_date_final,
+    #        end_date = end_date_final)
 
 #### write to BQ --using write_to_bq  ####
 

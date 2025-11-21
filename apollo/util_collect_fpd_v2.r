@@ -195,7 +195,7 @@ ranged_data <- gdrive_data_filtered %>%
     date_final = date_seq
   )
 
-
+write_csv(gdrive_data, "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data/adif_fpd_data.csv")
 #### write to BQ --using write_to_bq  ####
   write_to_bq <- function(data, dataset, table) {
     library(bigrquery)
@@ -212,3 +212,38 @@ ranged_data <- gdrive_data_filtered %>%
     cat("Data written to BigQuery table:", table, "\n")
   }
   write_to_bq(gdrive_data, dataset, table)
+  
+  
+  
+
+bigrquery::bq_project_query("looker-studio-pro-452620", query)
+# Load the bigrquery library
+library(bigrquery)
+
+# Set the project ID (matches your project's convention)
+project_id <- "looker-studio-pro-452620"
+
+# Define the SQL query as a string in R (remove extra single quotes)
+query <- "create or replace table looker-studio-pro-452620.landing.adif_prmsaDCM_bymonth as SELECT t1.*,
+  t2.initative,
+FROM
+  looker-studio-pro-452620.landing.adif_prmsaDCM_bymonth AS t1
+left JOIN
+   looker-studio-pro-452620.20250327_data_model.prisma_porcessed AS t2
+ON
+  t1.package_id = t2.package_id"
+
+# Authenticate with BigQuery (this may prompt for OAuth or use existing credentials)
+bigrquery::bq_auth()
+
+# Execute the DDL query
+job <- bigrquery::bq_perform_query(
+  query = query, 
+  billing = project_id
+)
+
+# Optional: Wait for the job to complete and check status
+bigrquery::bq_job_wait(job)
+
+# Print result if needed
+cat("Query executed. Job ID:", bq_job_extract(job, "jobReference")$jobId, "\n")

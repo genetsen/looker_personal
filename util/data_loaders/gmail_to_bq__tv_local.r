@@ -170,39 +170,175 @@ table <- "tv_local_estimates"
       net_impressions = ifelse(is.na(net_impressions), 0, net_impressions * 1000)
     )
 #
+  # ---------------------------------------------------------------------------- #
+  #                              write to big query                              #
+  # ---------------------------------------------------------------------------- #
+    #### write to BQ with schema error handling & email alerts ####
+    script_file <- tryCatch({
+        # Try multiple methods to get the script path
+        # Method 1: commandArgs (works with Rscript)
+        args <- commandArgs(trailingOnly = FALSE)
+        file_arg <- grep("^--file=", args, value = TRUE)
+        if (length(file_arg) > 0) {
+          return(sub("^--file=", "", file_arg))
+        }
+        
+        # Method 2: sys.frames (works when source()'d)
+        frames <- sys.frames()
+        for (i in seq_along(frames)) {
+          if (!is.null(frames[[i]]$ofile)) {
+            return(frames[[i]]$ofile)
+          }
+        }
+        
+        # Method 3: RStudio API (works in RStudio)
+        if (requireNamespace("rstudioapi", quietly = TRUE) && 
+            rstudioapi::isAvailable()) {
+          context <- rstudioapi::getActiveDocumentContext()
+          if (!is.null(context$path) && context$path != "") {
+            return(context$path)
+          }
+        }
+        
+        # Fallback
+        return("unknown_script")
+      }, error = function(e) {
+        return("unknown_script")
+      })
+    f_write_to_bq <- function(data) {
+      library(bigrquery)
+      library(gmailr)
+      
+      data <- data %>% mutate(data_refresh_date = today())
+      
+      # Script file name for error reporting
+            # Dynamically detect script file path
+      
+      # Create BigQuery table reference using outer scope variables
+      bq_tbl <- bq_table(project = project_id, dataset = dataset, table = table)
+      
+      # Helper function to send failure email
+      send_failure_email <- function(error_type, error_details) {
+        tryCatch({
+          # Get authenticated user's email
+          user_email <- gm_profile()$emailAddress
+          
+          email_body <- paste0(
+            "BigQuery Write Failure Alert\n\n",
+            "Timestamp: ", Sys.time(), "\n",
+            "Project: ", project_id, "\n",
+            "Dataset: ", dataset, "\n",
+            "Table: ", table, "\n",
+            "Error Type: ", error_type, "\n\n",
+            "Error Details:\n", error_details, "\n\n",
+            "---\n",
+            "This is an automated alert from the TV National data loader script."
+          )
+          
+          email <- gm_mime() %>%
+            gm_to(user_email) %>%
+            gm_from(user_email) %>%
+            gm_subject(sprintf("%s.%s BQ table failed to update from r script", dataset, table)) %>%
+            gm_text_body(email_body)
+          
+          gm_send_message(email)
+          cat("📧 Failure notification email sent to:", user_email, "\n")
+        }, error = function(email_err) {
+          cat("⚠ Failed to send email notification:", conditionMessage(email_err), "\n")
+        })
+      }
+
+      # Try to write data; if column incompatibility error occurs, delete table and retry
+      write_result <- tryCatch(
+        {
+          # Attempt to upload data
+          bq_table_upload(bq_tbl, data, write_disposition = "WRITE_TRUNCATE")
+          cat("✓ Data written successfully to BigQuery table:", table, "\n")
+          TRUE
+        },
+        error = function(e) {
+          error_msg <- conditionMessage(e)
+          
+          # Check if error is related to schema/column incompatibility
+          is_schema_error <- grepl("schema|column|field|type mismatch|incompatible", 
+                                    error_msg, ignore.case = TRUE)
+          
+          if (is_schema_error) {
+            cat("⚠ Schema incompatibility detected. Deleting existing table and retrying...\n")
+            cat("Error details:", error_msg, "\n")
+            
+            # Delete the table
+            tryCatch(
+              {
+                bq_table_delete(bq_tbl)
+                cat("✓ Table deleted successfully\n")
+              },
+              error = function(del_err) {
+                cat("Note: Table may not exist or couldn't be deleted:", conditionMessage(del_err), "\n")
+              }
+            )
+            
+            # Retry the upload
+            tryCatch(
+              {
+                bq_table_upload(bq_tbl, data, write_disposition = "WRITE_TRUNCATE")
+                cat("✓ Data written successfully after table recreation\n")
+                TRUE
+              },
+              error = function(retry_err) {
+                retry_msg <- conditionMessage(retry_err)
+                cat("✗ Failed to write data after table deletion:", retry_msg, "\n")
+                
+                # Send failure email - failed even after retry
+                send_failure_email(
+                  error_type = "Schema Error - Retry Failed",
+                  error_details = paste0(
+                    "Initial Error:\n", error_msg, "\n\n",
+                    "Retry Error:\n", retry_msg
+                  )
+                )
+                
+                stop(retry_err)
+              }
+            )
+          } else {
+            # If not a schema error, re-throw the original error and send email
+            cat("✗ Write failed with non-schema error:", error_msg, "\n")
+            
+            # Send failure email
+            send_failure_email(
+              error_type = "Non-Schema Error",
+              error_details = error_msg
+            )
+            
+            stop(e)
+          }
+        }
+      )
+
+      # Verify the write by querying the table
+      query <- sprintf(
+        "SELECT data_refresh_date, COUNT(*) as row_count FROM `%s.%s.%s` GROUP BY data_refresh_date ORDER BY data_refresh_date DESC LIMIT 5",
+        project_id,
+        dataset,
+        table
+      )
+      result <- bq_project_query(project_id, query) %>% bq_table_download()
+
+      cat("Latest data refresh date:", as.character(max(result$data_refresh_date)), "\n",
+          "Total rows:", sum(result$row_count), "\n"
+      )
+    }
+    f_write_to_bq(df)
+    #
+    #
+    #
+    #
+
+
+
+#
+#
+#
+# --------------------------------------END----------------------------------- #
 # ---------------------------------------------------------------------------- #
-#                              write to big query                              #
-# ---------------------------------------------------------------------------- #
-  # remove previous bq table
-  bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "tv_local_estimates")
-  bq_table_delete(bq_table)
-
-
-  #### write to BQ --using write_to_bq  ####
-  f_write_to_bq <- function(data) {
-    library(bigrquery)
-    dataset <- dataset
-    table <- table
-    data <- data %>% mutate(data_refresh_date = today())
-    # Define the BigQuery project and dataset
-    project_id <- "looker-studio-pro-452620"
-
-    # Write the data to BigQuery
-    bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
-
-    # Use bq_table_upload to write the data
-    bq_table_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
-
-    query <- sprintf(
-      "SELECT data_refresh_date, COUNT(*) as row_count FROM `%s.%s.%s` GROUP BY data_refresh_date ORDER BY data_refresh_date DESC LIMIT 5",
-      project_id,
-      dataset,
-      table
-    )
-    result <- bq_project_query(project_id, query) %>% bq_table_download()
-
-    cat("Data written to BigQuery table:", table, "\n",
-        "Latest data refresh date:", as.character(max(result$data_refresh_date)), "\n"
-    )
-  }
-  f_write_to_bq(df)
