@@ -1,5 +1,8 @@
 {
     "files.autoSave": "onWindowChange",
     "gitdoc.enabled": false,
-    "chatgpt.openOnStartup": true
+    "chatgpt.openOnStartup": true,
+    "editor.tabCompletion": "on",
+    "editor.suggest.snippetsPreventQuickSuggestions": true,
+    "editor.suggestSelection": "recentlyUsedByPrefix"
 }

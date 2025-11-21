@@ -32,11 +32,13 @@ apollo_files <- drive_ls(
 apollo_dfs <- setNames(
   lapply(seq_len(nrow(apollo_files)), function(i) {
     name <- apollo_files$name[i]
-
+    url <- paste0("https://docs.google.com/spreadsheets/d/", apollo_files$id[i])
     read_sheet(apollo_files$id[i],
                range = "A15:p"
                 ) %>%
-      mutate(source_file = name)
+      mutate(source_file = name,
+             source_url = url
+      )
   }),
   apollo_files$name  # This sets the names of the list elements
 )
@@ -45,12 +47,15 @@ apollo_dfs <- setNames(
 apollo_dfs <- setNames(
   lapply(seq_len(nrow(apollo_files)), function(i) {
     name <- apollo_files$name[i]
-    
+    url <- paste0("https://docs.google.com/spreadsheets/d/", apollo_files$id[i])
+
     df <- read_sheet(apollo_files$id[i],
                      range = "A15:p", col_types = "Dcccccccddddddd?"
                 ) %>%
-      mutate(source_file = name)
-    
+      mutate(source_file = name,
+             source_url = url
+      )
+
     # Return NULL for empty sheets (will be filtered out)
     if (nrow(df) == 0 || all(is.na(df))) {
       return(NULL)

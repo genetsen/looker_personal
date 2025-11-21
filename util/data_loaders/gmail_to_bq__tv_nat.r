@@ -1,0 +1,402 @@
+
+# ---------------------------------------------------------------------------- #
+# Gmail to Drive TV National Data Loader Script   |        V2 251030.          #
+# ---------------------------------------------------------------------------- #
+
+
+# ---------------------------------------------------------------------------- #
+#                                    HEADER                                    #
+# ---------------------------------------------------------------------------- #
+# clean environment ----
+    # rm(list = ls())
+# load .rprofile
+    # source("/Users/eugenetsenter/.Rprofile")
+
+# load libraries ----
+  library("gmailr")
+  library(lubridate)
+  library(googlesheets4)
+  library(tidyverse)
+  library(httpuv)
+  library(stringr)
+  library(xfun)
+# ---------------------------------------------------------------------------- #
+#                              Configuration                                   #
+# ---------------------------------------------------------------------------- #
+
+# -------------------------------- report type ------------------------------- #
+type <- "National"
+
+# ------------------------ search criteria for gmailr ------------------------ #
+search_criteria <- 'subject:"TV | National | daily scheadule" -Local'
+
+# ------------------------------- BQ table info ------------------------------ #
+project_id <- "looker-studio-pro-452620"
+dataset <- "landing"
+table <- "tv_national_estimates"
+
+
+# ---------------------------------------------------------------------------- #
+#                                   Main Code                                  #
+# ---------------------------------------------------------------------------- #
+
+# ------------------------------ pull gmail data ----------------------------- #
+
+  #retrieve threads matching search --------------------- #
+  my_threads <- gm_threads(search = search_criteria,
+                          num_results = 10)
+
+
+
+  # my_threads <- gm_threads(search = 'subject:"TV | Local | daily scheadule" -National',
+  #                          num_results = 10)
+  2
+  my_threads
+
+
+  # retrieve the latest thread by retrieving the first ID
+  latest_thread <- gm_thread(gm_id(my_threads)[[1]])
+  # messages in the thread will now be in a list
+
+  # retrieve parts of a specific message
+  (my_msg <- latest_thread$messages[[1]])
+  (msg_id <- (my_msg[[1]]))
+
+  # retrieve attachments
+  (att <- gm_attachments(my_msg) )
+
+  # Dynamically find the smallest CSV attachment to avoid hardcoding filenames.
+  # This is more robust if the filename changes in future emails.
+  smallest_csv <- att %>%
+    filter(str_detect(filename, "\\.csv$")) %>% # Filter for CSV files
+    arrange((size)) %>%                     # Sort by size, smallest first
+    slice(1)                                    # Take the top one
+
+  (att_id <- smallest_csv$id)
+  (att_name <- smallest_csv$filename)
+
+  ## 2nd attachment
+
+  # (att_id_2 <- att[[3,4]])
+  # (att_name_2 <- att[[3,1]])
+
+  att2 <- gm_attachment(att_id, msg_id)
+
+  #Test Date of Email vs today
+  (r_date <- str_sub(gm_date(my_msg), 6, 16))
+  (r_date <- as.Date(r_date, format = "%d %b %Y"))
+
+  today()
+  #log to console
+
+  cat(paste0("latest data date: ", r_date, " --  matches script run date: ", r_date == today()))
+
+
+
+  # ----------------- write the attachement to local temp file ----------------- #
+  temp_file <- tempfile(fileext = paste0("_", att_name))
+  gm_save_attachment(att2, filename = temp_file)
+
+
+  library(janitor)
+
+#
+# ----------------------------- load & clean data ---------------------------- #
+  numeric_cols <- c(
+    "net_cost",
+    "net_impressions",
+    "total_units"
+  )
+
+  raw_df <- readr::read_csv(
+    temp_file,
+    guess_max = 100,
+    na = c("", "NA", "N/A", "Invalid Number"),
+    #col_types = readr::cols('Weeks in WEEK_BEGIN_DATE' = readr::col_date(), 'Date' = readr::col_date())
+    "%m/%d/%y"
+    #col_types = readr::cols(.default = readr::col_character())
+    ) %>%
+    janitor::clean_names()
+  str(raw_df)
+
+  raw_df <- readr::read_csv(
+    temp_file,
+    guess_max = 100,
+    na = c("", "NA", "N/A", "Invalid Number"),
+    col_types = readr::cols(
+      Date = readr::col_date(format = "%m/%d/%y")
+    )
+  ) %>%
+    janitor::clean_names()
+  str(raw_df)
+  glimpse(raw_df)
+  #type_convert(raw_df)
+  # list the column names seperated by commas for easier reference
+  colnames(raw_df) %>%  
+    paste(collapse = ", ")
+
+  if ("advertiser" %in% names(raw_df)) {
+    raw_df <- raw_df %>% dplyr::filter(!is.na(advertiser))
+  }
+  unique(raw_df$date)
+  str(raw_df)
+  #lubridate::as_date(raw_df$date, format = "%m-%d-%Y")
+  df <- raw_df %>% mutate(
+    year = as.integer(year),
+    quarter = as.character(quarter),
+    month = as.integer(month),
+    week = (week),
+    #date = as.Date(Date),
+    advertiser = as.character(advertiser),
+    campaign_name = as.character(campaign_name),
+    market = as.character(market),
+    media_outlet = as.character(mediaoutlet),
+    net_cost_broken = total_planned_net,
+    net_cost = total_cost*.85,
+
+    net_impressions = total_impressions_buyers_estimate,
+    total_units = total_units) %>%
+    mutate(
+      type = type
+      ) %>%
+    select(
+      year,
+      quarter,
+      month,
+      #week,
+      date,
+      advertiser,
+      type,
+      campaign_name,
+      program_name,
+      market,
+      media_outlet,
+      #net_cost_broken,
+      net_cost,
+      net_impressions,
+      total_units
+    ) %>%
+    # dplyr::mutate(
+    #   dplyr::across(
+    #     dplyr::all_of(numeric_cols),
+    #     ~ readr::parse_number(.x, na = c("", "NA", "N/A", "Invalid Number"))
+    #   )
+    # )  
+    mutate(
+      net_impressions = ifelse(is.na(net_impressions), 0, net_impressions * 1000)
+    )
+#
+# ---------------------------------------------------------------------------- #
+#                              write to big query                              #
+# ---------------------------------------------------------------------------- #
+  # remove previous bq table
+  bq_table <- bq_table(project_id, dataset, table)
+  bq_table_delete(bq_table)
+
+
+  #### write to BQ --using write_to_bq  ####
+  f_write_to_bq <- function(data) {
+    library(bigrquery)
+    dataset <- dataset
+    table <- table
+    data <- data %>% mutate(data_refresh_date = today())
+    # Define the BigQuery project and dataset
+    project_id <- "looker-studio-pro-452620"
+
+    # Write the data to BigQuery
+    bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
+
+    # Use bq_table_upload to write the data
+    bq_table_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
+
+    query <- sprintf(
+      "SELECT data_refresh_date, COUNT(*) as row_count FROM `%s.%s.%s` GROUP BY data_refresh_date ORDER BY data_refresh_date DESC LIMIT 5",
+      project_id,
+      dataset,
+      table
+    )
+    result <- bq_project_query(project_id, query) %>% bq_table_download()
+
+    cat("Data written to BigQuery table:", table, "\n",
+        "Latest data refresh date:", as.character(max(result$data_refresh_date)), "\n"
+    )
+  }
+  f_write_to_bq(df)
+
+
+# ---------------------------------------------------------------------------- #
+#                                      v1                                      #
+# ---------------------------------------------------------------------------- #
+# # Libraries
+# library("gmailr")       # for Gmail API interaction
+# library(lubridate)      # for date handling
+# library(googlesheets4)  # for Google Sheets interaction
+# library(httpuv)         # for OAuth2 authentication
+# library(tidyverse)      # for mutate, select, etc.
+# library(stringr)        # for str_sub()
+# library(xfun)           # for temp_file()
+
+# #config
+# # search criteria for gmailr
+# search_criteria <- 'subject:"TV | National | daily scheadule" -Local'
+# # BQ table info
+# project_id <- "looker-studio-pro-452620"
+# dataset <- "landing"
+# table <- "tv_national_estimates"
+
+# # retrieve threads matching search
+
+
+# my_threads <- gm_threads(search = search_criteria,
+#                          num_results = 10)
+
+# my_threads
+
+# # retrieve the latest thread by retrieving the first ID
+# latest_thread <- gm_thread(gm_id(my_threads)[[1]])
+# # messages in the thread will now be in a list
+
+# # retrieve parts of a specific message
+# (my_msg <- latest_thread$messages[[1]])
+# (msg_id <- (my_msg[[1]]))
+
+# # retrieve attachments
+# (att <- gm_attachments(my_msg) )
+# typeof(att)
+# arrange(att)
+# (att_id <- att[[1,4]])
+# (att_name <- att[[1,1]])
+
+# ## 2nd attachment
+
+# # (att_id_2 <- att[[3,4]])
+# # (att_name_2 <- att[[3,1]])
+
+# att2 <- gm_attachment(att_id, msg_id)
+
+# #Test Date of Email vs today
+# (r_date <- str_sub(gm_date(my_msg), 6, 16))
+# (r_date <- as.Date(r_date, format = "%d %b %Y"))
+
+# today()
+
+# print(paste0("latest data date: ", r_date, " --  matches script run date: ", r_date == today()))
+
+
+
+# #write the attachement to local temp file
+# temp_file <- tempfile(fileext = paste0("_", att_name))
+# gm_save_attachment(att2, filename = temp_file)
+
+
+# library(janitor)
+
+# numeric_cols <- c(
+#   "net_cost",
+#   "net_impressions",
+#   "total_units"
+# )
+
+# raw_df <- readr::read_csv(
+#   temp_file,
+#   guess_max = 10,
+#   na = c("", "NA", "N/A", "Invalid Number"),
+#   col_types = readr::cols(.default = readr::col_character()) # Specify all columns as character
+# ) %>%
+#   janitor::clean_names()
+# str(raw_df)
+# type_convert(raw_df)
+# problems(raw_df)
+# # list the column names seperated by commas for easier reference
+# colnames(raw_df) %>%  
+#   paste(collapse = ", ")
+
+# if ("month" %in% names(raw_df)) {
+#   raw_df <- raw_df %>% dplyr::filter(!is.na(month))
+# }
+# unique(raw_df$week)
+# df <- raw_df %>% 
+# mutate(
+#   year = as.integer(year),
+#   quarter = as.character(quarter),
+#   month = as.integer(month),
+#   week = as.Date(week, format = "%m/%d/%y"),
+#   advertiser = as.character(advertiser),
+#   campaign_name = as.character(campaign_name),
+#   market = as.character(market),
+#   mediaoutlet = as.character(mediaoutlet),
+#   net_cost = total_cost,
+#   net_impressions = total_impressions_buyers_estimate,
+#   total_units = total_units,
+#   type = case_when(
+#     str_detect(market, "National") ~ "National",
+#     TRUE ~ "Other"
+#   )
+#   ) %>%
+#   select(
+#     # all columns: 
+#     everything(),
+#     # year,
+#     # quarter,
+#     # month,
+#     # week,
+#     # advertiser,
+#     # type,
+#     # campaign_name,
+#     # market,
+#     # mediaoutlet,
+#     # net_cost,
+#     # net_impressions,
+#     # total_units
+#     ) %>%
+#   dplyr::mutate(
+#     dplyr::across(
+#       dplyr::all_of(numeric_cols),
+#       ~ readr::parse_number(.x, na = c("", "NA", "N/A", "Invalid Number"))
+    
+#     )
+#   ) %>% mutate(
+#     date = as.Date(week, format = "%Y-%m-%d"),
+#     net_impressions = ifelse(is.na(net_impressions), 0, net_impressions * 1000),
+    
+
+#   )
+# str(df)
+
+
+# # # remove previous bq table
+#  bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "tv_national_estimates")
+#  bq_table_delete(bq_table)
+
+# #### write to BQ --using write_to_bq  ####
+#   f_write_to_bq <- function(data, dataset, table) {
+#     library(bigrquery)
+
+#     data <- data %>% mutate(data_refresh_date = today())
+#     # Define the BigQuery project and dataset
+#     project_id <- "looker-studio-pro-452620"
+
+#     # Write the data to BigQuery
+#     bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
+
+#     # Use bq_table_upload to write the data
+#     bq_table_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
+
+#     query <- sprintf(
+#       "SELECT data_refresh_date, COUNT(*) as row_count FROM `%s.%s.%s` GROUP BY data_refresh_date ORDER BY data_refresh_date DESC LIMIT 5",
+#       project_id,
+#       dataset,
+#       table
+#     )
+#     result <- bq_project_query(project_id, query) %>% bq_table_download()
+
+#     cat("Data written to BigQuery table:", table, "\n",
+#         "Latest data refresh date:", as.character(max(result$data_refresh_date)), "\n"
+#     )
+#   }
+#   f_write_to_bq(df, "landing", "tv_national_estimates")
+
+
+
+
+

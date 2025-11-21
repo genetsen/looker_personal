@@ -9,11 +9,11 @@
 
 
 #### Configuration ####
-  gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
-  pattern <- "De Beers | Partner Data"
-  range <- "e61:Q"
+  gdrive_folder_id <- "1zXzm13JIdldmO7L1_yM4AqNof4pNX04D"
+  pattern <- "Apollo | Partner Data Collection | "
+  range <- "A15:p"
   dataset <- "landing"
-  table <- "adif_fpd_data"
+  table <- "apollo_fpd_data"
 #
 
 #### Main Code - 1 - Combine all google sheets into one DF ####
@@ -63,6 +63,7 @@
       # Add a column indicating which file the data came from
       mutate(source_file = name,
              source_url = url
+             
              )  
       # Skip completely empty or all-NA sheets
         if (nrow(df) == 0 || all(is.na(df))) {
@@ -77,7 +78,12 @@
           df[[col]] <- as.Date(df[[col]], format = "%m/%d/%Y")
           # Adjust format string above if your sheets use another date format
         }
-        
+      
+      # Convert numeric-like columns to numeric
+        number_cols <- grep("num|count|total|impressions|clicks|sends|opens|views|pageviews|completed_views", names(df), ignore.case = TRUE, value = TRUE)
+        for (col in number_cols) {
+          df[[col]] <- as.numeric(df[[col]])
+        } 
       # Return the cleaned data frame for this sheet
         return(df)
       }),
@@ -97,101 +103,100 @@
       gdrive_data <- gdrive_data %>%
         select(-starts_with("...")) %>%
         clean_names() %>%
-        rename(package_name = package_placement_please_use_gs_placement_package_names_see_col_y,
-              week = week_first_sunday_of_week)
+        rename(package_name = package_placement_please_use_gs_placement_package_names_only,
+              #week = week_first_sunday_of_week
+              )
+          if (!"week" %in% colnames(gdrive_data)) {
+            gdrive_data <- gdrive_data %>%
+              mutate(week = as.Date(NA))
+          }
       colnames(gdrive_data)
     #
 #
 #### Main Code - 2 - fix dates ####
 str(gdrive_data)
 # add start_date, end_date, impressions, clicks, sends, opens, pageviews, views, completed_views columns if missing
-if (!"date" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(date = as.Date(NA))
+  if (!"start_date" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(start_date = as.Date(NA))
+  }
+  if (!"end_date" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(end_date = as.Date(NA))
+  }
+  if (!"impressions" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(impressions = 0)
+  }
+  if (!"clicks" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(clicks = 0)
+  }
+  if (!"sends" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(sends = 0)
+  }
+  if (!"opens" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(opens = 0)
+  }
+  if (!"pageviews" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(pageviews = 0)
+  }
+  if (!"views" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(views = 0)
+  }
+  if (!"completed_views" %in% colnames(gdrive_data)) {
+    gdrive_data <- gdrive_data %>%
+      mutate(completed_views = 0)
 }
-if (!"start_date" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(start_date = as.Date(NA))
-}
-if (!"end_date" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(end_date = as.Date(NA))
-}
-if (!"impressions" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(impressions = 0)
-}
-if (!"clicks" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(clicks = 0)
-}
-if (!"sends" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(sends = 0)
-}
-if (!"opens" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(opens = 0)
-}
-if (!"pageviews" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(pageviews = 0)
-}
-if (!"views" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(views = 0)
-}
-if (!"completed_views" %in% colnames(gdrive_data)) {
-  gdrive_data <- gdrive_data %>%
-    mutate(completed_views = 0)
-}
-
-
 # remove rows with NA in date columns
 gdrive_data_filtered <- gdrive_data %>%
   filter(!(is.na(start_date) & is.na(end_date) & is.na(week)))
 # expand date ranges into individual dates
+
 ranged_data <- gdrive_data_filtered %>%
-  rowwise() %>%
   mutate(
-    start_date = case_when(
-      !is.na(date) ~ (date),
-      !is.na(week) ~ (week),
-        !is.na(start_date) ~ (start_date),
+    # First non-NA of the three for the start
+    start_date2 = coalesce(.data$start_date, .data$week, .data$date),
+
+    # End date logic differs (week spans 7 days), so use case_when
+    end_date2 = case_when(
+      !is.na(.data$end_date) ~ .data$end_date,
+      !is.na(.data$week)     ~ .data$week + 6,  # 7-day range
+      !is.na(.data$date)     ~ .data$date,
+      TRUE                   ~ as.Date(NA)
     ),
-    end_date = case_when(
-      !is.na(end_date) ~ (end_date),
-      !is.na(week) ~ week + 6,
-      #!is.na(date) ~ (date),
-    ),
-    date_final = case_when(
-      #!is.na(date) ~ (date),
-      !is.na(start_date) & !is.na(end_date) ~ list(seq(start_date, end_date, by = "day")),
-    )) %>%
-  unnest(date_final) %>%
-  group_by(start_date,end_date,week) %>%
-  mutate(
-    days_in_range = as.numeric(end_date - start_date + 1),
-    spend = spend / days_in_range,
-    impressions = impressions / days_in_range,
-    clicks = clicks / days_in_range,
-    sends = sends / days_in_range,
-    opens = opens / days_in_range,
-    pageviews = pageviews / days_in_range,
-    views = views / days_in_range,
-    completed_views = completed_views / days_in_range
+
+    # Build daily sequence; if either end is NA, return NA (empty later)
+    date_seq = ifelse(
+      is.na(start_date2) | is.na(end_date2),
+      list(as.Date(character())),
+      map2(start_date2, end_date2, ~ seq(.x, .y, by = "day"))
+    )
   ) %>%
-  ungroup()
+  unnest(date_seq, keep_empty = FALSE, names_repair = "check_unique") %>%
+  group_by(start_date2, end_date2, .add = FALSE) %>%
+  mutate(
+    days_in_range = as.numeric(first(end_date2 - start_date2 + 1L))
+  ) %>%
+  ungroup() %>%
+  # Spread metrics evenly across days in range
+  mutate(across(
+    c(spend, impressions, clicks, sends, opens, pageviews, views, completed_views),
+    ~ .x / days_in_range
+  )) %>%
+  # Optional: rename back to original names if you want
+  rename(
+    #start_date = start_date2,
+    #end_date   = end_date2,
+    date_final = date_seq
+  )
+
 
 #### write to BQ --using write_to_bq  ####
-
-  # remove previous bq table
-  bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "adif_fpd_data")
-  bq_table_delete(bq_table)
-
-  getwd()
-  write_csv(gdrive_data, "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data/adif_fpd_data.csv")
-
   write_to_bq <- function(data, dataset, table) {
     library(bigrquery)
     
@@ -200,9 +205,9 @@ ranged_data <- gdrive_data_filtered %>%
     
     # Write the data to BigQuery
     bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
-    
-    # Use bq_perform_upload to write the data
-    bq_perform_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
+
+    # Use bq_table_upload to write the data
+    bq_table_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
     
     cat("Data written to BigQuery table:", table, "\n")
   }
