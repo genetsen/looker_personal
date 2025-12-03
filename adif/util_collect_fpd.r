@@ -14,6 +14,7 @@
   range <- "e61:Q"
   dataset <- "landing"
   table <- "adif_fpd_data"
+  csv_folder_file <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data/adif_fpd_data.csv"
 #
 
 #### Main Code - 1 - Combine all google sheets into one DF ####
