@@ -20,13 +20,15 @@ library(readr)
 library(lubridate)
 library(janitor)
 
+cat ("\n-----------\nADIF first party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
+
 #### CONFIGURATION ####
 gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
 pattern <- "De Beers | Partner Data"
 output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
-use_saved_phases <- TRUE
-# Set the phase you are actively working on (1..5). Saved results will be used for other phases.
-current_phase <- 6
+use_saved_phases <- FALSE
+# Set the phase you are actively working on (1..7). Saved results will be used for other phases.
+current_phase <- 1
 
 # Predefine checkpoint paths so they can be reused when loading saved results
 phase1_output <- file.path(output_dir, "phase1_discovered_files.csv")
@@ -34,6 +36,8 @@ phase2_output <- file.path(output_dir, "phase2_header_detection.csv")
 phase3_output <- file.path(output_dir, "phase3_raw_headers.csv")
 phase4_output <- file.path(output_dir, "phase4_normalization_mapping.csv")
 phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
+phase6_output <- file.path(output_dir, "phase6_cleaned_master_data.csv")
+phase7_output <- file.path(output_dir, "phase7_daily_master_data.csv")
 
 ################################################################################
 #### PHASE 1: GOOGLE DRIVE DISCOVERY ####
@@ -480,6 +484,12 @@ view(head(phase4_map, 40))
 
 cat("\n=== PHASE 5: DATA INGESTION & COMBINATION ===\n")
 
+if (use_saved_phases && current_phase != 5 && file.exists(phase5_output)) {
+  cat("Loading saved Phase 5 output from:", phase5_output, "\n")
+  master_df <- read_csv(phase5_output, show_col_types = FALSE)
+  cat("✓ Loaded", nrow(master_df), "rows from saved Phase 5 file\n")
+} else {
+
 # Prepare mapping lookup: a named vector raw -> normalized
 map_lookup <- phase4_map %>%
   filter(!is.na(normalized_name)) %>%
@@ -582,6 +592,8 @@ if (length(combined_list) == 0) {
   cat("\n✓ Phase 5 complete. Combined data written to:", phase5_output, "\n")
   cat("Total rows:", nrow(master_df), "Total cols:", ncol(master_df), "\n")
 }
+
+} # end - Phase 5 checkpoint conditional
 
 ################################################################################
 #### PHASE 6: CLEANING & DATE FINALIZATION ####
@@ -852,3 +864,44 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
 }
 
 cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, "\n")
+
+
+#### write to BQ --using write_to_bq  ####
+
+  cat("\n=== Starting BigQuery upload process ===\n")
+  
+  # remove previous bq table (with error handling)
+  tryCatch({
+    bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "adif_fpd_data_ranged")
+    bq_table_delete(bq_table)
+    cat("Deleted old BigQuery table\n")
+  },
+  error = function(e) {
+    cat("Note: Could not delete old table (may not exist):", e$message, "\n")
+  })
+
+  write_to_bq <- function(data, dataset, table) {
+    # Define the BigQuery project and dataset
+    project_id <- "looker-studio-pro-452620"
+    
+    cat("Writing", nrow(data), "rows to BigQuery...\n")
+    
+    # Wrap in tryCatch to handle errors
+    tryCatch({
+      # Write the data to BigQuery
+      bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
+      
+      # Use bq_perform_upload to write the data
+      bq_perform_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
+      
+      cat("✓ Data written to BigQuery table:", table, "\n")
+    },
+    error = function(e) {
+      cat("✗ ERROR writing to BigQuery:", e$message, "\n")
+      stop("Failed to write to BigQuery")
+    })
+  }
+  
+  write_to_bq(phase7_df, "landing", "adif_fpd_data_ranged")
+
+  cat("\n-----------\n-----------\nADIF first party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
