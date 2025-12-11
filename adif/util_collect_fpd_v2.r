@@ -72,13 +72,33 @@ if (use_saved_phases && current_phase != 1 && file.exists(phase1_output)) {
     n_max = Inf
   )
 
-  # Add full URLs and normalize column names
+  # Add full URLs and normalize column names, extract modified date and user from drive metadata
   discovered_files <- discovered_files %>%
     mutate(
       sheet_url = paste0("https://docs.google.com/spreadsheets/d/", id),
       .after = name
     ) %>%
-    rename(sheet_id = id, sheet_name = name)
+    rename(sheet_id = id, sheet_name = name) %>%
+    mutate(
+      # Extract last modified date from drive_resource metadata
+      last_modified_time = if_else(
+        !is.na(drive_resource),
+        tryCatch(
+          as.POSIXct(sapply(drive_resource, function(x) x$modifiedTime), format = "%Y-%m-%dT%H:%M:%S"),
+          error = function(e) as.POSIXct(NA)
+        ),
+        as.POSIXct(NA)
+      ),
+      # Extract last modified by from drive_resource metadata
+      last_modified_by = if_else(
+        !is.na(drive_resource),
+        tryCatch(
+          sapply(drive_resource, function(x) x$lastModifyingUser$displayName %||% x$lastModifyingUser$emailAddress %||% NA_character_),
+          error = function(e) NA_character_
+        ),
+        NA_character_
+      )
+    )
 
   cat("✓ Found", nrow(discovered_files), "matching sheets\n")
 
@@ -113,6 +133,8 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
     sheet_name <- discovered_files$sheet_name[i]
     sheet_id <- discovered_files$sheet_id[i]
     sheet_url <- discovered_files$sheet_url[i]
+    last_mod_time <- discovered_files$last_modified_time[i]
+    last_mod_by <- discovered_files$last_modified_by[i]
     
     cat("\nProcessing file", i, "of", nrow(discovered_files), ":", sheet_name, "\n")
     
@@ -122,12 +144,12 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
       scan_range <- "A1:G500"
       
       cat("  Scanning columns A:G for header row...\n")
-      sheet_data_scan <- read_sheet(
+      sheet_data_scan <- suppressMessages(read_sheet(
         ss = sheet_id,
         sheet = "data",
         range = scan_range,
         col_names = FALSE
-      )
+      ))
       
       if (nrow(sheet_data_scan) == 0) {
         cat("  ✗ ERROR: Sheet is empty\n")
@@ -135,6 +157,8 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
           sheet_name = sheet_name,
           sheet_id = sheet_id,
           sheet_url = sheet_url,
+          last_modified_time = last_mod_time,
+          last_modified_by = last_mod_by,
           header_row = NA_integer_,
           status = "empty_sheet",
           stringsAsFactors = FALSE
@@ -164,6 +188,8 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
           sheet_name = sheet_name,
           sheet_id = sheet_id,
           sheet_url = sheet_url,
+          last_modified_time = last_mod_time,
+          last_modified_by = last_mod_by,
           header_row = NA_integer_,
           status = "no_header_found",
           stringsAsFactors = FALSE
@@ -176,6 +202,8 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         sheet_name = sheet_name,
         sheet_id = sheet_id,
         sheet_url = sheet_url,
+        last_modified_time = last_mod_time,
+        last_modified_by = last_mod_by,
         header_row = header_row_detected,
         status = "success",
         stringsAsFactors = FALSE
@@ -187,6 +215,8 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         sheet_name = sheet_name,
         sheet_id = sheet_id,
         sheet_url = sheet_url,
+        last_modified_time = last_mod_time,
+        last_modified_by = last_mod_by,
         header_row = NA_integer_,
         status = paste("error:", e$message),
         stringsAsFactors = FALSE
@@ -207,65 +237,67 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
   cat("✓ Phase 2 checkpoint saved to:", phase2_output, "\n")
 }
 
-view(phase2_results)
+#view(phase2_results)
 
 ################################################################################
 #### PHASE 3: COLUMN HEADER INGESTION & METADATA COLLECTION ####
 ################################################################################
-# Goal: Extract all column headers from the 'data' tab of each file
-# Method: Use detected header row from Phase 2, read columns A:S to get full table width
-# Output: Dataframe with sheet name, URL, column name, position
-# Checkpoint: phase3_raw_headers.csv
+    # Goal: Extract all column headers from the 'data' tab of each file
+    # Method: Use detected header row from Phase 2, read columns A:S to get full table width
+    # Output: Dataframe with sheet name, URL, column name, position
+    # Checkpoint: phase3_raw_headers.csv
 
 
-cat("\n=== PHASE 3: COLUMN HEADER INGESTION ===\n")
+    cat("\n=== PHASE 3: COLUMN HEADER INGESTION ===\n")
 
-# Initialize results list
-header_metadata_results <- list()
-header_metadata_index <- 1
+    # Initialize results list
+    header_metadata_results <- list()
+    header_metadata_index <- 1
 
-# Filter to only successful detections from Phase 2
-compute_phase3 <- FALSE
-if (use_saved_phases && current_phase != 3 && file.exists(phase3_output)) {
-  cat("Loading saved Phase 3 results from:", phase3_output, "\n")
-  phase3_results <- read_csv(phase3_output, show_col_types = FALSE)
-  # Validate loaded structure
-  if (!"column_name_raw" %in% names(phase3_results)) {
-    cat("  ⚠ Saved Phase 3 file missing expected columns; recomputing Phase 3\n")
+    # Filter to only successful detections from Phase 2
+    compute_phase3 <- FALSE
+    if (use_saved_phases && current_phase != 3 && file.exists(phase3_output)) {
+    cat("Loading saved Phase 3 results from:", phase3_output, "\n")
+    phase3_results <- read_csv(phase3_output, show_col_types = FALSE)
+    # Validate loaded structure
+    if (!"column_name_raw" %in% names(phase3_results)) {
+        cat("  ⚠ Saved Phase 3 file missing expected columns; recomputing Phase 3\n")
+        compute_phase3 <- TRUE
+    } else {
+        cat("✓ Loaded", nrow(phase3_results), "phase3 rows from saved file\n")
+    }
+    } else {
     compute_phase3 <- TRUE
-  } else {
-    cat("✓ Loaded", nrow(phase3_results), "phase3 rows from saved file\n")
-  }
-} else {
-  compute_phase3 <- TRUE
-}
+    }
 
-if (compute_phase3) {
-  successful_files <- phase2_results %>%
-    filter(status == "success")
+    if (compute_phase3) {
+    successful_files <- phase2_results %>%
+        filter(status == "success")
 
-  cat("Processing", nrow(successful_files), "sheets with detected headers...\n")
+    cat("Processing", nrow(successful_files), "sheets with detected headers...\n")
 
   # Loop through each file with a successful header detection
   for (i in seq_len(nrow(successful_files))) {
     sheet_name <- successful_files$sheet_name[i]
     sheet_id <- successful_files$sheet_id[i]
     sheet_url <- successful_files$sheet_url[i]
+    last_mod_time <- successful_files$last_modified_time[i]
+    last_mod_by <- successful_files$last_modified_by[i]
     header_row <- successful_files$header_row[i]
     
     cat("\nProcessing file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
-    
-    tryCatch({
-      # Read the data starting from detected header row to column S (full table width)
-      # Use this row as header (col_names = TRUE)
+        
+        tryCatch({
+        # Read the data starting from detected header row to column S (full table width)
+        # Use this row as header (col_names = TRUE)
       cat("  Reading columns A:S starting from row", header_row, "...\n")
       
-      sheet_data <- read_sheet(
+      sheet_data <- suppressMessages(read_sheet(
         ss = sheet_id,
         sheet = "data",
         range = paste0("A", header_row, ":S"),
         col_names = TRUE
-      )
+      ))
       
       if (nrow(sheet_data) == 0 || ncol(sheet_data) == 0) {
         cat("  ✗ ERROR: No data found after header row\n")
@@ -274,19 +306,19 @@ if (compute_phase3) {
           sheet_name = sheet_name,
           sheet_id = sheet_id,
           sheet_url = sheet_url,
+          last_modified_time = last_mod_time,
+          last_modified_by = last_mod_by,
           column_position = NA_integer_,
           column_name_raw = NA_character_,
           stringsAsFactors = FALSE
         )
         header_metadata_index <- header_metadata_index + 1
         next
-      }
-      
-      # Extract column names (as read by googlesheets4)
-      col_names <- names(sheet_data)
-      
-      cat("  ✓ Found", length(col_names), "columns\n")
-      
+      }        # Extract column names (as read by googlesheets4)
+        col_names <- names(sheet_data)
+        
+        cat("  ✓ Found", length(col_names), "columns\n")
+        
       # Create metadata record for each column
       for (col_idx in seq_along(col_names)) {
         col_name <- col_names[col_idx]
@@ -295,69 +327,70 @@ if (compute_phase3) {
           sheet_name = sheet_name,
           sheet_id = sheet_id,
           sheet_url = sheet_url,
+          last_modified_time = last_mod_time,
+          last_modified_by = last_mod_by,
           column_position = col_idx,
           column_name_raw = col_name,
           stringsAsFactors = FALSE
         )
         header_metadata_index <- header_metadata_index + 1
-      }
-      
-    }, error = function(e) {
-      cat("  ✗ ERROR:", e$message, "\n")
-    })
-  }
+      }        }, error = function(e) {
+        cat("  ✗ ERROR:", e$message, "\n")
+        })
+    }
 
-  # Combine all header metadata
-  phase3_results <- bind_rows(header_metadata_results)
+    # Combine all header metadata
+    phase3_results <- bind_rows(header_metadata_results)
 
-  # Add frequency column (count how many sheets have each column name)
-  phase3_results <- phase3_results %>%
-    group_by(column_name_raw) %>%
-    mutate(
-      frequency_across_sheets = n_distinct(sheet_name),
-      .after = column_name_raw
-    ) %>%
-    ungroup() %>%
-    arrange(column_name_raw, sheet_name)
-
-  # Write checkpoint
-  write_csv(phase3_results, phase3_output)
-  cat("✓ Phase 3 checkpoint saved to:", phase3_output, "\n")
-
-}
-
-if (!compute_phase3) {
-  # A saved Phase 3 was loaded earlier; ensure it has the expected helper column
-  if (!"frequency_across_sheets" %in% names(phase3_results)) {
+    # Add frequency column (count how many sheets have each column name)
     phase3_results <- phase3_results %>%
-      group_by(column_name_raw) %>%
-      mutate(frequency_across_sheets = n_distinct(sheet_name)) %>%
-      ungroup()
-  }
-} else {
-  # compute_phase3 was TRUE and we already wrote the checkpoint above; nothing more to do
-}
+        group_by(column_name_raw) %>%
+        mutate(
+        frequency_across_sheets = n_distinct(sheet_name),
+        .after = column_name_raw
+        ) %>%
+        ungroup() %>%
+        arrange(column_name_raw, sheet_name)
 
-cat("\n=== PHASE 3 SUMMARY ===\n")
-cat("Total sheets processed:", n_distinct(phase3_results$sheet_name), "\n")
-cat("Total columns extracted:", nrow(phase3_results), "\n")
-cat("Unique column names:", n_distinct(phase3_results$column_name_raw), "\n")
+    # Write checkpoint
+    write_csv(phase3_results, phase3_output)
+    cat("✓ Phase 3 checkpoint saved to:", phase3_output, "\n")
 
-# Ensure checkpoint path and write updated phase3_results
-phase3_output <- file.path(output_dir, "phase3_raw_headers.csv")
-write_csv(phase3_results, phase3_output)
-cat("✓ Phase 3 checkpoint saved to:", phase3_output, "\n")
+    }
 
-# Show most frequent column names (to help with normalization)
-cat("\nMost frequent column names across sheets:\n")
-col_frequency <- phase3_results %>%
-  distinct(column_name_raw, frequency_across_sheets) %>%
-  arrange(desc(frequency_across_sheets)) %>%
-  head(20)
-print(col_frequency)
+    if (!compute_phase3) {
+    # A saved Phase 3 was loaded earlier; ensure it has the expected helper column
+    if (!"frequency_across_sheets" %in% names(phase3_results)) {
+        phase3_results <- phase3_results %>%
+        group_by(column_name_raw) %>%
+        mutate(frequency_across_sheets = n_distinct(sheet_name)) %>%
+        ungroup()
+    }
+    } else {
+    # compute_phase3 was TRUE and we already wrote the checkpoint above; nothing more to do
+    }
 
-view(phase3_results)
+    cat("\n=== PHASE 3 SUMMARY ===\n")
+    cat("Total sheets processed:", n_distinct(phase3_results$sheet_name), "\n")
+    cat("Total columns extracted:", nrow(phase3_results), "\n")
+    cat("Unique column names:", n_distinct(phase3_results$column_name_raw), "\n")
 
+    # Ensure checkpoint path and write updated phase3_results
+    phase3_output <- file.path(output_dir, "phase3_raw_headers.csv")
+    write_csv(phase3_results, phase3_output)
+    cat("✓ Phase 3 checkpoint saved to:", phase3_output, "\n")
+
+    # Show most frequent column names (to help with normalization)
+    cat("\nMost frequent column names across sheets:\n")
+    col_frequency <- phase3_results %>%
+    distinct(column_name_raw, frequency_across_sheets) %>%
+    arrange(desc(frequency_across_sheets)) %>%
+    head(20)
+
+    #print(col_frequency)
+
+    #view(phase3_results)
+#
 ################################################################################
 #### PHASE 4: COLUMN NORMALIZATION MAPPING ####
 ################################################################################
@@ -467,11 +500,11 @@ phase4_output <- file.path(output_dir, "phase4_normalization_mapping.csv")
 write_csv(phase4_map, phase4_output)
 cat("✓ Phase 4 checkpoint saved to:", phase4_output, "\n")
 
-cat("\nSample mappings (top rows):\n")
-view(head(phase4_map, 40))
+#cat("\nSample mappings (top rows):\n")
+# view(head(phase4_map, 40))
 
 
-  cat("\nPhase 4 complete. Next: Phase 5 will ingest data using this mapping.\n")
+cat("\nPhase 4 complete. Next: Phase 5 will ingest data using this mapping.\n")
 
 } # end - compute phase4_map
 
@@ -505,21 +538,23 @@ ci <- 1
 # Ensure list of files to ingest is available (from Phase 2 results)
 successful_files <- phase2_results %>% filter(status == "success")
 
-for (i in seq_len(nrow(successful_files))) {
-  sheet_name <- successful_files$sheet_name[i]
-  sheet_id <- successful_files$sheet_id[i]
-  sheet_url <- successful_files$sheet_url[i]
-  header_row <- successful_files$header_row[i]
+  for (i in seq_len(nrow(successful_files))) {
+    sheet_name <- successful_files$sheet_name[i]
+    sheet_id <- successful_files$sheet_id[i]
+    sheet_url <- successful_files$sheet_url[i]
+    last_mod_time <- successful_files$last_modified_time[i]
+    last_mod_by <- successful_files$last_modified_by[i]
+    header_row <- successful_files$header_row[i]
 
-  cat("\nIngesting file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
+    cat("\nIngesting file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
 
   tryCatch({
-    df <- read_sheet(
+    df <- suppressMessages(read_sheet(
       ss = sheet_id,
       sheet = "data",
       range = paste0("A", header_row, ":S"),
       col_names = TRUE
-    )
+    ))
 
     # Drop columns that are auto-generated blanks (start with ...)
     df <- df %>% select(-starts_with("..."))
@@ -553,10 +588,18 @@ for (i in seq_len(nrow(successful_files))) {
     names(df) <- new_names
 
     # Coerce numeric metric columns: remove $ and , then as.numeric
+    library(readr)
+
     numeric_candidates <- intersect(metrics_expected, names(df))
+
     if (length(numeric_candidates) > 0) {
         df <- df %>%
-          mutate(across(all_of(numeric_candidates), ~ as.numeric(str_replace_all(as.character(.x), "[\\$,.]", ""))))
+            mutate(
+            across(
+                all_of(numeric_candidates),
+                ~ parse_number(as.character(.x))  # handles $, commas, spaces, etc.
+            )
+            )
     }
 
     # Parse date columns if present
@@ -569,6 +612,8 @@ for (i in seq_len(nrow(successful_files))) {
     df <- df %>% mutate(
       source_file = sheet_name, 
       source_url = sheet_url,
+      last_modified_time = last_mod_time,
+      last_modified_by = last_mod_by,
       partner_sheet = str_extract(sheet_name, "^[^|]+") %>% str_trim()
     )
 
@@ -594,6 +639,38 @@ if (length(combined_list) == 0) {
 }
 
 } # end - Phase 5 checkpoint conditional
+
+# --- Phase 5 Summary ---
+cat("\n=== PHASE 5 SUMMARY ===\n")
+
+# Metric totals
+numeric_cols <- names(master_df)[sapply(master_df, is.numeric)]
+if (length(numeric_cols) > 0) {
+  cat("Metric Totals:\n")
+  metric_sums <- master_df %>%
+    summarise(across(all_of(numeric_cols), ~ sum(.x, na.rm = TRUE)))
+  print(metric_sums)
+}
+
+# By sheet summary
+cat("\nSummary by Sheet:\n")
+sheet_summary <- master_df %>%
+  mutate(source_file = as.character(source_file),
+         source_url = as.character(source_url)) %>%
+  group_by(source_file, last_modified_time, last_modified_by) %>%
+  summarise(
+    row_count = n(),
+    #package_count = n_distinct(package_name, na.rm = TRUE),
+    #min_date = min(c(start_date, end_date, date), na.rm = TRUE),
+    #max_date = max(c(start_date, end_date, date), na.rm = TRUE),
+    across(all_of(numeric_cols), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  arrange(source_file)
+
+view(sheet_summary)
+
+cat("\n=== END PHASE 5 SUMMARY ===\n")
 
 ################################################################################
 #### PHASE 6: CLEANING & DATE FINALIZATION ####
@@ -799,7 +876,7 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
   }
 
   # Bind expanded rows
-  phase7_df <- bind_rows(expanded_rows)
+  phase7_df <- bind_rows(expanded_rows) %>% mutate(data_update_datetime = Sys.time())
 
   # --- Validation: compare per-sheet metric totals between Phase 5 and Phase 7 ---
   cat("\nValidating metric totals per sheet between Phase 5 and Phase 7...\n")
@@ -828,7 +905,7 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
         group_by(source_file) %>%
         summarise(across(all_of(metrics), ~ sum(.x, na.rm = TRUE)), .groups = "drop")
 
-      comp <- full_join(s5, s7, by = "source_file", suffix = c(".p5", ".p7"))
+      comp <- full_join(s5, s7, by = "source_file", suffix = c(".p5", ".p7")) %>% view()
 
       # Compute differences for each metric
       for (m in metrics) {
@@ -892,7 +969,7 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
       bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
       
       # Use bq_perform_upload to write the data
-      bq_perform_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
+      bq_table_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
       
       cat("✓ Data written to BigQuery table:", table, "\n")
     },
