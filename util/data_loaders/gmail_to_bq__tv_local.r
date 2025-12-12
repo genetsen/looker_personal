@@ -128,6 +128,44 @@ table <- "tv_local_estimates"
   unique(raw_df$date)
   str(raw_df)
   #lubridate::as_date(raw_df$date, format = "%m-%d-%Y")
+  # Fix: After janitor::clean_names(), check for the actual column name
+  # Check which column name exists before mutate
+  # Map old column names to new column names after clean_names()
+  net_cost_col <- if("total_net_cost" %in% names(raw_df)) {
+    "total_net_cost"
+  } else if("total_net" %in% names(raw_df)) {
+    "total_net"
+  } else if("total_planned_net" %in% names(raw_df)) {
+    "total_planned_net"
+  } else {
+    NULL
+  }
+  
+  # Check which impressions column exists
+  impressions_col <- if("total_total_impressions_buyers_estimate" %in% names(raw_df)) {
+    "total_total_impressions_buyers_estimate"
+  } else if("total_planned_impressions_all_demos" %in% names(raw_df)) {
+    "total_planned_impressions_all_demos"
+  } else if("total_planned_impressions" %in% names(raw_df)) {
+    "total_planned_impressions"
+  } else {
+    NULL
+  }
+  
+  # Check which units column exists
+  units_col <- if("total_units" %in% names(raw_df)) {
+    "total_units"
+  } else if("total_planned_spots" %in% names(raw_df)) {
+    "total_planned_spots"
+  } else {
+    NULL
+  }
+  
+  # If column not found, print available columns for debugging
+  if(is.null(net_cost_col)) {
+    cat("Warning: total_net_cost column not found. Available columns:", paste(names(raw_df), collapse = ", "), "\n")
+  }
+  
   df <- raw_df %>% mutate(
     year = as.integer(year),
     quarter = as.character(quarter),
@@ -138,9 +176,24 @@ table <- "tv_local_estimates"
     campaign_name = as.character(campaign_name),
     market = as.character(market),
     media_outlet = as.character(media_outlet),
-    net_cost = total_net_cost,
-    net_impressions = total_total_impressions_buyers_estimate,
-    total_units = total_units) %>%
+    # Use the correct column name that was found above
+    net_cost = if(!is.null(net_cost_col)) {
+      .data[[net_cost_col]]
+    } else {
+      NA_real_
+    },
+    # Fix: Use the correct impressions column name
+    net_impressions = if(!is.null(impressions_col)) {
+      .data[[impressions_col]]
+    } else {
+      NA_real_
+    },
+    # Fix: Use the correct units column name
+    total_units = if(!is.null(units_col)) {
+      .data[[units_col]]
+    } else {
+      NA_real_
+    }) %>%
     mutate(
       type = "Local"
       ) %>%

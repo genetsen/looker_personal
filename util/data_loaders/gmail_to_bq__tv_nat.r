@@ -135,6 +135,44 @@
     unique(raw_df$date)
     str(raw_df)
     #lubridate::as_date(raw_df$date, format = "%m-%d-%Y")
+    # Fix: After janitor::clean_names(), "Media Outlet" becomes "media_outlet" (with underscore)
+    # Check which column name exists before mutate
+    media_outlet_col <- if("media_outlet" %in% names(raw_df)) {
+      "media_outlet"
+    } else if("mediaoutlet" %in% names(raw_df)) {
+      "mediaoutlet"
+    } else {
+      NULL
+    }
+    
+    # Fix: Map old column names to new column names after clean_names()
+    # Check which cost column exists
+    cost_col <- if("total_cost" %in% names(raw_df)) {
+      "total_cost"
+    } else if("total_planned_amount" %in% names(raw_df)) {
+      "total_planned_amount"
+    } else {
+      NULL
+    }
+    
+    # Check which impressions column exists
+    impressions_col <- if("total_impressions_buyers_estimate" %in% names(raw_df)) {
+      "total_impressions_buyers_estimate"
+    } else if("total_planned_impressions" %in% names(raw_df)) {
+      "total_planned_impressions"
+    } else {
+      NULL
+    }
+    
+    # Check which units column exists
+    units_col <- if("total_units" %in% names(raw_df)) {
+      "total_units"
+    } else if("total_planned_spots" %in% names(raw_df)) {
+      "total_planned_spots"
+    } else {
+      NULL
+    }
+    
     df <- raw_df %>% mutate(
       year = as.integer(year),
       quarter = as.character(quarter),
@@ -144,12 +182,31 @@
       advertiser = as.character(advertiser),
       campaign_name = as.character(campaign_name),
       market = as.character(market),
-      media_outlet = as.character(mediaoutlet),
+      # Use the correct column name that was found above
+      media_outlet = if(!is.null(media_outlet_col)) {
+        as.character(.data[[media_outlet_col]])
+      } else {
+        NA_character_
+      },
       net_cost_broken = total_planned_net,
-      net_cost = total_cost*.85,
-
-      net_impressions = total_impressions_buyers_estimate,
-      total_units = total_units) %>%
+      # Fix: Use the correct cost column name
+      net_cost = if(!is.null(cost_col)) {
+        .data[[cost_col]] * 0.85
+      } else {
+        NA_real_
+      },
+      # Fix: Use the correct impressions column name
+      net_impressions = if(!is.null(impressions_col)) {
+        .data[[impressions_col]]
+      } else {
+        NA_real_
+      },
+      # Fix: Use the correct units column name
+      total_units = if(!is.null(units_col)) {
+        .data[[units_col]]
+      } else {
+        NA_real_
+      }) %>%
       mutate(
         type = type
         ) %>%
