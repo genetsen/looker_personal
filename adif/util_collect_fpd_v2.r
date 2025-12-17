@@ -243,7 +243,7 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
 #### PHASE 3: COLUMN HEADER INGESTION & METADATA COLLECTION ####
 ################################################################################
     # Goal: Extract all column headers from the 'data' tab of each file
-    # Method: Use detected header row from Phase 2, read columns A:S to get full table width
+    # Method: Use detected header row from Phase 2, read columns A:Y to get full table width
     # Output: Dataframe with sheet name, URL, column name, position
     # Checkpoint: phase3_raw_headers.csv
 
@@ -290,12 +290,12 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         tryCatch({
         # Read the data starting from detected header row to column S (full table width)
         # Use this row as header (col_names = TRUE)
-      cat("  Reading columns A:S starting from row", header_row, "...\n")
+      cat("  Reading columns A:Y starting from row", header_row, "...\n")
       
       sheet_data <- suppressMessages(read_sheet(
         ss = sheet_id,
         sheet = "data",
-        range = paste0("A", header_row, ":S"),
+        range = paste0("A", header_row, ":Y"),
         col_names = TRUE
       ))
       
@@ -511,7 +511,7 @@ cat("\nPhase 4 complete. Next: Phase 5 will ingest data using this mapping.\n")
 ################################################################################
 #### PHASE 5: DATA INGESTION & COMBINATION ####
 ################################################################################
-# Goal: Read each sheet starting at detected header row (A:S), normalize columns using
+# Goal: Read each sheet starting at detected header row (A:Y), normalize columns using
 # the Phase 4 mapping, drop auto-generated columns (those starting with "..."),
 # clean numeric and date columns, add source metadata, and combine into master CSV.
 
@@ -552,7 +552,7 @@ successful_files <- phase2_results %>% filter(status == "success")
     df <- suppressMessages(read_sheet(
       ss = sheet_id,
       sheet = "data",
-      range = paste0("A", header_row, ":S"),
+      range = paste0("A", header_row, ":Y"),
       col_names = TRUE
     ))
 
