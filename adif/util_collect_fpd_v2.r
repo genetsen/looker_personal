@@ -30,6 +30,23 @@ use_saved_phases <- FALSE
 # Set the phase you are actively working on (1..7). Saved results will be used for other phases.
 current_phase <- 1
 
+# Known KPI metric fields (normalized) to treat as numeric + split across days
+# NOTE: keep this list tight to avoid accidentally treating dimensions as metrics.
+known_kpi_metrics <- c(
+  "spend",
+  "impressions",
+  "sends",
+  "opens",
+  "views",
+  "completed_views",
+  "engagements",
+  "clicks",
+  "pageviews",
+  "conversions",
+  "benchmark_metric",
+  "benchmark"
+)
+
 # Predefine checkpoint paths so they can be reused when loading saved results
 phase1_output <- file.path(output_dir, "phase1_discovered_files.csv")
 phase2_output <- file.path(output_dir, "phase2_header_detection.csv")
@@ -100,7 +117,12 @@ if (use_saved_phases && current_phase != 1 && file.exists(phase1_output)) {
       )
     )
 
-  cat("✓ Found", nrow(discovered_files), "matching sheets\n")
+  # Filter out ARCHIVE sheets upstream so they never enter later phases
+  # (case-insensitive match on sheet name)
+  before_archive_filter <- nrow(discovered_files)
+  discovered_files <- discovered_files %>%
+    filter(!str_detect(sheet_name, "(?i)archive"))
+  cat("✓ Found", before_archive_filter, "matching sheets (", nrow(discovered_files), "after removing ARCHIVE)\n")
 
   # Write checkpoint
   write_csv(discovered_files, phase1_output)
@@ -450,8 +472,12 @@ for (i in seq_len(nrow(unique_cols))) {
       norm <- "partner_creative_name"; rule <- "match_creative_name"
     } else if (str_detect(rlow, "\\bpackage\\b") || str_detect(rlow, "package_name")) {
       norm <- "package_name"; rule <- "match_package_name"
+    } else if (str_detect(rlow, "prisma[_ ]?start|prisma[_ ]?start[_ ]?date")) {
+      norm <- "prisma_start_date"; rule <- "match_prisma_start_date"
     } else if (str_detect(rlow, "start[_ ]?date") || str_detect(rlow, "^start")) {
       norm <- "start_date"; rule <- "match_start_date"
+    } else if (str_detect(rlow, "prisma[_ ]?end|prisma[_ ]?end[_ ]?date")) {
+      norm <- "prisma_end_date"; rule <- "match_prisma_end_date"
     } else if (str_detect(rlow, "end[_ ]?date") || str_detect(rlow, "^end")) {
       norm <- "end_date"; rule <- "match_end_date"
     } else if (str_detect(rlow, "week")) {
@@ -529,8 +555,8 @@ map_lookup <- phase4_map %>%
   select(column_name_raw, normalized_name)
 map_vec <- setNames(map_lookup$normalized_name, map_lookup$column_name_raw)
 
-# Metrics to coerce to numeric
-metrics_expected <- c("spend", "impressions", "clicks", "sends", "opens", "pageviews", "views", "completed_views")
+# Metrics to coerce to numeric (use configured KPI list)
+metrics_expected <- known_kpi_metrics
 
 combined_list <- list()
 ci <- 1
@@ -587,6 +613,30 @@ successful_files <- phase2_results %>% filter(status == "success")
     new_names <- make.unique(new_names, sep = "__")
     names(df) <- new_names
 
+    # --- Normalise common column name variants (undo __N suffixes for canonical fields) ---
+    normalize_after_unique <- function(nm) {
+      nlow <- tolower(as.character(nm))
+      # drop trailing unique suffix like __1, __2
+      nlow <- sub("__\\d+$", "", nlow)
+      # replace dots/spaces/hyphens with underscore for matching
+      # NOTE: In R string literals, "\\." is an invalid escape. Use a safe character class.
+      nlow <- gsub("[.[:space:]-]+", "_", nlow)
+      if (grepl("^(start[_ ]?date|^start)$", nlow)) return("start_date")
+      if (grepl("^(end[_ ]?date|^end)$", nlow)) return("end_date")
+      if (grepl("prisma[_ ]?start|prisma[_ ]?start[_ ]?date", nlow)) return("prisma_start_date")
+      if (grepl("prisma[_ ]?end|prisma[_ ]?end[_ ]?date", nlow)) return("prisma_end_date")
+      if (grepl("\\bweek\\b", nlow)) return("week")
+      if (grepl("\\bmonth\\b", nlow)) return("month")
+      if (grepl("\\bdate\\b", nlow)) return("date")
+      if (grepl("spend|cost|budget", nlow)) return("spend")
+      if (grepl("impress", nlow)) return("impressions")
+      if (grepl("click", nlow)) return("clicks")
+      return(nm)
+    }
+
+    canon_names <- vapply(names(df), normalize_after_unique, FUN.VALUE = character(1), USE.NAMES = FALSE)
+    names(df) <- make.unique(canon_names, sep = "__")
+
     # Coerce numeric metric columns: remove $ and , then as.numeric
     library(readr)
 
@@ -602,8 +652,8 @@ successful_files <- phase2_results %>% filter(status == "success")
             )
     }
 
-    # Parse date columns if present
-    date_candidates <- intersect(c("start_date", "end_date", "week", "date"), names(df))
+    # Parse date columns if present (include prisma_* variants)
+    date_candidates <- intersect(c("start_date", "end_date", "prisma_start_date", "prisma_end_date", "week", "date"), names(df))
     for (dc in date_candidates) {
       df[[dc]] <- suppressWarnings(as.Date(as.character(df[[dc]]), tryFormats = c("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y")))
     }
@@ -632,6 +682,23 @@ if (length(combined_list) == 0) {
   cat("\nNo data ingested. Phase 5 ends with no output.\n")
 } else {
   master_df <- bind_rows(combined_list)
+
+  # Filter rows upstream (before output + before validation) to remove rows with no KPI signal.
+  # This matches the intent of the Phase 6 filter but avoids Phase 5 vs Phase 7 mismatches.
+  kpi_present <- intersect(known_kpi_metrics, names(master_df))
+  if (length(kpi_present) > 0) {
+    rows_before <- nrow(master_df)
+    master_df <- master_df %>%
+      mutate(
+        row_kpi_sum = rowSums(across(all_of(kpi_present), ~ dplyr::coalesce(as.numeric(.), 0)), na.rm = TRUE)
+      ) %>%
+      filter(!(is.na(row_kpi_sum) | row_kpi_sum == 0)) %>%
+      select(-row_kpi_sum)
+    cat("✓ Phase 5 pre-filter removed", rows_before - nrow(master_df), "rows where KPI metric sum is NA or 0\n")
+  } else {
+    cat("⚠ Phase 5 pre-filter skipped: none of known_kpi_metrics found in master_df\n")
+  }
+
   phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
   write_csv(master_df, phase5_output)
   cat("\n✓ Phase 5 complete. Combined data written to:", phase5_output, "\n")
@@ -654,19 +721,58 @@ if (length(numeric_cols) > 0) {
 
 # By sheet summary
 cat("\nSummary by Sheet:\n")
+
+# Helper: safe min/max across multiple date columns
+safe_min_date <- function(df, cols) {
+  cols <- intersect(cols, names(df))
+  if (length(cols) == 0) return(as.Date(NA))
+  x <- do.call(c, lapply(cols, function(cn) as.Date(df[[cn]])))
+  if (all(is.na(x))) as.Date(NA) else min(x, na.rm = TRUE)
+}
+
+safe_max_date <- function(df, cols) {
+  cols <- intersect(cols, names(df))
+  if (length(cols) == 0) return(as.Date(NA))
+  x <- do.call(c, lapply(cols, function(cn) as.Date(df[[cn]])))
+  if (all(is.na(x))) as.Date(NA) else max(x, na.rm = TRUE)
+}
+
+date_cols_any <- c(
+  "start_date", "end_date", "prisma_start_date", "prisma_end_date",
+  "week", "date", "month",
+  "start_date_final", "end_date_final", "date_final"
+)
+
+# package count preference: package_id else package_name
+package_key <- if ("package_id" %in% names(master_df)) "package_id" else if ("package_name" %in% names(master_df)) "package_name" else NA_character_
+
 sheet_summary <- master_df %>%
-  mutate(source_file = as.character(source_file),
-         source_url = as.character(source_url)) %>%
+  mutate(
+    source_file = as.character(source_file),
+    source_url = as.character(source_url)
+  ) %>%
   group_by(source_file, last_modified_time, last_modified_by) %>%
   summarise(
     row_count = n(),
-    #package_count = n_distinct(package_name, na.rm = TRUE),
-    #min_date = min(c(start_date, end_date, date), na.rm = TRUE),
-    #max_date = max(c(start_date, end_date, date), na.rm = TRUE),
-    across(all_of(numeric_cols), ~ sum(.x, na.rm = TRUE)),
+    package_count = if (!is.na(package_key)) n_distinct(.data[[package_key]], na.rm = TRUE) else NA_integer_,
+    spend_sum = if ("spend" %in% names(dplyr::cur_data())) sum(spend, na.rm = TRUE) else NA_real_,
+    impressions_sum = if ("impressions" %in% names(dplyr::cur_data())) sum(impressions, na.rm = TRUE) else NA_real_,
+    min_date_any = safe_min_date(dplyr::cur_data(), date_cols_any),
+    max_date_any = safe_max_date(dplyr::cur_data(), date_cols_any),
+    across(all_of(setdiff(numeric_cols, c("spend", "impressions"))), ~ sum(.x, na.rm = TRUE)),
     .groups = "drop"
   ) %>%
   arrange(source_file)
+
+# Update Phase 1 checkpoint with per-sheet summary metrics
+if (exists("discovered_files") && nrow(discovered_files) > 0) {
+  phase1_enriched <- discovered_files %>%
+    left_join(sheet_summary %>% select(source_file, row_count, package_count, spend_sum, impressions_sum, min_date_any, max_date_any),
+              by = c("sheet_name" = "source_file"))
+
+  write_csv(phase1_enriched, phase1_output)
+  cat("✓ Phase 1 checkpoint updated with per-sheet rollups:", phase1_output, "\n")
+}
 
 view(sheet_summary)
 
@@ -728,6 +834,8 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   # Parse possible date-like columns
   if ("start_date" %in% names(phase6_df)) phase6_df$start_date <- parse_any_date(phase6_df$start_date)
   if ("end_date" %in% names(phase6_df)) phase6_df$end_date <- parse_any_date(phase6_df$end_date)
+  if ("prisma_start_date" %in% names(phase6_df)) phase6_df$prisma_start_date <- parse_any_date(phase6_df$prisma_start_date)
+  if ("prisma_end_date" %in% names(phase6_df)) phase6_df$prisma_end_date <- parse_any_date(phase6_df$prisma_end_date)
   if ("week" %in% names(phase6_df)) phase6_df$week <- parse_any_date(phase6_df$week)
   if ("date" %in% names(phase6_df)) phase6_df$date <- parse_any_date(phase6_df$date)
   if ("month" %in% names(phase6_df)) phase6_df$month <- parse_any_date(phase6_df$month)
@@ -737,21 +845,25 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   month_end <- if ("month" %in% names(phase6_df)) lubridate::ceiling_date(phase6_df$month, "month") - lubridate::days(1) else as.Date(NA)
 
   # Compute final start/end dates with precedence rules
-  # start_date_final precedence: start_date, week, month, date, end_date
+  # start_date_final precedence: start_date, prisma_start_date, week, month, date, end_date, prisma_end_date
   phase6_df$start_date_final <- as.Date(dplyr::coalesce(
     if ("start_date" %in% names(phase6_df)) phase6_df$start_date else as.Date(NA),
+    if ("prisma_start_date" %in% names(phase6_df)) phase6_df$prisma_start_date else as.Date(NA),
     if ("week" %in% names(phase6_df)) phase6_df$week else as.Date(NA),
     if ("month" %in% names(phase6_df)) phase6_df$month else as.Date(NA),
     if ("date" %in% names(phase6_df)) phase6_df$date else as.Date(NA),
-    if ("end_date" %in% names(phase6_df)) phase6_df$end_date else as.Date(NA)
+    if ("end_date" %in% names(phase6_df)) phase6_df$end_date else as.Date(NA),
+    if ("prisma_end_date" %in% names(phase6_df)) phase6_df$prisma_end_date else as.Date(NA)
   ), origin = "1970-01-01")
 
-  # end_date_final precedence: end_date, week_end, month_end, start_date, date
+  # end_date_final precedence: end_date, prisma_end_date, week_end, month_end, start_date, prisma_start_date, date
   phase6_df$end_date_final <- as.Date(dplyr::coalesce(
     if ("end_date" %in% names(phase6_df)) phase6_df$end_date else as.Date(NA),
+    if ("prisma_end_date" %in% names(phase6_df)) phase6_df$prisma_end_date else as.Date(NA),
     week_end,
     month_end,
     if ("start_date" %in% names(phase6_df)) phase6_df$start_date else as.Date(NA),
+    if ("prisma_start_date" %in% names(phase6_df)) phase6_df$prisma_start_date else as.Date(NA),
     if ("date" %in% names(phase6_df)) phase6_df$date else as.Date(NA)
   ), origin = "1970-01-01")
 
@@ -808,13 +920,10 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
   date_cols <- c("start_date_final", "end_date_final")
   for (dc in date_cols) if (dc %in% names(base_df)) base_df[[dc]] <- as.Date(base_df[[dc]])
 
-  # Identify numeric metric columns dynamically (exclude metadata/date columns)
-  non_metric_candidates <- c("source_file", "source_url", "partner_sheet", "sheet_name", "sheet_id", "campaign", "package_name", "package_id", "start_date", "end_date", "week", "date", "month", "start_date_final", "end_date_final", "date_final")
-  metric_cols <- names(base_df)[sapply(base_df, is.numeric) | sapply(base_df, function(x) all(grepl("^\\s*$|^-?\\d+(\\.\\d+)?$", as.character(x)[!is.na(as.character(x))], perl=TRUE)))]
-  # Remove obvious non-metrics
-  metric_cols <- setdiff(metric_cols, non_metric_candidates)
+  # Determine metric columns to split using configured KPI list only
+  metric_cols <- intersect(known_kpi_metrics, names(base_df))
 
-  cat("Detected metric columns to split:", paste(metric_cols, collapse=", "), "\n")
+  cat("Detected metric columns to split (known KPI list):", paste(metric_cols, collapse=", "), "\n")
 
   # Expand rows
   expanded_rows <- list()
@@ -879,54 +988,54 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
   phase7_df <- bind_rows(expanded_rows) %>% mutate(data_update_datetime = Sys.time())
 
   # --- Validation: compare per-sheet metric totals between Phase 5 and Phase 7 ---
-  cat("\nValidating metric totals per sheet between Phase 5 and Phase 7...\n")
+  # We validate only on additive KPI metrics to avoid false alarms from dimensions or non-additive fields.
+  cat("\nValidating KPI metric totals per sheet between Phase 5 and Phase 7...\n")
   if (file.exists(phase5_output)) {
     phase5_df <- read_csv(phase5_output, show_col_types = FALSE)
 
-    # Detect numeric metric columns present in both datasets
-    num5 <- names(phase5_df)[sapply(phase5_df, is.numeric)]
-    num7 <- names(phase7_df)[sapply(phase7_df, is.numeric)]
-    # Exclude obvious metadata columns
-    non_metric_candidates <- c("start_date_final", "end_date_final")
-    metrics <- intersect(setdiff(num5, non_metric_candidates), setdiff(num7, non_metric_candidates))
+    # KPI metrics to validate (exclude benchmarks; those are often non-additive / metadata)
+    validate_kpis <- setdiff(known_kpi_metrics, c("benchmark", "benchmark_metric"))
+    metrics <- intersect(validate_kpis, intersect(names(phase5_df), names(phase7_df)))
 
     if (length(metrics) == 0) {
-      cat("  No numeric metrics detected for validation.\n")
+      cat("  No KPI metrics detected for validation.\n")
     } else {
-      cat("  Metrics validated:", paste(metrics, collapse = ", "), "\n")
+      cat("  KPI metrics validated:", paste(metrics, collapse = ", "), "\n")
 
       s5 <- phase5_df %>%
         mutate(source_file = as.character(source_file)) %>%
         group_by(source_file) %>%
-        summarise(across(all_of(metrics), ~ sum(.x, na.rm = TRUE)), .groups = "drop")
+        summarise(across(all_of(metrics), ~ sum(as.numeric(.x), na.rm = TRUE)), .groups = "drop")
 
       s7 <- phase7_df %>%
         mutate(source_file = as.character(source_file)) %>%
         group_by(source_file) %>%
-        summarise(across(all_of(metrics), ~ sum(.x, na.rm = TRUE)), .groups = "drop")
+        summarise(across(all_of(metrics), ~ sum(as.numeric(.x), na.rm = TRUE)), .groups = "drop")
 
-      comp <- full_join(s5, s7, by = "source_file", suffix = c(".p5", ".p7")) %>% view()
+      comp <- full_join(s5, s7, by = "source_file", suffix = c(".p5", ".p7"))
 
-      # Compute differences for each metric
+      # Compute differences for each metric (round before diffing to avoid floating point accumulation noise)
+      # Suggested rounding: 2 decimals is typical for currency; for simplicity we use 6 decimals for all.
+      round_digits <- 6
       for (m in metrics) {
         c_p5 <- paste0(m, ".p5")
         c_p7 <- paste0(m, ".p7")
         diff_col <- paste0(m, "_diff")
         comp[[c_p5]][is.na(comp[[c_p5]])] <- 0
         comp[[c_p7]][is.na(comp[[c_p7]])] <- 0
-        comp[[diff_col]] <- comp[[c_p7]] - comp[[c_p5]]
+        comp[[diff_col]] <- round(comp[[c_p7]], round_digits) - round(comp[[c_p5]], round_digits)
       }
 
-      # Flag mismatches beyond a tiny tolerance (to avoid floating point noise)
+      # Flag mismatches beyond a tiny tolerance
       tol <- 1e-6
       diff_cols <- grep("_diff$", names(comp), value = TRUE)
       comp$mismatch_any <- apply(abs(comp[, diff_cols, drop = FALSE]), 1, function(x) any(x > tol, na.rm = TRUE))
 
       mismatches <- comp %>% filter(mismatch_any)
       if (nrow(mismatches) == 0) {
-        cat("  ✓ All per-sheet metric totals match between Phase 5 and Phase 7 (within tolerance).\n")
+        cat("  ✓ All per-sheet KPI metric totals match between Phase 5 and Phase 7 (within tolerance).\n")
       } else {
-        cat("  ✗ Detected differences in per-sheet totals for", nrow(mismatches), "sheets. Sample differences:\n")
+        cat("  ✗ Detected differences in per-sheet KPI totals for", nrow(mismatches), "sheets. Sample differences:\n")
         print(head(mismatches[, c("source_file", diff_cols)], 20))
       }
     }
@@ -946,7 +1055,17 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
 #### write to BQ --using write_to_bq  ####
 
   cat("\n=== Starting BigQuery upload process ===\n")
-  
+  # Before uploading: replace NA in numeric columns with 0 to avoid NULLs where zeros are expected
+  if (exists('phase7_df')) {
+    numeric_cols_bq <- names(phase7_df)[sapply(phase7_df, is.numeric)]
+    if (length(numeric_cols_bq) > 0) {
+      phase7_df[numeric_cols_bq] <- lapply(phase7_df[numeric_cols_bq], function(x) { x[is.na(x)] <- 0; x })
+      # Update the Phase 7 checkpoint so it's consistent with upload-ready data
+      write_csv(phase7_df, phase7_output)
+      cat("  ✓ Replaced NA with 0 for numeric columns before BQ upload: ", paste(numeric_cols_bq, collapse=", "), "\n")
+    }
+  }
+
   # remove previous bq table (with error handling)
   tryCatch({
     bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "adif_fpd_data_ranged")
