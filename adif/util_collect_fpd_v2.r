@@ -888,12 +888,102 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
     cat("  ✓ Removed", rows_before - nrow(phase6_df), "rows where sum of numeric columns is NA or 0\n")
   }
 
+  # Filter 3: Remove rows where package_name is NA
+  if ("package_name" %in% names(phase6_df)) {
+    rows_before <- nrow(phase6_df)
+    phase6_df <- phase6_df %>%
+      filter(!is.na(package_name) & package_name != "")
+    cat("  ✓ Removed", rows_before - nrow(phase6_df), "rows where package_name is NA or blank\n")
+  }
+
   # Write Phase 6 checkpoint
   write_csv(phase6_df, phase6_output)
   cat("✓ Phase 6 checkpoint saved to:", phase6_output, "\n")
 }
 
 cat("Phase 6 complete. Rows:", if (exists('phase6_df')) nrow(phase6_df) else 0, "\n")
+
+################################################################################
+#### PHASE 6.1: SHEET-LEVEL SUMMARY TABLE ####
+################################################################################
+# Goal: Create a summary table with one row per sheet showing:
+# - Partner name, sheet name, URL, last modified info
+# - Row count, package count, date range
+# - Totals for all KPI metrics
+
+cat("\n=== PHASE 6.1: SHEET-LEVEL SUMMARY TABLE ===\n")
+
+phase6_1_output <- file.path(output_dir, "phase6_1_sheet_summary.csv")
+
+if (use_saved_phases && current_phase != 6 && file.exists(phase6_1_output)) {
+  cat("Loading saved Phase 6.1 output from:", phase6_1_output, "\n")
+  phase6_1_summary <- read_csv(phase6_1_output, show_col_types = FALSE)
+  cat("✓ Loaded", nrow(phase6_1_summary), "sheet summaries from saved Phase 6.1 file\n")
+} else {
+  # Ensure phase6_df is available
+  if (!exists('phase6_df') || nrow(phase6_df) == 0) {
+    cat("⚠ Phase 6 data not available. Skipping Phase 6.1.\n")
+  } else {
+    # Helper functions for date aggregation
+    safe_min_date <- function(df, cols) {
+      cols <- intersect(cols, names(df))
+      if (length(cols) == 0) return(as.Date(NA))
+      x <- do.call(c, lapply(cols, function(cn) as.Date(df[[cn]])))
+      if (all(is.na(x))) as.Date(NA) else min(x, na.rm = TRUE)
+    }
+
+    safe_max_date <- function(df, cols) {
+      cols <- intersect(cols, names(df))
+      if (length(cols) == 0) return(as.Date(NA))
+      x <- do.call(c, lapply(cols, function(cn) as.Date(df[[cn]])))
+      if (all(is.na(x))) as.Date(NA) else max(x, na.rm = TRUE)
+    }
+
+    # Date columns to consider for range
+    date_cols_for_range <- c(
+      "start_date", "end_date", "prisma_start_date", "prisma_end_date",
+      "week", "date", "month", "start_date_final", "end_date_final"
+    )
+
+    # Determine package key (prefer package_id, fallback to package_name)
+    package_key <- if ("package_id" %in% names(phase6_df)) "package_id"
+                   else if ("package_name" %in% names(phase6_df)) "package_name"
+                   else NA_character_
+
+    # Get all numeric columns for metrics
+    numeric_cols <- names(phase6_df)[sapply(phase6_df, is.numeric)]
+
+    # Build summary by source_file
+    phase6_1_summary <- phase6_df %>%
+      mutate(
+        source_file = as.character(source_file),
+        source_url = as.character(source_url),
+        partner_name = as.character(site)
+      ) %>%
+      group_by(partner_name, source_file, source_url, last_modified_time, last_modified_by) %>%
+      summarise(
+        row_count = n(),
+        package_count = if (!is.na(package_key)) n_distinct(.data[[package_key]], na.rm = TRUE) else NA_integer_,
+        date_range_start = safe_min_date(dplyr::cur_data(), date_cols_for_range),
+        date_range_end = safe_max_date(dplyr::cur_data(), date_cols_for_range),
+        # Add totals for all KPI metrics
+        across(
+          all_of(intersect(known_kpi_metrics, numeric_cols)),
+          ~ sum(as.numeric(.x), na.rm = TRUE),
+          .names = "{.col}_sum"
+        ),
+        .groups = "drop"
+      ) %>%
+      arrange(partner_name, source_file)
+
+    # Write Phase 6.1 checkpoint
+    write_csv(phase6_1_summary, phase6_1_output)
+    cat("✓ Phase 6.1 checkpoint saved to:", phase6_1_output, "\n")
+    cat("✓ Summary created for", nrow(phase6_1_summary), "sheets\n")
+  }
+}
+
+cat("Phase 6.1 complete.\n")
 
 ################################################################################
 #### PHASE 7: EXPAND RANGED DATA TO DAILY ROWS ####
