@@ -1191,3 +1191,5 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
   write_to_bq(phase7_df, "landing", "adif_fpd_data_ranged")
 
   cat("\n-----------\n-----------\nADIF first party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
+
+source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/util_process_updated_fpd.r")
