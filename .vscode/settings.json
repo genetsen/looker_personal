@@ -4,5 +4,15 @@
     "chatgpt.openOnStartup": true,
     "editor.tabCompletion": "on",
     "editor.suggest.snippetsPreventQuickSuggestions": true,
-    "editor.suggestSelection": "recentlyUsedByPrefix"
+    "editor.suggestSelection": "recentlyUsedByPrefix",
+    "sqltools.connections": [
+        {
+            "name": "BigQuery",
+            "authenticator": "CLI",
+            "location": "us",
+            "previewLimit": 50,
+            "driver": "BigQuery",
+            "projectId": "looker-studio-pro-452620"
+        }
+    ]
 }
