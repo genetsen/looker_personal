@@ -23,9 +23,12 @@ library(janitor)
 cat ("\n-----------\nADIF first party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
 
 #### CONFIGURATION ####
-gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
+  # fpd shortcuts folder: 
+  # https://drive.google.com/drive/folders/1cMkgbplZ8sPIsDHluIuIEOmbam-BhZtY?usp=drive_link
+
+gdrive_folder_id <- "1cMkgbplZ8sPIsDHluIuIEOmbam-BhZtY"
 pattern <- "De Beers | Partner Data"
-output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
+output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/output"
 use_saved_phases <- FALSE
 # Set the phase you are actively working on (1..7). Saved results will be used for other phases.
 current_phase <- 1
@@ -46,6 +49,20 @@ known_kpi_metrics <- c(
   "benchmark_metric",
   "benchmark"
 )
+
+# Per-client week configuration: which day the reporting week starts on.
+# Used to fill in missing `week` values in the final output.
+# Clients are matched case-insensitively against the `client` column.
+client_week_config <- data.frame(
+  client     = c("mass", "oli", "adif", "apollo"),
+  week_start = c("Sun",  "Sun", "Sun",  "Sun"),
+  stringsAsFactors = FALSE
+)
+default_week_start <- "Sun"
+
+# Mapping from day abbreviation to lubridate floor_date week_start number
+# (lubridate uses: 1=Mon, 2=Tue, ... 7=Sun)
+day_to_wstart <- c(Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7)
 
 # Predefine checkpoint paths so they can be reused when loading saved results
 phase1_output <- file.path(output_dir, "phase1_discovered_files.csv")
@@ -758,6 +775,20 @@ sheet_summary <- master_df %>%
     spend_sum = if ("spend" %in% names(dplyr::cur_data())) sum(spend, na.rm = TRUE) else NA_real_,
     impressions_sum = if ("impressions" %in% names(dplyr::cur_data())) sum(impressions, na.rm = TRUE) else NA_real_,
     min_date_any = safe_min_date(dplyr::cur_data(), date_cols_any),
+    min_date_col = {
+      min_val <- safe_min_date(dplyr::cur_data(), date_cols_any)
+      cols <- intersect(date_cols_any, names(dplyr::cur_data()))
+      if (is.na(min_val) || length(cols) == 0) {
+        NA_character_
+      } else {
+        # Find which column(s) contain this min date
+        matches <- sapply(cols, function(cn) any(as.Date(dplyr::cur_data()[[cn]]) == min_val, na.rm = TRUE))
+        paste(names(matches)[matches], collapse = ", ")
+      }
+    },
+    min_date_reported = safe_min_date(dplyr::cur_data(), c("date", "week", "month", "start_date")),
+    # add column used for max_date_any
+    max_date_reported = safe_max_date(dplyr::cur_data(), c("date", "week", "month", "end_date")),
     max_date_any = safe_max_date(dplyr::cur_data(), date_cols_any),
     across(all_of(setdiff(numeric_cols, c("spend", "impressions"))), ~ sum(.x, na.rm = TRUE)),
     .groups = "drop"
@@ -838,34 +869,79 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   if ("prisma_end_date" %in% names(phase6_df)) phase6_df$prisma_end_date <- parse_any_date(phase6_df$prisma_end_date)
   if ("week" %in% names(phase6_df)) phase6_df$week <- parse_any_date(phase6_df$week)
   if ("date" %in% names(phase6_df)) phase6_df$date <- parse_any_date(phase6_df$date)
-  if ("month" %in% names(phase6_df)) phase6_df$month <- parse_any_date(phase6_df$month)
+  if ("month" %in% names(phase6_df)) {
+    phase6_df$month <- parse_any_date(phase6_df$month)
+    # Snap to the 1st of the month regardless of input day (e.g., Oct 15 -> Oct 1)
+    phase6_df$month <- lubridate::floor_date(phase6_df$month, "month")
+  }
 
   # Compute week_end and month_end
   week_end <- if ("week" %in% names(phase6_df)) phase6_df$week + 6 else as.Date(NA)
   month_end <- if ("month" %in% names(phase6_df)) lubridate::ceiling_date(phase6_df$month, "month") - lubridate::days(1) else as.Date(NA)
 
   # Compute final start/end dates with precedence rules
-  # start_date_final precedence: start_date, prisma_start_date, week, month, date, end_date, prisma_end_date
-  phase6_df$start_date_final <- as.Date(dplyr::coalesce(
-    if ("start_date" %in% names(phase6_df)) phase6_df$start_date else as.Date(NA),
-    if ("prisma_start_date" %in% names(phase6_df)) phase6_df$prisma_start_date else as.Date(NA),
-    if ("week" %in% names(phase6_df)) phase6_df$week else as.Date(NA),
-    if ("month" %in% names(phase6_df)) phase6_df$month else as.Date(NA),
-    if ("date" %in% names(phase6_df)) phase6_df$date else as.Date(NA),
-    if ("end_date" %in% names(phase6_df)) phase6_df$end_date else as.Date(NA),
-    if ("prisma_end_date" %in% names(phase6_df)) phase6_df$prisma_end_date else as.Date(NA)
-  ), origin = "1970-01-01")
+  # Prisma dates are planning-level (package-wide) — only use as last resort
+  # when no granular date column (start_date, week, month, date) is available.
 
-  # end_date_final precedence: end_date, prisma_end_date, week_end, month_end, start_date, prisma_start_date, date
-  phase6_df$end_date_final <- as.Date(dplyr::coalesce(
-    if ("end_date" %in% names(phase6_df)) phase6_df$end_date else as.Date(NA),
-    if ("prisma_end_date" %in% names(phase6_df)) phase6_df$prisma_end_date else as.Date(NA),
-    week_end,
-    month_end,
-    if ("start_date" %in% names(phase6_df)) phase6_df$start_date else as.Date(NA),
-    if ("prisma_start_date" %in% names(phase6_df)) phase6_df$prisma_start_date else as.Date(NA),
-    if ("date" %in% names(phase6_df)) phase6_df$date else as.Date(NA)
-  ), origin = "1970-01-01")
+  # Helper: safely get a date column or NA vector of the right length
+  safe_date_col <- function(df, col) {
+    if (col %in% names(df)) df[[col]] else rep(as.Date(NA), nrow(df))
+  }
+
+  # --- start_date_final precedence ---
+  # start_date > week > month > date > end_date > prisma_start_date > prisma_end_date
+  start_candidates <- list(
+    list(col = safe_date_col(phase6_df, "start_date"),        label = "start_date"),
+    list(col = safe_date_col(phase6_df, "week"),              label = "week"),
+    list(col = safe_date_col(phase6_df, "month"),             label = "month"),
+    list(col = safe_date_col(phase6_df, "date"),              label = "date"),
+    list(col = safe_date_col(phase6_df, "end_date"),          label = "end_date"),
+    list(col = safe_date_col(phase6_df, "prisma_start_date"), label = "prisma_start_date"),
+    list(col = safe_date_col(phase6_df, "prisma_end_date"),   label = "prisma_end_date")
+  )
+
+  # Build result + source label via first-non-NA walk
+  n_rows <- nrow(phase6_df)
+  sdf_val    <- rep(as.Date(NA), n_rows)
+  sdf_source <- rep(NA_character_, n_rows)
+  for (cand in start_candidates) {
+    fill <- which(is.na(sdf_val) & !is.na(cand$col))
+    if (length(fill) > 0) {
+      sdf_val[fill]    <- cand$col[fill]
+      sdf_source[fill] <- cand$label
+    }
+  }
+  phase6_df$start_date_final  <- as.Date(sdf_val, origin = "1970-01-01")
+  phase6_df$start_date_source <- sdf_source
+
+  # --- end_date_final precedence ---
+  # end_date > week_end > month_end > start_date > date > prisma_end_date > prisma_start_date
+  end_candidates <- list(
+    list(col = safe_date_col(phase6_df, "end_date"),          label = "end_date"),
+    list(col = week_end,                                      label = "week_end"),
+    list(col = month_end,                                     label = "month_end"),
+    list(col = safe_date_col(phase6_df, "start_date"),        label = "start_date"),
+    list(col = safe_date_col(phase6_df, "date"),              label = "date"),
+    list(col = safe_date_col(phase6_df, "prisma_end_date"),   label = "prisma_end_date"),
+    list(col = safe_date_col(phase6_df, "prisma_start_date"), label = "prisma_start_date")
+  )
+
+  edf_val    <- rep(as.Date(NA), n_rows)
+  edf_source <- rep(NA_character_, n_rows)
+  for (cand in end_candidates) {
+    fill <- which(is.na(edf_val) & !is.na(cand$col))
+    if (length(fill) > 0) {
+      edf_val[fill]    <- cand$col[fill]
+      edf_source[fill] <- cand$label
+    }
+  }
+  phase6_df$end_date_final  <- as.Date(edf_val, origin = "1970-01-01")
+  phase6_df$end_date_source <- edf_source
+
+  cat("  Date source distribution (start_date_final):\n")
+  print(table(phase6_df$start_date_source, useNA = "ifany"))
+  cat("  Date source distribution (end_date_final):\n")
+  print(table(phase6_df$end_date_source, useNA = "ifany"))
 
   # Filter 1: Remove rows where source_file contains "archive" (case-insensitive)
   if ("source_file" %in% names(phase6_df)) {
@@ -966,6 +1042,20 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_1_output)) {
         package_count = if (!is.na(package_key)) n_distinct(.data[[package_key]], na.rm = TRUE) else NA_integer_,
         date_range_start = safe_min_date(dplyr::cur_data(), date_cols_for_range),
         date_range_end = safe_max_date(dplyr::cur_data(), date_cols_for_range),
+        # Date source diagnostics: which column drives start/end dates for this sheet
+        start_date_sources = paste(sort(unique(start_date_source[!is.na(start_date_source)])), collapse = ", "),
+        end_date_sources   = paste(sort(unique(end_date_source[!is.na(end_date_source)])),     collapse = ", "),
+        # If week is a source, show the distinct week start dates used
+        week_start_dates_used = if (any(start_date_source == "week", na.rm = TRUE))
+          paste(sort(unique(as.character(start_date_final[start_date_source == "week" & !is.na(start_date_source)]))), collapse = ", ")
+        else NA_character_,
+        # If week is a source, show the day-of-week range (e.g., "Sun-Sat", "Mon-Sun")
+        week_day_range = if (any(start_date_source == "week", na.rm = TRUE)) {
+          wk_dates <- start_date_final[start_date_source == "week" & !is.na(start_date_source)]
+          start_dow <- unique(lubridate::wday(wk_dates, label = TRUE, abbr = TRUE))
+          end_dow   <- unique(lubridate::wday(wk_dates + 6, label = TRUE, abbr = TRUE))
+          paste(paste(start_dow, collapse = "/"), paste(end_dow, collapse = "/"), sep = "-")
+        } else NA_character_,
         # Add totals for all KPI metrics
         across(
           all_of(intersect(known_kpi_metrics, numeric_cols)),
@@ -1077,6 +1167,50 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
   # Bind expanded rows
   phase7_df <- bind_rows(expanded_rows) %>% mutate(data_update_datetime = Sys.time())
 
+  # --- Fill missing week values using per-client config ---
+  # For rows where `week` is NA but `date_final` exists, compute the week start
+  # using the client's configured week_start day (defaults to Sunday).
+  if (!"week" %in% names(phase7_df)) phase7_df$week <- as.Date(NA)
+
+  missing_week_idx <- which(is.na(phase7_df$week) & !is.na(phase7_df$date_final))
+  if (length(missing_week_idx) > 0) {
+    # Build lookup: lowercase client name -> week_start number
+    config_lookup <- setNames(
+      day_to_wstart[client_week_config$week_start],
+      tolower(client_week_config$client)
+    )
+    default_ws_num <- day_to_wstart[[default_week_start]]
+
+    # Get each row's client (fall back to default if client column missing or unrecognized)
+    if ("client" %in% names(phase7_df)) {
+      row_clients <- tolower(as.character(phase7_df$client[missing_week_idx]))
+      row_ws_nums <- ifelse(
+        row_clients %in% names(config_lookup),
+        config_lookup[row_clients],
+        default_ws_num
+      )
+    } else {
+      row_ws_nums <- rep(default_ws_num, length(missing_week_idx))
+    }
+
+    # Vectorize by unique week_start values to avoid per-row loop
+    for (ws in unique(row_ws_nums)) {
+      ws_rows <- missing_week_idx[row_ws_nums == ws]
+      phase7_df$week[ws_rows] <- lubridate::floor_date(
+        phase7_df$date_final[ws_rows], "week", week_start = ws
+      )
+    }
+
+    cat("  ✓ Filled", length(missing_week_idx), "missing week values using per-client config\n")
+    # Show summary of which clients were filled
+    if ("client" %in% names(phase7_df)) {
+      filled_summary <- table(phase7_df$client[missing_week_idx])
+      cat("    Rows filled per client:", paste(names(filled_summary), filled_summary, sep = "=", collapse = ", "), "\n")
+    }
+  } else {
+    cat("  No missing week values to fill.\n")
+  }
+
   # --- Validation: compare per-sheet metric totals between Phase 5 and Phase 7 ---
   # We validate only on additive KPI metrics to avoid false alarms from dimensions or non-additive fields.
   cat("\nValidating KPI metric totals per sheet between Phase 5 and Phase 7...\n")
@@ -1158,7 +1292,7 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
 
   # remove previous bq table (with error handling)
   tryCatch({
-    bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "adif_fpd_data_ranged")
+    bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "fpd_data_ranged")
     bq_table_delete(bq_table)
     cat("Deleted old BigQuery table\n")
   },
@@ -1188,11 +1322,12 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
     })
   }
   
-  write_to_bq(phase7_df, "landing", "adif_fpd_data_ranged")
+  write_to_bq(phase7_df, "landing", "fpd_data_ranged")
 
   cat("\n-----------\n-----------\nADIF first party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 
-source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/util_process_updated_fpd.r")
-Sys.sleep(5)
-source ("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/util_collect_fpd_v3.r")
 
+# --- OPTIONAL: Run post-processing script ---
+# this script layers on manually updated first party data [currently for ADIF] needs to be updated for general use]
+# manually update data here: https://docs.google.com/spreadsheets/d/1kUD8gVrHAAaZbULtFgDZl1hgGU-7Ut8fSdNJDgsZwfE/edit?gid=1894007924#gid=1894007924
+#source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/manually_updated_data_loader.r")
