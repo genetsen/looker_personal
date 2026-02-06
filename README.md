@@ -9,12 +9,18 @@ SQL- and BigQuery-first analytics workspace for campaign reporting pipelines acr
 - Olipop cross-platform delivery + video joins (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/marts/olipop`)
 - MFT export and mart views (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`)
 
+## Cross-Brand Data Flow Diagram (Ingestion -> BigQuery -> dbt -> Dashboards)
+
+- OLI (Olipop), MassMutual (MFT), and ADIF flow diagram:
+  `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/DATA_FLOW_DIAGRAMS.md`
+- This view maps each brand’s path from source ingestion to BigQuery datasets/tables, dbt/SQL model layer, and final BI dashboards.
+
 ## New Capability: ADIF Social Layer From Cross-Platform Raw
 
 - Source table: `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
 - Layer SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/stg__adif__social_crossplatform.sql`
 - Default output view: `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
-- Current inclusion logic: keep rows where normalized text contains both `adif` and `social`
+- Current inclusion logic: keep rows where `account_name` is one of `ADIF USA`, `A Diamond is Forever - US`, `A Diamond is Forever`, or `De Beers Group`, and `campaign_name` contains literal `WP_`
 
 ## Notes
 

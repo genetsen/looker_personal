@@ -1,5 +1,7 @@
 ################################################################################
-#### SIMPLIFIED FPD INGESTION - VERSION 2 (LINEAR, NO ABSTRACTIONS)
+#### SIMPLIFIED FPD INGESTION - VERSION 3 ALL FPD FILES via 
+#### /Users/eugenetsenter/Library/CloudStorage/GoogleDrive-gene.tsenter@giantspoon.com/.shortcut-targets-by-id/0B0U23i7iN3kZaHJ4NzMyeHp5NW8/Giant Spoon - SHARED (USE THIS ONE)/4. Department Folders/Analytics
+#### https://drive.google.com/drive/folders/1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF?usp=drive_link
 ################################################################################
 # Purpose: Rewrite of util_collect_fpd.r as a straightforward, linear script
 # with minimal abstractions. Build step-by-step through phases:
@@ -20,7 +22,7 @@ library(readr)
 library(lubridate)
 library(janitor)
 
-cat ("\n-----------\nADIF first party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
+cat ("\n-----------\n First party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
 
 #### CONFIGURATION ####
   # fpd shortcuts folder: 
@@ -1324,7 +1326,7 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
   
   write_to_bq(phase7_df, "landing", "fpd_data_ranged")
 
-  cat("\n-----------\n-----------\nADIF first party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
+  cat("\n-----------\n-----------\n First party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 
 
 # --- OPTIONAL: Run post-processing script ---

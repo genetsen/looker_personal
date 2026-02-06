@@ -6,7 +6,8 @@ This directory contains two pipelines:
 
 | Script | Purpose | BigQuery Target |
 |---|---|---|
-| `util_collect_fpd_v3.r` | Ingest raw partner data from many sheets (auto-discovered) | `landing.adif_fpd_data_ranged` |
+| `adif/util_collect_fpd_v2.r` | Ingest raw partner data from ADIF sheets (from Google Drive folder) | `landing.adif_fpd_data_ranged` |
+| `adif/util_collect_fpd_v3.r` | Ingest raw partner data from many sheets (from Google Drive Shortcuts folder) | `landing.fpd_data_ranged` |
 | `manually_updated_data_loader.r` | Process manually corrected/updated FPD figures from a single sheet | `landing.manually_updated_fpd_daily` |
 
 ## Quick Start

@@ -49,9 +49,14 @@ CREATE OR REPLACE VIEW `looker-studio-pro-452620.repo_stg.stg__adif__social_cros
 
 
 -- * SECTION [3]: FINAL OUTPUT
---   Emit ADIF social-only rows at original source grain.
+--   Emit account-scoped rows at original source grain with WP_ campaign guardrail.
   SELECT
     *
   FROM flagged_rows
-  WHERE is_adif
-    AND is_social;
+  WHERE TRIM(account_name) IN (
+    'ADIF USA',
+    'A Diamond is Forever - US',
+    'A Diamond is Forever',
+    'De Beers Group'
+  )
+    AND REGEXP_CONTAINS(IFNULL(campaign_name, ''), r'WP_');

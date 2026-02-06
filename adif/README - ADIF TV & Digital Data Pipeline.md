@@ -686,8 +686,12 @@ A lightweight staging layer is available to isolate ADIF social rows from the sh
 
 ### Inclusion Rules
 
-- Row text must contain `adif` in the normalized account/campaign/ad-group/ad name string.
-- Row text must contain `social` in the normalized account/campaign/ad-group/ad name string.
+- `account_name` must be one of:
+  - `ADIF USA`
+  - `A Diamond is Forever - US`
+  - `A Diamond is Forever`
+  - `De Beers Group`
+- `campaign_name` must contain literal `WP_`.
 
 ### Notes
 
