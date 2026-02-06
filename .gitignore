@@ -55,3 +55,4 @@ scrap/
 .aider*
 *.csv
 
+.DS_Store

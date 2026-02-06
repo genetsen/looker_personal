@@ -668,6 +668,35 @@ LIMIT 30
 
 ---
 
+## ADIF Social Layer (Cross-Platform Source)
+
+A lightweight staging layer is available to isolate ADIF social rows from the shared cross-platform delivery table.
+
+### Source
+
+`looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
+
+### Staging View Definition
+
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/stg__adif__social_crossplatform.sql`
+
+### Default Output View
+
+`looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
+
+### Inclusion Rules
+
+- Row text must contain `adif` in the normalized account/campaign/ad-group/ad name string.
+- Row text must contain `social` in the normalized account/campaign/ad-group/ad name string.
+
+### Notes
+
+- Preserves source grain (daily ad-level rows) and all source metrics.
+- Keeps lineage helpers (`layer_source_table`, `layer_row_key`) plus filter flags (`is_adif`, `is_social`).
+- Designed as a staging layer while the final mart/table target remains configurable.
+
+---
+
 ## Maintenance
 
 ### Daily Checks
