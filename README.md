@@ -21,6 +21,10 @@ SQL- and BigQuery-first analytics workspace for campaign reporting pipelines acr
 - Layer SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/stg__adif__social_crossplatform.sql`
 - Default output view: `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
 - Current inclusion logic: keep rows where `account_name` is one of `ADIF USA`, `A Diamond is Forever - US`, `A Diamond is Forever`, or `De Beers Group`, and `campaign_name` contains literal `WP_`
+- Social-layered ADIF table build SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql`
+- Scheduled-query payload SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql`
+- Social-layered table target: `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_with_social_tbl`
+- Base schema source for the layered table: `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
 
 ## Notes
 

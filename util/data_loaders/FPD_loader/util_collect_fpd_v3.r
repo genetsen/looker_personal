@@ -74,6 +74,12 @@ phase4_output <- file.path(output_dir, "phase4_normalization_mapping.csv")
 phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
 phase6_output <- file.path(output_dir, "phase6_cleaned_master_data.csv")
 phase7_output <- file.path(output_dir, "phase7_daily_master_data.csv")
+phase6_filter_audit_output <- file.path(output_dir, "phase6_filter_audit.csv")
+phase7_validation_output <- file.path(output_dir, "phase7_validation_table.csv")
+
+# Keep validation results available for final end-of-run reporting
+validation_table <- data.frame()
+validation_diff_cols <- character(0)
 
 ################################################################################
 #### PHASE 1: GOOGLE DRIVE DISCOVERY ####
@@ -822,11 +828,24 @@ cat("\n=== END PHASE 5 SUMMARY ===\n")
 cat("\n=== PHASE 6: CLEANING & DATE FINALIZATION ===\n")
 
 phase6_output <- file.path(output_dir, "phase6_cleaned_master_data.csv")
+phase6_filter_audit <- data.frame(
+  source_file = character(0),
+  filter_reason = character(0),
+  removed_rows = integer(0),
+  stringsAsFactors = FALSE
+)
 
 if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   cat("Loading saved Phase 6 output from:", phase6_output, "\n")
   phase6_df <- read_csv(phase6_output, show_col_types = FALSE)
   cat("✓ Loaded", nrow(phase6_df), "rows from saved Phase 6 file\n")
+
+  if (file.exists(phase6_filter_audit_output)) {
+    phase6_filter_audit <- read_csv(phase6_filter_audit_output, show_col_types = FALSE)
+    cat("✓ Loaded Phase 6 filter audit from:", phase6_filter_audit_output, "\n")
+  } else {
+    cat("  ⚠ Phase 6 filter audit not found at:", phase6_filter_audit_output, "\n")
+  }
 } else {
   # Read Phase 5 combined master
   if (!file.exists(phase5_output)) stop("Phase 5 output not found: ", phase5_output)
@@ -945,17 +964,55 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   cat("  Date source distribution (end_date_final):\n")
   print(table(phase6_df$end_date_source, useNA = "ifany"))
 
+  # Track removals by stable row id for filter-level audit reporting
+  phase6_df <- phase6_df %>% mutate(.phase6_row_id = row_number())
+  validate_kpis_for_audit <- setdiff(known_kpi_metrics, c("benchmark", "benchmark_metric"))
+  audit_metric_cols <- intersect(unique(c(validate_kpis_for_audit, "spend", "impressions", "clicks")), names(phase6_df))
+  filter_audit_entries <- list()
+
+  summarize_removed_rows <- function(before_df, after_df, reason_label, metric_cols) {
+    removed_ids <- setdiff(before_df$.phase6_row_id, after_df$.phase6_row_id)
+    if (length(removed_ids) == 0) return(data.frame())
+
+    removed_df <- before_df %>% filter(.phase6_row_id %in% removed_ids)
+    if (!"source_file" %in% names(removed_df)) removed_df$source_file <- NA_character_
+    removed_df <- removed_df %>% mutate(source_file = as.character(source_file))
+
+    if (length(metric_cols) > 0) {
+      removed_df %>%
+        group_by(source_file) %>%
+        summarise(
+          filter_reason = reason_label,
+          removed_rows = n(),
+          across(all_of(metric_cols), ~ sum(as.numeric(.x), na.rm = TRUE), .names = "removed_{.col}"),
+          .groups = "drop"
+        )
+    } else {
+      removed_df %>%
+        group_by(source_file) %>%
+        summarise(
+          filter_reason = reason_label,
+          removed_rows = n(),
+          .groups = "drop"
+        )
+    }
+  }
+
   # Filter 1: Remove rows where source_file contains "archive" (case-insensitive)
   if ("source_file" %in% names(phase6_df)) {
+    before_filter <- phase6_df
     rows_before <- nrow(phase6_df)
     phase6_df <- phase6_df %>%
       filter(!str_detect(source_file, "(?i)archive"))
+    filter_audit_entries[[length(filter_audit_entries) + 1]] <-
+      summarize_removed_rows(before_filter, phase6_df, "archive_source_file", audit_metric_cols)
     cat("  ✓ Removed", rows_before - nrow(phase6_df), "rows with 'archive' in source_file\n")
   }
 
   # Filter 2: Remove rows where sum of all numeric columns is NA, 0, or blank
-  numeric_cols <- names(phase6_df)[sapply(phase6_df, is.numeric)]
+  numeric_cols <- setdiff(names(phase6_df)[sapply(phase6_df, is.numeric)], ".phase6_row_id")
   if (length(numeric_cols) > 0) {
+    before_filter <- phase6_df
     rows_before <- nrow(phase6_df)
     phase6_df <- phase6_df %>%
       mutate(
@@ -963,16 +1020,42 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
       ) %>%
       filter(!(is.na(row_metric_sum) | row_metric_sum == 0)) %>%
       select(-row_metric_sum)
+    filter_audit_entries[[length(filter_audit_entries) + 1]] <-
+      summarize_removed_rows(before_filter, phase6_df, "numeric_row_metric_sum_zero_or_na", audit_metric_cols)
     cat("  ✓ Removed", rows_before - nrow(phase6_df), "rows where sum of numeric columns is NA or 0\n")
   }
 
   # Filter 3: Remove rows where package_name is NA
   if ("package_name" %in% names(phase6_df)) {
+    before_filter <- phase6_df
     rows_before <- nrow(phase6_df)
     phase6_df <- phase6_df %>%
       filter(!is.na(package_name) & package_name != "")
+    filter_audit_entries[[length(filter_audit_entries) + 1]] <-
+      summarize_removed_rows(before_filter, phase6_df, "missing_package_name", audit_metric_cols)
     cat("  ✓ Removed", rows_before - nrow(phase6_df), "rows where package_name is NA or blank\n")
   }
+
+  # Build and write filter-audit checkpoint
+  phase6_filter_audit <- bind_rows(filter_audit_entries)
+  if (nrow(phase6_filter_audit) > 0) {
+    phase6_filter_audit <- phase6_filter_audit %>%
+      mutate(source_file = as.character(source_file)) %>%
+      arrange(source_file, filter_reason)
+  } else {
+    phase6_filter_audit <- data.frame(
+      source_file = character(0),
+      filter_reason = character(0),
+      removed_rows = integer(0),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  write_csv(phase6_filter_audit, phase6_filter_audit_output)
+  cat("✓ Phase 6 filter audit saved to:", phase6_filter_audit_output, "\n")
+
+  # Remove internal tracking id before writing Phase 6 output
+  phase6_df <- phase6_df %>% select(-any_of(".phase6_row_id"))
 
   # Write Phase 6 checkpoint
   write_csv(phase6_df, phase6_output)
@@ -1213,66 +1296,160 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
     cat("  No missing week values to fill.\n")
   }
 
-  # --- Validation: compare per-sheet metric totals between Phase 5 and Phase 7 ---
-  # We validate only on additive KPI metrics to avoid false alarms from dimensions or non-additive fields.
-  cat("\nValidating KPI metric totals per sheet between Phase 5 and Phase 7...\n")
-  if (file.exists(phase5_output)) {
-    phase5_df <- read_csv(phase5_output, show_col_types = FALSE)
-
-    # KPI metrics to validate (exclude benchmarks; those are often non-additive / metadata)
-    validate_kpis <- setdiff(known_kpi_metrics, c("benchmark", "benchmark_metric"))
-    metrics <- intersect(validate_kpis, intersect(names(phase5_df), names(phase7_df)))
-
-    if (length(metrics) == 0) {
-      cat("  No KPI metrics detected for validation.\n")
-    } else {
-      cat("  KPI metrics validated:", paste(metrics, collapse = ", "), "\n")
-
-      s5 <- phase5_df %>%
-        mutate(source_file = as.character(source_file)) %>%
-        group_by(source_file) %>%
-        summarise(across(all_of(metrics), ~ sum(as.numeric(.x), na.rm = TRUE)), .groups = "drop")
-
-      s7 <- phase7_df %>%
-        mutate(source_file = as.character(source_file)) %>%
-        group_by(source_file) %>%
-        summarise(across(all_of(metrics), ~ sum(as.numeric(.x), na.rm = TRUE)), .groups = "drop")
-
-      comp <- full_join(s5, s7, by = "source_file", suffix = c(".p5", ".p7"))
-
-      # Compute differences for each metric (round before diffing to avoid floating point accumulation noise)
-      # Suggested rounding: 2 decimals is typical for currency; for simplicity we use 6 decimals for all.
-      round_digits <- 6
-      for (m in metrics) {
-        c_p5 <- paste0(m, ".p5")
-        c_p7 <- paste0(m, ".p7")
-        diff_col <- paste0(m, "_diff")
-        comp[[c_p5]][is.na(comp[[c_p5]])] <- 0
-        comp[[c_p7]][is.na(comp[[c_p7]])] <- 0
-        comp[[diff_col]] <- round(comp[[c_p7]], round_digits) - round(comp[[c_p5]], round_digits)
-      }
-
-      # Flag mismatches beyond a tiny tolerance
-      tol <- 1e-6
-      diff_cols <- grep("_diff$", names(comp), value = TRUE)
-      comp$mismatch_any <- apply(abs(comp[, diff_cols, drop = FALSE]), 1, function(x) any(x > tol, na.rm = TRUE))
-
-      mismatches <- comp %>% filter(mismatch_any)
-      if (nrow(mismatches) == 0) {
-        cat("  ✓ All per-sheet KPI metric totals match between Phase 5 and Phase 7 (within tolerance).\n")
-      } else {
-        cat("  ✗ Detected differences in per-sheet KPI totals for", nrow(mismatches), "sheets. Sample differences:\n")
-        print(head(mismatches[, c("source_file", diff_cols)], 20))
-      }
-    }
-  } else {
-    cat("  ⚠ Phase 5 checkpoint not found; skipping validation.\n")
-  }
-
-
   # Write Phase 7 checkpoint
   write_csv(phase7_df, phase7_output)
   cat("✓ Phase 7 checkpoint saved to:", phase7_output, "\n")
+}
+
+# Enforce integer output values for count metrics in final Phase 7 output.
+# This keeps downstream BigQuery typing stable for fields like `clicks`.
+integer_output_cols <- intersect(c("impressions", "clicks"), names(phase7_df))
+if (length(integer_output_cols) > 0) {
+  for (col_name in integer_output_cols) {
+    col_vals <- suppressWarnings(as.numeric(phase7_df[[col_name]]))
+    phase7_df[[col_name]] <- ifelse(is.na(col_vals), NA_real_, round(col_vals, 0))
+  }
+  write_csv(phase7_df, phase7_output)
+  cat("✓ Rounded final output columns to integers:", paste(integer_output_cols, collapse = ", "), "\n")
+}
+
+# --- Validation: compare per-sheet metric totals between Phase 5 and Phase 7 ---
+# Build full validation table and enrich with Phase 6 filter-reason audit.
+cat("\nBuilding KPI validation table between Phase 5 and Phase 7...\n")
+if (file.exists(phase5_output)) {
+  phase5_df <- read_csv(phase5_output, show_col_types = FALSE)
+
+  # KPI metrics to validate (exclude benchmarks; those are often non-additive / metadata)
+  validate_kpis <- setdiff(known_kpi_metrics, c("benchmark", "benchmark_metric"))
+  metrics <- intersect(validate_kpis, intersect(names(phase5_df), names(phase7_df)))
+
+  if (length(metrics) == 0) {
+    cat("  No KPI metrics detected for validation.\n")
+    validation_table <- data.frame(
+      source_file = character(0),
+      mismatch_any = logical(0),
+      filter_reason = character(0),
+      stringsAsFactors = FALSE
+    )
+    validation_diff_cols <- character(0)
+    write_csv(validation_table, phase7_validation_output)
+    cat("  ✓ Validation table saved to:", phase7_validation_output, "\n")
+  } else {
+    cat("  KPI metrics validated:", paste(metrics, collapse = ", "), "\n")
+
+    s5 <- phase5_df %>%
+      mutate(source_file = as.character(source_file)) %>%
+      group_by(source_file) %>%
+      summarise(across(all_of(metrics), ~ sum(as.numeric(.x), na.rm = TRUE)), .groups = "drop")
+
+    s7 <- phase7_df %>%
+      mutate(source_file = as.character(source_file)) %>%
+      group_by(source_file) %>%
+      summarise(across(all_of(metrics), ~ sum(as.numeric(.x), na.rm = TRUE)), .groups = "drop")
+
+    comp <- full_join(s5, s7, by = "source_file", suffix = c(".p5", ".p7"))
+
+    # Compute differences for each metric (round before diffing to avoid floating point accumulation noise)
+    # Suggested rounding: 2 decimals is typical for currency; for simplicity we use 6 decimals for all.
+    round_digits <- 6
+    for (m in metrics) {
+      c_p5 <- paste0(m, ".p5")
+      c_p7 <- paste0(m, ".p7")
+      diff_col <- paste0(m, "_diff")
+      comp[[c_p5]][is.na(comp[[c_p5]])] <- 0
+      comp[[c_p7]][is.na(comp[[c_p7]])] <- 0
+      comp[[diff_col]] <- round(comp[[c_p7]], round_digits) - round(comp[[c_p5]], round_digits)
+    }
+
+    # Flag mismatches beyond a tiny tolerance
+    tol <- 1e-6
+    diff_cols <- grep("_diff$", names(comp), value = TRUE)
+    comp$mismatch_any <- apply(abs(comp[, diff_cols, drop = FALSE]), 1, function(x) any(x > tol, na.rm = TRUE))
+
+    # Load Phase 6 filter-audit checkpoint if needed and build aggregated reason text
+    if ((!exists("phase6_filter_audit") || !is.data.frame(phase6_filter_audit) || nrow(phase6_filter_audit) == 0) &&
+        file.exists(phase6_filter_audit_output)) {
+      phase6_filter_audit <- read_csv(phase6_filter_audit_output, show_col_types = FALSE)
+    }
+
+    reason_summary <- data.frame(
+      source_file = character(0),
+      filter_reason = character(0),
+      stringsAsFactors = FALSE
+    )
+
+    if (exists("phase6_filter_audit") && is.data.frame(phase6_filter_audit) && nrow(phase6_filter_audit) > 0) {
+      audit_df <- phase6_filter_audit
+      if (!"source_file" %in% names(audit_df)) audit_df$source_file <- NA_character_
+      if (!"filter_reason" %in% names(audit_df)) audit_df$filter_reason <- NA_character_
+      if (!"removed_rows" %in% names(audit_df)) audit_df$removed_rows <- NA_integer_
+      removed_metric_cols <- grep("^removed_", names(audit_df), value = TRUE)
+
+      format_reason_detail <- function(df_row) {
+        reason_label <- as.character(df_row[["filter_reason"]])
+        if (is.na(reason_label) || reason_label == "") reason_label <- "unknown_filter"
+
+        detail_parts <- c()
+        rows_removed <- suppressWarnings(as.numeric(df_row[["removed_rows"]]))
+        if (!is.na(rows_removed)) detail_parts <- c(detail_parts, paste0("rows=", as.integer(rows_removed)))
+
+        if (length(removed_metric_cols) > 0) {
+          for (metric_col in removed_metric_cols) {
+            val <- suppressWarnings(as.numeric(df_row[[metric_col]]))
+            if (is.na(val) || abs(val) <= 1e-12) next
+            metric_name <- sub("^removed_", "", metric_col)
+            val_chr <- if (metric_name == "spend") {
+              format(round(val, 2), nsmall = 2, trim = TRUE, scientific = FALSE)
+            } else {
+              format(round(val, 6), trim = TRUE, scientific = FALSE)
+            }
+            detail_parts <- c(detail_parts, paste0(metric_name, "=", val_chr))
+          }
+        }
+
+        if (length(detail_parts) == 0) {
+          reason_label
+        } else {
+          paste0(reason_label, "(", paste(detail_parts, collapse = ", "), ")")
+        }
+      }
+
+      audit_df$reason_detail <- vapply(
+        seq_len(nrow(audit_df)),
+        function(i) format_reason_detail(audit_df[i, , drop = FALSE]),
+        FUN.VALUE = character(1)
+      )
+
+      reason_summary <- audit_df %>%
+        mutate(source_file = as.character(source_file)) %>%
+        arrange(source_file, filter_reason) %>%
+        group_by(source_file) %>%
+        summarise(
+          filter_reason = paste(reason_detail, collapse = "; "),
+          .groups = "drop"
+        )
+    }
+
+    validation_table <- comp %>%
+      left_join(reason_summary, by = "source_file") %>%
+      mutate(filter_reason = if_else(is.na(filter_reason), "", filter_reason)) %>%
+      arrange(source_file)
+
+    validation_diff_cols <- diff_cols
+    write_csv(validation_table, phase7_validation_output)
+    cat("  ✓ Validation table saved to:", phase7_validation_output, "\n")
+  }
+} else {
+  cat("  ⚠ Phase 5 checkpoint not found; skipping validation table build.\n")
+  validation_table <- data.frame(
+    source_file = character(0),
+    mismatch_any = logical(0),
+    filter_reason = character(0),
+    stringsAsFactors = FALSE
+  )
+  validation_diff_cols <- character(0)
+  write_csv(validation_table, phase7_validation_output)
+  cat("  ✓ Empty validation table saved to:", phase7_validation_output, "\n")
 }
 
 cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, "\n")
@@ -1327,6 +1504,28 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
   write_to_bq(phase7_df, "landing", "fpd_data_ranged")
 
   cat("\n-----------\n-----------\n First party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
+
+  cat("\n=== FINAL VALIDATION SUMMARY (PHASE 5 vs PHASE 7) ===\n")
+  if (exists("validation_table") && is.data.frame(validation_table)) {
+    if (nrow(validation_table) == 0) {
+      cat("No validation rows available (validation table is empty).\n")
+    } else {
+      final_mismatches <- validation_table %>% filter(mismatch_any)
+      show_cols <- unique(c("source_file", validation_diff_cols, "filter_reason"))
+      show_cols <- show_cols[show_cols %in% names(validation_table)]
+
+      if (nrow(final_mismatches) == 0) {
+        cat("✓ All per-sheet KPI metric totals match between Phase 5 and Phase 7 (within tolerance).\n")
+      } else {
+        cat("✗ Detected differences in per-sheet KPI totals for", nrow(final_mismatches), "sheets.\n")
+        print(final_mismatches[, show_cols, drop = FALSE])
+      }
+    }
+
+    cat("Validation table saved to:", phase7_validation_output, "\n")
+  } else {
+    cat("⚠ Validation table not generated.\n")
+  }
 
 
 # --- OPTIONAL: Run post-processing script ---

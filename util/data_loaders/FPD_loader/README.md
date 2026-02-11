@@ -197,8 +197,37 @@ All checkpoint CSVs are written to `output/`.
 - `date_final` — the specific date this row represents
 - `data_update_datetime` — timestamp of when this pipeline run was executed
 - All KPI metric columns now contain **daily values** (original value / number of days in range)
+- `impressions` and `clicks` are rounded to whole-number integers in final output files
 
-**How to use**: This is what gets uploaded to BigQuery. You can query by `date_final` for time-series analysis without worrying about mixed granularity. Cross-reference metric totals with Phase 5 — they should match (the pipeline validates this and prints mismatches).
+**How to use**: This is what gets uploaded to BigQuery. You can query by `date_final` for time-series analysis without worrying about mixed granularity. Cross-reference metric totals with Phase 5 via `phase7_validation_table.csv` to see any differences and the associated Phase 6 filter reasons.
+
+---
+
+### `phase6_filter_audit.csv`
+
+**Purpose**: Filter-level audit from Phase 6 showing which rows were removed by each filter rule and the metric impact of those removals.
+
+**Key columns**:
+- `source_file` — partner sheet name
+- `filter_reason` — filter code (`archive_source_file`, `numeric_row_metric_sum_zero_or_na`, `missing_package_name`)
+- `removed_rows` — number of rows removed by that filter for that source
+- `removed_spend`, `removed_impressions`, `removed_clicks`, etc. — summed KPI impact for removed rows
+
+**How to use**: Use this file to explain why per-sheet totals can differ between Phase 5 and Phase 7. This is the source used to populate the `filter_reason` column in `phase7_validation_table.csv`.
+
+---
+
+### `phase7_validation_table.csv`
+
+**Purpose**: Per-sheet validation table comparing KPI totals between Phase 5 and Phase 7.
+
+**Key columns**:
+- `source_file`
+- `*_diff` columns (e.g., `spend_diff`, `impressions_diff`, `clicks_diff`)
+- `mismatch_any` — whether any KPI diff exceeds tolerance
+- `filter_reason` — aggregated reason text derived from `phase6_filter_audit.csv` (for example: `missing_package_name(rows=99, impressions=7280286)`)
+
+**How to use**: This is the primary reconciliation output. It is saved to `output/` and printed at the end of the pipeline run so the mismatch table appears after upload/completion logs.
 
 ## Running Individual Phases
 
@@ -342,6 +371,10 @@ googlesheets4::gs4_deauth()
 
 **Cause**: Rows were filtered out in Phase 6 (archive, zero-metric, or missing package_name) that were included in Phase 5.
 
+**Where to debug quickly**:
+- `output/phase7_validation_table.csv` — shows per-sheet diffs and `filter_reason`
+- `output/phase6_filter_audit.csv` — shows row/metric impact per filter reason
+
 **Fix**: This is expected when Phase 6 filters remove rows. The validation compares Phase 5 (pre-filter) with Phase 7 (post-filter). To verify the totals are correct, compare Phase 6 totals with Phase 7 instead:
 ```r
 phase6 <- readr::read_csv("output/phase6_cleaned_master_data.csv")
@@ -385,3 +418,4 @@ sum(phase7$spend, na.rm = TRUE)
 - **Weighted daily expansion** — Phase 7 divides metrics evenly across days. Some metrics (e.g., TV ad spend) may follow day-of-week patterns. A weighted split (heavier on weekdays, lighter on weekends) could improve accuracy.
 - **Unit tests** — no test suite exists. Key functions to test: date parsing (`parse_any_date`), column normalization (Phase 4 rules), and daily expansion math (Phase 7).
 - **Config file** — move `known_kpi_metrics`, `gdrive_folder_id`, and other settings to a YAML or JSON config file so the script doesn't need to be edited directly.
+- **TODO: Create a Codex skill for input standardization** — package the Excel-to-standard-input conversion workflow (header detection, weekly row extraction, canonical column mapping, and output validation) into a reusable skill for manual partner report ingestion.
