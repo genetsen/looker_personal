@@ -81,3 +81,74 @@ git rev-list --left-right --count refs/heads/dev...refs/remotes/Omni_remote/dev
 Expected validation result after rollback:
 - The three SHAs are identical for `dev`, `Omni_remote/dev`, and `backup/dev-before-adif-cutover-2026-02-13`.
 - Ahead/behind count is `0 0`.
+
+## Git Beginner Cheat Sheet (Daily Safe Use)
+
+Run all commands from:
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal`
+
+### 1) Start of day checks
+
+```bash
+git status --short --branch
+git branch --list
+```
+
+### 2) Sync branch safely
+
+```bash
+git fetch --all --prune
+git checkout dev
+git pull --ff-only Omni_remote dev
+```
+
+### 3) Create a small work branch
+
+```bash
+git checkout -b work/<short-topic>
+```
+
+### 4) Save your changes
+
+```bash
+git add -A
+git commit -m "short clear message"
+```
+
+### 5) Push your branch
+
+```bash
+git push -u Omni_remote HEAD
+```
+
+### 6) Return to stable branch
+
+```bash
+git checkout dev
+git pull --ff-only Omni_remote dev
+```
+
+### 7) If you are blocked by local files
+
+```bash
+git stash push --all -m "temp-save"
+git stash list | head -n 5
+git stash pop stash@{0}
+```
+
+### 8) Emergency rollback pattern
+
+```bash
+git checkout dev
+git branch backup/dev-before-risk-$(date +%Y-%m-%d)
+# perform risky step
+# if needed to roll back:
+git reset --hard backup/dev-before-risk-$(date +%Y-%m-%d)
+git push --force-with-lease Omni_remote dev:dev
+```
+
+### 9) Things to avoid
+
+- Do not use `git reset --hard` unless you made a backup branch first.
+- Do not delete branches until you confirm they are contained by another branch.
+- Do not initialize `.git` inside snapshot/history folders.

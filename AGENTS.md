@@ -97,3 +97,4 @@ Applies to all SQL QA work in this workspace across all datasets/projects.
 
 - Rebuild the Basis UTM pipeline end-to-end with one canonical runbook that starts from trafficking-sheet ingestion and ends at `looker-studio-pro-452620.mass_mutual_mft_ext.mft_data`.
 - Clean up confusing remnant Basis UTM assets across local folders and BigQuery (especially `landing`, `repo_stg`, and `utm_scrap`) by defining source-of-truth tables/views and archiving or deleting superseded scripts/tables.
+- Practice the daily Git beginner drill from `README.md` at 5:00 PM local time and track confidence improvements week over week.

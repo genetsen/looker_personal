@@ -16,6 +16,26 @@ All notable changes to this repository are documented in this file.
 
   </details>
 
+- **Git Beginner Daily Cheat Sheet**
+  What: Added a step-by-step Git beginner section to the root README with safe daily commands for status checks, sync, branch creation, commit/push, stash recovery, and rollback.
+  Why: Reduces operator anxiety and makes common Git tasks repeatable with a low-risk workflow.
+  <details><summary>Paths — Git Beginner Daily Cheat Sheet</summary>
+
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Git Practice TODO Tracking**
+  What: Added a recurring practice TODO in the project backlog to reinforce the new Git beginner drill workflow.
+  Why: Keeps skill-building visible in day-to-day priorities and supports consistent repetition.
+  <details><summary>Paths — Git Practice TODO Tracking</summary>
+
+  [AGENTS.md](AGENTS.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-02-12
 
 ### Added
