@@ -2,6 +2,20 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-02-13
+
+### Changed
+
+- **Dev Cutover Restore Runbook**
+  What: Added explicit rollback and restore instructions to the root README for the ADIF-to-dev cutover, including stash recovery, backup-branch reset, remote rollback push, and verification checks.
+  Why: Makes recovery steps repeatable and reduces risk during branch cutovers used by external workspace integrations.
+  <details><summary>Paths — Dev Cutover Restore Runbook</summary>
+
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-02-12
 
 ### Added

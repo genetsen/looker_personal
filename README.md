@@ -32,3 +32,52 @@ SQL- and BigQuery-first analytics workspace for campaign reporting pipelines acr
 - The ADIF social layer keeps original grain (daily ad-level rows) and all source metrics.
 - If you want a mart/table target, materialize from the staging view to your selected dataset.
 - SQL QA guardrail: validate in isolated `_qa` objects first, share proof results, and only then apply live SQL patches after explicit approval.
+
+## Restore Instructions (Dev Cutover)
+
+If you need to restore after the ADIF-to-dev cutover, use the commands below from:
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal`
+
+### 1) Confirm current references
+
+```bash
+git show-ref | rg 'refs/heads/dev$|refs/heads/ADIF$|refs/remotes/Omni_remote/dev$|backup/dev-before-adif-cutover-2026-02-13$'
+```
+
+### 2) Restore local uncommitted work from the safety stash
+
+```bash
+git stash list | head -n 5
+git stash pop stash@{0}
+```
+
+If you want to keep the stash entry after applying files, use:
+
+```bash
+git stash apply stash@{0}
+```
+
+### 3) Roll back `dev` to the pre-cutover backup branch (local only)
+
+```bash
+git checkout dev
+git reset --hard backup/dev-before-adif-cutover-2026-02-13
+```
+
+### 4) Roll back `dev` on the remote used by BigQuery Repositories
+
+```bash
+git push --force-with-lease Omni_remote dev:dev
+```
+
+### 5) Validate rollback state
+
+```bash
+git fetch Omni_remote
+git rev-parse --short=12 refs/heads/dev refs/remotes/Omni_remote/dev refs/heads/backup/dev-before-adif-cutover-2026-02-13
+git rev-list --left-right --count refs/heads/dev...refs/remotes/Omni_remote/dev
+```
+
+Expected validation result after rollback:
+- The three SHAs are identical for `dev`, `Omni_remote/dev`, and `backup/dev-before-adif-cutover-2026-02-13`.
+- Ahead/behind count is `0 0`.
