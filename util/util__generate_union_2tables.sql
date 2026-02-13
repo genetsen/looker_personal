@@ -13,8 +13,9 @@
 BEGIN
 
 -- Step 1: Declare table inputs
-DECLARE dataset_a STRING DEFAULT 'giant-spoon-299605.data_model_2025' ;
-DECLARE table_a STRING DEFAULT 'new_md';
+
+DECLARE dataset_a STRING DEFAULT 'looker-studio-pro-452620.DCM' ;
+DECLARE table_a STRING DEFAULT '20250505_costModel_v5';
 
 DECLARE dataset_b STRING DEFAULT 'looker-studio-pro-452620.landing';
 DECLARE table_b STRING DEFAULT 'adif_fpd_data';
