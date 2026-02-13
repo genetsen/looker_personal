@@ -32,10 +32,10 @@ The Basis component's core responsibilities include:
 
 The following files within the [sql/base/basis](sql/base/basis) directory define the functionality of the Basis component:
 
-*   **[stg__basis__utms.sql](sql/base/basis/stg__basis__utms.sql)**: This file is likely responsible for the initial staging of raw UTM data. It performs transformations and cleaning to prepare UTM information for further processing.
+*   **[stg__basis__utms.sql](util/basis_utms/essential/stg__basis__utms.sql)**: This file is likely responsible for the initial staging of raw UTM data. It performs transformations and cleaning to prepare UTM information for further processing.
 *   **[stg__basis__delivery.sql](sql/base/basis/stg__basis__delivery.sql)**: This script handles the staging of delivery-related data. It prepares raw delivery metrics or logs for integration.
 *   **[stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql)**: This file suggests a second stage of processing, potentially joining or enriching the staged delivery data with the processed UTM information. This indicates a key integration point within the Basis component itself.
-*   **[load_basis_utms_union.sql](sql/base/basis/load_basis_utms_union.sql)**: This script is responsible for unioning various UTM-related datasets, consolidating them into a unified structure. This is crucial for comprehensive UTM analysis.
+*   **[load_basis_utms_union.sql](util/basis_utms/essential/load_basis_utms_union.sql)**: This script is responsible for unioning various UTM-related datasets, consolidating them into a unified structure. This is crucial for comprehensive UTM analysis.
 *   **[load__basis_gsheet_to_master2.sql](sql/base/basis/load__basis_gsheet_to_master2.sql)**: This file indicates a process for loading data, possibly from a Google Sheet source, into a master table. This suggests that external data sources are integrated into the Basis component's data flow.
 *   **[test__basis__duplicateDetector.r](sql/base/basis/test__basis__duplicateDetector.r)**: This R script is a data quality utility. Its presence indicates that the Basis component has built-in mechanisms for identifying and potentially handling duplicate records, which is critical for data integrity.
 *   **[utms_util/](sql/base/basis/utms_util/)**: This directory likely contains utility scripts or functions specifically designed to assist with UTM processing, such as parsing, normalization, or validation of UTM parameters.
@@ -177,9 +177,9 @@ The internal parts are individual SQL files, each responsible for a specific sta
 
 *   **Basis Staging ([sql/base/basis/](sql/base/basis/))**:
     *   **[load__basis_gsheet_to_master2.sql](sql/base/basis/load__basis_gsheet_to_master2.sql)**: Likely loads data from a basis Google Sheet into a master table.
-    *   **[load_basis_utms_union.sql](sql/base/basis/load_basis_utms_union.sql)**: Unions UTM data related to basis.
+    *   **[load_basis_utms_union.sql](util/basis_utms/essential/load_basis_utms_union.sql)**: Unions UTM data related to basis.
     *   **[stg__basis__delivery.sql](sql/base/basis/stg__basis__delivery.sql)**: Staging script for basis delivery data.
-    *   **[stg__basis__utms.sql](sql/base/basis/stg__basis__utms.sql)**: Staging script for basis UTM data.
+    *   **[stg__basis__utms.sql](util/basis_utms/essential/stg__basis__utms.sql)**: Staging script for basis UTM data.
     *   **[stg2__basis__plus_utms.sql](sql/base/basis/stg2__basis__plus_utms.sql)**: A second-stage staging script for basis data combined with UTMs.
 *   **DCM Staging ([sql/base/dcm/](sql/base/dcm/))**:
     *   **[20250505_costModel_v5.sql](sql/base/dcm/20250505_costModel_v5.sql)**: A versioned SQL script for a DCM cost model.
@@ -198,4 +198,3 @@ The internal parts are individual SQL files, each responsible for a specific sta
 
 ### External Relationships
 The output of these staging scripts (the created staging tables) serves as the primary input for downstream data marts and analytical models, such as those found in the `sql/marts/` directory. They transform the raw data from the **BigQuery Data Models** into a more usable format.
-

@@ -8,6 +8,7 @@ SQL- and BigQuery-first analytics workspace for campaign reporting pipelines acr
 - ADIF updated FPD integration (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`)
 - Olipop cross-platform delivery + video joins (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/marts/olipop`)
 - MFT export and mart views (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`)
+- Basis UTM processing utilities (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms`) with active scripts in `essential/` and legacy assets in `archive/`
 
 ## Cross-Brand Data Flow Diagram (Ingestion -> BigQuery -> dbt -> Dashboards)
 
@@ -30,3 +31,4 @@ SQL- and BigQuery-first analytics workspace for campaign reporting pipelines acr
 
 - The ADIF social layer keeps original grain (daily ad-level rows) and all source metrics.
 - If you want a mart/table target, materialize from the staging view to your selected dataset.
+- SQL QA guardrail: validate in isolated `_qa` objects first, share proof results, and only then apply live SQL patches after explicit approval.

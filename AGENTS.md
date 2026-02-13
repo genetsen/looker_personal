@@ -84,3 +84,16 @@ ORDER BY creation_time DESC
 Primary docs: `mft/README.md` (pipeline overview and SQL references).
 
 TODO: Confirm if there is a preferred local entrypoint or run command for MFT beyond the SQL views documented in `mft/README.md`.
+
+## SQL QA Safety Protocol (Systemwide)
+
+Applies to all SQL QA work in this workspace across all datasets/projects.
+
+1. Run QA in isolated `_qa` tables/views only.
+2. Provide proof before live changes (for example: query results, row counts, schema compatibility checks, and error diffs).
+3. Do not patch live scripts/configs/tables until explicit user approval after proof review.
+
+## TODO Backlog
+
+- Rebuild the Basis UTM pipeline end-to-end with one canonical runbook that starts from trafficking-sheet ingestion and ends at `looker-studio-pro-452620.mass_mutual_mft_ext.mft_data`.
+- Clean up confusing remnant Basis UTM assets across local folders and BigQuery (especially `landing`, `repo_stg`, and `utm_scrap`) by defining source-of-truth tables/views and archiving or deleting superseded scripts/tables.
