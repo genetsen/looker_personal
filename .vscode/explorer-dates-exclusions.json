@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "updatedAt": "2026-02-17T20:41:33.738Z",
+  "exclusions": [
+    ".git",
+    "logs",
+    ".vscode"
+  ]
+}
