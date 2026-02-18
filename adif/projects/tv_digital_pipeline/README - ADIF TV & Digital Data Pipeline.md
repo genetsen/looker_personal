@@ -31,9 +31,23 @@ Complete documentation of the ADIF (Advertising Intelligence & Forecasting) data
                    └─────────────────────────────┘
 ```
 
+## Lineage Segment to Final Social-Augmented Output
+
+This sub-project owns the digital core branch and hands off to the updated-FPD + social append assembly that writes the final `stg` output table.
+
+```mermaid
+flowchart LR
+  dcm["looker-studio-pro-452620.DCM.20250505_costModel_v5"] --> core_base["repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test"]
+  fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"] --> core_base
+  prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
+  core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
+  upd_view --> final_tbl["stg.adif__prisma_expanded_plus_dcm_with_social_tbl"]
+```
+
 ## Table of Contents
 
 - [Data Sources](#data-sources)
+- [Lineage Segment to Final Social-Augmented Output](#lineage-segment-to-final-social-augmented-output)
 - [Staging Layer](#staging-layer)
 - [Mart Layer](#mart-layer)
 - [Data Ingestion Scripts](#data-ingestion-scripts)
@@ -154,6 +168,7 @@ CASE
   ELSE package_id
 END AS package_id
 ```
+
 - Aggregates daily delivery metrics
 - Prefixes columns with `d_` (e.g., `d_daily_recalculated_cost`, `d_impressions`)
 - Groups by: `package_id`, `flight_status_flag`, `DATE(date)`
@@ -352,7 +367,7 @@ FROM (
 
 ### 1. `util_collect_fpd_v2.r`
 
-**Location**: `adif/util_collect_fpd_v2.r`
+**Location**: `adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r`
 **Purpose**: Ingests First-Party Data from Google Sheets
 
 #### Configuration
@@ -678,7 +693,7 @@ A lightweight staging layer is available to isolate ADIF social rows from the sh
 
 ### Staging View Definition
 
-`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/stg__adif__social_crossplatform.sql`
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/sql/stg__adif__social_crossplatform.sql`
 
 ### Default Output View
 

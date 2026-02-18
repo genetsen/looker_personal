@@ -4,7 +4,51 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-02-13
 
+### Added
+
+- **Subrepo AGENTS Starter Template**
+  What: Added a reusable template for project-level `AGENTS.md` files to support consistent instructions in nested project repos.
+  Why: Standardizes how project-specific agent rules are documented while keeping monorepo and subrepo responsibilities clear.
+  <details><summary>Paths — Subrepo AGENTS Starter Template</summary>
+
+  [docs/SUBREPO_AGENTS_TEMPLATE.md](docs/SUBREPO_AGENTS_TEMPLATE.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ### Changed
+
+- **Monorepo and Subrepo Boundary Model**
+  What: Added explicit monorepo/subrepo structure guidance in the root README, including ownership rules and where to keep shared vs project-specific assets.
+  Why: Reduces structural ambiguity and supports separate instruction files per project section.
+  <details><summary>Paths — Monorepo and Subrepo Boundary Model</summary>
+
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Dual AGENTS Reference Policy**
+  What: Updated root and subrepo instruction docs to require that each subrepo `AGENTS.md` references both the monorepo `AGENTS.md` and its own local `AGENTS.md`.
+  Why: Ensures consistent global guidance while preserving project-specific instruction behavior in each subrepo.
+  <details><summary>Paths — Dual AGENTS Reference Policy</summary>
+
+  [README.md](README.md)
+  [docs/SUBREPO_AGENTS_TEMPLATE.md](docs/SUBREPO_AGENTS_TEMPLATE.md)
+  [mft/AGENTS.md](mft/AGENTS.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Single-Repo Default Policy**
+  What: Updated the root README to make a single repo with folders the default long-term structure, with subrepos treated as exceptions only when strict criteria are met.
+  Why: Reduces Git complexity and lowers operational risk for day-to-day maintenance.
+  <details><summary>Paths — Single-Repo Default Policy</summary>
+
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
 
 - **Dev Cutover Restore Runbook**
   What: Added explicit rollback and restore instructions to the root README for the ADIF-to-dev cutover, including stash recovery, backup-branch reset, remote rollback push, and verification checks.
@@ -32,6 +76,16 @@ All notable changes to this repository are documented in this file.
   <details><summary>Paths — Git Practice TODO Tracking</summary>
 
   [AGENTS.md](AGENTS.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Deferred Main/Dev Trial Alignment Task**
+  What: Added a deferred task in the root README to run a non-destructive trial branch alignment and smoke-test checklist before simplifying `main` and `dev`.
+  Why: Reduces risk of delayed breakage by requiring validation before promoting branch-history changes.
+  <details><summary>Paths — Deferred Main/Dev Trial Alignment Task</summary>
+
+  [README.md](README.md)
   [CHANGELOG.md](CHANGELOG.md)
 
   </details>

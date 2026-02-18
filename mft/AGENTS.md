@@ -1,5 +1,14 @@
 # MFT Agent Rules
 
+## Instruction Sources
+
+- Monorepo rules file:
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/AGENTS.md`
+- Local subrepo rules file:
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/AGENTS.md`
+- Working rule:
+  - Apply monorepo rules first, then apply MFT local rules for project-specific behavior.
+
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

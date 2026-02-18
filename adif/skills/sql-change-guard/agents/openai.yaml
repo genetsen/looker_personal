@@ -1,0 +1,4 @@
+interface:
+  display_name: "SQL Change Guard"
+  short_description: "Validate SQL changes against raw data and downstream contracts"
+  default_prompt: "Validate this SQL change with baseline-vs-candidate comparisons, custom checks, and staged pass/fail output."

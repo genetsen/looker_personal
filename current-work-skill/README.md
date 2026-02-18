@@ -25,6 +25,7 @@ Project location:
 - Clickable absolute paths in path and open-file sections.
 - Table names in collapsible sections.
 - Basic footnotes for terms that may be unfamiliar.
+- Compact snapshot provenance with skill name/path and automation name/id.
 
 ## Run (sample limited to 2 directories)
 
@@ -33,7 +34,11 @@ python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill
   --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \
   --scan-dirs mft,util \
   --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \
-  --global-out /Users/eugenetsenter/.codex/current-work.md \
+  --global-out "/Users/eugenetsenter/Library/Mobile Documents/iCloud~md~obsidian/Documents/2026-ob-vault/2026-ob-vault/current-work.md" \
+  --skill-name current-work \
+  --skill-path /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/SKILL.md \
+  --automation-name "Daily Current Work" \
+  --automation-id current-work-skill \
   --project-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md \
   --run-dir /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scrap/retry-original-20260213-194905/rerun-best-v4
 ```
@@ -51,6 +56,6 @@ python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill
 - Workspace-level resume file:
   - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md`
 - Global resume file:
-  - `/Users/eugenetsenter/.codex/current-work.md`
+  - `/Users/eugenetsenter/Library/Mobile Documents/iCloud~md~obsidian/Documents/2026-ob-vault/2026-ob-vault/current-work.md`
 - PKM capture note (non-interactive):
   - `/Users/eugenetsenter/Library/Mobile Documents/iCloud~md~obsidian/Documents/2026-ob-vault/2026-ob-vault/00 Inbox/2026-02-12 Current Work Snapshot - looker_personal.md`

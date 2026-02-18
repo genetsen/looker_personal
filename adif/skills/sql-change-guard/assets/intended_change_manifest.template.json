@@ -1,0 +1,121 @@
+{
+  "keys": [
+    "date",
+    "platform",
+    "campaign",
+    "package",
+    "placement"
+  ],
+  "metrics": [
+    "spend",
+    "impressions",
+    "clicks"
+  ],
+  "derived_metrics": [
+    {
+      "name": "ctr",
+      "expr": "SAFE_DIVIDE(SUM(clicks), NULLIF(SUM(impressions), 0))"
+    },
+    {
+      "name": "cpm",
+      "expr": "SAFE_DIVIDE(SUM(spend) * 1000, NULLIF(SUM(impressions), 0))"
+    }
+  ],
+  "comparison_dimensions": [
+    "campaign",
+    "package",
+    "placement"
+  ],
+  "high_risk_metrics": [
+    "spend",
+    "impressions",
+    "clicks",
+    "ctr",
+    "cpm"
+  ],
+  "high_risk_dimensions": [
+    "platform",
+    "campaign",
+    "package",
+    "placement"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0.0
+    },
+    "spend": {
+      "max_abs_pct": 0.001
+    },
+    "impressions": {
+      "max_abs_pct": 0.001
+    },
+    "clicks": {
+      "max_abs_pct": 0.005
+    },
+    "ctr": {
+      "max_abs_pct": 0.01
+    },
+    "cpm": {
+      "max_abs_pct": 0.01
+    },
+    "distinct_campaign": {
+      "max_abs_delta": 0
+    },
+    "distinct_package": {
+      "max_abs_delta": 0
+    },
+    "distinct_placement": {
+      "max_abs_delta": 0
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 0,
+    "max_candidate_only": 0
+  },
+  "custom_checks": [
+    {
+      "name": "candidate_null_rate_package",
+      "severity": "high",
+      "scope": "candidate",
+      "sql": "SELECT SAFE_DIVIDE(COUNTIF(package IS NULL), COUNT(*)) AS value FROM {table}",
+      "expected_max": 0.01
+    },
+    {
+      "name": "facebook_spend_delta",
+      "severity": "critical",
+      "compare_to_baseline": true,
+      "sql": "SELECT SUM(spend) AS value FROM {table} WHERE LOWER(platform) = 'facebook'",
+      "max_abs_pct": 0.02
+    },
+    {
+      "name": "minimum_campaign_count",
+      "severity": "high",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(DISTINCT campaign) AS value FROM {table} WHERE campaign IS NOT NULL",
+      "expectation": {
+        "op": ">=",
+        "value": 1
+      }
+    }
+  ],
+  "downstream_objects": [
+    "looker-studio-pro-452620.stg.adif__prisma_expanded_plus_dcm_with_social_tbl"
+  ],
+  "downstream_checks": [
+    {
+      "name": "consumer_query_shape",
+      "severity": "critical",
+      "mode": "rowset",
+      "sql_file": "path/to/downstream_query.sql",
+      "max_row_count_delta": 0
+    },
+    {
+      "name": "consumer_spend_parity",
+      "severity": "critical",
+      "mode": "scalar",
+      "sql": "SELECT SUM(spend) AS value FROM {table}",
+      "max_abs_pct": 0.001
+    }
+  ]
+}

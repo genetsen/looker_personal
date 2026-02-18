@@ -1,3 +1,40 @@
+## 2026-02-18
+
+### Added
+- **Explicit snapshot provenance in each entry**
+  What: added per-entry source lines that explicitly state the Codex skill and automation source.
+  Why: make daily snapshots auditable and unambiguous about origin.
+  <details><summary>Paths — Explicit snapshot provenance in each entry</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+
+  </details>
+
+### Changed
+- **Snapshot source block in workspace/global outputs**
+  What: added a top-level `Snapshot Source` block to generated workspace/global docs and included matching metadata in run artifacts.
+  Why: keep report-level provenance visible without opening metadata files.
+  <details><summary>Paths — Snapshot source block in workspace/global outputs</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+
+  </details>
+
+- **Global output destination for vault root**
+  What: updated run documentation to use the Obsidian vault root current-work file as the global destination.
+  Why: align default operator workflow with the requested daily target location.
+  <details><summary>Paths — Global output destination for vault root</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/README.md)
+
+  </details>
+
+### Fixed
+- **Redundant provenance fields in snapshot output**
+  Issue: visible snapshot output repeated source metadata and included thread identifiers that added clutter.
+  Cause: provenance renderer and entry-source formatter carried full thread metadata into all sections.
+  Resolution: reduced rendered provenance to compact skill + automation fields and removed thread details from visible output.
+
 ## 2026-02-13
 
 ### Added

@@ -69,6 +69,20 @@ This document describes the integration of **updated first-party data (FPD)** fr
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+### Lineage Segment to Final Output
+
+This sub-project owns the updated-FPD branch that feeds the final social-augmented output table.
+
+```mermaid
+flowchart LR
+  dcm["looker-studio-pro-452620.DCM.20250505_costModel_v5"] --> core_base["repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test"]
+  fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"] --> core_base
+  prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
+  core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
+  fpd_upd["looker-studio-pro-452620.landing.adif_updated_fpd_daily"] --> upd_view
+  upd_view --> final_tbl["stg.adif__prisma_expanded_plus_dcm_with_social_tbl"]
+```
+
 ## Files
 
 ### R Scripts
@@ -435,8 +449,8 @@ GROUP BY package_id;
 
 ## Related Documentation
 
-- [Main Pipeline Documentation](README%20-%20ADIF%20TV%20&%20Digital%20Data%20Pipeline.md)
-- [Original FPD Collection](util_collect_fpd_v2.r) - Existing partner sheet ingestion
+- [Main Pipeline Documentation](../tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+- [Original FPD Collection](../tv_digital_pipeline/util_collect_fpd_v2.r) - Existing partner sheet ingestion
 - [Prisma Data Model](../20250327_data_model/prisma_expanded_full) - Source for date ranges
 
 ## Contact

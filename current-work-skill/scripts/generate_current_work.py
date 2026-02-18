@@ -97,6 +97,14 @@ class RunLookups:
     open_tab_sources: List[str]
 
 
+@dataclass
+class Provenance:
+    skill_name: str
+    skill_path: str
+    automation_name: str
+    automation_id: str
+
+
 def run_cmd(args: Sequence[str], cwd: Path | None = None) -> Tuple[int, str, str]:
     proc = subprocess.run(
         list(args),
@@ -120,6 +128,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project-out", default="")
     parser.add_argument("--run-dir", default="")
     parser.add_argument("--pkm-inbox", default=str(DEFAULT_PKM_INBOX))
+    parser.add_argument("--skill-name", default="current-work")
+    parser.add_argument("--skill-path", default="")
+    parser.add_argument("--automation-name", default="")
+    parser.add_argument("--automation-id", default="")
     return parser.parse_args()
 
 
@@ -632,6 +644,27 @@ def build_how_to_text(workstream: Workstream) -> str:
     return base
 
 
+def render_provenance(provenance: Provenance) -> str:
+    lines = ["## Snapshot Source\n\n"]
+    lines.append(
+        f"- Skill: `{provenance.skill_name or 'unknown'}` "
+        f"({provenance.skill_path or 'unknown'})\n"
+    )
+    lines.append(
+        f"- Automation: `{provenance.automation_name or 'unknown'}` "
+        f"(`{provenance.automation_id or 'unknown'}`)\n\n"
+    )
+    return "".join(lines)
+
+
+def render_entry_source_line(provenance: Provenance) -> str:
+    return (
+        "Source: "
+        f"`{provenance.skill_name or 'unknown'}` skill via "
+        f"`{provenance.automation_name or 'unknown'}` automation."
+    )
+
+
 def render_headlines(workstreams: List[Workstream]) -> str:
     lines = ["## Headlines\n\n"]
     for i, ws in enumerate(workstreams, start=1):
@@ -643,7 +676,7 @@ def render_headlines(workstreams: List[Workstream]) -> str:
     return "".join(lines)
 
 
-def render_details(workstreams: List[Workstream]) -> str:
+def render_details(workstreams: List[Workstream], provenance: Provenance) -> str:
     lines = ["## Details\n\n"]
     if workstreams:
         lines.append("### Do First (5 Minutes)\n")
@@ -655,6 +688,7 @@ def render_details(workstreams: List[Workstream]) -> str:
     for i, ws in enumerate(workstreams, start=1):
         lines.append(f"### {i}) {ws.title}\n")
         lines.append(f"What this means: {ws.summary}\n\n")
+        lines.append(f"Entry source: {render_entry_source_line(provenance)}\n\n")
         lines.append(f"Confidence: {ws.confidence}\n\n")
         lines.append(f"Why this is prioritized now: {ws.priority_reason}\n\n")
         lines.append(f"Why it matters: {ws.why_it_matters}\n\n")
@@ -800,15 +834,17 @@ def build_workspace_doc(
     codex_signals: CodexSignals,
     lookups: RunLookups,
     omitted_dirs: List[Path],
+    provenance: Provenance,
 ) -> str:
     parts: List[str] = []
     parts.append("# Current Work - Workspace (Resume Fast)\n\n")
     parts.append(f"Updated: `{now_text}`\n")
     parts.append(f"Workspace root: `{workspace_root}`\n")
     parts.append(f"Directories scanned this run: `{len(scanned_dirs)}`\n\n")
+    parts.append(render_provenance(provenance))
 
     parts.append(render_headlines(workstreams))
-    parts.append(render_details(workstreams))
+    parts.append(render_details(workstreams, provenance))
     parts.append(render_repo_status(repo_snapshots))
     parts.append(render_open_tabs(codex_signals.open_tabs))
     parts.append(render_risks(repo_snapshots, codex_signals.open_tabs))
@@ -823,14 +859,16 @@ def build_global_doc(
     workstreams: List[Workstream],
     lookups: RunLookups,
     omitted_dirs: List[Path],
+    provenance: Provenance,
 ) -> str:
     parts: List[str] = []
     parts.append("# Current Work - Global (Resume Fast)\n\n")
     parts.append(f"Updated: `{now_text}`\n")
     parts.append(f"Primary workspace: `{workspace_root}`\n\n")
+    parts.append(render_provenance(provenance))
 
     parts.append(render_headlines(workstreams))
-    parts.append(render_details(workstreams))
+    parts.append(render_details(workstreams, provenance))
     parts.append(render_scope_note(omitted_dirs))
     parts.append(render_footnotes())
     return "".join(parts)
@@ -843,6 +881,7 @@ def build_pkm_note(
     workspace_out: Path,
     global_out: Path,
     lookups: RunLookups,
+    provenance: Provenance,
 ) -> str:
     date_str = datetime.now().astimezone().strftime("%Y-%m-%d")
     lines: List[str] = []
@@ -862,6 +901,9 @@ def build_pkm_note(
     lines.append("\n# Captured Files\n\n")
     lines.append(f"- Workspace doc: `{workspace_out}`\n")
     lines.append(f"- Global doc: `{global_out}`\n")
+    lines.append(f"- Skill: `{provenance.skill_name or 'unknown'}`\n")
+    lines.append(f"- Skill path: `{provenance.skill_path or 'unknown'}`\n")
+    lines.append(f"- Automation: `{provenance.automation_name or 'unknown'}` (`{provenance.automation_id or 'unknown'}`)\n")
 
     lines.append("\n# Where Looked\n\n")
     for p in lookups.scanned_dirs:
@@ -891,6 +933,12 @@ def main() -> int:
     project_out = Path(args.project_out).expanduser().resolve() if args.project_out else None
     run_dir = Path(args.run_dir).expanduser().resolve() if args.run_dir else None
     pkm_inbox = Path(args.pkm_inbox).expanduser().resolve()
+    provenance = Provenance(
+        skill_name=args.skill_name.strip(),
+        skill_path=args.skill_path.strip(),
+        automation_name=args.automation_name.strip(),
+        automation_id=args.automation_id.strip(),
+    )
 
     scan_dirs = resolve_scan_dirs(workspace_root, args.scan_dirs, args.max_dirs)
     scanned_set = {str(p) for p in scan_dirs}
@@ -958,6 +1006,7 @@ def main() -> int:
         codex_signals=codex_signals,
         lookups=lookups,
         omitted_dirs=omitted_dirs,
+        provenance=provenance,
     )
 
     global_doc = build_global_doc(
@@ -966,10 +1015,11 @@ def main() -> int:
         workstreams=workstreams,
         lookups=lookups,
         omitted_dirs=omitted_dirs,
+        provenance=provenance,
     )
 
     pkm_note_path = pkm_inbox / f"{datetime.now().astimezone().strftime('%Y-%m-%d')} Current Work Snapshot - {workspace_root.name}.md"
-    pkm_doc = build_pkm_note(now_text, workspace_root, workstreams, workspace_out, global_out, lookups)
+    pkm_doc = build_pkm_note(now_text, workspace_root, workstreams, workspace_out, global_out, lookups, provenance)
 
     write_text(workspace_out, workspace_doc)
     write_text(global_out, global_doc)
@@ -1010,6 +1060,12 @@ def main() -> int:
             "session_files_used": [str(p) for p in codex_signals.latest_session_files],
             "remote_checks": remote_checks,
             "open_tab_sources": codex_signals.open_tab_sources,
+            "provenance": {
+                "skill_name": provenance.skill_name,
+                "skill_path": provenance.skill_path,
+                "automation_name": provenance.automation_name,
+                "automation_id": provenance.automation_id,
+            },
         }
         write_text(run_dir / "metadata.json", json.dumps(metadata, indent=2) + "\n")
 

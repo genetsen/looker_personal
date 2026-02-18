@@ -2,6 +2,38 @@
 
 SQL- and BigQuery-first analytics workspace for campaign reporting pipelines across ADIF, Olipop, MFT, and shared utility workflows.
 
+## Repository Boundary Model
+
+This workspace uses a monorepo + project subrepo structure.
+
+Default preference for long-term simplicity:
+- Use a single repo with folders as the default operating model.
+- Treat subrepos as exceptions, not the default.
+- Keep project boundaries with folder structure and local instruction files before introducing nested Git repos.
+
+Monorepo (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal`):
+- Purpose: data model platform at large.
+- Scope: shared SQL, shared R/scripts, warehouse workflows, AI agent/skill assets, notes, and cross-project docs.
+- Rule: if content is reusable across clients/projects, keep it here.
+
+Project subrepos (for example `mft`, and future `adif`/`apollo` if promoted):
+- Purpose: project- or client-specific implementation and operations.
+- Scope: project-only transformations, runbooks, project docs, and project instructions.
+- Rule: if content is specific to one project/client, keep it in that project subrepo.
+
+When to allow a subrepo (all should be true):
+- The project has an independent release cadence.
+- The project needs separate access control or ownership boundaries.
+- The project requires separate lifecycle/tooling from the root workspace.
+
+Instruction files policy:
+- Keep root-level instructions for monorepo rules (`AGENTS.md`, `CLAUDE.md`).
+- Keep separate instruction files per project subrepo for local project behavior.
+- Every subrepo `AGENTS.md` should explicitly reference both:
+  - monorepo instruction source: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/AGENTS.md`
+  - local subrepo instruction source: `<subrepo_path>/AGENTS.md`
+- Use the starter template at `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/SUBREPO_AGENTS_TEMPLATE.md` when creating a new subrepo instruction file.
+
 ## Core Workflows
 
 - ADIF TV and digital pipeline (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`)
@@ -152,3 +184,15 @@ git push --force-with-lease Omni_remote dev:dev
 - Do not use `git reset --hard` unless you made a backup branch first.
 - Do not delete branches until you confirm they are contained by another branch.
 - Do not initialize `.git` inside snapshot/history folders.
+
+## Deferred Task: Safe Main/Dev Simplification
+
+Do this later (not now), before making `main` and `dev` identical:
+
+1. Create a temporary trial branch from `main`.
+2. In the trial branch, align content to `dev` (without touching `main`).
+3. Run a practical smoke-test checklist for workflows used in this repo (ADIF scripts, key SQL paths, and BigQuery-connected repo behavior).
+4. Record pass/fail outcomes in notes.
+5. Only after tests pass, promote the same change to `main`.
+
+Goal: reduce the risk of hidden breakage showing up months later.

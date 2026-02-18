@@ -485,8 +485,8 @@ Successfully integrated updated FPD data into the ADIF pipeline with:
 **Created by:** Claude Code (Anthropic)
 **Date:** January 23, 2026
 **Related Documentation:**
-- [Main Pipeline Documentation](README%20-%20ADIF%20TV%20&%20Digital%20Data%20Pipeline.md)
+- [Main Pipeline Documentation](../tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
 - [Updated FPD Integration Guide](README_Updated_FPD_Integration.md)
-- [Original FPD Collection](util_collect_fpd_v2.r)
+- [Original FPD Collection](../tv_digital_pipeline/util_collect_fpd_v2.r)
 
 For questions or issues, contact the data engineering team.
