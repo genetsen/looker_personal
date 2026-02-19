@@ -1,0 +1,48 @@
+{
+  "results": {
+    "agents_md_exists": {
+      "status": "PASS",
+      "rationale": "AGENTS.md exists in the current directory.",
+      "evidence_quotes": [],
+      "recommendations": [],
+      "confidence": 1.0
+    },
+    "plans_md_exists": {
+      "status": "FAIL",
+      "rationale": "Referenced markdown file(s) do not appear to be planning docs: /Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md.",
+      "evidence_quotes": [
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "# AGENTS.md"
+        }
+      ],
+      "recommendations": [
+        "Reference a planning markdown file (name contains 'plan') or add planning headings."
+      ],
+      "confidence": 1.0
+    },
+    "agents_md_under_300_lines": {
+      "status": "PASS",
+      "rationale": "AGENTS.md has 45 lines (<= 300).",
+      "evidence_quotes": [],
+      "recommendations": [],
+      "confidence": 1.0
+    },
+    "config_toml_exists": {
+      "status": "PASS",
+      "rationale": "config.toml found at: /Users/eugenetsenter/.codex/config.toml.",
+      "evidence_quotes": [],
+      "recommendations": [],
+      "confidence": 1.0
+    },
+    "dev_build_test_loop_execution": {
+      "status": "NOT_RUN",
+      "rationale": "Execution summary not found; execution was not run.",
+      "evidence_quotes": [],
+      "recommendations": [
+        "Run execute mode to validate the documented dev/build/test loop."
+      ],
+      "confidence": 1.0
+    }
+  }
+}

@@ -1,0 +1,317 @@
+{
+  "schema_version": "1.0",
+  "tool_name": "codex-readiness-unit-test",
+  "tool_version": "0.1.0",
+  "run_context": {
+    "cwd": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif",
+    "repo_root": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif",
+    "run_dir": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/.codex-readiness-unit-test/2026-02-18T23-44-07Z",
+    "run_id": "2026-02-18T23-44-07Z",
+    "timestamp": "2026-02-18T23:44:07.214907+00:00"
+  },
+  "enabled_checks": [
+    {
+      "id": "agents_md_exists",
+      "title": "AGENTS.md exists (cwd)",
+      "description": "Verify AGENTS.md exists in the current working directory.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "DETERMINISTIC",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": null,
+      "deterministic_rule_id": "agents_exists",
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    },
+    {
+      "id": "plans_md_exists",
+      "title": "Referenced planning markdown exists",
+      "description": "Verify AGENTS.md references a planning markdown file (plan-named or with planning headings) and the referenced file exists.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "DETERMINISTIC",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": null,
+      "deterministic_rule_id": "plans_reference_exists",
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    },
+    {
+      "id": "agents_md_under_300_lines",
+      "title": "AGENTS.md is under 300 lines",
+      "description": "AGENTS.md must be 300 lines or fewer.",
+      "priority": 1,
+      "weight": 9.68,
+      "type": "DETERMINISTIC",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": null,
+      "deterministic_rule_id": "agents_line_count_under_300",
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P1",
+      "priority_multiplier": 3
+    },
+    {
+      "id": "config_toml_exists",
+      "title": "config.toml exists",
+      "description": "config.toml exists at repo root, repo .codex/config.toml, or ~/.codex/config.toml.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "DETERMINISTIC",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": null,
+      "deterministic_rule_id": "config_toml_exists",
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    },
+    {
+      "id": "project_context_specified",
+      "title": "Project directory context is clear",
+      "description": "AGENTS docs include explicit project paths with short context for what each path is used for.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "LLM",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": "project_context",
+      "deterministic_rule_id": null,
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    },
+    {
+      "id": "build_test_commands_exist",
+      "title": "Build/test commands are copy-pastable",
+      "description": "AGENTS docs or referenced skills provide concrete build/test commands with no placeholders.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "LLM",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": "commands",
+      "deterministic_rule_id": null,
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    },
+    {
+      "id": "dev_build_test_loops_documented",
+      "title": "Dev/build/test loop is documented",
+      "description": "AGENTS docs describe ordering, when to run, and success criteria for one or more dev/build/test loops.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "LLM",
+      "scope": "cwd",
+      "execute_required": false,
+      "evaluator_prompt_id": "loop_quality",
+      "deterministic_rule_id": null,
+      "deterministic_rule_params": {},
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    },
+    {
+      "id": "dev_build_test_loop_execution",
+      "title": "Dev/build/test loop executes",
+      "description": "Execute documented loop (setup/dev/build/test) and validate outcomes.",
+      "priority": 0,
+      "weight": 12.9,
+      "type": "HYBRID",
+      "scope": "cwd",
+      "execute_required": true,
+      "evaluator_prompt_id": "execution_explanation",
+      "deterministic_rule_id": "execution_summary_status",
+      "deterministic_rule_params": {
+        "summary_path": "execution_summary.json"
+      },
+      "enabled_by_default": true,
+      "priority_label": "P0",
+      "priority_multiplier": 4
+    }
+  ],
+  "results": {
+    "agents_md_exists": {
+      "status": "PASS",
+      "rationale": "AGENTS.md exists in the current directory.",
+      "evidence_quotes": [],
+      "recommendations": [],
+      "confidence": 1.0
+    },
+    "plans_md_exists": {
+      "status": "FAIL",
+      "rationale": "Referenced markdown file(s) do not appear to be planning docs: /Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md.",
+      "evidence_quotes": [
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "# AGENTS.md"
+        }
+      ],
+      "recommendations": [
+        "Reference a planning markdown file (name contains 'plan') or add planning headings."
+      ],
+      "confidence": 1.0
+    },
+    "agents_md_under_300_lines": {
+      "status": "PASS",
+      "rationale": "AGENTS.md has 45 lines (<= 300).",
+      "evidence_quotes": [],
+      "recommendations": [],
+      "confidence": 1.0
+    },
+    "config_toml_exists": {
+      "status": "PASS",
+      "rationale": "config.toml found at: /Users/eugenetsenter/.codex/config.toml.",
+      "evidence_quotes": [],
+      "recommendations": [],
+      "confidence": 1.0
+    },
+    "project_context_specified": {
+      "status": "PASS",
+      "rationale": "AGENTS.md provides explicit repository paths and explains the purpose of each, including the active notebook path, archive path, and full Dataform workspace path.",
+      "evidence_quotes": [
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "- Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`"
+        },
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "- Legacy scheduled SQL and duplicate notebook copies are archived under `projects/social_layering/archive/legacy_scheduled_sql/`"
+        },
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "- Full workspace name: `projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent`"
+        }
+      ],
+      "recommendations": [],
+      "confidence": 0.93
+    },
+    "build_test_commands_exist": {
+      "status": "FAIL",
+      "rationale": "AGENTS.md contains operational and API read commands, but no concrete build/test commands for validating the project loop in this cwd.",
+      "evidence_quotes": [
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "Read flow (CLI + Dataform API):"
+        },
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "curl -s -G \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  --data-urlencode \"path=FILE_PATH\" \\\n  \"https://dataform.googleapis.com/v1/${WS}:readFile\""
+        }
+      ],
+      "recommendations": [
+        "Add explicit copy-pastable validation commands (for example SQL checks or notebook verification commands) and indicate expected success output."
+      ],
+      "confidence": 0.9
+    },
+    "dev_build_test_loops_documented": {
+      "status": "FAIL",
+      "rationale": "The AGENTS documentation describes production mode and read commands, but does not define a dev/build/test loop with ordered steps, cadence, and success criteria.",
+      "evidence_quotes": [
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "The production social-layer pipeline is notebook-first:"
+        },
+        {
+          "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+          "quote": "Read flow (CLI + Dataform API):"
+        }
+      ],
+      "recommendations": [
+        "Document an ordered loop (edit -> run notebook sections -> run verification queries -> compare expected totals) with explicit pass/fail criteria.",
+        "State when the loop must run (for example after each notebook change and before promoting to production)."
+      ],
+      "confidence": 0.88
+    },
+    "dev_build_test_loop_execution": {
+      "status": "NOT_RUN",
+      "rationale": "Read-only mode does not execute the dev/build/test loop.",
+      "evidence_quotes": [],
+      "recommendations": [
+        "Run execute mode with a confirmed plan.json to validate loop execution behavior."
+      ],
+      "confidence": 1.0
+    }
+  },
+  "execution_summary": null,
+  "scorecard": {
+    "score_total_raw": 48.39,
+    "score_total": 48,
+    "per_check_contributions": {
+      "agents_md_exists": {
+        "status": "PASS",
+        "weight": 12.9,
+        "contribution": 12.9,
+        "priority": 0,
+        "priority_label": "P0"
+      },
+      "plans_md_exists": {
+        "status": "FAIL",
+        "weight": 12.9,
+        "contribution": 0.0,
+        "priority": 0,
+        "priority_label": "P0"
+      },
+      "agents_md_under_300_lines": {
+        "status": "PASS",
+        "weight": 9.68,
+        "contribution": 9.68,
+        "priority": 1,
+        "priority_label": "P1"
+      },
+      "config_toml_exists": {
+        "status": "PASS",
+        "weight": 12.9,
+        "contribution": 12.9,
+        "priority": 0,
+        "priority_label": "P0"
+      },
+      "project_context_specified": {
+        "status": "PASS",
+        "weight": 12.9,
+        "contribution": 12.9,
+        "priority": 0,
+        "priority_label": "P0"
+      },
+      "build_test_commands_exist": {
+        "status": "FAIL",
+        "weight": 12.9,
+        "contribution": 0.0,
+        "priority": 0,
+        "priority_label": "P0"
+      },
+      "dev_build_test_loops_documented": {
+        "status": "FAIL",
+        "weight": 12.9,
+        "contribution": 0.0,
+        "priority": 0,
+        "priority_label": "P0"
+      },
+      "dev_build_test_loop_execution": {
+        "status": "NOT_RUN",
+        "weight": 12.9,
+        "contribution": 0.0,
+        "priority": 0,
+        "priority_label": "P0"
+      }
+    },
+    "counts": {
+      "PASS": 4,
+      "WARN": 0,
+      "FAIL": 3,
+      "NOT_RUN": 1
+    },
+    "overall_status": "FAIL"
+  }
+}

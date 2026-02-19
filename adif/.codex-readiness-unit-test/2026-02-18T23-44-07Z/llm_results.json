@@ -1,0 +1,68 @@
+{
+  "project_context_specified": {
+    "status": "PASS",
+    "rationale": "AGENTS.md provides explicit repository paths and explains the purpose of each, including the active notebook path, archive path, and full Dataform workspace path.",
+    "evidence_quotes": [
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "- Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`"
+      },
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "- Legacy scheduled SQL and duplicate notebook copies are archived under `projects/social_layering/archive/legacy_scheduled_sql/`"
+      },
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "- Full workspace name: `projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent`"
+      }
+    ],
+    "recommendations": [],
+    "confidence": 0.93
+  },
+  "build_test_commands_exist": {
+    "status": "FAIL",
+    "rationale": "AGENTS.md contains operational and API read commands, but no concrete build/test commands for validating the project loop in this cwd.",
+    "evidence_quotes": [
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "Read flow (CLI + Dataform API):"
+      },
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "curl -s -G \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  --data-urlencode \"path=FILE_PATH\" \\\n  \"https://dataform.googleapis.com/v1/${WS}:readFile\""
+      }
+    ],
+    "recommendations": [
+      "Add explicit copy-pastable validation commands (for example SQL checks or notebook verification commands) and indicate expected success output."
+    ],
+    "confidence": 0.9
+  },
+  "dev_build_test_loops_documented": {
+    "status": "FAIL",
+    "rationale": "The AGENTS documentation describes production mode and read commands, but does not define a dev/build/test loop with ordered steps, cadence, and success criteria.",
+    "evidence_quotes": [
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "The production social-layer pipeline is notebook-first:"
+      },
+      {
+        "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+        "quote": "Read flow (CLI + Dataform API):"
+      }
+    ],
+    "recommendations": [
+      "Document an ordered loop (edit -> run notebook sections -> run verification queries -> compare expected totals) with explicit pass/fail criteria.",
+      "State when the loop must run (for example after each notebook change and before promoting to production)."
+    ],
+    "confidence": 0.88
+  },
+  "dev_build_test_loop_execution": {
+    "status": "NOT_RUN",
+    "rationale": "Read-only mode does not execute the dev/build/test loop.",
+    "evidence_quotes": [],
+    "recommendations": [
+      "Run execute mode with a confirmed plan.json to validate loop execution behavior."
+    ],
+    "confidence": 1.0
+  }
+}

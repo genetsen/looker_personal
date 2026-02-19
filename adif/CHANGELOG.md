@@ -1,6 +1,17 @@
 ## 2026-02-18
 
 ### Added
+- **Persistent workspace runbook for BigQuery notebook-backed assets**
+  What: Added a root `AGENTS.md` runbook and README section that document the permanent Dataform workspace and the exact read flow for notebook-backed files (`queryDirectoryContents` and `readFile`).
+  Why: Provides a stable, repeatable way to access BigQuery notebook content through the correct Dataform workspace path.
+
+<details><summary>Paths — Persistent workspace runbook for BigQuery notebook-backed assets</summary>
+
+- [AGENTS.md](AGENTS.md)
+- [README.md](README.md)
+
+</details>
+
 - **SQL change-guard skill scaffold with runnable validator**
   What: Added a new `skills/sql-change-guard` skill with a BigQuery runner script that validates SQL updates using baseline-vs-candidate checks, lineage discovery, downstream checks, and summary-first output.
   Why: Creates a reusable validation workflow that proves SQL changes are safe before touching live pipelines.
@@ -35,6 +46,59 @@
 </details>
 
 ### Changed
+- **Notebook-aligned documentation refresh**
+  What: Updated active runbooks and lineage docs to match the production notebook exactly, including target table (`repo_stg.adif__mainDataTable_notebook`), section flow (rebuild + social insert), dependency graphs, and notebook verification checks.
+  Why: Keeps all operational documentation aligned with the live notebook pipeline and removes stale references to retired scheduled-script outputs.
+
+<details><summary>Paths — Notebook-aligned documentation refresh</summary>
+
+- [AGENTS.md](AGENTS.md)
+- [README.md](README.md)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+- [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
+- [projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md](projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+- [skills/sql-change-guard/SKILL.md](skills/sql-change-guard/SKILL.md)
+
+</details>
+
+- **Canonical social production notebook synced to remote**
+  What: Replaced local `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb` with the current Dataform workspace file to enforce exact parity.
+  Why: Keeps local production source aligned with the live notebook-backed pipeline and prevents drift during edits and reviews.
+
+<details><summary>Paths — Canonical social production notebook synced to remote</summary>
+
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb)
+
+</details>
+
+- **Social production pipeline is now notebook-first**
+  What: Promoted `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb` as the active production path, moved conflicting scheduled SQL and duplicate notebook files into `projects/social_layering/archive/legacy_scheduled_sql/`, and updated lineage diagrams and runbooks to reflect notebook orchestration.
+  Why: Removes ambiguity between script-based and notebook-based production execution and keeps operational docs aligned with current reality.
+
+<details><summary>Paths — Social production pipeline is now notebook-first</summary>
+
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb)
+- [projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql](projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql)
+- [projects/social_layering/archive/legacy_scheduled_sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql](projects/social_layering/archive/legacy_scheduled_sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql)
+- [projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl%20(1).ipynb](projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl%20(1).ipynb)
+- [projects/social_layering/archive/legacy_scheduled_sql/README.md](projects/social_layering/archive/legacy_scheduled_sql/README.md)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+- [README.md](README.md)
+- [AGENTS.md](AGENTS.md)
+
+</details>
+
+- **Social notebook now sets platform-level social source labels**
+  What: Updated the social layering notebook insert query to populate `data_source_primary` for social rows as `meta` or `tiktok` from normalized social platform values.
+  Why: Makes social-source attribution explicit in appended rows while leaving non-social source labeling unchanged.
+
+<details><summary>Paths — Social notebook now sets platform-level social source labels</summary>
+
+- [projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl%20(1).ipynb](projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl%20(1).ipynb)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+
+</details>
+
 - **SQL change-guard cutoff now uses current date**
   What: Updated SQL change-guard date-window cutoff logic to always use `CURRENT_DATE() - exclude_recent_days` for baseline and candidate filtering.
   Why: Enforces a fixed operational cutoff that is independent of future-dated or irregular source max dates.

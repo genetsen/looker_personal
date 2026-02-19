@@ -31,9 +31,9 @@ Complete documentation of the ADIF (Advertising Intelligence & Forecasting) data
                    └─────────────────────────────┘
 ```
 
-## Lineage Segment to Final Social-Augmented Output
+## Lineage Segment to Notebook Social Output
 
-This sub-project owns the digital core branch and hands off to the updated-FPD + social append assembly that writes the final `stg` output table.
+This sub-project owns the digital core branch and hands off to the updated-FPD + social notebook assembly that writes the notebook production table.
 
 ```mermaid
 flowchart LR
@@ -41,13 +41,13 @@ flowchart LR
   fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"] --> core_base
   prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
   core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
-  upd_view --> final_tbl["stg.adif__prisma_expanded_plus_dcm_with_social_tbl"]
+  upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook (via notebook Section 1 rebuild)"]
 ```
 
 ## Table of Contents
 
 - [Data Sources](#data-sources)
-- [Lineage Segment to Final Social-Augmented Output](#lineage-segment-to-final-social-augmented-output)
+- [Lineage Segment to Notebook Social Output](#lineage-segment-to-notebook-social-output)
 - [Staging Layer](#staging-layer)
 - [Mart Layer](#mart-layer)
 - [Data Ingestion Scripts](#data-ingestion-scripts)

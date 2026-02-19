@@ -1,6 +1,7 @@
 # Social Layering Pipeline
 
-This sub-project owns the social branch that appends WP social delivery rows into the final ADIF output table.
+This sub-project owns the notebook-driven social append branch for ADIF.
+Production orchestration runs from notebook (`build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`) and writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`.
 
 ## Lineage Segment to Final Output
 
@@ -13,33 +14,54 @@ flowchart LR
 
   subgraph social_models["Social Layer Models"]
     social_stg["repo_stg.stg__adif__social_crossplatform"]
-    social_append["repo_stg.social_append_source"]
+    social_nb_s2["Notebook Section 2 (social insert)"]
+  end
+
+  subgraph notebook["Notebook Build"]
+    social_nb_s1["Notebook Section 1 (table rebuild)"]
+    target_tbl["repo_stg.adif__mainDataTable_notebook"]
   end
 
   social_raw --> social_stg
-  social_stg --> social_append
-  pacing --> social_append
-  social_append --> final_tbl["stg.adif__prisma_expanded_plus_dcm_with_social_tbl"]
+  social_stg --> social_nb_s2
+  pacing --> social_nb_s2
+  core_upd["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"] --> social_nb_s1
+  social_nb_s1 --> target_tbl
+  social_nb_s2 --> target_tbl
 ```
+
+## Production Notebook
+
+- Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Legacy scheduled SQL and duplicate notebook copies: `projects/social_layering/archive/legacy_scheduled_sql/`
 
 ## Source Coverage
 
-### `repo_stg.stg__adif__social_crossplatform`
-- Reads from `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
-- Filters to ADIF account names and `WP_` campaign patterns
-- Preserves source grain and adds social tagging fields
+### Notebook Section 1 (`CREATE OR REPLACE TABLE`)
+- Source: `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
+- Output: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+- Behavior: rebuilds base table before social insert
 
-### `repo_stg.social_append_source`
-- Reads from `repo_stg.stg__adif__social_crossplatform`
-- Reads pacing plans from `repo_int.crossplatform_pacing`
-- Maps social rows to ADIF-compatible schema for append
-- Uses ad-level delivery rows with `ad_group` mapped to package and `ad` mapped to placement
-- Allocates ad_set daily pacing to ads by spend share within each ad_set/day
+### Notebook Section 2 (`INSERT INTO`)
+- Social source: `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
+- Pacing source: `looker-studio-pro-452620.repo_int.crossplatform_pacing`
+- Behavior:
+  - Normalizes social platform to `meta` / `tiktok`
+  - Maps `ad_set -> package`, `ad -> placement`
+  - Computes package pacing rollups and over/under flags
+  - Appends social rows with `channel_group='social'` into the target table
 
-### `repo_int.crossplatform_pacing` upstream views
+### `repo_int.crossplatform_pacing` upstream views used by notebook logic
 - `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
 - `looker-studio-pro-452620.repo_facebook.stg__fb_combined_history`
 - `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
+
+## Verification Queries in Notebook
+
+- Table totals (`row_count`, `min_date`, `max_date`, `total_spend`, `total_impressions`) for 2026
+- Breakdown by `data_source_primary` for 2026
+- Breakdown by `supplier_code`, `p_package_friendly` for 2026
+- Cross-check source totals from `repo_stg.stg__adif__social_crossplatform` by platform for 2026
 
 ## Editable Mapping Matrix
 

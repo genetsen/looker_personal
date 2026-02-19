@@ -1,0 +1,64 @@
+{
+  "run_context": {
+    "cwd": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif",
+    "repo_root": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif",
+    "run_dir": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/.codex-readiness-unit-test/2026-02-18T23-44-07Z",
+    "run_id": "2026-02-18T23-44-07Z",
+    "timestamp": "2026-02-18T23:44:07.214907+00:00"
+  },
+  "agents_md": {
+    "exists": true,
+    "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md"
+  },
+  "plans_md": {
+    "exists": false,
+    "path": null
+  },
+  "skills": {
+    "roots": [
+      "/Users/eugenetsenter/.codex/skills"
+    ],
+    "referenced": [
+      "TOKEN"
+    ],
+    "resolved": [],
+    "missing": [
+      {
+        "name": "TOKEN"
+      }
+    ]
+  },
+  "snippets": [
+    {
+      "path": "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md",
+      "snippet": "# AGENTS.md\n\nGlobal operational notes for this repo.\n\n## Social Production Mode\n\nThe production social-layer pipeline is notebook-first:\n\n- Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`\n- Notebook target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`\n- Notebook section flow:\n  - Section 1: `CREATE OR REPLACE TABLE` from `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`\n  - Section 2: `INSERT INTO` with social mapping from `repo_stg.stg__adif__social_crossplatform` and `repo_int.crossplatform_pacing`\n- Legacy scheduled SQL and duplicate notebook copies are archived under `projects/social_layering/archive/legacy_scheduled_sql/`\n\n## BigQuery Notebook Access (Dataform-backed)\n\nBigQuery notebooks in this project are exposed as Dataform repositories with `single-file-asset-type=notebook`.\n\nPermanent workspace for notebook access:\n\n- Project: `looker-studio-pro-452620`\n- Location: `us-east1`\n- Repository: `acfacedf-9d13-4beb-98d4-34f9a2afdba7`\n- Workspace: `adif-bq-notebook-permanent`\n- Full workspace name: `projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent`\n\nRead flow (CLI + Dataform API):\n\n```bash\nTOKEN=$(gcloud auth print-access-token)\nWS=\"projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent\"\n\n# List files at root (use empty path; \"/\" is invalid for this API)\ncurl -s -G \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  --data-urlencode \"path=\" \\\n  \"https://dataform.googleapis.com/v1/${WS}:queryDirectoryContents\"\n\n# Read a specific file (replace FILE_PATH)\ncurl -s -G \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  --data-urlencode \"path=FILE_PATH\" \\\n  \"https://dataform.googleapis.com/v1/${WS}:readFile\"\n```\n"
+    }
+  ],
+  "inferred": {
+    "candidate_commands": [
+      "projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb",
+      "looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook",
+      "CREATE OR REPLACE TABLE",
+      "repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view",
+      "INSERT INTO",
+      "repo_stg.stg__adif__social_crossplatform",
+      "repo_int.crossplatform_pacing",
+      "projects/social_layering/archive/legacy_scheduled_sql/",
+      "single-file-asset-type=notebook",
+      "looker-studio-pro-452620",
+      "us-east1",
+      "acfacedf-9d13-4beb-98d4-34f9a2afdba7",
+      "adif-bq-notebook-permanent",
+      "projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent",
+      "TOKEN=$(gcloud auth print-access-token)",
+      "WS=\"projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent\"",
+      "curl -s -G \\",
+      "-H \"Authorization: Bearer $TOKEN\" \\",
+      "--data-urlencode \"path=\" \\",
+      "\"https://dataform.googleapis.com/v1/${WS}:queryDirectoryContents\"",
+      "--data-urlencode \"path=FILE_PATH\" \\",
+      "\"https://dataform.googleapis.com/v1/${WS}:readFile\""
+    ],
+    "repo_signals": []
+  }
+}

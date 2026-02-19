@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>Codex Readiness Unit Test Report</title>
+<style>
+body{font-family:Arial,sans-serif;margin:24px;color:#222;background:#fafafa;}
+.badge{display:inline-block;padding:4px 10px;border-radius:12px;color:#fff;font-size:12px;text-transform:uppercase;}
+.pass{background:#2e7d32;} .warn{background:#f9a825;} .fail{background:#c62828;} .not_run{background:#546e7a;}
+table{border-collapse:collapse;width:100%;margin:12px 0 20px;background:#fff;table-layout:fixed;}
+th,td{border:1px solid #ddd;padding:8px;font-size:13px;vertical-align:top;word-break:break-word;}
+th{background:#f1f1f1;text-align:left;}
+h3{margin:12px 0 6px;}
+h2{margin-top:24px;}
+</style>
+</head>
+<body>
+<h1>Codex Readiness Unit Test Report</h1>
+<h2>/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif</h2>
+<p>Overall score: <strong>48</strong> <span class='badge fail'>FAIL</span></p>
+<h2>Checks</h2>
+<h3>P0</h3>
+<table>
+<colgroup><col style='width:42%'><col style='width:12%'><col style='width:46%'></colgroup>
+<tr><th>Check</th><th>Status</th><th>Rationale</th></tr>
+<tr><td>AGENTS.md exists (cwd)</td><td><span class='badge pass'>PASS</span></td><td>AGENTS.md exists in the current directory.</td></tr>
+<tr><td>Referenced planning markdown exists</td><td><span class='badge fail'>FAIL</span></td><td>Referenced markdown file(s) do not appear to be planning docs: /Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md.</td></tr>
+<tr><td>config.toml exists</td><td><span class='badge pass'>PASS</span></td><td>config.toml found at: /Users/eugenetsenter/.codex/config.toml.</td></tr>
+<tr><td>Project directory context is clear</td><td><span class='badge pass'>PASS</span></td><td>AGENTS.md provides explicit repository paths and explains the purpose of each, including the active notebook path, archive path, and full Dataform workspace path.</td></tr>
+<tr><td>Build/test commands are copy-pastable</td><td><span class='badge fail'>FAIL</span></td><td>AGENTS.md contains operational and API read commands, but no concrete build/test commands for validating the project loop in this cwd.</td></tr>
+<tr><td>Dev/build/test loop is documented</td><td><span class='badge fail'>FAIL</span></td><td>The AGENTS documentation describes production mode and read commands, but does not define a dev/build/test loop with ordered steps, cadence, and success criteria.</td></tr>
+<tr><td>Dev/build/test loop executes</td><td><span class='badge not_run'>NOT_RUN</span></td><td>Read-only mode does not execute the dev/build/test loop.</td></tr>
+</table>
+<h3>P1</h3>
+<table>
+<colgroup><col style='width:42%'><col style='width:12%'><col style='width:46%'></colgroup>
+<tr><th>Check</th><th>Status</th><th>Rationale</th></tr>
+<tr><td>AGENTS.md is under 300 lines</td><td><span class='badge pass'>PASS</span></td><td>AGENTS.md has 45 lines (<= 300).</td></tr>
+</table>
+</body></html>

@@ -23,6 +23,7 @@ The runner checks for an existing live baseline table first and uses it before f
 For candidate scripts that are multi-statement, materialize output first and run with `--candidate-table`.
 Default backend is MCP (`--query-backend mcp`).
 When `--date-column` is provided, the runner now excludes the newest 5 days by default (`--exclude-recent-days 5`) and uses one shared comparison end date for baseline and candidate.
+In the examples below, candidate is the notebook output table and baseline is the legacy `stg` output table for regression comparison.
 
 ```bash
 # Run summary-only (pass/fail first)
@@ -30,7 +31,7 @@ python3 skills/sql-change-guard/scripts/run_sql_change_guard.py \
   --project looker-studio-pro-452620 \
   --qa-dataset repo_stg \
   --query-backend mcp \
-  --candidate-table looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_with_social_tbl \
+  --candidate-table looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook \
   --baseline-table looker-studio-pro-452620.stg.adif__prisma_expanded_plus_dcm_with_social_tbl \
   --date-column date \
   --exclude-recent-days 5 \
@@ -42,7 +43,7 @@ python3 skills/sql-change-guard/scripts/run_sql_change_guard.py \
   --project looker-studio-pro-452620 \
   --qa-dataset repo_stg \
   --query-backend mcp \
-  --candidate-table looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_with_social_tbl \
+  --candidate-table looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook \
   --baseline-table looker-studio-pro-452620.stg.adif__prisma_expanded_plus_dcm_with_social_tbl \
   --date-column date \
   --exclude-recent-days 5 \
@@ -57,9 +58,39 @@ Skill docs:
 - [skills/sql-change-guard/references/check_catalog.md](skills/sql-change-guard/references/check_catalog.md)
 - [skills/sql-change-guard/references/report_format.md](skills/sql-change-guard/references/report_format.md)
 
-## End-to-End Pipeline Lineage (Raw -> Output)
+## BigQuery Notebook Access (Dataform-backed)
 
-Lineage for `looker-studio-pro-452620.stg.adif__prisma_expanded_plus_dcm_with_social_tbl` was verified with BigQuery MCP from the latest destination-table job in `region-us.INFORMATION_SCHEMA.JOBS_BY_PROJECT` (created `2026-02-13 23:21:53 UTC`).
+For notebook asset `build__adif__prisma_expanded_plus_dcm_with_social_tbl`, use the permanent Dataform workspace:
+
+- `projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent`
+
+Read commands:
+
+```bash
+TOKEN=$(gcloud auth print-access-token)
+WS="projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent"
+
+bash -lc "curl -s -G \
+  -H 'Authorization: Bearer $TOKEN' \
+  --data-urlencode 'path=' \
+  \"https://dataform.googleapis.com/v1/${WS}:queryDirectoryContents\""
+
+bash -lc "curl -s -G \
+  -H 'Authorization: Bearer $TOKEN' \
+  --data-urlencode 'path=FILE_PATH' \
+  \"https://dataform.googleapis.com/v1/${WS}:readFile\""
+```
+
+## Social Production Pipeline
+
+Production social layering now runs from notebook, not the old scheduled SQL script:
+
+- Active: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Archived legacy SQL and duplicate notebook copy: `projects/social_layering/archive/legacy_scheduled_sql/`
+
+## End-to-End Pipeline Lineage (Notebook Production)
+
+Current production social assembly is notebook-driven and writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`.
 
 ```mermaid
 flowchart LR
@@ -88,76 +119,41 @@ flowchart LR
 
   subgraph social_models["Social Layer Models"]
     social_stg["repo_stg.stg__adif__social_crossplatform"]
-    social_append["repo_stg.social_append_source"]
+    social_nb_s2["Notebook Section 2 (social insert)"]
+  end
+
+  subgraph notebook["Notebook Build"]
+    social_nb_s1["Notebook Section 1 (table rebuild)"]
+    target_tbl["repo_stg.adif__mainDataTable_notebook"]
   end
 
   social_raw --> social_stg
-  social_stg --> social_append
-  pacing --> social_append
+  social_stg --> social_nb_s2
+  pacing --> social_nb_s2
+  core_upd --> social_nb_s1
 
-  final_tbl["stg.adif__prisma_expanded_plus_dcm_with_social_tbl"]
-  core_upd --> final_tbl
-  social_append --> final_tbl
+  social_nb_s1 --> target_tbl
+  social_nb_s2 --> target_tbl
 ```
 
-### Raw Source Inventory (BigQuery MCP)
+### Notebook-Declared Dependencies
 
-These tables were captured from BigQuery lineage metadata for the final table path.
+- `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view` (Section 1 source)
+- `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform` (Section 2 social source)
+- `looker-studio-pro-452620.repo_int.crossplatform_pacing` (Section 2 pacing source)
 
-#### Direct source inventory from latest final-table job (16)
-- `giant-spoon-299605.google_ads_olipop.video_stats`
-- `giant-spoon-299605.tiktok_ads.ad_history`
-- `giant-spoon-299605.tiktok_ads.adgroup_history`
-- `giant-spoon-299605.tiktok_ads.campaign_history`
-- `giant-spoon-299605.tiktok_ads.video_history`
-- `looker-studio-pro-452620.20250327_data_model.prisma_expanded_full`
-- `looker-studio-pro-452620.DCM.20250505_costModel_v5`
-- `looker-studio-pro-452620.landing.adif_fpd_data_ranged`
-- `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
-- `looker-studio-pro-452620.repo_facebook.stg__ad_history_deduped`
-- `looker-studio-pro-452620.repo_facebook.stg__ad_set_history_deduped`
-- `looker-studio-pro-452620.repo_facebook.stg__campaign_history_deduped`
-- `looker-studio-pro-452620.repo_google_ads.stg__ad_group_history_deduped`
-- `looker-studio-pro-452620.repo_google_ads.stg__campaign_budget_history_deduped`
-- `looker-studio-pro-452620.repo_google_ads.stg__campaign_history_deduped`
-- `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
-
-#### Upstream inputs used to refresh `repo_stg.stg__olipop__crossplatform_raw_tbl` (latest job)
-- `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report`
-- `giant-spoon-299605.facebook_ads.ad_history`
-- `giant-spoon-299605.facebook_ads.ad_reach_lifetime`
-- `giant-spoon-299605.facebook_ads.ad_set_history`
-- `giant-spoon-299605.facebook_ads.ad_set_reach_lifetime`
-- `giant-spoon-299605.facebook_ads.basic_ad`
-- `giant-spoon-299605.facebook_ads.basic_ad_actions`
-- `giant-spoon-299605.facebook_ads.basic_ad_set`
-- `giant-spoon-299605.facebook_ads.basic_campaign`
-- `giant-spoon-299605.facebook_ads.campaign_history`
-- `giant-spoon-299605.facebook_ads.campaign_reach_lifetime`
-- `giant-spoon-299605.facebook_ads.video_ads_actions_video_p_100_watched_actions`
-- `giant-spoon-299605.facebook_ads.video_ads_actions_video_p_25_watched_actions`
-- `giant-spoon-299605.facebook_ads.video_ads_actions_video_p_50_watched_actions`
-- `giant-spoon-299605.facebook_ads.video_ads_actions_video_p_75_watched_actions`
-- `giant-spoon-299605.facebook_ads.video_ads_actions_video_p_95_watched_actions`
-- `giant-spoon-299605.facebook_ads.video_ads_actions_video_play_actions`
-- `giant-spoon-299605.facebook_ads.video_views_3_seconds_actions`
-- `giant-spoon-299605.facebook_ads_facebook_ads.facebook_ads__ad_report`
-- `giant-spoon-299605.facebook_ads_facebook_ads.facebook_ads__ad_set_report`
-- `giant-spoon-299605.facebook_ads_facebook_ads.facebook_ads__campaign_report`
-- `giant-spoon-299605.google_ads_olipop.video_stats`
-- `giant-spoon-299605.tiktok_ads.ad_report_daily`
-- `giant-spoon-299605.tiktok_ads.ad_report_lifetime`
-- `giant-spoon-299605.tiktok_ads.adgroup_report_lifetime`
-- `giant-spoon-299605.tiktok_ads.campaign_report_lifetime`
-- `giant-spoon-299605.tiktok_ads_tiktok_ads.tiktok_ads__ad_report`
-- `looker-studio-pro-452620.repo_tiktok.stg__ad_history_deduped`
-- `looker-studio-pro-452620.repo_tiktok.stg__adgroup_history_deduped`
-- `looker-studio-pro-452620.repo_tiktok.stg__campaign_history_deduped`
-
-#### Upstream inputs used by `repo_int.crossplatform_pacing` (view definition)
+`repo_int.crossplatform_pacing` upstream views used by notebook logic:
 - `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
 - `looker-studio-pro-452620.repo_facebook.stg__fb_combined_history`
 - `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
+
+### Notebook Verification Queries
+
+The production notebook includes post-run checks for:
+- Target table row/date/spend/impression totals
+- Breakdown by `data_source_primary` (2026 filter)
+- Breakdown by `supplier_code`, `p_package_friendly` (2026 filter)
+- Cross-check against `repo_stg.stg__adif__social_crossplatform` platform totals
 
 ## Folder Map
 
@@ -180,8 +176,8 @@ These tables were captured from BigQuery lineage metadata for the final table pa
 
 #### 3. Social Layering
 - [projects/social_layering/README.md](projects/social_layering/README.md)
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb)
 - [projects/social_layering/sql/stg__adif__social_crossplatform.sql](projects/social_layering/sql/stg__adif__social_crossplatform.sql)
-- [projects/social_layering/sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql](projects/social_layering/sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql)
-- [projects/social_layering/sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql](projects/social_layering/sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql)
 - [projects/social_layering/social_mapping_matrix_editable.csv](projects/social_layering/social_mapping_matrix_editable.csv)
 - [projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql](projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql)
+- [projects/social_layering/archive/legacy_scheduled_sql/README.md](projects/social_layering/archive/legacy_scheduled_sql/README.md)

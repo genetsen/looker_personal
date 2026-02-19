@@ -69,9 +69,9 @@ This document describes the integration of **updated first-party data (FPD)** fr
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Lineage Segment to Final Output
+### Lineage Segment to Notebook Production Output
 
-This sub-project owns the updated-FPD branch that feeds the final social-augmented output table.
+This sub-project owns the updated-FPD branch that feeds the social notebook production table.
 
 ```mermaid
 flowchart LR
@@ -80,7 +80,7 @@ flowchart LR
   prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
   core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
   fpd_upd["looker-studio-pro-452620.landing.adif_updated_fpd_daily"] --> upd_view
-  upd_view --> final_tbl["stg.adif__prisma_expanded_plus_dcm_with_social_tbl"]
+  upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook (via notebook Section 1 rebuild)"]
 ```
 
 ## Files

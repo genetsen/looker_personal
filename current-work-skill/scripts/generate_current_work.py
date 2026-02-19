@@ -53,6 +53,7 @@ class RepoSnapshot:
     name: str
     path: Path
     is_git: bool
+    git_root: str
     branch: str
     local_head: str
     staged: int
@@ -128,7 +129,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project-out", default="")
     parser.add_argument("--run-dir", default="")
     parser.add_argument("--pkm-inbox", default=str(DEFAULT_PKM_INBOX))
-    parser.add_argument("--skill-name", default="current-work")
+    parser.add_argument("--skill-name", default="current-work-skill")
     parser.add_argument("--skill-path", default="")
     parser.add_argument("--automation-name", default="")
     parser.add_argument("--automation-id", default="")
@@ -164,6 +165,13 @@ def resolve_scan_dirs(workspace_root: Path, scan_dirs_arg: str, max_dirs: int) -
 def is_git_repo(path: Path) -> bool:
     rc, out, _ = run_cmd(["git", "-C", str(path), "rev-parse", "--is-inside-work-tree"])
     return rc == 0 and out.strip() == "true"
+
+
+def git_root(path: Path) -> str:
+    rc, out, _ = run_cmd(["git", "-C", str(path), "rev-parse", "--show-toplevel"])
+    if rc == 0 and out.strip():
+        return out.strip()
+    return ""
 
 
 def parse_git_status(path: Path) -> Tuple[str, str, int, int, int]:
@@ -414,6 +422,35 @@ def table_matches(table: str, keywords: Sequence[str]) -> bool:
 
 def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) -> List[Workstream]:
     defs = [
+        {
+            "title": "ADIF notebook production and docs alignment",
+            "summary": "You were updating notebook-first ADIF production flow and syncing local docs to the live notebook behavior.",
+            "why": "This keeps production runbooks and dependency docs aligned to the real pipeline target table and steps.",
+            "priority_reason": "Recent ADIF notebook, README, and AGENTS updates indicate active production documentation alignment.",
+            "next_label": "Run notebook dependency and target-table sanity checks",
+            "next_cmd": (
+                "cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif\n"
+                "jq -r '.cells[] | select(.cell_type==\"markdown\") | (.source // []) | join(\"\")' "
+                "projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb | head -n 60\n"
+                "rg -n \"adif__mainDataTable_notebook|Section 1|Section 2\" "
+                "README.md AGENTS.md projects/social_layering/README.md"
+            ),
+            "eta_minutes": 8,
+            "path_keywords": [
+                "/adif/",
+                "build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb",
+                "adif__maindatatable_notebook",
+                "social_layering/readme.md",
+                "legacy_scheduled_sql",
+            ],
+            "table_keywords": [
+                "repo_stg.adif__maindatatable_notebook",
+                "repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view",
+                "repo_stg.stg__adif__social_crossplatform",
+                "repo_int.crossplatform_pacing",
+            ],
+            "prefer_dirs": ["adif"],
+        },
         {
             "title": "DCM + UTM enrichment hardening",
             "summary": "You were tightening how DCM rows get UTM fields with a constrained fallback for specific campaigns.",
@@ -666,7 +703,7 @@ def render_entry_source_line(provenance: Provenance) -> str:
 
 
 def render_headlines(workstreams: List[Workstream]) -> str:
-    lines = ["## Headlines\n\n"]
+    lines = ["## What You Were Working On\n\n"]
     for i, ws in enumerate(workstreams, start=1):
         lines.append(
             f"{i}. **{ws.title}** - {ws.summary} "
@@ -677,7 +714,7 @@ def render_headlines(workstreams: List[Workstream]) -> str:
 
 
 def render_details(workstreams: List[Workstream], provenance: Provenance) -> str:
-    lines = ["## Details\n\n"]
+    lines = ["## What You Should Do Next (In Order)\n\n"]
     if workstreams:
         lines.append("### Do First (5 Minutes)\n")
         lines.append(f"{workstreams[0].next_step_label} (estimated {workstreams[0].eta_minutes} minutes)\n\n")
@@ -715,7 +752,12 @@ def render_details(workstreams: List[Workstream], provenance: Provenance) -> str
 
 def render_repo_status(repo_snapshots: List[RepoSnapshot]) -> str:
     lines = ["## Repo Status\n\n"]
+    seen_roots = set()
     for repo in repo_snapshots:
+        root_key = repo.git_root or str(repo.path)
+        if root_key in seen_roots:
+            continue
+        seen_roots.add(root_key)
         lines.append(f"### `{repo.name}`\n")
         if not repo.is_git:
             lines.append("- Not a git repository.\n\n")
@@ -939,6 +981,12 @@ def main() -> int:
         automation_name=args.automation_name.strip(),
         automation_id=args.automation_id.strip(),
     )
+    if not provenance.skill_path:
+        provenance.skill_path = str((Path(__file__).resolve().parent.parent / "SKILL.md"))
+    if not provenance.automation_name:
+        provenance.automation_name = "manual-run"
+    if not provenance.automation_id:
+        provenance.automation_id = "none"
 
     scan_dirs = resolve_scan_dirs(workspace_root, args.scan_dirs, args.max_dirs)
     scanned_set = {str(p) for p in scan_dirs}
@@ -954,6 +1002,7 @@ def main() -> int:
 
     for directory in scan_dirs:
         git_repo = is_git_repo(directory)
+        repo_root = git_root(directory) if git_repo else ""
 
         branch = ""
         local_head = ""
@@ -972,6 +1021,7 @@ def main() -> int:
                 name=directory.name,
                 path=directory,
                 is_git=git_repo,
+                git_root=repo_root,
                 branch=branch,
                 local_head=local_head,
                 staged=staged,
