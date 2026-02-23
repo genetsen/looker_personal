@@ -42,7 +42,16 @@ fpd_untracked_df_raw <- bq_table_download(job) %>%
 glimpse(fpd_untracked_df_raw)
 
 fpd_untracked_df <- fpd_untracked_df_raw %>%
-  select(advertiser_name, advertiser_short_name, supplier_code, supplier_name, start_date, end_date,script_run_date,campaign_name,) %>%
+  select(
+    advertiser_name, 
+    advertiser_short_name, 
+    supplier_code, 
+    supplier_name, 
+    start_date, 
+    end_date,
+    script_run_date,
+    campaign_name,
+  ) %>%
   group_by(advertiser_name,advertiser_short_name,supplier_code,supplier_name) %>%
   summarise(start_date = min(start_date),end_date = max(end_date),script_run_date = max(script_run_date)) %>%
   mutate(sheet_name = paste0(advertiser_short_name, " | ", supplier_code, " | Partner Data")) %>%
