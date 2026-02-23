@@ -58,7 +58,7 @@ known_kpi_metrics <- c(
 # Clients are matched case-insensitively against the `client` column.
 client_week_config <- data.frame(
   client     = c("mass", "oli", "adif", "apollo"),
-  week_start = c("Sun",  "Sun", "Sun",  "Sun"),
+  week_start = c("Sun",  "Sun", "Sun",  "Mon"),
   stringsAsFactors = FALSE
 )
 default_week_start <- "Sun"
