@@ -1,6 +1,6 @@
 ---
 name: current-work-skill
-description: Generate resume-first current-work markdown snapshots for a workspace by scanning selected subdirectories, global Codex logs, remote git activity, and VS Code open-tab context from local session logs. Use when you need to quickly know what you were doing, what to do next, and have actionable next-step guidance with clickable paths.
+description: Generate resume-first current-work markdown snapshots for a workspace by scanning selected subdirectories, last-24-hour Codex session logs, remote git activity, and local context signals. Ranking prioritizes recent file edits, terminal commands, messages, and git state, with VS Code open tabs used as supplemental context.
 ---
 
 # Current Work Skill
@@ -10,6 +10,7 @@ description: Generate resume-first current-work markdown snapshots for a workspa
 ```bash
 python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py \
   --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \
+  --log-window-hours 24 \
   --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \
   --global-out /Users/eugenetsenter/.codex/current-work.md \
   --project-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md
@@ -21,6 +22,7 @@ python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill
 python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py \
   --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \
   --scan-dirs mft,util \
+  --log-window-hours 24 \
   --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \
   --global-out /Users/eugenetsenter/.codex/current-work.md \
   --project-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md \
@@ -34,4 +36,5 @@ python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill
 - `How to do this` guidance under each next step
 - clickable local path links in path/open-file sections
 - scan-location details saved in run metadata
+- 24-hour command/message evidence saved in run metadata
 - concise footnotes for jargon

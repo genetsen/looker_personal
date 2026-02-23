@@ -10,7 +10,7 @@ import re
 import shlex
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
@@ -37,6 +37,11 @@ SKIP_DIRS = {
 }
 
 TABLE_TOKEN_RE = re.compile(r"`?([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)`?")
+ABS_PATH_RE = re.compile(r"(/[^ \t\n\r'\"`<>()\[\],;]+)")
+DEFAULT_LOG_WINDOW_HOURS = 24
+MAX_SESSION_FILES = 40
+MAX_COMMAND_SIGNALS = 120
+MAX_MESSAGE_SIGNALS = 200
 
 
 @dataclass
@@ -65,12 +70,33 @@ class RepoSnapshot:
 
 
 @dataclass
+class CommandSignal:
+    epoch: float
+    timestamp: str
+    cmd: str
+    workdir: str
+
+
+@dataclass
+class MessageSignal:
+    epoch: float
+    timestamp: str
+    role: str
+    text: str
+
+
+@dataclass
 class CodexSignals:
     sessions_dir: Path
     shell_snapshots_dir: Path
     latest_session_files: List[Path]
     open_tabs: List[str]
     open_tab_sources: List[str]
+    recent_commands: List[CommandSignal]
+    recent_messages: List[MessageSignal]
+    command_paths: List[str]
+    message_paths: List[str]
+    log_window_hours: int
 
 
 @dataclass
@@ -129,6 +155,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project-out", default="")
     parser.add_argument("--run-dir", default="")
     parser.add_argument("--pkm-inbox", default=str(DEFAULT_PKM_INBOX))
+    parser.add_argument("--log-window-hours", type=int, default=DEFAULT_LOG_WINDOW_HOURS)
     parser.add_argument("--skill-name", default="current-work-skill")
     parser.add_argument("--skill-path", default="")
     parser.add_argument("--automation-name", default="")
@@ -334,14 +361,88 @@ def parse_open_tabs_from_user_text(text: str) -> List[str]:
     return tabs
 
 
-def load_codex_signals(codex_home: Path) -> CodexSignals:
+def parse_iso_epoch(ts_text: str) -> float:
+    if not ts_text:
+        return 0.0
+    try:
+        cleaned = ts_text.replace("Z", "+00:00")
+        return datetime.fromisoformat(cleaned).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def clean_text(text: str, limit: int = 300) -> str:
+    squashed = " ".join(text.split())
+    if len(squashed) <= limit:
+        return squashed
+    return squashed[: limit - 3] + "..."
+
+
+def extract_paths_from_text(text: str) -> List[str]:
+    paths: List[str] = []
+    for token in ABS_PATH_RE.findall(text):
+        if token.startswith("//"):
+            continue
+        if not (token.startswith("/Users/") or token.startswith("/tmp/")):
+            continue
+        if token.endswith("...") or token.endswith("/..."):
+            continue
+        if ":" in token and token.startswith("/Users/"):
+            base, maybe_line = token.rsplit(":", 1)
+            if maybe_line.isdigit():
+                token = base
+        if len(token) < 3 or token == "/":
+            continue
+        paths.append(token)
+    return paths
+
+
+def extract_text_items(content: object) -> List[str]:
+    out: List[str] = []
+    if not isinstance(content, list):
+        return out
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        txt = item.get("text") or item.get("input_text") or item.get("output_text")
+        if isinstance(txt, str) and txt.strip():
+            out.append(txt)
+    return out
+
+
+def load_codex_signals(codex_home: Path, window_hours: int) -> CodexSignals:
     sessions_dir = codex_home / "sessions"
     shell_dir = codex_home / "shell_snapshots"
 
-    latest_jsonl = sorted(sessions_dir.rglob("*.jsonl"), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)[:8]
+    now_epoch = datetime.now(timezone.utc).timestamp()
+    cutoff_epoch = now_epoch - max(window_hours, 1) * 3600
+    all_jsonl = sorted(
+        sessions_dir.rglob("*.jsonl"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True,
+    )
+
+    latest_jsonl: List[Path] = []
+    for path in all_jsonl:
+        try:
+            if path.stat().st_mtime >= cutoff_epoch:
+                latest_jsonl.append(path)
+        except OSError:
+            continue
+        if len(latest_jsonl) >= MAX_SESSION_FILES:
+            break
+
+    if not latest_jsonl:
+        latest_jsonl = all_jsonl[:8]
 
     tabs: List[str] = []
     tab_sources: List[str] = []
+    command_sources: List[str] = []
+    message_sources: List[str] = []
+    recent_commands: List[CommandSignal] = []
+    recent_messages: List[MessageSignal] = []
+    command_paths: List[str] = []
+    message_paths: List[str] = []
 
     for jsonl in latest_jsonl:
         try:
@@ -353,23 +454,67 @@ def load_codex_signals(codex_home: Path) -> CodexSignals:
                         continue
                     if obj.get("type") != "response_item":
                         continue
+
+                    line_ts = obj.get("timestamp", "")
+                    line_epoch = parse_iso_epoch(line_ts)
+                    if line_epoch and line_epoch < cutoff_epoch:
+                        continue
+
                     payload = obj.get("payload", {})
                     if not isinstance(payload, dict):
                         continue
-                    if payload.get("type") != "message" or payload.get("role") != "user":
-                        continue
-                    content = payload.get("content", [])
-                    if not isinstance(content, list):
-                        continue
-                    for item in content:
-                        if not isinstance(item, dict):
+                    payload_type = payload.get("type")
+
+                    if payload_type == "function_call" and payload.get("name") == "exec_command":
+                        raw_args = payload.get("arguments", "")
+                        cmd = ""
+                        workdir = ""
+                        if isinstance(raw_args, str) and raw_args.strip():
+                            try:
+                                parsed_args = json.loads(raw_args)
+                            except json.JSONDecodeError:
+                                parsed_args = {}
+                            if isinstance(parsed_args, dict):
+                                cmd = str(parsed_args.get("cmd", "")).strip()
+                                workdir = str(parsed_args.get("workdir", "")).strip()
+                        if cmd:
+                            recent_commands.append(
+                                CommandSignal(
+                                    epoch=line_epoch or jsonl.stat().st_mtime,
+                                    timestamp=line_ts,
+                                    cmd=clean_text(cmd, 280),
+                                    workdir=workdir,
+                                )
+                            )
+                            command_sources.append(str(jsonl))
+                            command_paths.extend(extract_paths_from_text(cmd))
+                            if workdir.startswith("/"):
+                                command_paths.append(workdir)
+
+                    if payload_type == "message":
+                        role = str(payload.get("role", "")).strip().lower()
+                        if role not in {"user", "assistant"}:
                             continue
-                        txt = item.get("text") or item.get("input_text")
-                        if isinstance(txt, str) and "## Open tabs:" in txt:
-                            found = parse_open_tabs_from_user_text(txt)
-                            if found:
-                                tabs.extend(found)
-                                tab_sources.append(str(jsonl))
+                        texts = extract_text_items(payload.get("content", []))
+                        for txt in texts:
+                            normalized = clean_text(txt, 320)
+                            if not normalized:
+                                continue
+                            recent_messages.append(
+                                MessageSignal(
+                                    epoch=line_epoch or jsonl.stat().st_mtime,
+                                    timestamp=line_ts,
+                                    role=role,
+                                    text=normalized,
+                                )
+                            )
+                            message_sources.append(str(jsonl))
+                            message_paths.extend(extract_paths_from_text(txt))
+                            if "## Open tabs:" in txt:
+                                found = parse_open_tabs_from_user_text(txt)
+                                if found:
+                                    tabs.extend(found)
+                                    tab_sources.append(str(jsonl))
         except OSError:
             continue
 
@@ -387,12 +532,27 @@ def load_codex_signals(codex_home: Path) -> CodexSignals:
             dedup_sources.append(src)
             seen_sources.add(src)
 
+    dedup_command_paths = dedup_keep_order(command_paths)
+    dedup_message_paths = dedup_keep_order(message_paths)
+
+    recent_commands.sort(key=lambda row: row.epoch, reverse=True)
+    recent_messages.sort(key=lambda row: row.epoch, reverse=True)
+
+    # Keep bounded signal lists to avoid oversized metadata and docs.
+    recent_commands = recent_commands[:MAX_COMMAND_SIGNALS]
+    recent_messages = recent_messages[:MAX_MESSAGE_SIGNALS]
+
     return CodexSignals(
         sessions_dir=sessions_dir,
         shell_snapshots_dir=shell_dir,
         latest_session_files=latest_jsonl,
         open_tabs=dedup_tabs,
         open_tab_sources=dedup_sources,
+        recent_commands=recent_commands,
+        recent_messages=recent_messages,
+        command_paths=dedup_command_paths,
+        message_paths=dedup_message_paths,
+        log_window_hours=window_hours,
     )
 
 
@@ -420,8 +580,34 @@ def table_matches(table: str, keywords: Sequence[str]) -> bool:
     return any(k in low for k in keywords)
 
 
-def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) -> List[Workstream]:
+def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSignals) -> List[Workstream]:
     defs = [
+        {
+            "title": "Current-work skill accuracy tuning",
+            "summary": "You were actively improving how the current-work skill detects true active work from logs and repo signals.",
+            "why": "Better detection prevents false top-priority tasks and makes restart guidance trustworthy.",
+            "priority_reason": "Recent terminal activity and messages are centered on current-work-skill scoring improvements.",
+            "next_label": "Run a sample generation and verify the top task matches the last 24-hour activity",
+            "next_cmd": (
+                "python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py \\\n"
+                "  --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \\\n"
+                "  --scan-dirs current-work-skill,mft,util \\\n"
+                "  --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \\\n"
+                "  --global-out /Users/eugenetsenter/.codex/current-work.md \\\n"
+                "  --project-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md \\\n"
+                "  --log-window-hours 24"
+            ),
+            "eta_minutes": 8,
+            "path_keywords": [
+                "current-work-skill",
+                "generate_current_work.py",
+                "current-work.md",
+                "changelog.md",
+                "readme.md",
+            ],
+            "table_keywords": [],
+            "prefer_dirs": ["current-work-skill"],
+        },
         {
             "title": "ADIF notebook production and docs alignment",
             "summary": "You were updating notebook-first ADIF production flow and syncing local docs to the live notebook behavior.",
@@ -501,8 +687,9 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) 
     ]
 
     repo_recent_paths: List[Tuple[float, str, str]] = []
-    open_tab_paths: List[str] = dedup_keep_order(open_tabs)
+    open_tab_paths: List[str] = dedup_keep_order(codex_signals.open_tabs)
     all_tables: List[str] = []
+    now_epoch = datetime.now().timestamp()
 
     for repo in repo_snapshots:
         for ts, p in repo.recent_files:
@@ -525,10 +712,22 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) 
         matched_tables: List[str] = []
         signals: List[str] = []
         score = 0
+        command_score = 0
+        message_score = 0
+        command_hits = 0
+        message_hits = 0
 
         for ts, path, repo_name in repo_recent_paths:
             if path_matches(path, d["path_keywords"]):
-                bonus = 2
+                age_hours = max((now_epoch - ts) / 3600, 0)
+                if age_hours <= 3:
+                    bonus = 6
+                elif age_hours <= 12:
+                    bonus = 4
+                elif age_hours <= 24:
+                    bonus = 3
+                else:
+                    bonus = 1
                 if repo_name in d["prefer_dirs"]:
                     bonus += 2
                 score += bonus
@@ -536,14 +735,69 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) 
 
         for tab in open_tab_paths:
             if path_matches(tab, d["path_keywords"]):
-                score += 4
+                # Tabs remain useful, but no longer dominate ranking.
+                score += 1
                 matched_paths.append(tab)
                 signals.append("open-tab hit")
+
+        for path in codex_signals.command_paths:
+            if path_matches(path, d["path_keywords"]):
+                matched_paths.append(path)
+                score += 3
+
+        for path in codex_signals.message_paths:
+            if path_matches(path, d["path_keywords"]):
+                matched_paths.append(path)
+                score += 3
 
         for table in all_tables:
             if table_matches(table, d["table_keywords"]):
                 score += 2
                 matched_tables.append(table)
+
+        for command in codex_signals.recent_commands:
+            hay = f"{command.workdir} {command.cmd}".lower()
+            if path_matches(hay, d["path_keywords"]) or table_matches(hay, d["table_keywords"]):
+                age_hours = max((now_epoch - command.epoch) / 3600, 0)
+                if age_hours <= 1:
+                    command_score += 8
+                elif age_hours <= 6:
+                    command_score += 6
+                elif age_hours <= 24:
+                    command_score += 4
+                else:
+                    command_score += 2
+                command_hits += 1
+                if command.workdir.startswith("/"):
+                    matched_paths.append(f"{ts_local(command.epoch)} - {command.workdir}")
+
+        for message in codex_signals.recent_messages:
+            hay = message.text.lower()
+            if path_matches(hay, d["path_keywords"]) or table_matches(hay, d["table_keywords"]):
+                age_hours = max((now_epoch - message.epoch) / 3600, 0)
+                if age_hours <= 1:
+                    message_score += 6
+                elif age_hours <= 6:
+                    message_score += 5
+                elif age_hours <= 24:
+                    message_score += 4
+                else:
+                    message_score += 2
+                message_hits += 1
+
+        score += min(command_score, 36)
+        score += min(message_score, 30)
+
+        for repo in repo_snapshots:
+            if repo.name not in d["prefer_dirs"]:
+                continue
+            if repo.staged + repo.modified + repo.untracked <= 0:
+                continue
+            git_score = min(12, repo.staged * 3 + repo.modified * 2 + min(repo.untracked, 4))
+            score += git_score
+            signals.append(
+                f"git activity in {repo.name}: staged={repo.staged}, modified={repo.modified}, untracked={repo.untracked}"
+            )
 
         matched_paths = dedup_keep_order(matched_paths)
         matched_tables = dedup_keep_order(matched_tables)
@@ -572,6 +826,10 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) 
             signals.append(f"path hits={len(matched_paths)}")
         if matched_tables:
             signals.append(f"table hits={len(matched_tables)}")
+        if command_hits:
+            signals.append(f"log command hits={command_hits} (last {codex_signals.log_window_hours}h)")
+        if message_hits:
+            signals.append(f"log message hits={message_hits} (last {codex_signals.log_window_hours}h)")
 
         scored.append(
             (
@@ -598,23 +856,28 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], open_tabs: List[str]) 
     if selected:
         return selected
 
-    fallback_paths = dedup_keep_order([p for _, p, _ in repo_recent_paths])[:10]
+    fallback_paths = dedup_keep_order(
+        [p for _, p, _ in repo_recent_paths] + codex_signals.command_paths + codex_signals.message_paths
+    )[:12]
+    fallback_cmd = "git status --short"
+    fallback_label = "Create checkpoint commit"
+    if codex_signals.recent_commands:
+        fallback_cmd = codex_signals.recent_commands[0].cmd
+        fallback_label = "Re-run your most recent terminal command to resume context"
+    fallback_summary = "Recent file, git, and agent-log signals were detected, but no named workstream scored strongly."
     return [
         Workstream(
             title="General workspace maintenance",
-            summary="Recent file and git activity was detected, but no strong thematic cluster was found.",
+            summary=fallback_summary,
             why_it_matters="A quick checkpoint commit keeps your context safe while you reorient.",
-            priority_reason="No high-confidence workstream was detected from current signals.",
-            next_step_label="Create checkpoint commit",
-            next_step_cmd=(
-                "cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal\n"
-                "git status --short\n"
-                "git add .\n"
-                "git commit -m \"Checkpoint: current-work snapshot\""
+            priority_reason=(
+                f"No high-confidence themed cluster was detected across the last {codex_signals.log_window_hours} hours."
             ),
+            next_step_label=fallback_label,
+            next_step_cmd=fallback_cmd,
             eta_minutes=5,
             confidence="low",
-            signal_notes=["fallback mode"],
+            signal_notes=[f"fallback mode (last {codex_signals.log_window_hours}h logs included)"],
             paths=fallback_paths,
             tables=all_tables[:6],
         )
@@ -1033,8 +1296,8 @@ def main() -> int:
             )
         )
 
-    codex_signals = load_codex_signals(codex_home)
-    workstreams = build_workstreams(repo_snapshots, codex_signals.open_tabs)
+    codex_signals = load_codex_signals(codex_home, args.log_window_hours)
+    workstreams = build_workstreams(repo_snapshots, codex_signals)
 
     lookups = RunLookups(
         workspace_root=workspace_root,
@@ -1110,6 +1373,25 @@ def main() -> int:
             "session_files_used": [str(p) for p in codex_signals.latest_session_files],
             "remote_checks": remote_checks,
             "open_tab_sources": codex_signals.open_tab_sources,
+            "log_window_hours": codex_signals.log_window_hours,
+            "recent_commands": [
+                {
+                    "timestamp": sig.timestamp,
+                    "cmd": sig.cmd,
+                    "workdir": sig.workdir,
+                }
+                for sig in codex_signals.recent_commands[:60]
+            ],
+            "recent_messages": [
+                {
+                    "timestamp": sig.timestamp,
+                    "role": sig.role,
+                    "text": sig.text,
+                }
+                for sig in codex_signals.recent_messages[:80]
+            ],
+            "command_paths": codex_signals.command_paths[:120],
+            "message_paths": codex_signals.message_paths[:120],
             "provenance": {
                 "skill_name": provenance.skill_name,
                 "skill_path": provenance.skill_path,

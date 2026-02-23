@@ -1,8 +1,8 @@
 # Current Work - Workspace (Resume Fast)
 
-Updated: `2026-02-18 18:42:13 EST`
+Updated: `2026-02-23 09:18:43 EST`
 Workspace root: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal`
-Directories scanned this run: `13`
+Directories scanned this run: `2`
 
 ## Snapshot Source
 
@@ -11,71 +11,78 @@ Directories scanned this run: `13`
 
 ## What You Were Working On
 
-1. **ADIF notebook production and docs alignment** - You were updating notebook-first ADIF production flow and syncing local docs to the live notebook behavior. Confidence: high. Next: Run notebook dependency and target-table sanity checks (about 8 minutes).
+1. **Current-work skill accuracy tuning** - You were actively improving how the current-work skill detects true active work from logs and repo signals. Confidence: high. Next: Run a sample generation and verify the top task matches the last 24-hour activity (about 8 minutes).
 2. **Offline sheet daily sync pipeline** - You were maintaining the sheet-to-BigQuery sync used for `mft_offline` updates. Confidence: high. Next: Verify scheduled-query status and latest rows (about 7 minutes).
-3. **DCM + UTM enrichment hardening** - You were tightening how DCM rows get UTM fields with a constrained fallback for specific campaigns. Confidence: medium. Next: Run a null-UTM health check for scoped campaigns (about 8 minutes).
+3. **Basis UTM merge and FY26 Q1 backfill** - You were working on Basis UTM union/backfill logic and a patched SQL flow in `/tmp`. Confidence: medium. Next: Validate patched SQL once, then decide whether to move it into repo (about 10 minutes).
 
 ## What You Should Do Next (In Order)
 
 ### Do First (5 Minutes)
-Run notebook dependency and target-table sanity checks (estimated 8 minutes)
+Run a sample generation and verify the top task matches the last 24-hour activity (estimated 8 minutes)
 
 ```bash
-cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif
-jq -r '.cells[] | select(.cell_type=="markdown") | (.source // []) | join("")' projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb | head -n 60
-rg -n "adif__mainDataTable_notebook|Section 1|Section 2" README.md AGENTS.md projects/social_layering/README.md
+python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py \
+  --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \
+  --scan-dirs current-work-skill,mft,util \
+  --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \
+  --global-out /Users/eugenetsenter/.codex/current-work.md \
+  --project-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md \
+  --log-window-hours 24
 ```
 
-### 1) ADIF notebook production and docs alignment
-What this means: You were updating notebook-first ADIF production flow and syncing local docs to the live notebook behavior.
+### 1) Current-work skill accuracy tuning
+What this means: You were actively improving how the current-work skill detects true active work from logs and repo signals.
 
 Entry source: Source: `current-work-skill` skill via `manual-run` automation.
 
 Confidence: high
 
-Why this is prioritized now: Recent ADIF notebook, README, and AGENTS updates indicate active production documentation alignment.
+Why this is prioritized now: Recent terminal activity and messages are centered on current-work-skill scoring improvements.
 
-Why it matters: This keeps production runbooks and dependency docs aligned to the real pipeline target table and steps.
+Why it matters: Better detection prevents false top-priority tasks and makes restart guidance trustworthy.
 
-Next step now: Run notebook dependency and target-table sanity checks (estimated 8 minutes)
+Next step now: Run a sample generation and verify the top task matches the last 24-hour activity (estimated 8 minutes)
 
-How to do this: Run the command and confirm the key metric changed in the expected direction. Start with [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/CHANGELOG.md), [SKILL.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/skills/sql-change-guard/SKILL.md), [README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README.md).
+How to do this: Run the check, confirm expected status and recent rows, then capture what you saw. Start with [README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md), [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG.md), [current-work-skill](/Users/eugenetsenter/.codex/automations/current-work-skill).
 
 ```bash
-cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif
-jq -r '.cells[] | select(.cell_type=="markdown") | (.source // []) | join("")' projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb | head -n 60
-rg -n "adif__mainDataTable_notebook|Section 1|Section 2" README.md AGENTS.md projects/social_layering/README.md
+python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py \
+  --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \
+  --scan-dirs current-work-skill,mft,util \
+  --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \
+  --global-out /Users/eugenetsenter/.codex/current-work.md \
+  --project-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md \
+  --log-window-hours 24
 ```
 
-<details><summary>Signals - ADIF notebook production and docs alignment</summary>
+<details><summary>Signals - Current-work skill accuracy tuning</summary>
 
-- `path hits=20`
-- `table hits=3`
-
-</details>
-
-<details><summary>Paths - ADIF notebook production and docs alignment</summary>
-
-- 2026-02-18 18:32:18 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/CHANGELOG.md)
-- 2026-02-18 18:31:59 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/skills/sql-change-guard/SKILL.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/skills/sql-change-guard/SKILL.md)
-- 2026-02-18 18:31:43 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README.md)
-- 2026-02-18 18:31:02 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md)
-- 2026-02-18 18:30:57 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
-- 2026-02-18 18:30:51 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/README.md)
-- 2026-02-18 18:29:57 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md)
-- 2026-02-18 18:27:45 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb)
-- 2026-02-18 18:22:40 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/archive/legacy_scheduled_sql/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/archive/legacy_scheduled_sql/README.md)
-- 2026-02-18 16:48:25 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl (1).ipynb](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/archive/legacy_scheduled_sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl (1).ipynb)
-- 2026-02-18 16:42:50 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/updated_fpd_integration/sql/stg__adif__updated_fpd_integrated_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/updated_fpd_integration/sql/stg__adif__updated_fpd_integrated_v2.sql)
-- 2026-02-18 16:06:40 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/Getting_started_with_BigQuery_DataFrames.ipynb](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/Getting_started_with_BigQuery_DataFrames.ipynb)
+- `path hits=14`
+- `log command hits=15 (last 24h)`
+- `log message hits=10 (last 24h)`
 
 </details>
 
-<details><summary>Tables - ADIF notebook production and docs alignment</summary>
+<details><summary>Paths - Current-work skill accuracy tuning</summary>
 
-- `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
-- `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
-- `looker-studio-pro-452620.repo_int.crossplatform_pacing`
+- 2026-02-17 16:09:33 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md)
+- 2026-02-17 16:09:33 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG.md)
+- [/Users/eugenetsenter/.codex/automations/current-work-skill](/Users/eugenetsenter/.codex/automations/current-work-skill)
+- [/Users/eugenetsenter/.codex/automations/current-work-skill/memory.md](/Users/eugenetsenter/.codex/automations/current-work-skill/memory.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-global.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-global.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/output/current-work-workspace.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scrap](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scrap)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/SKILL.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/SKILL.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scrap.](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scrap.)
+- [/Users/eugenetsenter/.codex/current-work.md](/Users/eugenetsenter/.codex/current-work.md)
+
+</details>
+
+<details><summary>Tables - Current-work skill accuracy tuning</summary>
+
+- None detected
 
 </details>
 
@@ -102,6 +109,7 @@ bq head -n 5 looker-studio-pro-452620:mass_mutual_mft_ext.mft_offline
 
 <details><summary>Signals - Offline sheet daily sync pipeline</summary>
 
+- `git activity in mft: staged=0, modified=0, untracked=1`
 - `path hits=4`
 - `table hits=2`
 
@@ -123,61 +131,57 @@ bq head -n 5 looker-studio-pro-452620:mass_mutual_mft_ext.mft_offline
 
 </details>
 
-### 3) DCM + UTM enrichment hardening
-What this means: You were tightening how DCM rows get UTM fields with a constrained fallback for specific campaigns.
+### 3) Basis UTM merge and FY26 Q1 backfill
+What this means: You were working on Basis UTM union/backfill logic and a patched SQL flow in `/tmp`.
 
 Entry source: Source: `current-work-skill` skill via `manual-run` automation.
 
 Confidence: medium
 
-Why this is prioritized now: Recent SQL edits and key table hits point to active DCM-UTM alignment work.
+Why this is prioritized now: Open tabs and recent util file edits both point to Basis UTM backfill tasks right now.
 
-Why it matters: This prevents null UTM rows and keeps attribution reporting stable.
+Why it matters: This controls whether Basis delivery rows join into UTM layers without gaps or duplicate logic.
 
-Next step now: Run a null-UTM health check for scoped campaigns (estimated 8 minutes)
+Next step now: Validate patched SQL once, then decide whether to move it into repo (estimated 10 minutes)
 
-How to do this: Run the command and confirm the key metric changed in the expected direction. Start with [repo_stg__dcm_plus_utms.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/repo_stg__dcm_plus_utms.sql).
+How to do this: Run the command one time and confirm the output looks sane; then choose whether to keep temporary logic or copy it into the repo file.
 
 ```bash
-cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft
-./scripts/bq-safe-query.sh --max-rows 25 --sql "SELECT campaign, COUNT(*) AS rows, COUNTIF(utm_content IS NULL) AS null_utm_content FROM `looker-studio-pro-452620.repo_stg.dcm_plus_utms` WHERE campaign IN ('MassMutual20252026Media','MassMutualLVGP2025') AND date >= '2026-01-01' GROUP BY 1 ORDER BY rows DESC"
+bq query --use_legacy_sql=false < /tmp/utm_updates_patched.sql
 ```
 
-<details><summary>Signals - DCM + UTM enrichment hardening</summary>
+<details><summary>Signals - Basis UTM merge and FY26 Q1 backfill</summary>
 
-- `path hits=1`
-- `table hits=3`
-
-</details>
-
-<details><summary>Paths - DCM + UTM enrichment hardening</summary>
-
-- 2026-02-17 16:09:33 EST - [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/repo_stg__dcm_plus_utms.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/repo_stg__dcm_plus_utms.sql)
+- `git activity in util: staged=0, modified=7, untracked=6`
 
 </details>
 
-<details><summary>Tables - DCM + UTM enrichment hardening</summary>
+<details><summary>Paths - Basis UTM merge and FY26 Q1 backfill</summary>
 
-- `looker-studio-pro-452620.repo_stg.dcm_plus_utms`
-- `looker-studio-pro-452620.final_views.dcm`
-- `looker-studio-pro-452620.final_views.utms_view`
+- None detected
+
+</details>
+
+<details><summary>Tables - Basis UTM merge and FY26 Q1 backfill</summary>
+
+- None detected
 
 </details>
 
 ## Repo Status
 
-### `Explorations`
-- Branch[^3]: `dev...Omni_remote/dev [ahead 5]`
-- Working tree[^1]: staged=0, modified=11, untracked=4
-- Remote activity[^2]:
-  - `Omni_remote` (main) => local HEAD differs from remote HEAD; url=`https://github.com/GiantSpoon-Tech/omni.git`
-  - `origin` (main) => local HEAD differs from remote HEAD; url=`https://github.com/genetsen/looker_personal`
-
 ### `mft`
 - Branch[^3]: `main...origin/main`
-- Working tree[^1]: staged=0, modified=0, untracked=0
+- Working tree[^1]: staged=0, modified=0, untracked=1
 - Remote activity[^2]:
-  - `origin` (main) => local HEAD matches remote HEAD; url=`https://github.com/genetsen/mft.git`
+  - `origin` (unknown) => remote HEAD not available; url=`https://github.com/genetsen/mft.git`
+
+### `util`
+- Branch[^3]: `dev...Omni_remote/dev [ahead 6]`
+- Working tree[^1]: staged=0, modified=7, untracked=6
+- Remote activity[^2]:
+  - `Omni_remote` (unknown) => remote HEAD not available; url=`https://github.com/GiantSpoon-Tech/omni.git`
+  - `origin` (unknown) => remote HEAD not available; url=`https://github.com/genetsen/looker_personal`
 
 ## Open Files Seen From VS Code Context[^4]
 
@@ -186,6 +190,22 @@ cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft
 ## Current Risks
 
 - No high-risk signal found in this scan.
+
+## Sample Scope Note
+
+- This run used a limited directory set, so some workspace areas were intentionally skipped.
+- Skipped top-level directories in this sample run:
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/dim_model`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Explorations`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/linear`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/olipop`
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql`
 
 ## Footnotes
 

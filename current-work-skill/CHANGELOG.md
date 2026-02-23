@@ -1,3 +1,36 @@
+## 2026-02-20
+
+### Added
+- **24-hour agent-log signal capture**
+  What: added parsing of recent Codex session logs to capture terminal commands (`exec_command`), user/assistant messages, and path clues for ranking context.
+  Why: improve detection of what you are actively doing right now, even when VS Code tabs are unavailable.
+  <details><summary>Paths — 24-hour agent-log signal capture</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+
+  </details>
+
+### Changed
+- **Workstream ranking signal priorities**
+  What: rebalanced scoring to prioritize recent file edits, terminal command history, message history, and git activity, while reducing open-tab influence to a supplemental signal.
+  Why: reduce false top-task ranking and better match active work from the last 24 hours.
+  <details><summary>Paths — Workstream ranking signal priorities</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+
+  </details>
+
+- **Run interface and docs for log window control**
+  What: added `--log-window-hours` (default `24`) and updated skill documentation to reflect the new log-driven ranking behavior.
+  Why: keep behavior explicit and make the time window easy to tune while preserving a sensible default.
+  <details><summary>Paths — Run interface and docs for log window control</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/README.md)
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/SKILL.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/SKILL.md)
+
+  </details>
+
 ## 2026-02-18
 
 ### Added

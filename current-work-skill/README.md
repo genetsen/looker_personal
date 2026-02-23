@@ -11,9 +11,10 @@ Project location:
 ## What each run scans
 
 - Selected workspace subdirectories (or all top-level directories if none are specified).
-- Global Codex logs under `~/.codex/sessions` and `~/.codex/shell_snapshots`.
+- Last-24-hour Codex session logs under `~/.codex/sessions` (configurable via `--log-window-hours`).
 - Git status and remote-head checks for scanned git repositories.
-- VS Code open-tab context extracted from recent local session logs.
+- Recent terminal commands (`exec_command`) and user/assistant messages from session logs.
+- VS Code open-tab context from logs as a supplemental signal (lower weight).
 - Run metadata that records where each scan looked.
 
 ## Output style
@@ -21,6 +22,7 @@ Project location:
 - `Headlines` first, then `Details`.
 - `Do First` action near the top.
 - One direct runnable command per workstream.
+- Workstream ranking weighted toward recent file edits, terminal commands, messages, and git activity.
 - A `How to do this` sentence with links under each next step.
 - Clickable absolute paths in path and open-file sections.
 - Table names in collapsible sections.
@@ -33,6 +35,7 @@ Project location:
 python /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py \
   --workspace-root /Users/eugenetsenter/Looker_clonedRepo/looker_personal \
   --scan-dirs mft,util \
+  --log-window-hours 24 \
   --workspace-out /Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md \
   --global-out "/Users/eugenetsenter/Library/Mobile Documents/iCloud~md~obsidian/Documents/2026-ob-vault/2026-ob-vault/current-work.md" \
   --skill-name current-work \
