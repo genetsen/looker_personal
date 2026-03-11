@@ -35,6 +35,16 @@ flowchart LR
 - Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 - Legacy scheduled SQL and duplicate notebook copies: `projects/social_layering/archive/legacy_scheduled_sql/`
 
+## Shadow Validation Notebook
+
+- Shadow notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb`
+- Shadow output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Current validation focus:
+  - Keeps FPD, DCM, and social source metrics in separate source-prefixed columns
+  - Recomputes canonical `final_spend`, `final_impressions`, and `final_clicks` with source-aware logic
+  - Uses `d_daily_recalculated_cost` for DCM spend and `d_impressions` for DCM final impressions to mirror the current production definition
+  - Prevents zero-filled FPD placeholders from masking valid DCM delivery in the shadow table
+
 ## Source Coverage
 
 ### Notebook Section 1 (`CREATE OR REPLACE TABLE`)
