@@ -10,7 +10,9 @@ Complete documentation of the ADIF (Advertising Intelligence & Forecasting) data
 ├─────────────────────────────────────────────────────────────────┤
 │  DIGITAL SOURCES:                    TV SOURCES:                │
 │  • DCM.20250505_costModel_v5        • tv_local_estimates        │
-│  • landing.adif_fpd_data_ranged     • tv_national_estimates     │
+│  • landing.fpd_data_ranged_shortcutsFolder*                     │
+│    * filtered to De Beers + FMUS partner-data sheets            │
+│                                 • tv_national_estimates         │
 │  • 20250327_data_model.prisma...                                │
 └────────────────┬───────────────────────────────┬────────────────┘
                  │                               │
@@ -38,7 +40,7 @@ This sub-project owns the digital core branch and hands off to the updated-FPD +
 ```mermaid
 flowchart LR
   dcm["looker-studio-pro-452620.DCM.20250505_costModel_v5"] --> core_base["repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test"]
-  fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"] --> core_base
+  fpd_orig["looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder\n(filtered to De Beers + FMUS partner-data sheets)"] --> core_base
   prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
   core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
   upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook (via notebook Section 1 rebuild)"]
@@ -79,9 +81,9 @@ flowchart LR
 ---
 
 #### 2. First-Party Data (FPD)
-**Table**: `looker-studio-pro-452620.landing.adif_fpd_data_ranged`
+**Table**: `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
 **Rows**: 1,620
-**Purpose**: Partner-reported performance metrics
+**Purpose**: Partner-reported performance metrics filtered to ADIF De Beers + FMUS partner-data scope inside the staging SQL
 
 **Key Fields**:
 - `package_id` - Matches DCM package ID
@@ -91,10 +93,15 @@ flowchart LR
 - `partner_creative_name` - Creative identifier
 - `benchmark`, `benchmark_metric` - Performance benchmarks
 
-**Source**: Google Sheets via `util_collect_fpd_v2.r`
+**Source**: Google Sheets via `util_collect_fpd_shortcutsFolder.r`, then filtered in the ADIF staging view
 **Update Frequency**: Daily (via R script)
 
 **Special Feature**: Includes creative-level granularity that DCM may not capture
+
+**ADIF Filter Rule**:
+- Include rows where `source_file` contains `De Beers`
+- Include rows where `source_file` starts with `FMUS | Partner Data Collection |`
+- Exclude other clients in the shortcuts table, such as `OLI` and `APO`
 
 ---
 

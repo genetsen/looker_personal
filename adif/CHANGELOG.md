@@ -1,3 +1,29 @@
+## 2026-03-16
+
+### Added
+- **Canonical base-view SQL for filtered shortcuts FPD intake**
+  What: Added a checked-in SQL definition for `repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test` so the repo has a canonical base-view file that reads original FPD from the shortcuts landing table with the approved De Beers plus FMUS partner-data filter. -codexapp thread `019cf362-0fac-7f70-a93f-2d5aae7ea934` (thread link unavailable in local session).
+  Why: Gives ADIF a maintainable source-of-truth file for the live base view and makes the filtered shortcuts source explicit before QA and promotion.
+
+<details><summary>Paths — Canonical base-view SQL for filtered shortcuts FPD intake</summary>
+
+- [projects/updated_fpd_integration/sql/stg__adif__prisma_expanded_plus_dcm_view_v3_test.sql](projects/updated_fpd_integration/sql/stg__adif__prisma_expanded_plus_dcm_view_v3_test.sql)
+
+</details>
+
+### Changed
+- **ADIF original FPD source now points to filtered shortcuts intake**
+  What: Updated the ADIF docs and integration guides to describe the base original-FPD source as `landing.fpd_data_ranged_shortcutsFolder` filtered to sheet names containing `De Beers` or starting with `FMUS | Partner Data Collection |`, while keeping the updated-FPD merge process itself unchanged. -codexapp thread `019cf362-0fac-7f70-a93f-2d5aae7ea934` (thread link unavailable in local session).
+  Why: Aligns repo documentation with the planned source switch and makes the intended De Beers/FMUS scope explicit for future maintenance and QA.
+
+<details><summary>Paths — ADIF original FPD source now points to filtered shortcuts intake</summary>
+
+- [README.md](README.md)
+- [projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md](projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+- [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
+
+</details>
+
 ## 2026-02-18
 
 ### Added

@@ -96,7 +96,7 @@ Current production social assembly is notebook-driven and writes to `looker-stud
 flowchart LR
   subgraph raw_core["Raw Core Inputs"]
     dcm["looker-studio-pro-452620.DCM.20250505_costModel_v5"]
-    fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"]
+    fpd_orig["looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder\n(filtered to De Beers + FMUS partner-data sheets)"]
     prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"]
     fpd_upd["looker-studio-pro-452620.landing.adif_updated_fpd_daily"]
   end
@@ -141,6 +141,13 @@ flowchart LR
 - `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view` (Section 1 source)
 - `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform` (Section 2 social source)
 - `looker-studio-pro-452620.repo_int.crossplatform_pacing` (Section 2 pacing source)
+
+### Original FPD Source For ADIF
+
+- Base ADIF original FPD now reads from `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`.
+- ADIF includes rows where `source_file` contains `De Beers`.
+- ADIF also includes rows where `source_file` starts with `FMUS | Partner Data Collection |`.
+- The older table `looker-studio-pro-452620.landing.adif_fpd_data_ranged` remains available as a legacy reference, but it is no longer the intended main-ADIF source.
 
 `repo_int.crossplatform_pacing` upstream views used by notebook logic:
 - `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
