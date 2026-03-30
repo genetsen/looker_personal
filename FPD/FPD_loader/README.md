@@ -6,24 +6,60 @@ This directory contains two pipelines:
 
 | Script | Purpose | BigQuery Target |
 |---|---|---|
-| `adif/util_collect_fpd_v2.r` | Ingest raw partner data from ADIF sheets (from Google Drive folder) | `landing.adif_fpd_data_ranged` |
-| `adif/util_collect_fpd_v3.r` | Ingest raw partner data from many sheets (from Google Drive Shortcuts folder) | `landing.fpd_data_ranged` |
+| `util_collect_fpd_shortcutsFolder.r` | Main 7-phase loader that discovers partner sheets, normalizes columns, expands to daily rows, and uploads | `landing.fpd_data_ranged_shortcutsFolder` |
 | `manually_updated_data_loader.r` | Process manually corrected/updated FPD figures from a single sheet | `landing.manually_updated_fpd_daily` |
 
+Legacy variants (`util_collect_fpd_v2.r` / `util_collect_fpd_v3.r`) still exist elsewhere in the broader repo, but they are not the primary entrypoint in this folder.
+
 ## Quick Start
+
+If you want a fast orientation first, read `docs/PROJECT_OVERVIEW.md`.
 
 ```bash
 # Install R packages (one-time)
 Rscript -e 'install.packages(c("googledrive", "googlesheets4", "dplyr", "stringr", "readr", "lubridate", "janitor", "bigrquery", "tidyr"))'
 
-# Run the main FPD collection pipeline
-Rscript util_collect_fpd_v3.r
+# Run the main FPD collection pipeline (7 phases + upload)
+Rscript util_collect_fpd_shortcutsFolder.r
+
+# Run only Apollo sheets, then update only those sheets' rows in BigQuery
+Rscript util_collect_fpd_shortcutsFolder.r --pattern="APO | Partner Data"
 
 # Run the manually-updated data loader
 Rscript manually_updated_data_loader.r
 ```
 
 On first run, a browser window will open for Google OAuth. Subsequent runs use the cached token.
+
+Default behavior now starts from Phase 1 with a fresh run. Reusing saved phase outputs is for debugging only.
+
+## Safe Run Checklist (Beginner)
+
+Use this quick checklist before and after every run:
+
+1. Confirm you are in this folder:
+   `pwd` should end with `FPD/FPD_loader`.
+2. Confirm you are running the correct script:
+   main flow = `Rscript util_collect_fpd_shortcutsFolder.r`
+   manual corrections flow = `Rscript manually_updated_data_loader.r`
+3. Confirm output folder is available:
+   `output/` should exist for the main flow.
+4. Run one script at a time:
+   do not run both scripts at the same time.
+5. After the run, check these files first:
+   `output/phase7_daily_master_data.csv`
+   `output/phase7_validation_table.csv`
+6. If the validation file shows differences:
+   review `output/phase6_filter_audit.csv` to see which rows were removed and why.
+7. Before rerunning to debug:
+   set `use_saved_phases <- TRUE` and pick one `current_phase` to rerun only the part you are working on.
+
+## What Changed / How To Undo
+
+- What changed:
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, and staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery.
+- How to undo:
+  if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
 
 ## How It Works
 
@@ -41,24 +77,42 @@ Google Drive (partner sheets)
   Phase 7  ──>  Expand date ranges to daily rows
      │
      ▼
-  BigQuery (landing.adif_fpd_data_ranged)
+  BigQuery (landing.fpd_data_ranged_shortcutsFolder)
      │
      ▼
-  util_process_updated_fpd.r (downstream processing)
+  Optional downstream script (currently commented out in this folder)
 ```
 
 ## Configuration
 
-Edit the top of `util_collect_fpd_v3.r` (lines 25-58):
+Edit the top of `util_collect_fpd_shortcutsFolder.r`:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `gdrive_folder_id` | Google Drive folder ID containing partner sheets | `"1cMkgbplZ8sPIsDHluIuIEOmbam-BhZtY"` |
-| `pattern` | Sheet name pattern to match during discovery | `"De Beers \| Partner Data"` |
-| `output_dir` | Directory for checkpoint CSVs | `FPD_loader/output` |
+| `gdrive_folder_id` | Google Drive folder ID containing partner sheets | `"1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"` |
+| `pattern` | Sheet name pattern to match during discovery (can be overridden with `--pattern`) | `"| Partner Data"` |
+| `output_dir` | Directory for checkpoint CSVs | `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output` |
 | `use_saved_phases` | When `TRUE`, load cached CSVs for phases other than `current_phase` | `FALSE` |
 | `current_phase` | The phase to actively compute (1-7) | `1` |
 | `known_kpi_metrics` | Metric columns to treat as numeric and split across days in Phase 7 | See below |
+| `client_week_config` | Per-client week start day for filling missing `week` values in Phase 7 | `mass/oli/adif=Sun`, `apollo=Mon` |
+
+### Optional CLI Flag (Main Script)
+
+Use this when you want to test a different sheet-name match pattern without editing the script:
+
+```bash
+# Override only this run
+Rscript util_collect_fpd_shortcutsFolder.r --pattern="| Partner Data"
+
+# Example: process only Apollo partner sheets
+Rscript util_collect_fpd_shortcutsFolder.r --pattern="APO | Partner Data"
+
+# Show usage/help
+Rscript util_collect_fpd_shortcutsFolder.r --help
+```
+
+If `--pattern` is not provided, the script uses the default value from the configuration block.
 
 ### KPI Metrics List
 
@@ -75,7 +129,7 @@ If a new partner includes a metric column not in this list, add it here. Only co
 
 ### Google Sheets
 
-The pipeline reads from a Google Drive folder containing spreadsheets that match the `pattern` name. Each sheet must have:
+The pipeline reads from a Google Drive folder containing spreadsheet files or spreadsheet shortcuts that match the `pattern` text. Shortcuts are automatically resolved to their target Google Sheet IDs before ingestion. Each sheet must have:
 
 - A tab named **`data`**
 - A header row with **5+ non-empty columns** (auto-detected, does not need to be row 1)
@@ -252,10 +306,12 @@ This is useful for:
 |---|---|
 | Project | `looker-studio-pro-452620` |
 | Dataset | `landing` |
-| Table | `adif_fpd_data_ranged` |
-| Write mode | `WRITE_TRUNCATE` (full replace each run) |
+| Table | `fpd_data_ranged_shortcutsFolder` |
+| Write mode | Staged partial sync (delete + reinsert only rows for sheets in the current run) |
 
-After upload, the script calls `source("util_process_updated_fpd.r")` for downstream processing with Prisma date ranges.
+This script uploads to a staging table first, checks the result, adds any missing BigQuery columns when the new column type is clear, and then replaces only the destination rows for the sheets included in that run.
+If a brand-new column is completely blank in the current run, the script stops before changing production because it cannot infer a safe BigQuery type from empty data alone.
+The optional downstream `source(".../util_process_updated_fpd.r")` call is currently commented out in this folder's script.
 
 ---
 
@@ -290,7 +346,7 @@ Edit the top of `manually_updated_data_loader.r`:
 |---|---|---|
 | `sheet_id` | Google Sheet with manually updated FPD data | `"1kUD8gVrHAAaZbULtFgDZl1hgGU-7Ut8fSdNJDgsZwfE"` |
 | `target_gid` | Specific tab within the sheet | `"1894007924"` |
-| `output_dir` | Directory for checkpoint CSVs | `util/data_loaders/FPD_loader/MUD_output` |
+| `output_dir` | Directory for checkpoint CSVs | `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/MUD_output` |
 | `bq_table` | BigQuery table name | `"manually_updated_fpd_daily"` |
 
 ### Input Google Sheet
@@ -330,14 +386,14 @@ Packages without a matching Prisma date range are skipped with a warning.
 
 ### Differences from Main Pipeline
 
-| | `util_collect_fpd_v3.r` | `manually_updated_data_loader.r` |
+| | `util_collect_fpd_shortcutsFolder.r` | `manually_updated_data_loader.r` |
 |---|---|---|
 | **Input** | Many partner sheets (auto-discovered from Drive) | One curated Google Sheet |
 | **Column handling** | Auto-detects headers, normalizes column names | Fixed schema (`package_id`, `updated_FPD_IMPRESSIONS`, `updated_FPD_SPEND`) |
 | **Date source** | Coalesced from partner-provided dates (week, start_date, etc.) | Always from Prisma (`prisma_expanded_full`) |
 | **Metrics** | Many (spend, impressions, clicks, views, etc.) | Two (`updated_FPD_IMPRESSIONS`, `updated_FPD_SPEND`) |
 | **Phases** | 7 phases with checkpoint/resume | 5 linear steps |
-| **BQ table** | `landing.adif_fpd_data_ranged` | `landing.manually_updated_fpd_daily` |
+| **BQ table** | `landing.fpd_data_ranged_shortcutsFolder` | `landing.manually_updated_fpd_daily` |
 
 ---
 
@@ -369,13 +425,13 @@ googlesheets4::gs4_deauth()
 
 **Symptom**: Phase 7 validation prints `"Detected differences in per-sheet KPI totals"`.
 
-**Cause**: Rows were filtered out in Phase 6 (archive, zero-metric, or missing package_name) that were included in Phase 5.
+**Cause**: Most often, row filtering differences explain this. In current logic, a KPI pre-filter already runs in Phase 5, and additional filters run in Phase 6 (archive rows, numeric-sum-zero rows, and missing package names). Any rows removed between those checkpoints can create per-sheet differences.
 
 **Where to debug quickly**:
 - `output/phase7_validation_table.csv` — shows per-sheet diffs and `filter_reason`
 - `output/phase6_filter_audit.csv` — shows row/metric impact per filter reason
 
-**Fix**: This is expected when Phase 6 filters remove rows. The validation compares Phase 5 (pre-filter) with Phase 7 (post-filter). To verify the totals are correct, compare Phase 6 totals with Phase 7 instead:
+**Fix**: This is expected when rows are removed before expansion. The validation compares Phase 5 checkpoint totals to Phase 7 totals. To verify expansion math itself, compare Phase 6 totals with Phase 7 instead:
 ```r
 phase6 <- readr::read_csv("output/phase6_cleaned_master_data.csv")
 phase7 <- readr::read_csv("output/phase7_daily_master_data.csv")
@@ -411,10 +467,10 @@ sum(phase7$spend, na.rm = TRUE)
 
 ## Possible Improvements
 
-- **Parameterize the script via CLI args** — currently `gdrive_folder_id`, `pattern`, `current_phase`, and `use_saved_phases` require editing the script. These could be `commandArgs()` or an `optparse` setup.
-- **Week alignment** — the `week` column is used as-is (the raw date from the partner). If partners report inconsistent week-start days (some Sunday, some Monday), consider snapping to ISO week start with `lubridate::floor_date(week, "week", week_start = 1)`.
+- **Expand CLI args coverage** — `pattern` is now overridable with `--pattern`, but `gdrive_folder_id`, `current_phase`, and `use_saved_phases` still require editing the script. These could be expanded with `commandArgs()` or an `optparse` setup.
+- **Week-start config externalization** — week fill behavior is currently hardcoded in `client_week_config` (`mass/oli/adif=Sun`, `apollo=Mon`). Move this to a config file so new clients do not require script edits.
 - **Parallel sheet processing** — Phases 2, 3, and 5 loop through sheets sequentially. Each iteration is an API call. `furrr::future_map()` or `parallel::mclapply()` could speed this up.
-- **Incremental loading** — the pipeline currently does a full `WRITE_TRUNCATE` to BigQuery. An incremental approach (only process sheets modified since last run, using `last_modified_time`) would reduce API calls and runtime.
+- **Drive-side change detection** — the BigQuery sync is now incremental for the sheets included in a run, but the pipeline still scans and processes every sheet matched by the current `pattern`. A later optimization could skip unchanged sheets earlier by comparing Drive modification timestamps before Phase 2.
 - **Weighted daily expansion** — Phase 7 divides metrics evenly across days. Some metrics (e.g., TV ad spend) may follow day-of-week patterns. A weighted split (heavier on weekdays, lighter on weekends) could improve accuracy.
 - **Unit tests** — no test suite exists. Key functions to test: date parsing (`parse_any_date`), column normalization (Phase 4 rules), and daily expansion math (Phase 7).
 - **Config file** — move `known_kpi_metrics`, `gdrive_folder_id`, and other settings to a YAML or JSON config file so the script doesn't need to be edited directly.

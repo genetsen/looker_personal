@@ -1,8 +1,13 @@
 ################################################################################
-#### SIMPLIFIED FPD INGESTION - VERSION 3 ALL FPD FILES via 
+#### ! LATEST VERSION OF THIS SCRIPT
+#### FPD INGESTION - VERSION 4 ALL FPD FILES from shortcuts folder...
 #### /Users/eugenetsenter/Library/CloudStorage/GoogleDrive-gene.tsenter@giantspoon.com/.shortcut-targets-by-id/0B0U23i7iN3kZaHJ4NzMyeHp5NW8/Giant Spoon - SHARED (USE THIS ONE)/4. Department Folders/Analytics
 #### https://drive.google.com/drive/folders/1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF?usp=drive_link
 ################################################################################
+# What changed: this shortcut-aware loader now resolves Drive shortcuts, supports
+# a one-run pattern override, and stages BigQuery writes before replacing prod.
+# How to undo: restore the previous script version from Git if the broader
+# shortcut discovery or staged BigQuery replace behavior needs to be rolled back.
 # Purpose: Rewrite of util_collect_fpd.r as a straightforward, linear script
 # with minimal abstractions. Build step-by-step through phases:
 # 1. Discover files
@@ -24,21 +29,62 @@ library(janitor)
 
 cat ("\n-----------\n First party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
 
+#### CLI ARGUMENTS ####
+# Optional usage:
+#   Rscript util_collect_fpd_shortcutsFolder.r --pattern="| Partner Data"
+#   Rscript util_collect_fpd_shortcutsFolder.r --pattern "| Partner Data"
+cli_args <- commandArgs(trailingOnly = TRUE)
+
+if ("--help" %in% cli_args || "-h" %in% cli_args) {
+  cat("\nUsage:\n")
+  cat("  Rscript util_collect_fpd_shortcutsFolder.r [--pattern <text>]\n\n")
+  cat("Options:\n")
+  cat("  --pattern <text>   Override sheet-name match pattern used in Phase 1\n")
+  cat("  -h, --help         Show this help and exit\n\n")
+  quit(save = "no", status = 0)
+}
+
+get_flag_value <- function(args, flag_name) {
+  long_flag <- paste0("--", flag_name)
+  eq_prefix <- paste0(long_flag, "=")
+
+  eq_idx <- which(startsWith(args, eq_prefix))
+  if (length(eq_idx) > 0) {
+    return(sub(eq_prefix, "", args[eq_idx[length(eq_idx)]], fixed = TRUE))
+  }
+
+  spaced_idx <- which(args == long_flag)
+  if (length(spaced_idx) > 0) {
+    idx <- spaced_idx[length(spaced_idx)]
+    if (idx < length(args)) {
+      return(args[idx + 1])
+    }
+  }
+
+  NULL
+}
+
 #### CONFIGURATION ####
+gdrive_folder_id <- "1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"
   # Analytics department folder (recursive scan, filtered by pattern):
   # https://drive.google.com/drive/folders/1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF
-
-gdrive_folder_id <- "1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"
-pattern <- "De Beers | Partner Data"
+pattern <- "| Partner Data"
+  pattern_override <- get_flag_value(cli_args, "pattern")
+    if (!is.null(pattern_override)) {
+      pattern <- pattern_override
+      cat("CLI override applied: pattern =", pattern, "\n")
+    }
 output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output"
-if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 use_saved_phases <- FALSE
-# Set the phase you are actively working on (1..7). Saved results will be used for other phases.
-current_phase <- 1
+  # Default to a full fresh run. Turn this on only while debugging a saved checkpoint.
+  # Set the phase you are actively working on (1..7). Saved results will be used for other phases.
+  current_phase <- 1
+#
 
-# Known KPI metric fields (normalized) to treat as numeric + split across days
-# NOTE: keep this list tight to avoid accidentally treating dimensions as metrics.
 known_kpi_metrics <- c(
+  # Known KPI metric fields (normalized) to treat as numeric + split across days
+  # NOTE: keep this list tight to avoid accidentally treating dimensions as metrics.
   "spend",
   "impressions",
   "sends",
@@ -57,9 +103,13 @@ known_kpi_metrics <- c(
 # Used to fill in missing `week` values in the final output.
 # Clients are matched case-insensitively against the `client` column.
 client_week_config <- data.frame(
+  # Per-client week configuration: which day the reporting week starts on.
+  # Used to fill in missing `week` values in the final output.
+  # Clients are matched case-insensitively against the `client` column.
+
   client     = c("mass", "oli", "adif", "apollo"),
   week_start = c("Sun",  "Sun", "Sun",  "Mon"),
-  stringsAsFactors = FALSE
+    stringsAsFactors = FALSE
 )
 default_week_start <- "Sun"
 
@@ -68,24 +118,135 @@ default_week_start <- "Sun"
 day_to_wstart <- c(Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7)
 
 # Predefine checkpoint paths so they can be reused when loading saved results
-phase1_output <- file.path(output_dir, "phase1_discovered_files.csv")
-phase2_output <- file.path(output_dir, "phase2_header_detection.csv")
-phase3_output <- file.path(output_dir, "phase3_raw_headers.csv")
-phase4_output <- file.path(output_dir, "phase4_normalization_mapping.csv")
-phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
-phase6_output <- file.path(output_dir, "phase6_cleaned_master_data.csv")
-phase7_output <- file.path(output_dir, "phase7_daily_master_data.csv")
-phase6_filter_audit_output <- file.path(output_dir, "phase6_filter_audit.csv")
-phase7_validation_output <- file.path(output_dir, "phase7_validation_table.csv")
-
+  phase1_output <- file.path(output_dir, "phase1_discovered_files.csv")
+  phase2_output <- file.path(output_dir, "phase2_header_detection.csv")
+  phase3_output <- file.path(output_dir, "phase3_raw_headers.csv")
+  phase4_output <- file.path(output_dir, "phase4_normalization_mapping.csv")
+  phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
+  phase6_output <- file.path(output_dir, "phase6_cleaned_master_data.csv")
+  phase7_output <- file.path(output_dir, "phase7_daily_master_data.csv")
+  phase6_filter_audit_output <- file.path(output_dir, "phase6_filter_audit.csv")
+  phase7_validation_output <- file.path(output_dir, "phase7_validation_table.csv")
+#
 # Keep validation results available for final end-of-run reporting
 validation_table <- data.frame()
 validation_diff_cols <- character(0)
 
+project_id <- "looker-studio-pro-452620"
+dataset_id <- "landing"
+prod_table <- "fpd_data_ranged_shortcutsFolder"
+staging_table <- paste0(prod_table, "__staging")
+
+map_bq_type <- function(x) {
+  if (inherits(x, "POSIXct") || inherits(x, "POSIXt")) return("TIMESTAMP")
+  if (inherits(x, "Date")) return("DATE")
+  if (is.integer(x)) return("INT64")
+  if (is.numeric(x)) return("FLOAT64")
+  if (is.logical(x)) return("BOOL")
+  "STRING"
+}
+
+build_bq_fields <- function(df) {
+  lapply(names(df), function(nm) {
+    list(name = nm, type = map_bq_type(df[[nm]]), mode = "NULLABLE")
+  })
+}
+
+sql_quote_string <- function(x) {
+  if (is.na(x)) return("NULL")
+  paste0("'", gsub("'", "''", as.character(x), fixed = TRUE), "'")
+}
+
+normalize_bq_sql_type <- function(type_name) {
+  type_upper <- toupper(as.character(type_name))
+  if (type_upper == "FLOAT") return("FLOAT64")
+  if (type_upper == "INTEGER") return("INT64")
+  if (type_upper == "BOOLEAN") return("BOOL")
+  type_upper
+}
+
+get_table_field_types <- function(project_id, dataset_id, table_name) {
+  table_ref <- bq_table(project = project_id, dataset = dataset_id, table = table_name)
+
+  exists_flag <- tryCatch(
+    bq_table_exists(table_ref),
+    error = function(e) FALSE
+  )
+
+  if (!isTRUE(exists_flag)) {
+    return(NULL)
+  }
+
+  meta <- bq_table_meta(table_ref)
+  field_info <- meta$schema$fields
+
+  if (is.null(field_info) || length(field_info) == 0) {
+    return(setNames(character(0), character(0)))
+  }
+
+  field_names <- vapply(field_info, function(f) as.character(f$name), character(1))
+  field_types <- vapply(field_info, function(f) as.character(f$type), character(1))
+  setNames(field_types, field_names)
+}
+
+ensure_prod_schema_matches <- function(data_upload, project_id, dataset_id, prod_table) {
+  prod_field_types <- get_table_field_types(project_id, dataset_id, prod_table)
+
+  if (is.null(prod_field_types)) {
+    return(NULL)
+  }
+
+  incoming_types <- setNames(
+    vapply(names(data_upload), function(nm) map_bq_type(data_upload[[nm]]), character(1)),
+    names(data_upload)
+  )
+
+  new_cols <- setdiff(names(incoming_types), names(prod_field_types))
+  if (length(new_cols) == 0) {
+    return(prod_field_types)
+  }
+
+  ambiguous_cols <- new_cols[vapply(
+    new_cols,
+    function(nm) all(is.na(data_upload[[nm]])),
+    logical(1)
+  )]
+
+  if (length(ambiguous_cols) > 0) {
+    stop(
+      paste0(
+        "New BigQuery columns were detected, but their type is ambiguous because every value is blank/NA in this run: ",
+        paste(ambiguous_cols, collapse = ", "),
+        ". Re-run after those columns contain real values or do a full rebuild after choosing the intended type."
+      )
+    )
+  }
+
+  for (nm in new_cols) {
+    col_type <- incoming_types[[nm]]
+    alter_sql <- paste0(
+      "ALTER TABLE `", project_id, ".", dataset_id, ".", prod_table, "` ",
+      "ADD COLUMN `", nm, "` ", col_type
+    )
+
+    tryCatch({
+      bq_perform_query(
+        query = alter_sql,
+        billing = project_id
+      )
+      cat("  ✓ Added missing BigQuery column:", nm, "(", col_type, ")\n")
+    }, error = function(e) {
+      stop(paste0("Failed to add missing BigQuery column ", nm, ": ", e$message))
+    })
+  }
+
+  get_table_field_types(project_id, dataset_id, prod_table)
+}
+
 ################################################################################
 #### PHASE 1: GOOGLE DRIVE DISCOVERY ####
 ################################################################################
-# Goal: Find all spreadsheets matching "De Beers | Partner Data" pattern
+# Goal: Find all spreadsheets matching the configured pattern
 # Output: Dataframe with sheet IDs, names, URLs
 # Checkpoint: phase1_discovered_files.csv
 
@@ -109,37 +270,147 @@ if (use_saved_phases && current_phase != 1 && file.exists(phase1_output)) {
   cat("Searching for sheets matching pattern:", pattern, "\n")
   discovered_files <- drive_ls(
     as_id(gdrive_folder_id),
-    pattern = pattern,
     recursive = TRUE,
-    type = "spreadsheet",
     n_max = Inf
   )
 
-  # Add full URLs and normalize column names, extract modified date and user from drive metadata
+  # If we find shortcuts that point to folders, expand those folders recursively
+  # so sheets nested under them can be discovered as well.
+  expand_folder_shortcuts <- function(df) {
+    if (nrow(df) == 0) return(df)
+
+    folder_shortcut_rows <- df %>%
+      filter(
+        vapply(
+          drive_resource,
+          function(x) {
+            mime <- if (!is.null(x) && !is.null(x$mimeType) && length(x$mimeType) > 0) as.character(x$mimeType[[1]]) else NA_character_
+            tgt_mime <- if (!is.null(x) && !is.null(x$shortcutDetails) && !is.null(x$shortcutDetails$targetMimeType) && length(x$shortcutDetails$targetMimeType) > 0) as.character(x$shortcutDetails$targetMimeType[[1]]) else NA_character_
+            identical(mime, "application/vnd.google-apps.shortcut") &&
+              identical(tgt_mime, "application/vnd.google-apps.folder")
+          },
+          logical(1)
+        )
+      )
+
+    if (nrow(folder_shortcut_rows) == 0) return(df)
+
+    expanded_list <- list(df)
+
+    for (i in seq_len(nrow(folder_shortcut_rows))) {
+      dr <- folder_shortcut_rows$drive_resource[[i]]
+      target_folder_id <- if (!is.null(dr$shortcutDetails) && !is.null(dr$shortcutDetails$targetId) && length(dr$shortcutDetails$targetId) > 0) {
+        as.character(dr$shortcutDetails$targetId[[1]])
+      } else {
+        NA_character_
+      }
+
+      if (is.na(target_folder_id) || target_folder_id == "") next
+
+      cat("Expanding folder shortcut target:", target_folder_id, "\n")
+      nested <- tryCatch(
+        drive_ls(as_id(target_folder_id), recursive = TRUE, n_max = Inf),
+        error = function(e) {
+          cat("  ⚠ Could not expand folder shortcut", target_folder_id, ":", e$message, "\n")
+          tibble::tibble()
+        }
+      )
+
+      if (nrow(nested) > 0) expanded_list[[length(expanded_list) + 1]] <- nested
+    }
+
+    bind_rows(expanded_list)
+  }
+
+  discovered_files <- expand_folder_shortcuts(discovered_files)
+
+  # Include both direct Google Sheets and Drive shortcuts that point to Sheets.
+  # For shortcuts, use the target sheet ID so downstream reads hit the real file.
   discovered_files <- discovered_files %>%
     mutate(
-      sheet_url = paste0("https://docs.google.com/spreadsheets/d/", id),
-      .after = name
+      source_item_id = as.character(id),
+      file_mime_type = vapply(
+        drive_resource,
+        function(x) {
+          if (is.null(x) || is.null(x$mimeType) || length(x$mimeType) == 0) return(NA_character_)
+          as.character(x$mimeType[[1]])
+        },
+        character(1)
+      ),
+      shortcut_target_id = vapply(
+        drive_resource,
+        function(x) {
+          if (is.null(x) || is.null(x$shortcutDetails) || is.null(x$shortcutDetails$targetId) || length(x$shortcutDetails$targetId) == 0) return(NA_character_)
+          as.character(x$shortcutDetails$targetId[[1]])
+        },
+        character(1)
+      ),
+      shortcut_target_mime_type = vapply(
+        drive_resource,
+        function(x) {
+          if (is.null(x) || is.null(x$shortcutDetails) || is.null(x$shortcutDetails$targetMimeType) || length(x$shortcutDetails$targetMimeType) == 0) return(NA_character_)
+          as.character(x$shortcutDetails$targetMimeType[[1]])
+        },
+        character(1)
+      )
     ) %>%
-    rename(sheet_id = id, sheet_name = name) %>%
+    rename(sheet_name = name) %>%
+    filter(str_detect(sheet_name, fixed(pattern))) %>%
+    filter(
+      file_mime_type == "application/vnd.google-apps.spreadsheet" |
+        (file_mime_type == "application/vnd.google-apps.shortcut" &
+           shortcut_target_mime_type == "application/vnd.google-apps.spreadsheet")
+    ) %>%
+    mutate(
+      sheet_id = if_else(
+        file_mime_type == "application/vnd.google-apps.shortcut" & !is.na(shortcut_target_id),
+        shortcut_target_id,
+        source_item_id
+      ),
+      sheet_url = paste0("https://docs.google.com/spreadsheets/d/", sheet_id),
+      .after = sheet_name
+    ) %>%
+    distinct(sheet_id, .keep_all = TRUE) %>%
     mutate(
       # Extract last modified date from drive_resource metadata
-      last_modified_time = if_else(
-        !is.na(drive_resource),
-        tryCatch(
-          as.POSIXct(sapply(drive_resource, function(x) x$modifiedTime), format = "%Y-%m-%dT%H:%M:%S"),
-          error = function(e) as.POSIXct(NA)
+      last_modified_time = tryCatch(
+        as.POSIXct(
+          vapply(
+            drive_resource,
+            function(x) {
+              if (is.null(x) || is.null(x$modifiedTime) || length(x$modifiedTime) == 0) {
+                return(NA_character_)
+              }
+              as.character(x$modifiedTime[[1]])
+            },
+            character(1)
+          ),
+          format = "%Y-%m-%dT%H:%M:%S",
+          tz = "UTC"
         ),
-        as.POSIXct(NA)
+        error = function(e) as.POSIXct(rep(NA, length(drive_resource)), origin = "1970-01-01", tz = "UTC")
       ),
-      # Extract last modified by from drive_resource metadata
-      last_modified_by = if_else(
-        !is.na(drive_resource),
-        tryCatch(
-          sapply(drive_resource, function(x) x$lastModifyingUser$displayName %||% x$lastModifyingUser$emailAddress %||% NA_character_),
-          error = function(e) NA_character_
+      # Extract last modified by from drive_resource metadata as a plain character vector
+      last_modified_by = tryCatch(
+        vapply(
+          drive_resource,
+          function(x) {
+            if (is.null(x) || is.null(x$lastModifyingUser)) {
+              return(NA_character_)
+            }
+            display_name <- x$lastModifyingUser$displayName
+            email <- x$lastModifyingUser$emailAddress
+            if (!is.null(display_name) && length(display_name) > 0) {
+              return(as.character(display_name[[1]]))
+            }
+            if (!is.null(email) && length(email) > 0) {
+              return(as.character(email[[1]]))
+            }
+            NA_character_
+          },
+          character(1)
         ),
-        NA_character_
+        error = function(e) rep(NA_character_, length(drive_resource))
       )
     )
 
@@ -669,11 +940,13 @@ successful_files <- phase2_results %>% filter(status == "success")
     numeric_candidates <- intersect(metrics_expected, names(df))
 
     if (length(numeric_candidates) > 0) {
+        # Convert known KPI columns to numeric while suppressing noisy parse warnings
+        # from occasional header-like text values (e.g., "CTR", "VCR").
         df <- df %>%
             mutate(
             across(
                 all_of(numeric_candidates),
-                ~ parse_number(as.character(.x))  # handles $, commas, spaces, etc.
+                ~ suppressWarnings(parse_number(as.character(.x)))
             )
             )
     }
@@ -690,7 +963,8 @@ successful_files <- phase2_results %>% filter(status == "success")
       source_url = sheet_url,
       last_modified_time = last_mod_time,
       last_modified_by = last_mod_by,
-      partner_sheet = str_extract(sheet_name, "^[^|]+") %>% str_trim()
+      partner_sheet = sheet_name
+      #!partner_sheet = str_extract(sheet_name, "^[^|]+") %>% str_trim()
     )
 
     combined_list[[ci]] <- df
@@ -770,7 +1044,12 @@ date_cols_any <- c(
 )
 
 # package count preference: package_id else package_name
-package_key <- if ("package_id" %in% names(master_df)) "package_id" else if ("package_name" %in% names(master_df)) "package_name" else NA_character_
+package_key <- NA_character_
+if ("package_id" %in% names(master_df)) {
+  package_key <- "package_id"
+} else if ("package_name" %in% names(master_df)) {
+  package_key <- "package_name"
+}
 
 sheet_summary <- master_df %>%
   mutate(
@@ -781,24 +1060,25 @@ sheet_summary <- master_df %>%
   summarise(
     row_count = n(),
     package_count = if (!is.na(package_key)) n_distinct(.data[[package_key]], na.rm = TRUE) else NA_integer_,
-    spend_sum = if ("spend" %in% names(dplyr::cur_data())) sum(spend, na.rm = TRUE) else NA_real_,
-    impressions_sum = if ("impressions" %in% names(dplyr::cur_data())) sum(impressions, na.rm = TRUE) else NA_real_,
-    min_date_any = safe_min_date(dplyr::cur_data(), date_cols_any),
+    spend_sum = if ("spend" %in% names(pick(everything()))) sum(spend, na.rm = TRUE) else NA_real_,
+    impressions_sum = if ("impressions" %in% names(pick(everything()))) sum(impressions, na.rm = TRUE) else NA_real_,
+    min_date_any = safe_min_date(pick(everything()), date_cols_any),
     min_date_col = {
-      min_val <- safe_min_date(dplyr::cur_data(), date_cols_any)
-      cols <- intersect(date_cols_any, names(dplyr::cur_data()))
+      min_val <- safe_min_date(pick(everything()), date_cols_any)
+      cols <- intersect(date_cols_any, names(pick(everything())))
       if (is.na(min_val) || length(cols) == 0) {
         NA_character_
       } else {
         # Find which column(s) contain this min date
-        matches <- sapply(cols, function(cn) any(as.Date(dplyr::cur_data()[[cn]]) == min_val, na.rm = TRUE))
+        cur_pick <- pick(everything())
+        matches <- sapply(cols, function(cn) any(as.Date(cur_pick[[cn]]) == min_val, na.rm = TRUE))
         paste(names(matches)[matches], collapse = ", ")
       }
     },
-    min_date_reported = safe_min_date(dplyr::cur_data(), c("date", "week", "month", "start_date")),
+    min_date_reported = safe_min_date(pick(everything()), c("date", "week", "month", "start_date")),
     # add column used for max_date_any
-    max_date_reported = safe_max_date(dplyr::cur_data(), c("date", "week", "month", "end_date")),
-    max_date_any = safe_max_date(dplyr::cur_data(), date_cols_any),
+    max_date_reported = safe_max_date(pick(everything()), c("date", "week", "month", "end_date")),
+    max_date_any = safe_max_date(pick(everything()), date_cols_any),
     across(all_of(setdiff(numeric_cols, c("spend", "impressions"))), ~ sum(.x, na.rm = TRUE)),
     .groups = "drop"
   ) %>%
@@ -814,7 +1094,7 @@ if (exists("discovered_files") && nrow(discovered_files) > 0) {
   cat("✓ Phase 1 checkpoint updated with per-sheet rollups:", phase1_output, "\n")
 }
 
-view(sheet_summary)
+print(sheet_summary)
 
 cat("\n=== END PHASE 5 SUMMARY ===\n")
 
@@ -1108,9 +1388,12 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_1_output)) {
     )
 
     # Determine package key (prefer package_id, fallback to package_name)
-    package_key <- if ("package_id" %in% names(phase6_df)) "package_id"
-                   else if ("package_name" %in% names(phase6_df)) "package_name"
-                   else NA_character_
+    package_key <- NA_character_
+    if ("package_id" %in% names(phase6_df)) {
+      package_key <- "package_id"
+    } else if ("package_name" %in% names(phase6_df)) {
+      package_key <- "package_name"
+    }
 
     # Get all numeric columns for metrics
     numeric_cols <- names(phase6_df)[sapply(phase6_df, is.numeric)]
@@ -1126,8 +1409,8 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_1_output)) {
       summarise(
         row_count = n(),
         package_count = if (!is.na(package_key)) n_distinct(.data[[package_key]], na.rm = TRUE) else NA_integer_,
-        date_range_start = safe_min_date(dplyr::cur_data(), date_cols_for_range),
-        date_range_end = safe_max_date(dplyr::cur_data(), date_cols_for_range),
+        date_range_start = safe_min_date(pick(everything()), date_cols_for_range),
+        date_range_end = safe_max_date(pick(everything()), date_cols_for_range),
         # Date source diagnostics: which column drives start/end dates for this sheet
         start_date_sources = paste(sort(unique(start_date_source[!is.na(start_date_source)])), collapse = ", "),
         end_date_sources   = paste(sort(unique(end_date_source[!is.na(end_date_source)])),     collapse = ", "),
@@ -1470,20 +1753,10 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
     }
   }
 
-  # remove previous bq table (with error handling)
-  tryCatch({
-    bq_table <- bq_table(project = "looker-studio-pro-452620", dataset = "landing", table = "adif_fpd_data_ranged")
-    bq_table_delete(bq_table)
-    cat("Deleted old BigQuery table\n")
-  },
-  error = function(e) {
-    cat("Note: Could not delete old table (may not exist):", e$message, "\n")
-  })
+  # SAFE DEPLOY: do NOT delete prod first.
+  # Upload to staging, validate, then replace only the affected prod rows.
 
   write_to_bq <- function(data, dataset, table) {
-    # Define the BigQuery project and dataset
-    project_id <- "looker-studio-pro-452620"
-    
     cat("Writing", nrow(data), "rows to BigQuery...\n")
     
     # Wrap in tryCatch to handle errors
@@ -1491,18 +1764,192 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
       # Write the data to BigQuery
       bq_table <- bq_table(project = project_id, dataset = dataset, table = table)
       
-      # Use bq_perform_upload to write the data
-      bq_table_upload(bq_table, data, write_disposition = "WRITE_TRUNCATE")
+      # Normalize types before upload to avoid BigQuery autodetect edge-case failures.
+      # Keep timestamps explicit and coerce non-standard/list/object columns to character.
+      data_upload <- data
+
+      # Ensure Date columns are plain Date and timestamp is POSIXct UTC.
+      date_cols_upload <- intersect(c("date", "week", "month", "start_date", "end_date", "prisma_start_date", "prisma_end_date", "start_date_final", "end_date_final", "date_final"), names(data_upload))
+      for (dc in date_cols_upload) data_upload[[dc]] <- as.Date(data_upload[[dc]])
+      if ("data_update_datetime" %in% names(data_upload)) {
+        data_upload$data_update_datetime <- as.POSIXct(data_upload$data_update_datetime, tz = "UTC")
+      }
+
+      # Coerce unsupported/object columns to character proactively.
+      for (cn in names(data_upload)) {
+        x <- data_upload[[cn]]
+        if (is.list(x) || is.factor(x)) {
+          data_upload[[cn]] <- as.character(x)
+        }
+      }
+
+      # BigQuery upload can fail on all-NA logical columns (NULL type inference).
+      # Convert logicals to character flags to keep schema explicit/stable.
+      logical_cols_upload <- names(data_upload)[sapply(data_upload, is.logical)]
+      if (length(logical_cols_upload) > 0) {
+        for (lc in logical_cols_upload) {
+          data_upload[[lc]] <- ifelse(is.na(data_upload[[lc]]), NA_character_, ifelse(data_upload[[lc]], "true", "false"))
+        }
+      }
+
+      # Keep timestamp fields as POSIXct (UTC) so they load as TIMESTAMP in BigQuery.
+      ts_cols_upload <- intersect(c("last_modified_time", "data_update_datetime"), names(data_upload))
+      if (length(ts_cols_upload) > 0) {
+        for (tc in ts_cols_upload) {
+          data_upload[[tc]] <- as.POSIXct(data_upload[[tc]], tz = "UTC")
+        }
+      }
+
+      fields <- build_bq_fields(data_upload)
+
+      # Use bq_table_upload to write the data
+      bq_table_upload(
+        x = bq_table,
+        values = data_upload,
+        fields = fields,
+        write_disposition = "WRITE_TRUNCATE"
+      )
       
       cat("✓ Data written to BigQuery table:", table, "\n")
     },
     error = function(e) {
       cat("✗ ERROR writing to BigQuery:", e$message, "\n")
+      cat("  Upload diagnostics:\n")
+      cat("    rows:", nrow(data), " cols:", ncol(data), "\n")
+      cat("    column names:", paste(names(data), collapse = ", "), "\n")
+      if ("data_update_datetime" %in% names(data)) {
+        cat("    data_update_datetime class:", paste(class(data$data_update_datetime), collapse = ", "), "\n")
+      }
+      cat("    column classes:\n")
+      for (cn in names(data)) {
+        cat("      -", cn, ":", paste(class(data[[cn]]), collapse = ", "), "\n")
+      }
       stop("Failed to write to BigQuery")
     })
   }
   
-  write_to_bq(phase7_df, "landing", "adif_fpd_data_ranged")
+  write_to_bq(phase7_df, "landing", staging_table)
+
+  validate_staging <- function(df) {
+    required_cols <- c("source_file", "date_final", "data_update_datetime")
+    missing_cols <- setdiff(required_cols, names(df))
+
+    if (nrow(df) == 0) {
+      return(list(ok = FALSE, reason = "staging has 0 rows"))
+    }
+    if (length(missing_cols) > 0) {
+      return(list(ok = FALSE, reason = paste("missing required cols:", paste(missing_cols, collapse = ", "))))
+    }
+    if (all(is.na(df$date_final))) {
+      return(list(ok = FALSE, reason = "date_final is all NA"))
+    }
+
+    list(ok = TRUE, reason = "passed")
+  }
+
+  v <- validate_staging(phase7_df)
+  if (!isTRUE(v$ok)) {
+    stop(paste0("Staging validation failed (prod NOT modified): ", v$reason))
+  }
+
+  cat("Staging validation passed. Syncing affected prod rows from staging...\n")
+
+  prod_field_types <- ensure_prod_schema_matches(
+    data_upload = phase7_df,
+    project_id = project_id,
+    dataset_id = dataset_id,
+    prod_table = prod_table
+  )
+
+  if (is.null(prod_field_types)) {
+    create_sql <- paste0(
+      "CREATE TABLE `", project_id, ".", dataset_id, ".", prod_table, "` AS ",
+      "SELECT * FROM `", project_id, ".", dataset_id, ".", staging_table, "`"
+    )
+
+    tryCatch({
+      create_job <- bq_perform_query(
+        query = create_sql,
+        billing = project_id
+      )
+      bq_job_wait(create_job)
+      cat("✓ Prod table created from staging:", prod_table, "\n")
+    }, error = function(e) {
+      stop(paste0("Failed to create prod table from staging: ", e$message))
+    })
+  } else {
+    staging_field_types <- get_table_field_types(project_id, dataset_id, staging_table)
+    if (is.null(staging_field_types)) {
+      stop("Staging table schema could not be read after upload.")
+    }
+
+    sync_source_urls <- unique(as.character(phase7_df$source_url))
+    sync_source_urls <- sync_source_urls[!is.na(sync_source_urls) & sync_source_urls != ""]
+    sync_source_files <- unique(as.character(phase7_df$source_file))
+    sync_source_files <- sync_source_files[!is.na(sync_source_files) & sync_source_files != ""]
+
+    if (length(sync_source_urls) == 0 && length(sync_source_files) == 0) {
+      stop("Incremental BigQuery sync requires source_url or source_file values, but none were found in this run.")
+    }
+
+    delete_clauses <- character(0)
+    if (length(sync_source_urls) > 0) {
+      delete_clauses <- c(
+        delete_clauses,
+        paste0(
+          "target.source_url IN (",
+          paste(vapply(sync_source_urls, sql_quote_string, character(1)), collapse = ", "),
+          ")"
+        )
+      )
+    }
+    if (length(sync_source_files) > 0) {
+      delete_clauses <- c(
+        delete_clauses,
+        paste0(
+          "target.source_file IN (",
+          paste(vapply(sync_source_files, sql_quote_string, character(1)), collapse = ", "),
+          ")"
+        )
+      )
+    }
+
+    prod_columns <- names(prod_field_types)
+    insert_column_sql <- paste(paste0("`", prod_columns, "`"), collapse = ", ")
+
+    select_exprs <- vapply(
+      prod_columns,
+      function(col_name) {
+        if (col_name %in% names(staging_field_types)) {
+          paste0("source.`", col_name, "`")
+        } else {
+          paste0("CAST(NULL AS ", normalize_bq_sql_type(prod_field_types[[col_name]]), ") AS `", col_name, "`")
+        }
+      },
+      character(1)
+    )
+    select_sql <- paste(select_exprs, collapse = ", ")
+
+    sync_sql <- paste0(
+      "BEGIN TRANSACTION; ",
+      "DELETE FROM `", project_id, ".", dataset_id, ".", prod_table, "` AS target ",
+      "WHERE ", paste(delete_clauses, collapse = " OR "), "; ",
+      "INSERT INTO `", project_id, ".", dataset_id, ".", prod_table, "` (", insert_column_sql, ") ",
+      "SELECT ", select_sql, " FROM `", project_id, ".", dataset_id, ".", staging_table, "` AS source; ",
+      "COMMIT TRANSACTION;"
+    )
+
+    tryCatch({
+      sync_job <- bq_perform_query(
+        query = sync_sql,
+        billing = project_id
+      )
+      bq_job_wait(sync_job)
+      cat("✓ Prod table updated only for sheets in this run:", prod_table, "\n")
+    }, error = function(e) {
+      stop(paste0("Failed incremental prod sync from staging: ", e$message))
+    })
+  }
 
   cat("\n-----------\n-----------\n First party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 
@@ -1532,4 +1979,5 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
 # --- OPTIONAL: Run post-processing script ---
 # this script layers on manually updated first party data [currently for ADIF] needs to be updated for general use]
 # manually update data here: https://docs.google.com/spreadsheets/d/1kUD8gVrHAAaZbULtFgDZl1hgGU-7Ut8fSdNJDgsZwfE/edit?gid=1894007924#gid=1894007924
+
 #source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/manually_updated_data_loader.r")
