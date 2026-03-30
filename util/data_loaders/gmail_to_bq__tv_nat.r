@@ -3,7 +3,11 @@
 # Gmail to Drive TV National Data Loader Script   |        V2 251030.          #
 # ---------------------------------------------------------------------------- #
 
-
+# What changed: this loader now checks the cleaned planned-impressions column
+# names used by the latest national CSV exports, including the all-demos field,
+# and only falls back to the objective-impressions fields if none are present.
+# How to undo: restore the previous Git version if the national CSV schema
+# reverts and this broader check starts choosing the wrong column.
 
   # ---------------------------------------------------------------------------- #
   #                                    HEADER                                    #
@@ -18,9 +22,7 @@
     library(lubridate)
     library(googlesheets4)
     library(tidyverse)
-    library(httpuv)
     library(stringr)
-    library(xfun)
   # ---------------------------------------------------------------------------- #
   #                              Configuration                                   #
   # ---------------------------------------------------------------------------- #
@@ -45,7 +47,6 @@
 
     #retrieve threads matching search --------------------- #
     my_threads <- gm_threads(search = search_criteria, num_results = 10)
-    2
     my_threads
 
 
@@ -158,6 +159,10 @@
     # Check which impressions column exists
     impressions_col <- if("total_impressions_buyers_estimate" %in% names(raw_df)) {
       "total_impressions_buyers_estimate"
+    } else if("total_planned_impressions_all_demos" %in% names(raw_df)) {
+      "total_planned_impressions_all_demos"
+    } else if("total_planned_impressions_000" %in% names(raw_df)) {
+      "total_planned_impressions_000"
     } else if("total_planned_impressions" %in% names(raw_df)) {
       "total_planned_impressions"
     } else {
@@ -196,11 +201,23 @@
         NA_real_
       },
       # Fix: Use the correct impressions column name
-      net_impressions = if(!is.null(impressions_col)) {
-        .data[[impressions_col]]
-      } else {
-        NA_real_
-      },
+      net_impressions = coalesce(
+        if(!is.null(impressions_col)) {
+          .data[[impressions_col]]
+        } else {
+          NA_real_
+        },
+        if("total_objective_impressions" %in% names(raw_df)) {
+          total_objective_impressions
+        } else {
+          NA_real_
+        },
+        if("total_objective_impressions_000" %in% names(raw_df)) {
+          total_objective_impressions_000
+        } else {
+          NA_real_
+        }
+      ),
       # Fix: Use the correct units column name
       total_units = if(!is.null(units_col)) {
         .data[[units_col]]
@@ -274,7 +291,6 @@
       })
     f_write_to_bq <- function(data) {
       library(bigrquery)
-      library(gmailr)
       
       data <- data %>% mutate(data_refresh_date = today())
       

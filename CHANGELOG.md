@@ -2,6 +2,178 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-03-30
+
+### Added
+
+- **Shared TV Gmail loader documentation**
+  What: added one detailed documentation file for both TV Gmail loaders, covering the Gmail search rules, attachment selection, column mapping, BigQuery write behavior, differences between local and national runs, and troubleshooting notes for common failures. -codexapp (thread link unavailable in local session).
+  Why: gives one beginner-friendly place to understand how the TV loaders work without reading both R scripts line by line.
+  <details><summary>Paths — Shared TV Gmail loader documentation</summary>
+
+  [util/data_loaders/README.md](util/data_loaders/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+### Changed
+
+- **TV loader verification ownership moved to the universal runner**
+  What: removed the loader-owned TV validation hook from the local and national TV Gmail loaders and updated the loader docs to point to the runner-owned verification workflow in [/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/verifications/](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/verifications/) and the saved implementation plan at [/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/docs/plans/2026-03-30_minimal_tv_verification_in_runner.md](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/docs/plans/2026-03-30_minimal_tv_verification_in_runner.md). -codexapp (thread link unavailable in local session).
+  Why: keeps the loaders focused on ingestion while the runner owns the before/after table check and the status display. 
+  <details><summary>Paths — TV Loader Verification Ownership</summary>
+
+  [util/data_loaders/gmail_to_bq__tv_local.r](util/data_loaders/gmail_to_bq__tv_local.r)
+  [util/data_loaders/gmail_to_bq__tv_nat.r](util/data_loaders/gmail_to_bq__tv_nat.r)
+  [util/data_loaders/README.md](util/data_loaders/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+  [/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/docs/plans/2026-03-30_minimal_tv_verification_in_runner.md](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/docs/plans/2026-03-30_minimal_tv_verification_in_runner.md)
+
+  </details>
+
+### Fixed
+
+- **TV national impression-column matching**
+  Issue: The TV national loader refreshed the landing table on March 30, 2026 but wrote `net_impressions = 0` for every row from the latest national CSV.
+  Cause: The script did not recognize the current cleaned source header `total_planned_impressions_all_demos` and skipped the non-zero impression field present in the latest Gmail attachment.
+  Resolution: Updated the national loader to check the current planned-impressions header plus the non-suffixed objective-impressions fallback, then verified the latest attachment maps to non-zero impressions in a read-only dry run. -codexapp (thread link unavailable in local session).
+
+## 2026-03-27
+
+### Changed
+
+- **Omni dashboard preview-first confirmation workflow**
+  What: added a repo-wide rule that Omni dashboard edits should be previewed before live changes, with the preview showing the entire widget and clearly stating whether the proposed update is visual, behavioral, or both.
+  Why: makes dashboard edits easier to confirm safely before publishing and avoids approving changes from partial or misleading cropped previews. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Omni dashboard preview-first confirmation workflow</summary>
+
+  [AGENTS.md](AGENTS.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+## 2026-03-15
+
+### Added
+
+- **Prisma supplier logo reload script**
+  What: added a Prisma shell script that rebuilds `looker-studio-pro-452620.landing.prisma_supplier_logos` from `Supplier_logos.xlsx` `Logos!A:C`, removes the blank/error footer rows, and prints a verification query after the load.
+  Why: makes the supplier logo table refresh repeatable without rerunning ad hoc terminal commands. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Prisma supplier logo reload script</summary>
+
+  [Prisma/reload_prisma_supplier_logos.sh](Prisma/reload_prisma_supplier_logos.sh)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+## 2026-03-13
+
+### Changed
+
+- **Live BigQuery object precedence**
+  What: added a standing repo rule that when a BigQuery object path is referenced, the live production table or view should be inspected first and then compared to any matching local SQL or docs before trusting the local version.
+  Why: keeps future warehouse QA anchored on the real production object and makes local-versus-production drift visible earlier. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Live BigQuery object precedence</summary>
+
+  [AGENTS.md](AGENTS.md)
+  [README.md](README.md)
+  [mft/AGENTS.md](mft/AGENTS.md)
+
+  </details>
+
+- **MFT DCM UTM hardening and QA runbooks**
+  What: hardened the local `repo_stg.dcm_plus_utms` deploy SQL with Mass-only creative fallbacks plus placement-name-only rescue when the placement exists in the UTM source, and added QA SQL files plus MFT documentation for validating staged completeness, `utm_content` ID fidelity, and creative checks through `utm_creative_assignment`.
+  Why: reduces blank UTM fields in the Mass DCM reporting slice without using placeholders and makes the proof workflow repeatable. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — MFT DCM UTM hardening and QA runbooks</summary>
+
+  [mft/scripts/sql/repo_stg__dcm_plus_utms.sql](mft/scripts/sql/repo_stg__dcm_plus_utms.sql)
+  [mft/scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql](mft/scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql)
+  [mft/scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql](mft/scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql)
+  [mft/README.md](mft/README.md)
+  [mft/AGENTS.md](mft/AGENTS.md)
+  [mft/docs/dcm_plus_utms_lineage.md](mft/docs/dcm_plus_utms_lineage.md)
+  [README.md](README.md)
+
+  </details>
+
+## 2026-03-11
+
+### Changed
+
+- **Safer cleanup boundaries for active repo review**
+  What: Added ignore rules for generated workspace artifacts, reset tracked local helper files out of the active diff, and documented the nested Streamlit app as archived side work under ADIF.
+  Why: Keeps review focused on real pipeline changes instead of machine-specific clutter. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Safer cleanup boundaries for active repo review</summary>
+
+  [.gitignore](.gitignore)
+  [adif/README.md](adif/README.md)
+
+  </details>
+
+- **Safer default behavior for FPD and ADIF loaders**
+  What: Reset the shared shortcut-aware FPD loader to fresh-run defaults and changed the ADIF TV/digital base loader so downstream loaders stay off unless explicitly enabled, with matching runbook updates.
+  Why: Reduces stale uploads and surprise multi-script runs during daily use. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Safer default behavior for FPD and ADIF loaders</summary>
+
+  [FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r](FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)
+  [FPD/FPD_loader/README.md](FPD/FPD_loader/README.md)
+  [adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r](adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r)
+  [adif/projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md](adif/projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+
+  </details>
+
+### Fixed
+
+- **TV estimate loader impression-column matching**
+  Issue: The TV local and national loaders were not consistently matching the cleaned impressions column names from the latest CSV exports.
+  Cause: The scripts checked incomplete column-name variants after `clean_names()` reshaped the headers.
+  Resolution: Updated the loader notes and national column selection logic, then reran the loaders and confirmed refreshed landing tables on March 11, 2026. -codexapp (thread link unavailable in local session).
+
+## 2026-03-06
+
+### Changed
+
+- **Scheduled query runbook accuracy and monitoring query reliability**
+  What: Updated `docs/SCHEDULED_QUERIES.md` to fix the maintenance health-check SQL, standardize UTC schedule labels, clarify that failed/deprecated jobs are included, add actionable timing-dependency guidance, and refresh the document date stamp.
+  Why: Prevents monitoring confusion and query failures while making operational timing expectations clearer for daily pipeline checks. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Scheduled query runbook accuracy and monitoring query reliability</summary>
+
+  [docs/SCHEDULED_QUERIES.md](docs/SCHEDULED_QUERIES.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+## 2026-02-26
+
+### Added
+
+- **ADIF notebook QA dashboard (single HTML)**
+  What: Added a self-contained dashboard file for `repo_stg.adif__mainDataTable_notebook` grouped by supplier, package, data source, and impression type, focused on planned-vs-actual spend/impressions with upstream reference columns.
+  Why: Creates a fast local QA artifact that can be shared and opened without a backend service. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — ADIF notebook QA dashboard (single HTML)</summary>
+
+  [adif/projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html](adif/projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html)
+  [adif/README.md](adif/README.md)
+  [adif/CHANGELOG.md](adif/CHANGELOG.md)
+
+  </details>
+
+### Changed
+
+- **Root workflow index now includes ADIF QA dashboard**
+  What: Updated the root `README.md` Core Workflows list to describe the grouped planned-vs-actual QA dashboard and upstream reference context.
+  Why: Keeps top-level navigation accurate so the QA entrypoint is easy to find. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — Root workflow index now includes ADIF QA dashboard</summary>
+
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-02-13
 
 ### Added

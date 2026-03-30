@@ -1,6 +1,11 @@
 
 # Gmail to Drive TV Local Data Loader Script ###
 #
+# What changed: this loader now looks for the newer local impressions field
+# `total_planned_impressions_all_demos_000` before falling back to older names.
+# How to undo: restore the previous Git version if the incoming local CSV format
+# returns to the older impressions column layout.
+#
 # ---------------------------------------------------------------------------- #
 #                                    HEADER                                    #
 # ---------------------------------------------------------------------------- #
@@ -14,9 +19,7 @@
   library(lubridate)
   library(googlesheets4)
   library(tidyverse)
-  library(httpuv)
   library(stringr)
-  library(xfun)
 # ---------------------------------------------------------------------------- #
 #                              Configuration                                   #
 # ---------------------------------------------------------------------------- #
@@ -43,7 +46,6 @@ table <- "tv_local_estimates"
 
   # my_threads <- gm_threads(search = 'subject:"TV | Local | daily scheadule" -National',
   #                          num_results = 10)
-  2
   my_threads
 
 
@@ -144,8 +146,8 @@ table <- "tv_local_estimates"
   # Check which impressions column exists
   impressions_col <- if("total_total_impressions_buyers_estimate" %in% names(raw_df)) {
     "total_total_impressions_buyers_estimate"
-  } else if("total_planned_impressions_all_demos" %in% names(raw_df)) {
-    "total_planned_impressions_all_demos"
+  } else if("total_planned_impressions_all_demos_000" %in% names(raw_df)) {
+    "total_planned_impressions_all_demos_000"
   } else if("total_planned_impressions" %in% names(raw_df)) {
     "total_planned_impressions"
   } else {
@@ -260,7 +262,6 @@ table <- "tv_local_estimates"
       })
     f_write_to_bq <- function(data) {
       library(bigrquery)
-      library(gmailr)
       
       data <- data %>% mutate(data_refresh_date = today())
       
