@@ -2,6 +2,16 @@
 
 ### Changed
 
+- **Per-sheet cache reuse for unchanged Google Sheets -codexapp (threadID unavailable in local session)**
+  What: Added per-sheet header and raw-data cache files to `util_collect_fpd_shortcutsFolder.r`, turned cache reuse on by default for unchanged Drive files, and added a `--no-file-cache` escape hatch for forced fresh pulls.
+  Why: Reduces repeated Google Sheets API calls on unchanged partner files while keeping a simple way to force a full refresh when needed.
+  <details><summary>Paths — Per-sheet cache reuse for unchanged Google Sheets</summary>
+
+  [util_collect_fpd_shortcutsFolder.r](util_collect_fpd_shortcutsFolder.r)
+  [README.md](README.md)
+
+  </details>
+
 - **Incremental BigQuery sync for sheet-scoped runs -codexapp (threadID unavailable in local session)**
   What: Updated `util_collect_fpd_shortcutsFolder.r` so the main loader stages the current run, adds any clearly-typed new columns to the live BigQuery table, and then replaces only the destination rows for the sheets included in that run instead of rebuilding the whole table every time.
   Why: Makes focused runs like Apollo-only updates safer while still preserving newly added A:Y sheet columns in BigQuery.

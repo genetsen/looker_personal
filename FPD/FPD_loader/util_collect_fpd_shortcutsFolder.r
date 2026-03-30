@@ -37,9 +37,10 @@ cli_args <- commandArgs(trailingOnly = TRUE)
 
 if ("--help" %in% cli_args || "-h" %in% cli_args) {
   cat("\nUsage:\n")
-  cat("  Rscript util_collect_fpd_shortcutsFolder.r [--pattern <text>]\n\n")
+  cat("  Rscript util_collect_fpd_shortcutsFolder.r [--pattern <text>] [--no-file-cache]\n\n")
   cat("Options:\n")
   cat("  --pattern <text>   Override sheet-name match pattern used in Phase 1\n")
+  cat("  --no-file-cache    Disable default per-sheet cache reuse and force fresh Google Sheets reads\n")
   cat("  -h, --help         Show this help and exit\n\n")
   quit(save = "no", status = 0)
 }
@@ -64,6 +65,11 @@ get_flag_value <- function(args, flag_name) {
   NULL
 }
 
+has_flag <- function(args, flag_name) {
+  long_flag <- paste0("--", flag_name)
+  any(args == long_flag | startsWith(args, paste0(long_flag, "=")))
+}
+
 #### CONFIGURATION ####
 gdrive_folder_id <- "1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"
   # Analytics department folder (recursive scan, filtered by pattern):
@@ -74,8 +80,16 @@ pattern <- "| Partner Data"
       pattern <- pattern_override
       cat("CLI override applied: pattern =", pattern, "\n")
     }
+use_file_cache <- !has_flag(cli_args, "no-file-cache")
+  if (use_file_cache) {
+    cat("Per-file cache reuse is enabled\n")
+  } else {
+    cat("CLI override applied: per-file cache reuse disabled\n")
+  }
 output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output"
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+cache_dir <- file.path(output_dir, "sheet_cache")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
 use_saved_phases <- FALSE
   # Default to a full fresh run. Turn this on only while debugging a saved checkpoint.
   # Set the phase you are actively working on (1..7). Saved results will be used for other phases.
@@ -163,6 +177,46 @@ normalize_bq_sql_type <- function(type_name) {
   if (type_upper == "INTEGER") return("INT64")
   if (type_upper == "BOOLEAN") return("BOOL")
   type_upper
+}
+
+normalize_cache_timestamp <- function(x) {
+  if (length(x) == 0 || is.null(x) || all(is.na(x))) {
+    return(NA_character_)
+  }
+  format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+}
+
+get_sheet_cache_path <- function(cache_dir, sheet_id) {
+  file.path(cache_dir, paste0(gsub("[^A-Za-z0-9_-]", "_", sheet_id), ".rds"))
+}
+
+read_sheet_cache <- function(cache_dir, sheet_id, last_modified_time) {
+  cache_path <- get_sheet_cache_path(cache_dir, sheet_id)
+  if (!file.exists(cache_path)) return(NULL)
+
+  cache_obj <- tryCatch(readRDS(cache_path), error = function(e) NULL)
+  if (is.null(cache_obj) || !is.list(cache_obj)) return(NULL)
+
+  cache_ts <- normalize_cache_timestamp(cache_obj$last_modified_time)
+  current_ts <- normalize_cache_timestamp(last_modified_time)
+  if (is.na(cache_ts) || is.na(current_ts) || cache_ts != current_ts) return(NULL)
+
+  cache_obj
+}
+
+write_sheet_cache <- function(cache_dir, sheet_id, last_modified_time, field_name, field_value) {
+  cache_path <- get_sheet_cache_path(cache_dir, sheet_id)
+  cache_obj <- if (file.exists(cache_path)) {
+    tryCatch(readRDS(cache_path), error = function(e) list())
+  } else {
+    list()
+  }
+
+  if (!is.list(cache_obj)) cache_obj <- list()
+  cache_obj$sheet_id <- sheet_id
+  cache_obj$last_modified_time <- as.POSIXct(last_modified_time, tz = "UTC")
+  cache_obj[[field_name]] <- field_value
+  saveRDS(cache_obj, cache_path)
 }
 
 get_table_field_types <- function(project_id, dataset_id, table_name) {
@@ -458,6 +512,22 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
     cat("\nProcessing file", i, "of", nrow(discovered_files), ":", sheet_name, "\n")
     
     tryCatch({
+      cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
+      if (!is.null(cached_sheet) && !is.null(cached_sheet$header_row)) {
+        cat("  ✓ Reused cached header row:", cached_sheet$header_row, "\n")
+        header_detection_results[[i]] <- data.frame(
+          sheet_name = sheet_name,
+          sheet_id = sheet_id,
+          sheet_url = sheet_url,
+          last_modified_time = last_mod_time,
+          last_modified_by = last_mod_by,
+          header_row = as.integer(cached_sheet$header_row),
+          status = "success",
+          stringsAsFactors = FALSE
+        )
+        next
+      }
+
       # Read columns A:G from 'data' tab (use for scanning header row)
       # Use a large range (A1:G500) to ensure we capture all rows including those further down
       scan_range <- "A1:G500"
@@ -527,6 +597,9 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         status = "success",
         stringsAsFactors = FALSE
       )
+      if (use_file_cache) {
+        write_sheet_cache(cache_dir, sheet_id, last_mod_time, "header_row", as.integer(header_row_detected))
+      }
       
     }, error = function(e) {
       cat("  ✗ ERROR:", e$message, "\n")
@@ -607,6 +680,11 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
     cat("\nProcessing file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
         
         tryCatch({
+        cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
+        if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_headers)) {
+          col_names <- as.character(cached_sheet$raw_headers)
+          cat("  ✓ Reused cached header list with", length(col_names), "columns\n")
+        } else {
         # Read the data starting from detected header row to column S (full table width)
         # Use this row as header (col_names = TRUE)
       cat("  Reading columns A:Y starting from row", header_row, "...\n")
@@ -635,6 +713,10 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         next
       }        # Extract column names (as read by googlesheets4)
         col_names <- names(sheet_data)
+        if (use_file_cache) {
+          write_sheet_cache(cache_dir, sheet_id, last_mod_time, "raw_headers", col_names)
+        }
+        }
         
         cat("  ✓ Found", length(col_names), "columns\n")
         
@@ -872,12 +954,18 @@ successful_files <- phase2_results %>% filter(status == "success")
     cat("\nIngesting file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
 
   tryCatch({
-    df <- suppressMessages(read_sheet(
-      ss = sheet_id,
-      sheet = "data",
-      range = paste0("A", header_row, ":Y"),
-      col_names = TRUE
-    ))
+    cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
+    if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_data)) {
+      df <- cached_sheet$raw_data
+      cat("  ✓ Reused cached raw sheet data\n")
+    } else {
+      df <- suppressMessages(read_sheet(
+        ss = sheet_id,
+        sheet = "data",
+        range = paste0("A", header_row, ":Y"),
+        col_names = TRUE
+      ))
+    }
 
     # Drop columns that are auto-generated blanks (start with ...)
     df <- df %>% select(-starts_with("..."))
@@ -886,6 +974,9 @@ successful_files <- phase2_results %>% filter(status == "success")
     if (nrow(df) == 0 || ncol(df) == 0) {
       cat("  ✗ Skipping - no usable data after dropping autogenerated columns\n")
       next
+    }
+    if (use_file_cache && (is.null(cached_sheet) || is.null(cached_sheet$raw_data))) {
+      write_sheet_cache(cache_dir, sheet_id, last_mod_time, "raw_data", df)
     }
 
     # Current column names (raw) as read

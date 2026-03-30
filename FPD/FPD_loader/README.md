@@ -57,7 +57,7 @@ Use this quick checklist before and after every run:
 ## What Changed / How To Undo
 
 - What changed:
-  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, and staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery.
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, and staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery.
 - How to undo:
   if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
 
@@ -92,6 +92,7 @@ Edit the top of `util_collect_fpd_shortcutsFolder.r`:
 | `gdrive_folder_id` | Google Drive folder ID containing partner sheets | `"1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"` |
 | `pattern` | Sheet name pattern to match during discovery (can be overridden with `--pattern`) | `"| Partner Data"` |
 | `output_dir` | Directory for checkpoint CSVs | `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output` |
+| `cache_dir` | Per-sheet cache directory used by the default cache-reuse mode | `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output/sheet_cache` |
 | `use_saved_phases` | When `TRUE`, load cached CSVs for phases other than `current_phase` | `FALSE` |
 | `current_phase` | The phase to actively compute (1-7) | `1` |
 | `known_kpi_metrics` | Metric columns to treat as numeric and split across days in Phase 7 | See below |
@@ -99,7 +100,7 @@ Edit the top of `util_collect_fpd_shortcutsFolder.r`:
 
 ### Optional CLI Flag (Main Script)
 
-Use this when you want to test a different sheet-name match pattern without editing the script:
+Use this when you want to test a different sheet-name match pattern or disable the default file cache without editing the script:
 
 ```bash
 # Override only this run
@@ -108,11 +109,16 @@ Rscript util_collect_fpd_shortcutsFolder.r --pattern="| Partner Data"
 # Example: process only Apollo partner sheets
 Rscript util_collect_fpd_shortcutsFolder.r --pattern="APO | Partner Data"
 
+# Example: force fresh Google Sheets reads for this run only
+Rscript util_collect_fpd_shortcutsFolder.r --pattern="APO | Partner Data" --no-file-cache
+
 # Show usage/help
 Rscript util_collect_fpd_shortcutsFolder.r --help
 ```
 
 If `--pattern` is not provided, the script uses the default value from the configuration block.
+By default, the script stores per-sheet cache files in `output/sheet_cache/` and reuses them only when the Drive `last_modified_time` for that file matches the cached copy.
+Use `--no-file-cache` when you want to force a fully fresh Google Sheets pull.
 
 ### KPI Metrics List
 
