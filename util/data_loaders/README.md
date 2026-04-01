@@ -35,6 +35,10 @@ util/data_loaders/
 └── README.md
 ```
 
+Shared helper used by these loaders:
+
+- `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r`
+
 ## Quick Start
 
 Run these commands from:
@@ -318,16 +322,27 @@ If the retry also fails, the script sends a failure email to the authenticated G
 
 ### Failure email behavior
 
+The shared helper file [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r) now owns this alert flow for both TV loaders.
+
 On write failure, the script attempts to email the authenticated user with:
 
-- timestamp
+- subject line in the format `🚨 Error in (R) Script | [script_name] failed to update [table_name]`
+- timestamp in 12-hour format without seconds
 - project
 - dataset
 - table
+- full script path when the runtime can detect it
+- failed script folder path
+- direct BigQuery table link
+- helper script path
+- helper folder path
+- helper README path for update instructions
 - error type
 - error details
 
-Note: the local loader's email body still says the message came from the "TV National data loader script." That text is only in the alert body, but it is misleading for local-loader failures.
+The helper also keeps the schema-retry behavior in one place, so other R scripts can reuse the same BigQuery write and alert pattern by sourcing one file instead of copying the whole block.
+
+When these loaders run inside the external universal runner, the helper lookup now also checks the runner-style working directory layout (`util/data_loaders` with the helper in `../R_functions`) plus the local compatibility shim in the same folder. That keeps the helper path stable whether the loader is run directly or sourced by the runner.
 
 ## Important Assumptions
 
@@ -416,8 +431,7 @@ These are not required for the loaders to work today, but they would make the wo
 2. Save a copy of the chosen attachment into a dated debug folder before upload.
 3. Add a stricter attachment-selection rule for the local loader.
 4. Add explicit validation checks for required columns before the BigQuery write.
-5. Fix the alert-body text in the local loader so it says "TV Local" instead of "TV National".
-6. Add a small dry-run mode that prints the chosen columns and row counts without writing to BigQuery.
+5. Add a small dry-run mode that prints the chosen columns and row counts without writing to BigQuery.
 
 ## When To Edit These Scripts
 
@@ -435,5 +449,7 @@ If the issue is only documentation, update this file first so future debugging s
 
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r)
+- [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r)
+- [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/README.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/README.md)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md)
