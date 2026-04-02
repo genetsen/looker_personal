@@ -2,6 +2,93 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-04-02
+
+### Added
+
+- **Prisma sibling view with package-level FPD actuals**
+  What: added a new Prisma SQL definition that builds the sibling view `looker-studio-pro-452620.Prisma.prisma_processed_plusDCMFPD`, preserving the current package-level DCM rollup while adding package-level FPD impressions, spend, clicks, and FPD date bounds from `landing.fpd_data_ranged_shortcutsFolder`. -codexapp (thread link unavailable in local session).
+  Why: lets Prisma packages count partner-reported FPD delivery when DCM is missing without changing or overwriting the existing DCM fields.
+  <details><summary>Paths — Prisma sibling view with package-level FPD actuals</summary>
+
+  [Prisma/prisma_processed_plusDCMFPD.sql](Prisma/prisma_processed_plusDCMFPD.sql)
+  [docs/SCHEDULED_QUERIES.md](docs/SCHEDULED_QUERIES.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+## 2026-04-01
+
+### Added
+
+- **Shared BigQuery loader alert helper**
+  What: added one reusable R helper in `util/R_functions` that centralizes BigQuery overwrite, schema-retry fallback, failure email formatting, script-path capture, BigQuery table deeplink generation, and a shared helper README for update instructions. -codexapp (thread link unavailable in local session).
+  Why: makes the failure-alert workflow reusable across scripts and keeps future maintenance in one shared helper instead of repeated inline blocks.
+  <details><summary>Paths — Shared BigQuery loader alert helper</summary>
+
+  [util/R_functions/bq_write_with_email_alerts.r](util/R_functions/bq_write_with_email_alerts.r)
+  [util/R_functions/README.md](util/R_functions/README.md)
+  [util/data_loaders/shared_bq_write_with_alerts.r](util/data_loaders/shared_bq_write_with_alerts.r)
+  [util/data_loaders/README.md](util/data_loaders/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+### Changed
+
+- **TV Gmail loader failure emails now include script location and table shortcut**
+  What: updated the shared failure email format so alerts now use the subject line `🚨 Error in (R) Script | [script_name] failed to update [table_name]`, show a 12-hour timestamp without seconds, include direct paths to the failed script folder plus the helper script and helper README for update instructions, and safely MIME-chunk long Unicode subjects so Gmail renders them correctly. -codexapp (thread link unavailable in local session).
+  Why: makes alert emails easier to scan in the inbox and easier to act on when you need to inspect or update the shared alert logic.
+  <details><summary>Paths — TV Gmail loader failure emails now include script location and table shortcut</summary>
+
+  [util/R_functions/bq_write_with_email_alerts.r](util/R_functions/bq_write_with_email_alerts.r)
+  [util/R_functions/README.md](util/R_functions/README.md)
+  [util/data_loaders/gmail_to_bq__tv_local.r](util/data_loaders/gmail_to_bq__tv_local.r)
+  [util/data_loaders/gmail_to_bq__tv_nat.r](util/data_loaders/gmail_to_bq__tv_nat.r)
+  [util/data_loaders/README.md](util/data_loaders/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+### Fixed
+
+- **TV loader helper lookup in the universal runner**
+  Issue: the local and national TV loaders failed at startup during universal-runner execution because they could not find the shared BigQuery alert helper.
+  Cause: when the loaders were sourced by the external runner, their helper-path search only checked direct-run locations and could resolve the runner file instead of the loader folder.
+  Resolution: added runner-compatible helper search paths for the `util/data_loaders -> ../R_functions` layout plus the local compatibility shim, and verified the exact runner-style lookup now resolves and sources the shared helper successfully. -codexapp (thread link unavailable in local session).
+
+## 2026-03-31
+
+### Added
+
+- **Olipop folder guide and MMM dependency documentation**
+  What: added a beginner-friendly Olipop folder guide that explains each SQL file in `/olipop`, documents the live `looker-studio-pro-452620.Olipop.MMM_crossplatform` dependency graph, and records which upstream objects are documented here versus in other repo docs. -codexapp (thread link unavailable in local session).
+  Why: gives one clear source of truth for understanding the Olipop reporting path without reverse-engineering the warehouse object tree by hand.
+  <details><summary>Paths — Olipop folder guide and MMM dependency documentation</summary>
+
+  [olipop/README.md](olipop/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+### Changed
+
+- **Olipop raw-table runbook now matches live production behavior**
+  What: updated the shared scheduled-query documentation to reflect the live `stg__olipop__crossplatform_raw_tbl_sched` logic, including runtime source selection between the two ad-reporting tables, the current `video_flag` rule, and a link back to the new Olipop guide. -codexapp (thread link unavailable in local session).
+  Why: keeps shared docs aligned with production after the local SQL and the live scheduled query drifted apart.
+  <details><summary>Paths — Olipop raw-table runbook now matches live production behavior</summary>
+
+  [docs/SCHEDULED_QUERIES.md](docs/SCHEDULED_QUERIES.md)
+  [olipop/README.md](olipop/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-03-30
 
 ### Added
