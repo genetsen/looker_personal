@@ -64,7 +64,13 @@ For notebook asset `build__adif__prisma_expanded_plus_dcm_with_social_tbl`, use 
 
 - `projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent`
 
-Read commands:
+Default workflow:
+
+1. Use BigQuery MCP first for dataset discovery, schema inspection, and read-only BigQuery query work.
+2. Keep the helper below as the repair and advanced access path.
+3. Use the helper when you need to refresh Google login state or when you need a token for Dataform notebook file reads.
+
+Advanced notebook read commands:
 
 ```bash
 TOKEN=$(gcloud auth print-access-token)
@@ -79,6 +85,42 @@ bash -lc "curl -s -G \
   -H 'Authorization: Bearer $TOKEN' \
   --data-urlencode 'path=FILE_PATH' \
   \"https://dataform.googleapis.com/v1/${WS}:readFile\""
+```
+
+### Sandbox-Safe Google Cloud Access
+
+If BigQuery MCP is unavailable, or if live reads fail because `gcloud` cannot write to your normal home-folder config inside Codex, use the project helper below. It copies your existing Google Cloud auth into `./.codex-local/gcloud`, points `gcloud` and `bq` at that repo-local copy, and keeps the copied credentials out of git.
+
+```bash
+# Prepare the repo-local auth copy and show the active paths
+zsh scripts/use_sandbox_gcloud.sh
+
+# Run Google Cloud commands through the helper
+zsh scripts/use_sandbox_gcloud.sh gcloud auth list
+zsh scripts/use_sandbox_gcloud.sh gcloud auth print-access-token
+zsh scripts/use_sandbox_gcloud.sh bq ls --project_id=looker-studio-pro-452620
+
+# Refresh the repo-local copy if your home-folder gcloud login changed
+zsh scripts/use_sandbox_gcloud.sh --refresh-copy
+```
+
+For notebook reads, fetch the token through the helper first:
+
+```bash
+TOKEN=$(zsh scripts/use_sandbox_gcloud.sh gcloud auth print-access-token)
+WS="projects/looker-studio-pro-452620/locations/us-east1/repositories/acfacedf-9d13-4beb-98d4-34f9a2afdba7/workspaces/adif-bq-notebook-permanent"
+
+curl -s -G \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "path=" \
+  "https://dataform.googleapis.com/v1/${WS}:queryDirectoryContents"
+```
+
+If the copied login is stale, refresh it through the helper so the updated credentials stay inside `./.codex-local/gcloud`:
+
+```bash
+zsh scripts/use_sandbox_gcloud.sh gcloud auth login
+zsh scripts/use_sandbox_gcloud.sh gcloud auth application-default login
 ```
 
 ## Social Production Pipeline
@@ -149,6 +191,13 @@ flowchart LR
 - ADIF also includes rows where `source_file` starts with `FMUS | Partner Data Collection |`.
 - The older table `looker-studio-pro-452620.landing.adif_fpd_data_ranged` remains available as a legacy reference, but it is no longer the intended main-ADIF source.
 
+### Prisma Supplier Logo Propagation
+
+- Source lookup: `looker-studio-pro-452620.landing.prisma_supplier_logos.logo_url_final`
+- Downstream field name: `supplier_logo`
+- Digital Prisma-backed rows inherit `supplier_logo` through `landing.prisma_master_2025` and `20250327_data_model.prisma_expanded_full`
+- Social rows appended in notebook Section 2 leave `supplier_logo` as `NULL`
+
 `repo_int.crossplatform_pacing` upstream views used by notebook logic:
 - `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
 - `looker-studio-pro-452620.repo_facebook.stg__fb_combined_history`
@@ -162,6 +211,18 @@ The production notebook includes post-run checks for:
 - Breakdown by `supplier_code`, `p_package_friendly` (2026 filter)
 - Cross-check against `repo_stg.stg__adif__social_crossplatform` platform totals
 
+### HTML QA Dashboard (Final vs Upstream)
+
+Use the self-contained HTML dashboard to QA `repo_stg.adif__mainDataTable_notebook` against upstream baseline `stg.adif__prisma_expanded_plus_dcm_with_social_tbl`.
+
+- Dashboard file: `projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html`
+- Upstream definition used in dashboard: prior baseline output table (`stg.adif__prisma_expanded_plus_dcm_with_social_tbl`) used for regression comparison, not raw source-system feeds.
+- Included views:
+  - Planned vs actual charting grouped by supplier, package, data source, and impression type
+  - Dimension rollup table with planned, actual, variance, and upstream reference columns
+  - Filters for supplier, package, data source, and impression type
+  - Metric toggle for spend or impressions and top-N chart controls
+
 ## Folder Map
 
 ### Sub-Projects
@@ -171,6 +232,7 @@ The production notebook includes post-run checks for:
 - [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
 - [projects/updated_fpd_integration/PROJECT_SUMMARY_Updated_FPD_Integration.md](projects/updated_fpd_integration/PROJECT_SUMMARY_Updated_FPD_Integration.md)
 - [projects/updated_fpd_integration/deploy_updated_fpd_view.sql](projects/updated_fpd_integration/deploy_updated_fpd_view.sql)
+- [projects/updated_fpd_integration/sql/stg__adif__prisma_expanded_plus_dcm_view_v3_test.sql](projects/updated_fpd_integration/sql/stg__adif__prisma_expanded_plus_dcm_view_v3_test.sql)
 - [projects/updated_fpd_integration/validate_updated_fpd_detailed_v2.sql](projects/updated_fpd_integration/validate_updated_fpd_detailed_v2.sql)
 - [projects/updated_fpd_integration/util_validate_updated_fpd_impact.r](projects/updated_fpd_integration/util_validate_updated_fpd_impact.r)
 - [projects/updated_fpd_integration/sql/stg__adif__updated_fpd_integrated_v3.sql](projects/updated_fpd_integration/sql/stg__adif__updated_fpd_integrated_v3.sql)
@@ -188,3 +250,8 @@ The production notebook includes post-run checks for:
 - [projects/social_layering/social_mapping_matrix_editable.csv](projects/social_layering/social_mapping_matrix_editable.csv)
 - [projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql](projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql)
 - [projects/social_layering/archive/legacy_scheduled_sql/README.md](projects/social_layering/archive/legacy_scheduled_sql/README.md)
+
+### Archived Side Project
+
+- `streamlit_ad_reporting/` is treated as a parked side project, not part of the active ADIF release path in this repo.
+- If it is revived later, review and ship it as its own small project instead of bundling it into ADIF data-pipeline changes.
