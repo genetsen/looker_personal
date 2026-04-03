@@ -3,6 +3,62 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-03-13
+
+### Added
+#### **Mass DCM UTM QA queries**
+What: added one QA SQL file that compares the two-pass, three-pass, and four-pass Mass DCM UTM results side by side, plus one QA SQL file that lists the final unmatched exceptions with candidate UTM creatives.
+Why: make the proof workflow repeatable before any live deployment and separate join-logic misses from source-sheet gaps. -codexapp (thread link unavailable in local session).
+
+<details>
+<summary>Paths — Mass DCM UTM QA queries</summary>
+
+- [scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql](scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql)
+- [scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql](scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql)
+
+</details>
+
+### Changed
+#### **BigQuery object reference default**
+What: added a standing rule in the MFT local agent instructions that a referenced BigQuery object path should be checked in live production first, then compared against any matching local SQL or lineage documentation before trusting the local copy.
+Why: keep future QA and debugging anchored on the real warehouse object and make local-versus-production drift visible early. -codexapp (thread link unavailable in local session).
+
+<details>
+<summary>Paths — BigQuery object reference default</summary>
+
+- [AGENTS.md](AGENTS.md)
+
+</details>
+
+#### **DCM UTM fallback hardening for Mass rows**
+What: updated the local deploy SQL for `repo_stg.dcm_plus_utms` to keep exact matching first, then add Mass-only normalized, size-stripped, and file-suffix-stripped creative fallbacks plus placement-name-only rescue on `campaign + placement_id`, then `placement_id`, and finally the live DCM `placement` field when no UTM placement exists; refreshed the README, lineage note, and `AGENTS.md` to document the new join order and the correct validation playbook for completeness, ID checks, creative checks, and placement-only rescue.
+Why: reduce blank UTM enrichment fields in the Mass DCM slice without widening fuzzy matching to unrelated non-Mass rows. -codexapp (thread link unavailable in local session).
+
+<details>
+<summary>Paths — DCM UTM fallback hardening for Mass rows</summary>
+
+- [scripts/sql/repo_stg__dcm_plus_utms.sql](scripts/sql/repo_stg__dcm_plus_utms.sql)
+- [README.md](README.md)
+- [AGENTS.md](AGENTS.md)
+- [docs/dcm_plus_utms_lineage.md](docs/dcm_plus_utms_lineage.md)
+
+</details>
+
+## 2026-03-12
+
+### Added
+#### **DCM Plus UTMs lineage note**
+What: added a focused lineage document for `repo_stg.dcm_plus_utms`, corrected the README to name `landing.adswerve_utms` as the active DCM UTM source, and linked the note from the main pipeline guide.
+Why: make the DCM UTM enrichment path easy to trace from base tables through the mart and avoid confusing `mm_utms_snapshot` or `dcm_plus_utms_upload` with the live parents. -codexapp thread `019ce41b-ea18-7492-86c5-e9c259b77c94` (link unavailable in local session).
+
+<details>
+<summary>Paths — DCM Plus UTMs lineage note</summary>
+
+- [docs/dcm_plus_utms_lineage.md](docs/dcm_plus_utms_lineage.md)
+- [README.md](README.md)
+
+</details>
+
 ## 2026-02-12
 
 ### Changed

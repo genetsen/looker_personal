@@ -1,3 +1,23 @@
+## 2026-03-13
+
+### Changed
+- **Human-readable workstream status flow -codexapp**
+  What: reordered each generated workstream so it now starts with what was done, then shows whether recent validation was seen, whether a related BigQuery object appears live, and only then shows the next step.
+  Why: make the report readable at a glance for restart and handoff without leading with scoring language.
+  <details><summary>Paths — Human-readable workstream status flow</summary>
+
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/scripts/generate_current_work.py)
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work-skill/README.md)
+  [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/current-work.md)
+
+  </details>
+
+### Fixed
+- **Confidence-heavy summary layout**
+  Issue: generated entries led with confidence and ranking rationale, which made the report harder to understand as a plain-English status snapshot.
+  Cause: the renderer put scoring context ahead of done/validated/live/next-step information.
+  Resolution: moved confidence and why-ranked notes into collapsible evidence blocks and verified the new layout with a live generator run plus BigQuery object checks for matched tables.
+
 ## 2026-02-20
 
 ### Added

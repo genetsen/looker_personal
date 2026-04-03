@@ -4,14 +4,9 @@
 # run sql
 library(bigrquery)
 library(dplyr)
-library(stringr)
 library(lubridate)
-library(purrr)
-library(tidyr)
-library(readr)
 library(janitor)
 library(googlesheets4)
-library(googledrive)
 
 sql <- "
 SELECT DISTINCT
@@ -65,5 +60,4 @@ sheet_url <- "https://docs.google.com/spreadsheets/d/15zQ_IZx0kFpAffCFpp2d8ddDfj
 sheet_name <- "Untracked_Media"   
 
 write_sheet(fpd_untracked_df, sheet_url, sheet = sheet_name)
-
 

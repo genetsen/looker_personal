@@ -1,11 +1,47 @@
--- Validation script: proposed social mapping (ad_set->package, ad->placement)
--- Run:
+-- ════════════════════════════════════════════════════════════════════════════════
+-- ADIF Social Mapping — QA & Validation Script
+-- ════════════════════════════════════════════════════════════════════════════════
+--
+-- WHAT THIS DOES
+-- ──────────────
+-- This script checks that social media data (Facebook, Instagram, TikTok, etc.)
+-- is being correctly mapped and loaded into the ADIF main data table.
+--
+-- It runs in two parts:
+--
+--   PART 1 (Checks 1–6): "Does the proposed mapping logic work?"
+--     Builds a test version of the social mapping from raw data, then checks
+--     that spend, impressions, and pacing numbers all add up correctly.
+--     Use this when developing or changing the mapping rules.
+--
+--   PART 2 (Checks 7–13): "Does the new table match the current production table?"
+--     Compares a candidate (test) table against the current production table
+--     side by side. Use this after running the v2 notebook to confirm it
+--     produces the same results before swapping it into production.
+--
+-- HOW TO READ THE RESULTS
+-- ───────────────────────
+-- Each check returns a result table. If a check is passing:
+--   • It returns zero rows (nothing to report), OR
+--   • The "diff" columns are all 0 or near-zero
+--
+-- If a check is failing:
+--   • It shows the rows where numbers don't match
+--   • Look at the "diff" columns to see how far off they are
+--
+-- HOW TO RUN
+-- ──────────
 -- bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
---   < projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql
+--   < sql/test__adif__social_mapping_v2_vs_current.sql
+-- ════════════════════════════════════════════════════════════════════════════════
 
 
--- # * SECTION [1]: RAW SOCIAL BASE
---   Normalize raw social to ad-level daily grain used for proposed mapping.
+-- ┌─────────────────────────────────────────────────────────────────────────────┐
+-- │  PART 1: PROPOSED MAPPING CHECKS                                          │
+-- │  Builds test data from raw social, then validates the mapping logic.       │
+-- └─────────────────────────────────────────────────────────────────────────────┘
+
+-- PREP TABLE: Raw social data (the source of truth for spend/impressions)
 CREATE TEMP TABLE qa_raw_social AS
 SELECT
   date_day AS date,
@@ -30,8 +66,7 @@ FROM `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
 GROUP BY 1,2,3,4,5,6,7,8,9;
 
 
--- # * SECTION [2]: PACING DAILY (AD SET GRAIN)
---   Build planned spend at date + platform + campaign + ad_group grain.
+-- PREP TABLE: Planned (budgeted) daily spend from the pacing sheet
 CREATE TEMP TABLE qa_pacing_daily AS
 WITH pacing_dedup AS (
   SELECT
@@ -65,8 +100,7 @@ FROM pacing_dedup,
 GROUP BY 1,2,3,4;
 
 
--- # * SECTION [3]: PROPOSED MAPPING V2 PREVIEW
---   Map ad_set -> package and ad -> placement with token-based dimensions.
+-- PREP TABLE: Proposed mapping (this is the new logic we're testing)
 CREATE TEMP TABLE qa_proposed_social AS
 WITH social_tokens AS (
   SELECT
@@ -76,7 +110,7 @@ WITH social_tokens AS (
     LOWER(
       REGEXP_EXTRACT(
         r.ad_group_name,
-        r'_(facebook|instagram|tiktok|youtube|snapchat|linkedin|pinterest)(?:_|$)'
+        r'(?i)_(facebook|instagram|tiktok|youtube|snapchat|linkedin|pinterest)(?:_|$)'
       )
     ) AS supplier_token_ag,
     SPLIT(r.ad_name, '_')[SAFE_OFFSET(1)] AS initiative_token_ad,
@@ -99,16 +133,20 @@ social_enriched AS (
       WHEN t.supplier_token_ag = 'facebook' THEN 'FB'
       WHEN t.supplier_token_ag = 'instagram' THEN 'IG'
       WHEN t.supplier_token_ag = 'tiktok' THEN 'TT'
+      WHEN t.supplier_token_ag = 'pinterest' THEN 'PT'
       WHEN t.social_platform_norm = 'meta' THEN 'FB'
       WHEN t.social_platform_norm = 'tiktok' THEN 'TT'
+      WHEN t.social_platform_norm = 'pinterest' THEN 'PT'
       ELSE UPPER(SUBSTR(t.social_platform_norm, 1, 2))
     END AS supplier_code_short,
     CASE
       WHEN t.supplier_token_ag = 'facebook' THEN 'Facebook'
       WHEN t.supplier_token_ag = 'instagram' THEN 'Instagram'
       WHEN t.supplier_token_ag = 'tiktok' THEN 'TikTok'
+      WHEN t.supplier_token_ag = 'pinterest' THEN 'Pinterest'
       WHEN t.social_platform_norm = 'meta' THEN 'Facebook'
       WHEN t.social_platform_norm = 'tiktok' THEN 'TikTok'
+      WHEN t.social_platform_norm = 'pinterest' THEN 'Pinterest'
       ELSE INITCAP(t.social_platform_norm)
     END AS supplier_name_full,
     SUM(t.spend) OVER (
@@ -187,8 +225,7 @@ SELECT
 FROM social_with_plan;
 
 
--- # * SECTION [4]: CURRENT SOCIAL SNAPSHOT
---   Pull current output for side-by-side comparison.
+-- PREP TABLE: Current production social data (what's live today)
 CREATE TEMP TABLE qa_current_social AS
 SELECT
   date,
@@ -206,10 +243,11 @@ WHERE channel_raw = 'social'
 GROUP BY 1,2,3;
 
 
--- # * SECTION [5]: QA CHECK - OVERALL TOTALS
---   Ensure proposed totals match raw social totals.
+-- ── CHECK 1: Do total spend & impressions match the raw data? ─────────────────
+-- The proposed mapping should produce the exact same totals as the raw source.
+-- If spend_diff or impressions_diff are not ~0, something is being lost or doubled.
 SELECT
-  'overall_raw_vs_proposed' AS qa_check,
+  'check_1_total_spend_impressions' AS check_name,
   raw_total_spend,
   proposed_total_spend,
   proposed_total_spend - raw_total_spend AS spend_diff,
@@ -230,8 +268,9 @@ CROSS JOIN (
 ) AS p;
 
 
--- # * SECTION [6]: QA CHECK - DAILY TOTAL MISMATCHES
---   Surface any date-level raw vs proposed differences.
+-- ── CHECK 2: Any days where spend doesn't add up? ────────────────────────────
+-- Same as Check 1 but broken out by date. Only shows dates with a mismatch.
+-- If this returns zero rows, every day balances perfectly.
 SELECT
   COALESCE(r.date, p.date) AS date,
   r.raw_spend,
@@ -262,8 +301,9 @@ WHERE ABS(COALESCE(p.proposed_spend, 0) - COALESCE(r.raw_spend, 0)) > 0.01
 ORDER BY date;
 
 
--- # * SECTION [7]: QA CHECK - CURRENT VS PROPOSED TOTALS
---   Compare current social output vs proposed output at shared reporting grain.
+-- ── CHECK 3: Does the proposed mapping match what's currently in production? ──
+-- Compares current live social data vs proposed, by date + platform + campaign.
+-- Only shows rows where there's a difference. Zero rows = they match.
 SELECT
   COALESCE(c.date, p.date) AS date,
   COALESCE(c.social_platform_norm, p.social_platform_norm) AS social_platform_norm,
@@ -293,8 +333,10 @@ WHERE ABS(COALESCE(p.final_spend, 0) - COALESCE(c.final_spend, 0)) > 0.01
 ORDER BY 1,2,3;
 
 
--- # * SECTION [8]: QA CHECK - PACING COVERAGE SUMMARY
---   Compare expected pacing on raw keys vs current and proposed modeled pacing.
+-- ── CHECK 4: Is planned (budgeted) spend accounted for? ──────────────────────
+-- Compares three numbers: what pacing says we should have, what the proposed
+-- mapping actually allocated, and what production currently shows.
+-- proposed_vs_expected_diff should be ~0. If current differs, that's a known gap.
 WITH raw_keys AS (
   SELECT DISTINCT
     date,
@@ -332,8 +374,10 @@ SELECT
 FROM expected_pacing, proposed_pacing, current_pacing;
 
 
--- # * SECTION [9]: QA CHECK - AD SET PACING MATCH DETAIL
---   Ensure allocated proposed pacing re-aggregates to pacing table at ad_set/day grain.
+-- ── CHECK 5: Does pacing still add up after splitting across ads? ─────────────
+-- Planned spend starts at the ad-set level, then gets split across individual ads.
+-- This checks that the split pieces still add back up to the original ad-set total.
+-- Only shows ad-sets where the numbers don't add up. Zero rows = clean.
 WITH proposed_adset AS (
   SELECT
     date,
@@ -375,8 +419,9 @@ WHERE ABS(COALESCE(a.proposed_planned_daily_spend, 0) - COALESCE(p.planned_daily
 ORDER BY 1,2,3,4;
 
 
--- # * SECTION [10]: QA CHECK - MAPPING SAMPLE
---   Print sample mapped rows for quick sanity checks.
+-- ── CHECK 6: Sample rows — eyeball the mapped columns ────────────────────────
+-- Shows the 25 highest-spend rows so you can visually confirm supplier_code,
+-- supplier_name, initiative, line_item, placement_type, etc. look correct.
 SELECT
   date,
   social_platform_norm,
@@ -402,3 +447,187 @@ SELECT
 FROM qa_proposed_social
 ORDER BY final_spend DESC
 LIMIT 25;
+
+
+-- ┌─────────────────────────────────────────────────────────────────────────────┐
+-- │  PART 2: V2 TABLE vs PRODUCTION TABLE                                     │
+-- │                                                                            │
+-- │  These checks compare the V2 candidate table against the live production   │
+-- │  table. Run these AFTER building the V2 test table from the v2 notebook.   │
+-- │                                                                            │
+-- │  Candidate table: repo_stg.adif__mainDataTable_notebook_v2_test            │
+-- │  Baseline table:  repo_stg.adif__mainDataTable_notebook (production)       │
+-- │                                                                            │
+-- │  All 7 checks should return zero rows or diff ≈ 0 before going live.      │
+-- └─────────────────────────────────────────────────────────────────────────────┘
+
+
+-- ── CHECK 7: Same number of rows per row-level source? ───────────────────────
+-- Each row-level source (dcm, meta, tiktok, fpd, planned_only) should have the
+-- same row count in both tables. A difference means rows were added or dropped.
+SELECT
+  'check_7_row_counts_by_source' AS check_name,
+  COALESCE(b.data_source_primary, c.data_source_primary) AS data_source_primary,
+  b.row_count                                             AS baseline_rows,
+  c.row_count                                             AS candidate_rows,
+  c.row_count - b.row_count                               AS row_diff
+FROM (
+  SELECT data_source_primary, COUNT(*) AS row_count
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+  GROUP BY 1
+) AS b
+FULL OUTER JOIN (
+  SELECT row_data_source_primary AS data_source_primary, COUNT(*) AS row_count
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+  GROUP BY 1
+) AS c
+  ON b.data_source_primary = c.data_source_primary
+ORDER BY ABS(COALESCE(c.row_count, 0) - COALESCE(b.row_count, 0)) DESC;
+
+
+-- ── CHECK 8: Same total spend & impressions per row-level source? ────────────
+-- Total spend and impressions for each row-level source should match between the
+-- two tables. Only shows sources where there's a difference.
+SELECT
+  'check_8_spend_imps_by_source' AS check_name,
+  COALESCE(b.data_source_primary, c.data_source_primary) AS data_source_primary,
+  ROUND(b.total_spend,  2)  AS baseline_spend,
+  ROUND(c.total_spend,  2)  AS candidate_spend,
+  ROUND(c.total_spend - b.total_spend, 4) AS spend_diff,
+  ROUND(b.total_imps,   0)  AS baseline_imps,
+  ROUND(c.total_imps,   0)  AS candidate_imps,
+  ROUND(c.total_imps - b.total_imps, 2)   AS imps_diff
+FROM (
+  SELECT data_source_primary,
+    SUM(final_spend)       AS total_spend,
+    SUM(final_impressions) AS total_imps
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+  GROUP BY 1
+) AS b
+FULL OUTER JOIN (
+  SELECT row_data_source_primary AS data_source_primary,
+    SUM(final_spend)       AS total_spend,
+    SUM(final_impressions) AS total_imps
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+  GROUP BY 1
+) AS c
+  ON b.data_source_primary = c.data_source_primary
+WHERE ABS(COALESCE(c.total_spend, 0) - COALESCE(b.total_spend, 0)) > 0.01
+   OR ABS(COALESCE(c.total_imps,  0) - COALESCE(b.total_imps,  0)) > 0.01
+ORDER BY ABS(COALESCE(c.total_spend, 0) - COALESCE(b.total_spend, 0)) DESC;
+
+
+-- ── CHECK 9: Same planned spend for social rows? ─────────────────────────────
+-- The budgeted (planned) spend for social rows should be the same in both tables.
+-- A large diff means the pacing allocation logic changed.
+SELECT
+  'check_9_social_planned_spend' AS check_name,
+  ROUND(SUM(b.planned_daily_spend_pk), 2)  AS baseline_social_planned,
+  ROUND(SUM(c.planned_daily_spend_pk), 2)  AS candidate_social_planned,
+  ROUND(SUM(c.planned_daily_spend_pk) - SUM(b.planned_daily_spend_pk), 4) AS diff
+FROM (
+  SELECT planned_daily_spend_pk
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+  WHERE channel_raw = 'social'
+) AS b
+CROSS JOIN (
+  SELECT planned_daily_spend_pk
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+  WHERE channel_raw = 'social'
+) AS c;
+
+
+-- ── CHECK 10: Any rows with spend but no source? ─────────────────────────────
+-- Every row with final_spend should trace back to at least one source column
+-- (social spend, FPD spend, or DCM cost). Orphan rows = something fell through.
+SELECT
+  'check_10_orphan_spend_rows' AS check_name,
+  row_data_source_primary AS data_source_primary,
+  COUNT(*)                       AS orphan_rows
+FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+WHERE final_spend IS NOT NULL
+  AND s_spend                    IS NULL
+  AND fpd_spend                  IS NULL
+  AND fpd_updated_spend          IS NULL
+  AND d_daily_recalculated_cost  IS NULL
+GROUP BY 1, 2
+ORDER BY orphan_rows DESC;
+
+
+-- ── CHECK 11: Is the planned spend column calculated correctly? ───────────────
+-- planned_daily_spend_pk should equal whichever is available first:
+-- prisma_planned_spend (for digital) or social_pacing_planned_spend (for social).
+-- Mismatch rows mean the formula is off.
+SELECT
+  'check_11_planned_spend_formula' AS check_name,
+  row_data_source_primary AS data_source_primary,
+  COUNT(*) AS mismatch_rows
+FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+WHERE ABS(
+    COALESCE(planned_daily_spend_pk, 0)
+    - COALESCE(COALESCE(prisma_planned_spend, social_pacing_planned_spend), 0)
+  ) > 0.001
+GROUP BY 1, 2
+ORDER BY mismatch_rows DESC;
+
+
+-- ── CHECK 12: Full breakdown — rows and spend by row-level source ────────────
+-- Shows every row-level source side by side (baseline vs candidate).
+-- Unlike Check 8, this always shows all sources, even when they match.
+SELECT
+  'check_12_full_source_breakdown' AS check_name,
+  COALESCE(b.data_source_primary, c.data_source_primary) AS data_source_primary,
+  b.row_count    AS baseline_rows,
+  c.row_count    AS candidate_rows,
+  ROUND(b.total_spend, 2) AS baseline_spend,
+  ROUND(c.total_spend, 2) AS candidate_spend
+FROM (
+  SELECT data_source_primary,
+    COUNT(*)         AS row_count,
+    SUM(final_spend) AS total_spend
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+  GROUP BY 1
+) AS b
+FULL OUTER JOIN (
+  SELECT row_data_source_primary AS data_source_primary,
+    COUNT(*)         AS row_count,
+    SUM(final_spend) AS total_spend
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+  GROUP BY 1
+) AS c
+  ON b.data_source_primary = c.data_source_primary
+ORDER BY COALESCE(b.total_spend, 0) DESC;
+
+
+-- ── CHECK 13: Any days where daily spend doesn't match by row-level source? ──
+-- Checks every date + row-level source combination. Only shows mismatches > $0.01.
+-- Zero rows = both tables agree on every day.
+SELECT
+  'check_13_daily_spend_comparison' AS check_name,
+  COALESCE(b.date, c.date)      AS date,
+  COALESCE(b.data_source_primary, c.data_source_primary) AS data_source_primary,
+  ROUND(b.daily_spend, 2)       AS baseline_daily_spend,
+  ROUND(c.daily_spend, 2)       AS candidate_daily_spend,
+  ROUND(c.daily_spend - b.daily_spend, 4) AS spend_diff,
+  ROUND(b.daily_imps, 0)        AS baseline_daily_imps,
+  ROUND(c.daily_imps, 0)        AS candidate_daily_imps
+FROM (
+  SELECT date, data_source_primary,
+    SUM(final_spend)       AS daily_spend,
+    SUM(final_impressions) AS daily_imps
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+  GROUP BY 1,2
+) AS b
+FULL OUTER JOIN (
+  SELECT date, row_data_source_primary AS data_source_primary,
+    SUM(final_spend)       AS daily_spend,
+    SUM(final_impressions) AS daily_imps
+  FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+  GROUP BY 1,2
+) AS c
+  ON b.date = c.date
+  AND b.data_source_primary = c.data_source_primary
+WHERE ABS(COALESCE(c.daily_spend, 0) - COALESCE(b.daily_spend, 0)) > 0.01
+   OR ABS(COALESCE(c.daily_imps,  0) - COALESCE(b.daily_imps,  0)) > 0.01
+ORDER BY ABS(COALESCE(c.daily_spend, 0) - COALESCE(b.daily_spend, 0)) DESC
+LIMIT 100;

@@ -89,6 +89,40 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   - top categories by volume
   - narrow explicit-column sample (`LIMIT 50`)
   - schema exploration via `INFORMATION_SCHEMA.COLUMNS`
+- When the user mentions a BigQuery object path like `project.dataset.table` instead of a local file path:
+  - inspect the live production object first
+  - if a matching local SQL file or lineage doc exists, compare it to production before trusting the local copy
+  - call out any local-versus-production drift clearly before using the local definition for QA or edits
+- When the user mentions a local file path, work from the file directly instead of assuming the live object is the target.
+
+## DCM UTM Validation Defaults
+- When validating `repo_stg.dcm_plus_utms`, start with the Mass reporting slice:
+  - `date >= DATE '2025-01-01'`
+  - `package_roadblock LIKE '%MASS%'`
+  - `impressions > 10`
+- Use this order unless the user explicitly asks for a different scope:
+  1. Run `scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql` to confirm row-count stability, `match_type` split, and remaining unmatched volume.
+  2. Run `scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql` to separate true source-sheet gaps from SQL-matching misses.
+  3. If asked to validate whether matched UTM tags agree with DCM IDs, check matched rows only and summarize before pulling row samples.
+- For `utm_content` fidelity checks:
+  - `package_id` should appear in `utm_content` for matched rows.
+  - `placement_id` should also appear in `utm_content`, but investigate grouped misses before looking at raw rows because one bad source tag can repeat across many dates.
+- For creative validation:
+  - Do not use `utm_content` as the main creative-name proof because it often uses shortened labels.
+  - Use DCM `creative` versus selected `utm_creative_assignment`.
+  - Compare at the normalization level implied by `match_type`:
+    - `exact` -> literal equality
+    - `normalized` -> lowercase/trim plus `px` removal
+    - `loose_norm` -> the same, plus whitespace removal and trailing size-token stripping
+    - `extless_norm` -> the same, plus common file-suffix stripping
+- For placement-only rescue:
+  - It is acceptable to backfill `placement_name` and `utm_placement_id` from a real UTM placement row after every creative-based match has failed.
+  - Do not treat that placement-only rescue as proof that creative-level fields like `utm_content`, `utm_term`, or `utm_creative_assignment` are safe to backfill.
+- For final DCM placement fallback:
+  - It is acceptable to backfill `placement_name` from the live DCM `placement` field and `utm_placement_id` from DCM `placement_id` when no UTM placement exists at all.
+  - Keep that fallback separate from true UTM matches in QA explanations.
+  - Do not backfill creative-level UTM fields from the DCM side.
+- Only pull row-level examples after grouped summaries identify the repeated mismatch pattern.
 
 ## Changelog Consolidation
 - Keep `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG.md` concise and daily:

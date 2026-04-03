@@ -380,14 +380,15 @@ FROM (
 #### Configuration
 ```r
 gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
-pattern <- "De Beers | Partner Data"
+pattern <- "Partner Data"
 output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
+run_downstream_scripts <- FALSE
 ```
 
 #### 7-Phase Pipeline
 
 **Phase 1: Google Drive Discovery**
-- Searches folder for sheets matching pattern "De Beers | Partner Data"
+- Searches folder for sheets matching pattern "Partner Data"
 - Extracts metadata: sheet ID, name, URL, last modified date
 - **Output**: `phase1_discovered_files.csv`
 
@@ -426,6 +427,13 @@ output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
 - **Checkpoint System**: Each phase saves CSV for debugging
 - **Incremental Processing**: Can skip phases using `use_saved_phases = TRUE`
 - **Flexible Header Detection**: Handles inconsistent sheet structures
+- **Single-purpose default run**: downstream loaders stay off unless `run_downstream_scripts <- TRUE`
+
+#### What Changed / How To Undo
+- What changed:
+  the base ADIF FPD loader now keeps downstream loaders documented but disabled by default so one run only updates `landing.adif_fpd_data_ranged`.
+- How to undo:
+  if you intentionally want the old chained behavior back, set `run_downstream_scripts <- TRUE` in the script or restore the earlier Git version.
 
 ---
 

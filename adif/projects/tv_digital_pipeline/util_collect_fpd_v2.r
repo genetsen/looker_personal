@@ -1,14 +1,34 @@
 ################################################################################
 #### SIMPLIFIED FPD INGESTION - VERSION 2 (LINEAR, NO ABSTRACTIONS)
 ################################################################################
-# Purpose: Rewrite of util_collect_fpd.r as a straightforward, linear script
-# with minimal abstractions. Build step-by-step through phases:
-# 1. Discover files
-# 2. Detect header rows
-# 3. Collect column metadata
-# 4. Combine all data
+# What changed: this script now documents the downstream loaders it can trigger,
+# but those follow-on runs are disabled by default so the base ADIF load stays
+# single-purpose and easier to verify.
+# How to undo: if you want the old chained behavior back, set
+# `run_downstream_scripts <- TRUE` below or restore the previous script version.
+# Purpose:
+#   Main ** ADIF ** (FPD) ingest pipeline.
+#   Part of the TV/Digital first-party-data pipeline project.
+#   This script discovers partner sheets, normalizes schema, combines data,
+#   finalizes dates, expands ranged rows to daily grain, and uploads to
+#   BigQuery table: looker-studio-pro-452620.landing.adif_fpd_data_ranged.
 #
-# Output: Checkpoint CSVs after each phase for inspection
+# How this script differs from sourced scripts at the end:
+  #   - This script = primary ADIF TV/Digital base pipeline (broad partner ingest)
+  #     and produces the core adif_fpd_data_ranged dataset.
+  #   - util_process_updated_fpd.r = ADIF updated-FPD overlay pipeline from a
+  #     specific updated sheet + Prisma date join; writes adif_updated_fpd_daily.
+  #   - util_collect_fpd_v3.r = general/legacy shared ranged FPD pipeline;
+  #     writes fpd_data_ranged.
+  #   - util_collect_fpd_shortcutsFolder.r = newer shortcut-aware shared pipeline;
+  #     writes fpd_data_ranged_shortcutsFolder.
+#
+# Core phases in this script:
+#   1) Discover files  2) Detect header rows  3) Collect column metadata
+#   4) Normalize columns  5) Combine data  6) Clean/finalize dates
+#   7) Expand to daily rows + validate + upload
+#
+# Output: checkpoint CSVs after each phase for inspection/debugging.
 ################################################################################
 
 # Header & Config ----
@@ -26,11 +46,12 @@ cat ("\n-----------\nADIF first party data pipeline started at:", format(Sys.tim
 
 ####* CONFIGURATION ####
 gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
-pattern <- "De Beers | Partner Data"
+pattern <- "Partner Data"
 output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
 use_saved_phases <- FALSE
 # Set the phase you are actively working on (1..7). Saved results will be used for other phases.
 current_phase <- 1
+run_downstream_scripts <- TRUE
 
 # Known KPI metric fields (normalized) to treat as numeric + split across days
 # NOTE: keep this list tight to avoid accidentally treating dimensions as metrics.
@@ -1194,7 +1215,28 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
 
   cat("\n-----------\n-----------\nADIF first party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 
-source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/updated_fpd_integration/util_process_updated_fpd.r")
-Sys.sleep(5)
-source ("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/util_collect_fpd_v3.r")
+# Optional follow-on runs:
+# These loaders are intentionally different and write different tables.
+# Keep them off for normal runs so this script stays easy to reason about.
+if (isTRUE(run_downstream_scripts)) {
+  # 1) Run ADIF updated-FPD overlay pipeline.
+  #    Reads updated package-level FPD sheet, joins Prisma package date ranges,
+  #    spreads to daily rows, writes: landing.adif_updated_fpd_daily.
+  source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/updated_fpd_integration/util_process_updated_fpd.r")
 
+  # 2) Brief pause between chained scripts.
+  #    Purpose: reduce overlap/timing issues before triggering the next loaders.
+  Sys.sleep(5)
+
+  # 3) Run general FPD v3 pipeline (legacy/main ranged dataset).
+  #    Full 7-phase multi-sheet ingest + normalization + daily expansion,
+  #    writes: landing.fpd_data_ranged.
+  # source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/FPD_loader/util_collect_fpd_v3.r")
+
+  # 4) Run shortcut-aware FPD pipeline variant (newer shortcuts workflow).
+  #    Resolves Drive shortcut target sheet IDs, supports CLI pattern override,
+  #    writes: landing.fpd_data_ranged_shortcutsFolder.
+  source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r")
+} else {
+  cat("Downstream loaders skipped (run_downstream_scripts = FALSE).\n")
+}

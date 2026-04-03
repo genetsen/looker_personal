@@ -32,7 +32,7 @@ R packages: `googledrive`, `googlesheets4`, `dplyr`, `stringr`, `readr`, `lubrid
 
 ## Architecture
 
-Single-file linear pipeline (`util_collect_fpd_v3.r`, ~1,200 lines) with 7 sequential phases. Each phase writes a checkpoint CSV to `output/` enabling selective re-execution.
+Single-file linear pipeline (`util_collect_fpd_v3.r`, ~1,530 lines) with 7 sequential phases. Each phase writes a checkpoint CSV to `output/` enabling selective re-execution.
 
 ### Phase Flow
 

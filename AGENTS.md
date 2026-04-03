@@ -93,6 +93,41 @@ Applies to all SQL QA work in this workspace across all datasets/projects.
 2. Provide proof before live changes (for example: query results, row counts, schema compatibility checks, and error diffs).
 3. Do not patch live scripts/configs/tables until explicit user approval after proof review.
 
+## BigQuery Object Reference Default
+
+When the user mentions a BigQuery table or view path, treat the live warehouse object as the default source of truth unless the user explicitly asks for the local SQL file instead.
+
+Use this order:
+
+1. Inspect the live production object first.
+2. If a likely local SQL file or documentation entry also exists, compare the local definition or description against production.
+3. Tell the user clearly if the local file appears to drift from production before relying on the local version for analysis or edits.
+4. If the user mentions a local file path, then work from the file directly instead of assuming the production object is the target.
+
+When referencing a BigQuery table or view in user-facing outputs, render it as a clickable deep link whenever the client supports one instead of plain text only.
+
+## BigQuery Access Default
+
+Use BigQuery MCP first for warehouse inspection work in this workspace.
+
+Use this order:
+
+1. Prefer BigQuery MCP for dataset discovery, schema inspection, and read-only query work.
+2. Use direct `gcloud` / `bq` command flows only when MCP is unavailable, when authentication needs repair, or when the task requires advanced access such as token-based Dataform notebook file reads.
+3. If a helper script exists for sandbox-safe auth in the current project, use that helper instead of raw home-folder `gcloud` config paths.
+
+## Omni Dashboard Change Preview Default
+
+When making or proposing changes to an Omni dashboard or widget in this workspace, use a preview-first workflow unless the user explicitly asks to skip it.
+
+Use this order:
+
+1. Inspect the live dashboard element or widget first.
+2. Build and show a rendered before-and-after preview before making the live change.
+3. Show the entire widget in the preview, not just a cropped detail or sub-element.
+4. Call out whether the proposed change is visual, behavioral, or both.
+5. Wait for user confirmation before applying the real dashboard change.
+
 ## TODO Backlog
 
 - Rebuild the Basis UTM pipeline end-to-end with one canonical runbook that starts from trafficking-sheet ingestion and ends at `looker-studio-pro-452620.mass_mutual_mft_ext.mft_data`.

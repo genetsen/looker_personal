@@ -19,13 +19,19 @@ Project location:
 
 ## Output style
 
-- `Headlines` first, then `Details`.
+- `What Was Done` first, then `Next Steps`.
 - `Do First` action near the top.
+- Each workstream now starts with:
+  - what was done
+  - whether validation was seen recently
+  - whether a related BigQuery object looks live, staging-only, or unknown
+  - the next step to take
 - One direct runnable command per workstream.
 - Workstream ranking weighted toward recent file edits, terminal commands, messages, and git activity.
 - A `How to do this` sentence with links under each next step.
 - Clickable absolute paths in path and open-file sections.
 - Table names in collapsible sections.
+- Confidence and why-it-ranked context moved into collapsible sections so the main flow stays easier to read.
 - Basic footnotes for terms that may be unfamiliar.
 - Compact snapshot provenance with skill name/path and automation name/id.
 

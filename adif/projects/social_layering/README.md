@@ -43,6 +43,10 @@ flowchart LR
   - Keeps FPD, DCM, and social source metrics in separate source-prefixed columns
   - Recomputes canonical `final_spend`, `final_impressions`, and `final_clicks` with source-aware logic
   - Uses `d_daily_recalculated_cost` for DCM spend and `d_impressions` for DCM final impressions to mirror the current production definition
+  - Renames the social planned-spend source column to `social_pacing_planned_spend` because it is allocated from social pacing budgets, not Prisma plan data
+  - Adds `_est_spend` and `_est_impressions`, which switch to planned daily values when a package stays under `1000` total final impressions
+  - Preserves the row-level source winner as `row_data_source_primary`
+  - Recomputes `data_source_primary` at the package level so package summaries use package totals and threshold fallback rules instead of row-level labels
   - Prevents zero-filled FPD placeholders from masking valid DCM delivery in the shadow table
 
 ## Source Coverage
@@ -69,7 +73,8 @@ flowchart LR
 ## Verification Queries in Notebook
 
 - Table totals (`row_count`, `min_date`, `max_date`, `total_spend`, `total_impressions`) for 2026
-- Breakdown by `data_source_primary` for 2026
+- Breakdown by legacy row-level `data_source_primary` in v1 and `row_data_source_primary` in v2 for 2026
+- Package count breakdown by package-level `data_source_primary` in v2 for 2026
 - Breakdown by `supplier_code`, `p_package_friendly` for 2026
 - Cross-check source totals from `repo_stg.stg__adif__social_crossplatform` by platform for 2026
 

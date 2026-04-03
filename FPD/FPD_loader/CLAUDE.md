@@ -10,9 +10,12 @@ FPD (First Party Data) Loader — an R-based ETL pipeline that discovers partner
 
 ```bash
 # Run the main FPD collection pipeline (all 7 phases + BigQuery upload)
-Rscript util_collect_fpd_v3.r
+Rscript util_collect_fpd_shortcutsFolder.r
 
-# Run a specific phase only (edit lines 30-32 in the script):
+# Run with a custom sheet-name pattern
+Rscript util_collect_fpd_shortcutsFolder.r --pattern="| Partner Data"
+
+# Run a specific phase only (edit lines 75-77 in the script):
 #   use_saved_phases <- TRUE
 #   current_phase <- 3        # Set to desired phase number
 # Then run the script — it will load cached CSVs for other phases
