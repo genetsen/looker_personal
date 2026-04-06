@@ -12,7 +12,7 @@ The final reporting endpoint is `looker-studio-pro-452620.mass_mutual_mft_ext.mf
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │ DCM: DCM.20250505_costModel_v5                                                 │
 │ BASIS: giant-spoon-299605.data_model_2025.basis_master2                       │
-│ UTM: mm_utms_snapshot, b_sup_pivt_unioned_tab, dcm_plus_utms_upload           │
+│ UTM: landing.adswerve_utms, b_sup_pivt_unioned_tab, dcm_plus_utms_upload      │
 └─────────────────────────────────────┬───────────────────────────────────────────┘
                                       │
                                       ▼
@@ -60,7 +60,7 @@ flowchart TD
     subgraph S["0) Base Data Sources"]
         DCM0["DCM.20250505_costModel_v5<br/>Raw DCM delivery + cost model fields"]
         BASIS0["giant-spoon-299605.data_model_2025.basis_master2<br/>Raw Basis delivery"]
-        UTM1["mm_utms_snapshot<br/>Primary DCM UTM reference"]
+        UTM1["landing.adswerve_utms<br/>Active DCM UTM reference"]
         UTM2["utm_scrap.b_sup_pivt_unioned_tab<br/>Basis trafficking-sheet UTM extracts"]
         UTM3["repo_stg.dcm_plus_utms_upload<br/>Manual UTM corrections"]
         HIST0["landing.mft<br/>Historical pre-cutover data"]
@@ -69,8 +69,8 @@ flowchart TD
     %% DCM staging path
     subgraph D["1) DCM Staging Branch"]
         D1["Step 1.1: final_views.dcm<br/>Pass-through view of DCM cost model"]
-        D2["Step 1.2: final_views.utms_view<br/>Filtered UTM snapshot (excludes invalid values)"]
-        D3["Step 1.3: repo_stg.dcm_plus_utms<br/>LEFT JOIN DCM to UTMs on ad/ad_name<br/>Exact-row dedupe with ROW_NUMBER"]
+        D2["Step 1.2: final_views.utms_view<br/>Pass-through view of landing.adswerve_utms"]
+        D3["Step 1.3: repo_stg.dcm_plus_utms<br/>Exact join on placement_id + creative_assignment<br/>Mass-only fallback chain: normalized -> size-stripped -> suffix-stripped"]
     end
 
     %% Basis staging path
@@ -123,6 +123,7 @@ flowchart TD
 ## Table of Contents
 
 - [Data Sources](#data-sources)
+- [DCM Plus UTMs Lineage Note](docs/dcm_plus_utms_lineage.md)
 - [Staging Layer](#staging-layer)
 - [Mart and Endpoint Layer](#mart-and-endpoint-layer)
 - [UTM Processing Scripts](#utm-processing-scripts)
@@ -153,9 +154,9 @@ flowchart TD
 - `date` - Delivery date
 - `campaign` - Campaign name
 - `package_roadblock` - Package/roadblock identifier
-- `placement_id` - Unique placement identifier
-- `ad` - Ad name (used for UTM join)
-- `creative` - Creative name
+- `placement_id` - Unique placement identifier used in UTM matching
+- `ad` - DCM ad label retained in the output
+- `creative` - Creative name used in exact and normalized UTM matching
 - `impressions` - Ad impressions delivered
 - `clicks` - Click-through events
 - `media_cost` - Raw media cost
@@ -192,26 +193,29 @@ flowchart TD
 
 ### UTM Metadata Sources
 
-#### 1. MM UTMs Snapshot (Primary DCM UTMs)
-**Table**: `giant-spoon-299605.data_model_2025.mm_utms_snapshot`
+#### 1. Adswerve UTMs Landing Table (Active DCM UTMs)
+**Table**: `looker-studio-pro-452620.landing.adswerve_utms`
 
 | Attribute | Value |
 |-----------|-------|
-| **Rows** | 11,373 |
-| **Purpose** | Primary UTM reference for DCM placements |
-| **Last Updated** | Jan 12, 2026 (12:04) |
+| **Object Type** | Base table |
+| **Purpose** | Active UTM reference consumed by `final_views.utms_view` |
+| **Used By** | `repo_stg.dcm_plus_utms` via `final_views.utms_view` |
 
 **Key Fields**:
 - `Campaign` - Campaign name
 - `Site_Name` - Publisher/site
 - `Package_Name` - Package identifier
 - `Placement_Name` - Placement name
-- `Ad_Name` - Ad name (join key to DCM)
+- `Ad_Name` - Human-readable ad label from the UTM source
 - `_UTM_Source` - Traffic source tag
 - `_UTM_Medium` - Marketing medium tag
 - `_UTM_Campaign` - Campaign tag
 - `_UTM_Content` - Content variation tag
 - `_UTM_Term` - Search term tag
+
+**Note**: the live `final_views.utms_view` definition currently selects from this table. A commented historical reference to `giant-spoon-299605.data_model_2025.mm_utms_snapshot` still appears in that view text, but it is not the active source.
+**Join note**: `repo_stg.dcm_plus_utms` matches DCM to UTMs on `placement_id` and `creative_assignment` first, then only allows looser fallback matching for Mass rows from the DCM branch.
 
 ---
 
@@ -265,7 +269,7 @@ SELECT * FROM looker-studio-pro-452620.DCM.20250505_costModel_v5
 ```
 
 #### View: `final_views.utms_view`
-**Definition**: Filtered UTM snapshot
+**Definition**: Pass-through view of the active Adswerve landing table
 ```sql
 SELECT * FROM `looker-studio-pro-452620.landing.adswerve_utms`
 ```
@@ -273,15 +277,73 @@ SELECT * FROM `looker-studio-pro-452620.landing.adswerve_utms`
 #### View: `repo_stg.dcm_plus_utms`
 **Purpose**: Enriches DCM delivery data with UTM parameters
 **Local deploy SQL**: `scripts/sql/repo_stg__dcm_plus_utms.sql`
+**Focused lineage note**: [docs/dcm_plus_utms_lineage.md](docs/dcm_plus_utms_lineage.md)
 
 **Key Features**:
 - Exact-key join first: `placement_id + creative_assignment`.
-- Normalized fallback join when exact key misses:
-  - scoped to campaigns `MassMutual20252026Media` and `MassMutualLVGP2025`
-  - case-insensitive `campaign` + `placement_id`
-  - creative normalization removes `px` suffix marker and lowercases before matching
-- UTM fields use exact-first fallback (`COALESCE(exact, normalized)`).
+- Mass-only fallback chain when the exact key misses:
+  - `utm_norm`: case-insensitive `campaign` + `placement_id`, plus lowercase creative matching with `px` removed
+  - `utm_loose`: same fallback, plus whitespace removal and trailing size-token stripping such as `_0x0` / `_0 x 0`
+  - `utm_extless`: same fallback, plus common file-type suffix stripping such as `_jpg`
+- Placement-name-only rescue after the creative chain misses:
+  - same-campaign placement rescue on `campaign + placement_id`
+  - final placement-only rescue on `placement_id` when the placement exists in the UTM source but campaign text differs
+- Final DCM placement fallback after all UTM placement lookups miss:
+  - backfill `placement_name` from the live DCM `placement` field
+  - backfill `utm_placement_id` from DCM `placement_id`
+  - do not backfill creative-level UTM fields from this last-resort fallback
+- UTM fields use exact-first fallback (`COALESCE(exact, normalized, loose_norm, extless_norm)`).
 - `TO_JSON_STRING`-based deduplication preserves one row per fully identical output record.
+- Direct parents: `final_views.dcm` and `final_views.utms_view`.
+- Lowest-level inputs: `DCM.20250505_costModel_v5` and `landing.adswerve_utms`.
+- Not a direct parent: `repo_stg.dcm_plus_utms_upload` belongs to the Basis branch, not this DCM branch.
+
+**Mass QA helpers**:
+- Validation summary: `scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql`
+- Residual exception list: `scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql`
+- Recommended commands from `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`:
+
+```bash
+./scripts/bq-safe-query.sh --allow-select-star --file scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql
+./scripts/bq-safe-query.sh --allow-select-star --file scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql
+```
+
+**How to validate this view safely**:
+
+1. Start with the Mass reporting slice only.
+   - Scope: `date >= DATE '2025-01-01'`, `package_roadblock LIKE '%MASS%'`, and `impressions > 10`.
+   - Reason: the fallback chain is intentionally limited to Mass rows, so the first QA pass should use the same slice.
+2. Prove completeness before checking naming details.
+   - Run `qa__repo_stg__dcm_plus_utms_mass_validation.sql`.
+   - Confirm the row count is stable, the `match_type` split makes sense, and the remaining `unmatched` rows are small enough to review separately.
+3. Review the residual exception list before changing SQL.
+   - Run `qa__repo_stg__dcm_plus_utms_mass_exceptions.sql`.
+   - Treat the remaining unmatched rows as source exceptions unless the grouped output shows a repeatable formatting pattern that the SQL still misses.
+4. Validate `utm_content` only for matched rows.
+   - `package_id` should appear inside `utm_content` for matched rows.
+   - `placement_id` should also appear in `utm_content` for matched rows, but group misses first because one bad source UTM tag can repeat across many daily delivery rows.
+5. Validate creative fidelity with `utm_creative_assignment`, not `utm_content`.
+   - Do not use `utm_content` as the main creative-name proof. That field often shortens the creative label, for example `homeoff` instead of `HomeOffice`.
+   - Use the DCM `creative` field against the selected `utm_creative_assignment`.
+   - Compare them at the same normalization level as the winning `match_type`:
+     - `exact`: literal equality
+     - `normalized`: lowercase/trim plus `px` removal
+     - `loose_norm`: the same, plus whitespace removal and trailing size-token stripping
+     - `extless_norm`: the same, plus common file-suffix stripping
+6. Pull row-level samples last.
+   - Start with grouped summaries by `match_type`, campaign, `package_id`, `placement_id`, and the UTM tail value found in `utm_content`.
+   - Only inspect individual rows after the grouped summary identifies the repeated mismatch pattern.
+7. Treat placement-name rescue separately from creative rescue.
+   - If a creative still does not match but the placement exists in the UTM source, the view can safely backfill `placement_name` and `utm_placement_id` from the placement row alone.
+   - Do not assume that creative-level fields like `utm_content` or `utm_term` are safe to backfill from that placement-only rescue.
+8. Treat DCM placement fallback as placement-only metadata.
+   - If no UTM placement exists at all, the view can still use the live DCM `placement` field to avoid a blank `placement_name`.
+   - This should not be treated as a UTM match; creative-level UTM fields should remain null unless a real UTM row is found.
+
+**What this validation proved on 2026-03-13**:
+- `package_id` appeared in `utm_content` for `100%` of matched Mass-slice rows.
+- `placement_id` appeared in `utm_content` for `99.52%` of matched Mass-slice rows, with one repeated source-tag defect driving the misses.
+- Literal creative-name checks against `utm_content` were not reliable; `utm_creative_assignment` was the correct creative validation field.
 
 ---
 
@@ -623,10 +685,10 @@ cp_45678_massmutual_display || stayreadybrandv2
 
 ### 3. Multi-Source UTM Strategy
 
-**Priority Order**:
-1. `mm_utms_snapshot` - Primary source (most complete)
-2. `b_sup_pivt_unioned_tab` - Trafficking sheet extracts
-3. `dcm_plus_utms_upload` - Manual corrections
+**Branch Split**:
+1. `landing.adswerve_utms` - Active UTM source for the DCM branch
+2. `b_sup_pivt_unioned_tab` - Trafficking sheet extracts for the Basis branch
+3. `dcm_plus_utms_upload` - Manual corrections for the Basis branch
 
 **Combination Logic**:
 ```sql
@@ -636,6 +698,8 @@ utm AS (
   SELECT * FROM utm4               -- Manual uploads
 )
 ```
+
+**Note**: the Basis branch combines the two sources above with `UNION DISTINCT`, while the DCM branch reads from `landing.adswerve_utms` through `final_views.utms_view`.
 
 ---
 

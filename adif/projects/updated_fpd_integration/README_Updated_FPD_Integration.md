@@ -76,7 +76,7 @@ This sub-project owns the updated-FPD branch that feeds the social notebook prod
 ```mermaid
 flowchart LR
   dcm["looker-studio-pro-452620.DCM.20250505_costModel_v5"] --> core_base["repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test"]
-  fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"] --> core_base
+  fpd_orig["looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder\n(filtered to De Beers + FMUS partner-data sheets)"] --> core_base
   prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
   core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
   fpd_upd["looker-studio-pro-452620.landing.adif_updated_fpd_daily"] --> upd_view
@@ -157,7 +157,7 @@ flowchart LR
 
 **Data Sources**:
 1. **DCM** (`DCM.20250505_costModel_v5`) - Third-party delivery data
-2. **Original FPD** (`landing.adif_fpd_data_ranged`) - Partner-reported data from multiple sheets
+2. **Original FPD** (`landing.fpd_data_ranged_shortcutsFolder`) - Partner-reported data from multiple sheets, filtered in the base ADIF view to De Beers and FMUS partner-data sheet names
 3. **Updated FPD** (`landing.adif_updated_fpd_daily`) - **NEW** Package-level aggregates
 4. **Prisma** (`20250327_data_model.prisma_expanded_full`) - Planning data
 

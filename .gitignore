@@ -43,6 +43,7 @@ __pycache__/
 *.swo
 *~
 *.orig
+~$*.xlsx
 
 #-------------------------------------
 # Ignore local test data/output
@@ -56,3 +57,13 @@ scrap/
 *.csv
 
 .DS_Store
+
+#-------------------------------------
+# Local workspace artifacts
+#-------------------------------------
+.desloppify/
+.claude/skills/
+mft/.tmp-current-work/
+**/.RData
+**/.Rhistory
+adif/projects/social_layering/.claude/

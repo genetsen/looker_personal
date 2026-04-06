@@ -42,6 +42,23 @@ DEFAULT_LOG_WINDOW_HOURS = 24
 MAX_SESSION_FILES = 40
 MAX_COMMAND_SIGNALS = 120
 MAX_MESSAGE_SIGNALS = 200
+MAX_BQ_STATUS_TABLES = 2
+
+VALIDATION_TERMS = (
+    "validate",
+    "validation",
+    "verify",
+    "verified",
+    "sanity",
+    "health",
+    "test",
+    "qa",
+    "compare",
+    "diff",
+    "bq-safe-query",
+    "bq head",
+    "bq show",
+)
 
 
 @dataclass
@@ -112,6 +129,23 @@ class Workstream:
     signal_notes: List[str]
     paths: List[str]
     tables: List[str]
+    validation_short: str = ""
+    validation_status: str = ""
+    production_short: str = ""
+    production_status: str = ""
+    status_summary: str = ""
+
+
+@dataclass
+class BigQueryObjectStatus:
+    table: str
+    dataset: str
+    exists: bool
+    object_type: str
+    last_modified: str
+    row_count: str
+    stage: str
+    error: str = ""
 
 
 @dataclass
@@ -580,6 +614,188 @@ def table_matches(table: str, keywords: Sequence[str]) -> bool:
     return any(k in low for k in keywords)
 
 
+def parse_bq_table_ref(table: str) -> Tuple[str, str, str] | None:
+    parts = table.split(".")
+    if len(parts) != 3:
+        return None
+    return parts[0], parts[1], parts[2]
+
+
+def format_epoch_millis_local(epoch_millis: str) -> str:
+    if not epoch_millis:
+        return ""
+    try:
+        seconds = int(epoch_millis) / 1000
+    except ValueError:
+        return ""
+    return datetime.fromtimestamp(seconds).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
+
+def classify_bq_stage(dataset: str) -> str:
+    low = dataset.lower()
+    if low.startswith("final_") or low.endswith("_ext") or low.endswith("_prod") or low in {"mass_mutual_mft_ext"}:
+        return "live"
+    if low.startswith("repo_stg") or low.startswith("repo_int") or low == "landing" or "scrap" in low:
+        return "staging"
+    return "unknown"
+
+
+def fetch_bq_object_status(
+    table: str,
+    cache: Dict[str, BigQueryObjectStatus],
+) -> BigQueryObjectStatus:
+    if table in cache:
+        return cache[table]
+
+    parsed = parse_bq_table_ref(table)
+    if not parsed:
+        status = BigQueryObjectStatus(
+            table=table,
+            dataset="",
+            exists=False,
+            object_type="",
+            last_modified="",
+            row_count="",
+            stage="unknown",
+            error="BigQuery status not checked because the table name was incomplete.",
+        )
+        cache[table] = status
+        return status
+
+    project, dataset, name = parsed
+    rc, out, err = run_cmd(["bq", "show", "--format=prettyjson", f"{project}:{dataset}.{name}"])
+    if rc != 0:
+        message = err.strip() or out.strip() or "Unknown BigQuery error."
+        status = BigQueryObjectStatus(
+            table=table,
+            dataset=dataset,
+            exists=False,
+            object_type="",
+            last_modified="",
+            row_count="",
+            stage=classify_bq_stage(dataset),
+            error=f"BigQuery check failed: {message}",
+        )
+        cache[table] = status
+        return status
+
+    try:
+        payload = json.loads(out)
+    except json.JSONDecodeError:
+        status = BigQueryObjectStatus(
+            table=table,
+            dataset=dataset,
+            exists=False,
+            object_type="",
+            last_modified="",
+            row_count="",
+            stage=classify_bq_stage(dataset),
+            error="BigQuery returned unreadable JSON, so production status is unknown.",
+        )
+        cache[table] = status
+        return status
+
+    object_type = str(payload.get("type") or ("VIEW" if "view" in payload else "TABLE")).upper()
+    status = BigQueryObjectStatus(
+        table=table,
+        dataset=dataset,
+        exists=True,
+        object_type=object_type,
+        last_modified=format_epoch_millis_local(str(payload.get("lastModifiedTime", ""))),
+        row_count=str(payload.get("numRows", "")),
+        stage=classify_bq_stage(dataset),
+        error="",
+    )
+    cache[table] = status
+    return status
+
+
+def summarize_validation_status(
+    validation_hits: int,
+    latest_validation_epoch: float | None,
+    log_window_hours: int,
+) -> Tuple[str, str]:
+    if validation_hits <= 0:
+        return (
+            "validation not confirmed",
+            f"Not confirmed from this scan: no obvious validation or check command was seen in the last {log_window_hours} hours.",
+        )
+
+    latest_text = ts_local(latest_validation_epoch) if latest_validation_epoch is not None else "recently"
+    return (
+        "recent validation seen",
+        (
+            f"Probably yes: saw {validation_hits} related validation/check command"
+            f"{'s' if validation_hits != 1 else ''} in the last {log_window_hours} hours, "
+            f"most recently {latest_text}."
+        ),
+    )
+
+
+def summarize_production_status(
+    tables: List[str],
+    cache: Dict[str, BigQueryObjectStatus],
+) -> Tuple[str, str]:
+    if not tables:
+        return (
+            "production unknown",
+            "Not checked automatically: this workstream was not tied to a specific BigQuery table or view in the scan.",
+        )
+
+    checked = [fetch_bq_object_status(table, cache) for table in tables[:MAX_BQ_STATUS_TABLES]]
+    live_matches = [status for status in checked if status.exists and status.stage == "live"]
+    staging_matches = [status for status in checked if status.exists and status.stage == "staging"]
+    unknown_matches = [status for status in checked if status.exists and status.stage == "unknown"]
+
+    chosen: BigQueryObjectStatus | None = None
+    if live_matches:
+        chosen = live_matches[0]
+    elif staging_matches:
+        chosen = staging_matches[0]
+    elif unknown_matches:
+        chosen = unknown_matches[0]
+
+    if chosen:
+        base = f"`{chosen.table}` exists in BigQuery as a {chosen.object_type.lower()}"
+        extras: List[str] = []
+        if chosen.row_count:
+            extras.append(f"{chosen.row_count} rows reported")
+        if chosen.last_modified:
+            extras.append(f"last modified {chosen.last_modified}")
+        if extras:
+            base += f" ({'; '.join(extras)})"
+
+        if chosen.stage == "live":
+            return (
+                "looks live in BigQuery",
+                f"Likely yes: {base}. This suggests the workflow is live, but it does not prove your newest local edit has been deployed.",
+            )
+        if chosen.stage == "staging":
+            return (
+                "staging object confirmed",
+                f"Partially confirmed: {base}. The pipeline object exists in staging/internal BigQuery, but live production is not confirmed from this scan.",
+            )
+        return (
+            "BigQuery object confirmed",
+            f"Present in BigQuery: {base}. The dataset name does not make the production tier obvious.",
+        )
+
+    first_error = next((status.error for status in checked if status.error), "")
+    if first_error:
+        return ("production check failed", first_error)
+
+    return ("production unknown", "BigQuery status could not be confirmed from the available table checks.")
+
+
+def refresh_workstream_statuses(
+    workstreams: List[Workstream],
+    bq_cache: Dict[str, BigQueryObjectStatus],
+) -> None:
+    for ws in workstreams:
+        ws.production_short, ws.production_status = summarize_production_status(ws.tables, bq_cache)
+        ws.status_summary = f"{ws.validation_short}; {ws.production_short}"
+
+
 def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSignals) -> List[Workstream]:
     defs = [
         {
@@ -716,6 +932,8 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSi
         message_score = 0
         command_hits = 0
         message_hits = 0
+        validation_hits = 0
+        latest_validation_epoch: float | None = None
 
         for ts, path, repo_name in repo_recent_paths:
             if path_matches(path, d["path_keywords"]):
@@ -770,6 +988,10 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSi
                 command_hits += 1
                 if command.workdir.startswith("/"):
                     matched_paths.append(f"{ts_local(command.epoch)} - {command.workdir}")
+                if any(term in hay for term in VALIDATION_TERMS):
+                    validation_hits += 1
+                    if latest_validation_epoch is None or command.epoch > latest_validation_epoch:
+                        latest_validation_epoch = command.epoch
 
         for message in codex_signals.recent_messages:
             hay = message.text.lower()
@@ -830,6 +1052,11 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSi
             signals.append(f"log command hits={command_hits} (last {codex_signals.log_window_hours}h)")
         if message_hits:
             signals.append(f"log message hits={message_hits} (last {codex_signals.log_window_hours}h)")
+        validation_short, validation_status = summarize_validation_status(
+            validation_hits,
+            latest_validation_epoch,
+            codex_signals.log_window_hours,
+        )
 
         scored.append(
             (
@@ -846,6 +1073,8 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSi
                     signal_notes=dedup_keep_order(signals)[:4],
                     paths=matched_paths[:12],
                     tables=matched_tables[:6],
+                    validation_short=validation_short,
+                    validation_status=validation_status,
                 ),
             )
         )
@@ -865,8 +1094,7 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSi
         fallback_cmd = codex_signals.recent_commands[0].cmd
         fallback_label = "Re-run your most recent terminal command to resume context"
     fallback_summary = "Recent file, git, and agent-log signals were detected, but no named workstream scored strongly."
-    return [
-        Workstream(
+    fallback = Workstream(
             title="General workspace maintenance",
             summary=fallback_summary,
             why_it_matters="A quick checkpoint commit keeps your context safe while you reorient.",
@@ -881,7 +1109,12 @@ def build_workstreams(repo_snapshots: List[RepoSnapshot], codex_signals: CodexSi
             paths=fallback_paths,
             tables=all_tables[:6],
         )
-    ]
+    fallback.validation_short, fallback.validation_status = summarize_validation_status(
+        0,
+        None,
+        codex_signals.log_window_hours,
+    )
+    return [fallback]
 
 
 def render_list(items: List[str], empty_text: str) -> str:
@@ -923,7 +1156,9 @@ def build_how_to_text(workstream: Workstream) -> str:
     links = [f"[{Path(p).name}]({p})" for p in abs_paths[:3]]
     links_text = ", ".join(links)
 
-    if "validate" in label and ("decide" in label or "move" in label):
+    if "sample generation" in label or "top task matches" in label:
+        base = "Run the sample report and check whether the first headline matches the real work you just did."
+    elif "validate" in label and ("decide" in label or "move" in label):
         base = (
             "Run the command one time and confirm the output looks sane; "
             "then choose whether to keep temporary logic or copy it into the repo file."
@@ -942,6 +1177,16 @@ def build_how_to_text(workstream: Workstream) -> str:
     if links_text:
         return f"{base} Start with {links_text}."
     return base
+
+
+def render_rank_context(workstream: Workstream, provenance: Provenance) -> str:
+    lines = [f"<details><summary>Why this was ranked here - {workstream.title}</summary>\n\n"]
+    lines.append(f"- Entry source: {render_entry_source_line(provenance)}\n")
+    lines.append(f"- Confidence: `{workstream.confidence}`\n")
+    lines.append(f"- Why it showed up: {workstream.priority_reason}\n")
+    lines.append(f"- Why it matters: {workstream.why_it_matters}\n")
+    lines.append("\n</details>\n\n")
+    return "".join(lines)
 
 
 def render_provenance(provenance: Provenance) -> str:
@@ -966,18 +1211,17 @@ def render_entry_source_line(provenance: Provenance) -> str:
 
 
 def render_headlines(workstreams: List[Workstream]) -> str:
-    lines = ["## What You Were Working On\n\n"]
+    lines = ["## What Was Done\n\n"]
     for i, ws in enumerate(workstreams, start=1):
-        lines.append(
-            f"{i}. **{ws.title}** - {ws.summary} "
-            f"Confidence: {ws.confidence}. Next: {ws.next_step_label} (about {ws.eta_minutes} minutes).\n"
-        )
-    lines.append("\n")
+        lines.append(f"{i}. **{ws.title}**\n")
+        lines.append(f"   Done: {ws.summary}\n")
+        lines.append(f"   Status: {ws.status_summary}\n")
+        lines.append(f"   Next: {ws.next_step_label} (about {ws.eta_minutes} minutes)\n\n")
     return "".join(lines)
 
 
 def render_details(workstreams: List[Workstream], provenance: Provenance) -> str:
-    lines = ["## What You Should Do Next (In Order)\n\n"]
+    lines = ["## Next Steps\n\n"]
     if workstreams:
         lines.append("### Do First (5 Minutes)\n")
         lines.append(f"{workstreams[0].next_step_label} (estimated {workstreams[0].eta_minutes} minutes)\n\n")
@@ -987,16 +1231,15 @@ def render_details(workstreams: List[Workstream], provenance: Provenance) -> str
 
     for i, ws in enumerate(workstreams, start=1):
         lines.append(f"### {i}) {ws.title}\n")
-        lines.append(f"What this means: {ws.summary}\n\n")
-        lines.append(f"Entry source: {render_entry_source_line(provenance)}\n\n")
-        lines.append(f"Confidence: {ws.confidence}\n\n")
-        lines.append(f"Why this is prioritized now: {ws.priority_reason}\n\n")
-        lines.append(f"Why it matters: {ws.why_it_matters}\n\n")
-        lines.append(f"Next step now: {ws.next_step_label} (estimated {ws.eta_minutes} minutes)\n\n")
-        lines.append(f"How to do this: {build_how_to_text(ws)}\n\n")
+        lines.append(f"What was done: {ws.summary}\n\n")
+        lines.append(f"Validated: {ws.validation_status}\n\n")
+        lines.append(f"In production: {ws.production_status}\n\n")
+        lines.append(f"Next step: {ws.next_step_label} (estimated {ws.eta_minutes} minutes)\n\n")
+        lines.append(f"How to do it: {build_how_to_text(ws)}\n\n")
         lines.append("```bash\n")
         lines.append(ws.next_step_cmd + "\n")
         lines.append("```\n\n")
+        lines.append(render_rank_context(ws, provenance))
 
         lines.append(f"<details><summary>Signals - {ws.title}</summary>\n\n")
         lines.append(render_list(ws.signal_notes, "No signal notes"))
@@ -1201,7 +1444,7 @@ def build_pkm_note(
     lines.append(f"1. Captured workspace snapshot at `{now_text}` in non-interactive mode.\n")
     lines.append(f"2. Workspace root: `{workspace_root}`.\n")
     for i, ws in enumerate(workstreams, start=3):
-        lines.append(f"{i}. {ws.title}: {ws.summary} Next action is ~{ws.eta_minutes} minutes.\n")
+        lines.append(f"{i}. {ws.title}: {ws.summary} Status: {ws.status_summary}. Next action is ~{ws.eta_minutes} minutes.\n")
 
     lines.append("\n# Captured Files\n\n")
     lines.append(f"- Workspace doc: `{workspace_out}`\n")
@@ -1298,6 +1541,7 @@ def main() -> int:
 
     codex_signals = load_codex_signals(codex_home, args.log_window_hours)
     workstreams = build_workstreams(repo_snapshots, codex_signals)
+    refresh_workstream_statuses(workstreams, {})
 
     lookups = RunLookups(
         workspace_root=workspace_root,
@@ -1363,6 +1607,9 @@ def main() -> int:
                     "eta_minutes": ws.eta_minutes,
                     "confidence": ws.confidence,
                     "next_step_label": ws.next_step_label,
+                    "validation_status": ws.validation_status,
+                    "production_status": ws.production_status,
+                    "status_summary": ws.status_summary,
                     "signal_notes": ws.signal_notes,
                     "paths": ws.paths,
                     "tables": ws.tables,

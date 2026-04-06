@@ -1,6 +1,6 @@
 # BigQuery Scheduled Queries
 
-Complete documentation of all scheduled queries running in the `looker-studio-pro-452620` project.
+Documentation of scheduled queries configured in the `looker-studio-pro-452620` project, including known failed/deprecated jobs.
 
 ## Overview
 
@@ -41,25 +41,27 @@ Complete documentation of all scheduled queries running in the `looker-studio-pr
 |---|-----------|----------|--------|-----------------|
 | 1 | `mm_dcm_costmodel` | Every 4 hours | ✅ SUCCEEDED | `DCM.20250505_costModel_v5` |
 | 2 | `prisma__stg__digital_plus_linear` | Every 8 hours | ✅ SUCCEEDED | `Prisma.prisma__stg__digital_plus_linear_view` |
-| 3 | `250813_crossplatform_dedupe_history` | Daily 05:00 | ✅ SUCCEEDED | `repo_facebook.*`, `repo_google_ads.*`, `repo_tiktok.*` |
-| 4 | `process_prisma` | Daily 07:00 | ✅ SUCCEEDED | `20250327_data_model.prisma_porcessed`, `*.prisma_porcessed_with_placements` |
-| 5 | `Prisma_expanded` | Mon-Fri 07:00 | ✅ SUCCEEDED | `20250327_data_model.prisma_expanded_full`, `*.prisma_expanded_summary`, `Prisma.prismaExpanded_x_dcmDelivery` |
-| 6 | `UTM UPDATES` | Daily 08:00 | ✅ SUCCEEDED | `mm_utms_snapshot`, `b_sup_pivt_unioned_tab`, `master_utms_raw` |
-| 7 | `adif update` | Daily 09:00 | ✅ SUCCEEDED | `landing.adif_fpd_data_ranged` |
-| 8 | `adif_prisma_expanded_plus_dcm_v2` | Daily 09:00 | ✅ SUCCEEDED | `repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test` |
-| 9 | `basis_update` | Daily 10:00 | ✅ SUCCEEDED | `repo_stg.basis_master2` |
-| 10 | `stg__olipop__crossplatform_raw_tbl_sched` | Daily 10:00 | ✅ SUCCEEDED | `repo_stg.stg__olipop__crossplatform_raw_tbl` |
-| 11 | `mart__pacing_table` | Daily 10:00 | ✅ SUCCEEDED | `repo_mart.fct_crossplatform_pacing_daily` |
-| 12 | `ext_mm_mft_scheadule` | Daily 10:00 | ✅ SUCCEEDED | External export |
-| 13 | `mart__dcm__joined_0519` | Daily 03:00 | ❌ FAILED | `repo_tables.dcm` |
+| 3 | `250813_crossplatform_dedupe_history` | Daily 05:00 UTC | ✅ SUCCEEDED | `repo_facebook.*`, `repo_google_ads.*`, `repo_tiktok.*` |
+| 4 | `process_prisma` | Daily 07:00 UTC | ✅ SUCCEEDED | `20250327_data_model.prisma_porcessed`, `*.prisma_porcessed_with_placements` |
+| 5 | `Prisma_expanded` | Mon-Fri 07:00 UTC | ✅ SUCCEEDED | `20250327_data_model.prisma_expanded_full`, `*.prisma_expanded_summary`, `Prisma.prismaExpanded_x_dcmDelivery` |
+| 6 | `UTM UPDATES` | Daily 08:00 UTC | ✅ SUCCEEDED | `mm_utms_snapshot`, `b_sup_pivt_unioned_tab`, `master_utms_raw` |
+| 7 | `adif update` | Daily 09:00 UTC | ✅ SUCCEEDED | `landing.adif_fpd_data_ranged` |
+| 8 | `adif_prisma_expanded_plus_dcm_v2` | Daily 09:00 UTC | ✅ SUCCEEDED | `repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test` |
+| 9 | `basis_update` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.basis_master2` |
+| 10 | `stg__olipop__crossplatform_raw_tbl_sched` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.stg__olipop__crossplatform_raw_tbl` |
+| 11 | `mart__pacing_table` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_mart.fct_crossplatform_pacing_daily` |
+| 12 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
+| 13 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
 
 ---
+
+> Note: Some identifiers (for example `prisma_porcessed`, `ext_mm_mft_scheadule`) may be historical asset names. Verify actual BigQuery object names before renaming in docs or code.
 
 ## Detailed Query Documentation
 
 ### 1. `mm_dcm_costmodel`
 
-**Schedule**: Every 4 hours
+**Schedule**: Every 4 hours UTC
 **Status**: ✅ SUCCEEDED
 **Last Updated**: Dec 16, 2025
 
@@ -108,7 +110,7 @@ END AS flight_status_flag
 
 ### 2. `prisma__stg__digital_plus_linear`
 
-**Schedule**: Every 8 hours
+**Schedule**: Every 8 hours UTC
 **Status**: ✅ SUCCEEDED
 
 #### Purpose
@@ -197,6 +199,11 @@ looker-studio-pro-452620.landing.prisma_master_2025
 - Creates `p_package_friendly` identifier string
 - Filters out fee packages (`%feeorder%`, `%fees_%`, `%fee_%`)
 - Uses `STRING_AGG(DISTINCT INITATIVE)` for multi-initiative packages
+
+#### Related Prisma Actuals Views
+- `looker-studio-pro-452620.Prisma.prisma_processed_plusDCMimps` is the existing package-level Prisma + DCM sibling view.
+- `looker-studio-pro-452620.Prisma.prisma_processed_plusDCMFPD` is the new package-level Prisma + DCM + FPD sibling view defined in [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/prisma_processed_plusDCMFPD.sql`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/prisma_processed_plusDCMFPD.sql).
+- The new view keeps the `prisma_porcessed` package grain, preserves the existing DCM package rollups, adds package-level FPD rollups from `landing.fpd_data_ranged_shortcutsFolder`, and treats FPD as valid tracking only when DCM is absent.
 
 #### Output Schema (Key Fields)
 | Field | Calculation |
@@ -394,10 +401,35 @@ WHEN NOT MATCHED THEN INSERT (all_columns)
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: Jun 24, 2025
+**Last Updated**: Feb 23, 2026
 
 #### Purpose
-Joins cross-platform ad delivery with video engagement metrics for Olipop.
+Builds `repo_stg.stg__olipop__crossplatform_raw_tbl`, which is the raw social fact table that eventually feeds the Olipop social branch of `Olipop.MMM_crossplatform`.
+
+More specifically, the live scheduled query:
+
+- picks one of two candidate ad-delivery tables at runtime
+- uses the most recently updated candidate as the delivery source for that run
+- left joins cross-platform video metrics from `repo_stg.stg__olipop_videoviews_crossplatform`
+- writes the finished result into `repo_stg.stg__olipop__crossplatform_raw_tbl`
+
+The two delivery-source options are:
+
+- `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report`
+- `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report`
+
+The query checks metadata from each dataset's `__TABLES__` table and chooses whichever copy of `ad_reporting__ad_report` has the newer `last_modified_time`.
+
+Why it appears to do this:
+
+- I can prove the mechanism from the live SQL, but the exact business reason is an inference
+- the most likely reason is operational resilience during source lag or source transitions
+- in plain English, the build is trying to use the freshest available version of the ad-delivery table instead of assuming one dataset is always current
+
+Which version is out of date:
+
+- the live production scheduled query is newer and should be treated as correct for current operations
+- the stale copy is the local repo SQL in [`sql/marts/olipop/mart__olipop__crossplatform.sql`](../sql/marts/olipop/mart__olipop__crossplatform.sql), which still hardcodes `ad_reporting_transformed.ad_reporting__ad_report` and does not include the runtime source-selection block
 
 #### Target
 ```
@@ -405,8 +437,35 @@ looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl
 ```
 
 #### Source Tables
-- `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report` (delivery)
+- `giant-spoon-299605.ad_reporting_transformed.__TABLES__` (metadata used to check table freshness)
+- `giant-spoon-299605.ad_reporting_reports.__TABLES__` (metadata used to check table freshness)
+- `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report` (delivery candidate)
+- `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report` (delivery candidate)
 - `repo_stg.stg__olipop_videoviews_crossplatform` (video metrics)
+
+#### Runtime Source Selection
+```sql
+WITH source_choice AS (
+  SELECT source_name
+  FROM (
+    SELECT
+      'transformed' AS source_name,
+      TIMESTAMP_MILLIS(last_modified_time) AS last_modified_time
+    FROM `giant-spoon-299605.ad_reporting_transformed.__TABLES__`
+    WHERE table_id = 'ad_reporting__ad_report'
+
+    UNION ALL
+
+    SELECT
+      'reports' AS source_name,
+      TIMESTAMP_MILLIS(last_modified_time) AS last_modified_time
+    FROM `giant-spoon-299605.ad_reporting_reports.__TABLES__`
+    WHERE table_id = 'ad_reporting__ad_report'
+  )
+  ORDER BY last_modified_time DESC, source_name DESC
+  LIMIT 1
+)
+```
 
 #### Join Keys
 ```sql
@@ -425,6 +484,11 @@ CASE
   ELSE NULL
 END AS video_flag
 ```
+
+> Note: older name-based `video_flag` checks still appear as commented-out lines inside the live query text, but they are not active in production.
+
+#### Related Documentation
+- [`olipop/README.md`](../olipop/README.md) for the full `Olipop.MMM_crossplatform` dependency graph and a fuller local-vs-live drift explanation
 
 ---
 
@@ -562,15 +626,24 @@ This query has been failing since May 2025. Consider disabling or investigating 
 
 ### Health Check Query
 ```sql
--- Check recent scheduled query runs
+-- Check recent scheduled query runs only
 SELECT
-  transfer_config_id,
-  run_time,
+  creation_time,
+  end_time,
+  job_id,
   state,
-  error_status
+  error_result,
+  (SELECT l.value FROM UNNEST(labels) l WHERE l.key = 'dts_config_id' LIMIT 1) AS transfer_config_id,
+  (SELECT l.value FROM UNNEST(labels) l WHERE l.key = 'dts_run_id' LIMIT 1) AS transfer_run_id
 FROM `region-us`.INFORMATION_SCHEMA.JOBS
 WHERE job_type = 'QUERY'
   AND creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
+  AND EXISTS (
+    SELECT 1
+    FROM UNNEST(labels) l
+    WHERE l.key = 'data_source_id'
+      AND l.value = 'scheduled_query'
+  )
 ORDER BY creation_time DESC
 ```
 
@@ -581,8 +654,9 @@ ORDER BY creation_time DESC
    - Functionality covered by `mm_dcm_costmodel`
 
 2. **Timing Dependencies**:
-   - `Prisma_expanded` depends on `process_prisma` (both at 07:00 - may race)
-   - `adif_prisma_expanded_plus_dcm_v2` depends on DCM cost model (09:00 vs 4-hourly)
+   - `Prisma_expanded` depends on `process_prisma` (both at 07:00 UTC; race risk)
+   - Recommended: run `Prisma_expanded` at 07:15 UTC or add retry/backoff
+   - `adif_prisma_expanded_plus_dcm_v2` depends on DCM cost model (09:00 UTC vs 4-hour cadence); monitor for stale upstream data
 
 3. **Fee Filtering**:
    - Multiple queries filter `%feeorder%`, `%fees_%`, `%fee_%`
@@ -595,4 +669,4 @@ ORDER BY creation_time DESC
 
 ---
 
-**Last Updated**: January 15, 2026
+**Last Updated**: March 6, 2026

@@ -38,9 +38,19 @@ Instruction files policy:
 
 - ADIF TV and digital pipeline (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`)
 - ADIF updated FPD integration (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`)
-- Olipop cross-platform delivery + video joins (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/marts/olipop`)
-- MFT export and mart views (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`)
+- ADIF notebook QA dashboard (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html`) for supplier/package/data source/impression-type planned-vs-actual QA with upstream reference
+- Olipop cross-platform delivery + video joins (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/marts/olipop`) plus the folder-level lineage guide for `looker-studio-pro-452620.Olipop.MMM_crossplatform` (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/olipop/README.md`)
+- MFT export and mart views (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`), including DCM UTM lineage notes and Mass validation queries for `repo_stg.dcm_plus_utms`
+- Prisma supplier logo reload (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/reload_prisma_supplier_logos.sh`) to rebuild `looker-studio-pro-452620.landing.prisma_supplier_logos` from `Supplier_logos.xlsx` `Logos!A:C`
+- Prisma package-level actuals layering (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/prisma_processed_plusDCMFPD.sql`) to build the sibling view `looker-studio-pro-452620.Prisma.prisma_processed_plusDCMFPD` with package-level DCM and FPD rollups plus FPD-aware tracking status
 - Basis UTM processing utilities (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms`) with active scripts in `essential/` and legacy assets in `archive/`
+- TV Gmail loaders (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md`) documenting the shared local and national estimate-ingestion flow into `landing.tv_local_estimates` and `landing.tv_national_estimates`
+
+TV national Gmail loader note:
+- [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r) now recognizes the current national CSV impression header variants, including `total_planned_impressions_all_demos`, before falling back to objective-impression fields.
+- The TV Gmail loaders now stay focused on ingestion, while the universal runner owns the `Incoming` vs `Post-update` verification and surfaces the result from `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/verifications/`.
+- Both TV Gmail loaders now source the shared helper [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r), which is available to other R scripts and now sends standardized failure emails with a script-based subject line, a 12-hour timestamp, and direct file paths for alert-helper update instructions documented in [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md).
+- Those TV loaders now also check the runner-managed `util/data_loaders -> ../R_functions` layout and the local compatibility shim when they are sourced from the external universal runner, so the shared helper still resolves correctly during scheduled runs.
 
 ## Cross-Brand Data Flow Diagram (Ingestion -> BigQuery -> dbt -> Dashboards)
 
@@ -64,6 +74,8 @@ Instruction files policy:
 - The ADIF social layer keeps original grain (daily ad-level rows) and all source metrics.
 - If you want a mart/table target, materialize from the staging view to your selected dataset.
 - SQL QA guardrail: validate in isolated `_qa` objects first, share proof results, and only then apply live SQL patches after explicit approval.
+- BigQuery object references default to the live production table or view when you mention a warehouse path like `project.dataset.object`; if a local SQL file also exists, compare local versus production and call out drift before relying on the local definition.
+- Omni dashboard edits default to a preview-first workflow: inspect the live widget, show a rendered before-and-after preview of the entire widget, explain whether the change is visual or behavioral, and wait for confirmation before making the live dashboard change.
 
 ## Restore Instructions (Dev Cutover)
 

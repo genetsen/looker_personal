@@ -74,7 +74,8 @@ Your currently open files indicate active work on FY26 Q1 union/backfill logic a
 
 ```bash
 cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft
-./scripts/bq-safe-query.sh --max-rows 25 --sql "SELECT campaign, COUNT(*) AS rows, COUNTIF(utm_content IS NULL) AS null_utm_content FROM `looker-studio-pro-452620.repo_stg.dcm_plus_utms` WHERE campaign IN ('MassMutual20252026Media','MassMutualLVGP2025') AND date >= '2026-01-01' GROUP BY 1 ORDER BY rows DESC"
+./scripts/bq-safe-query.sh --max-rows 25 --sql "SELECT campaign, COUNT(*) AS row_count, COUNTIF(utm_content IS NULL) AS null_utm_content FROM \`looker-studio-pro-452620.repo_stg.dcm_plus_utms\` WHERE campaign IN ('MassMutual20252026Media','MassMutualLVGP2025') AND date >= '2026-01-01' GROUP BY 1 ORDER BY row_count DESC"
+
 ```
 
 2. Confirm offline daily sync schedule and output table are healthy.

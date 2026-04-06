@@ -4,6 +4,31 @@ Verbose session-level and implementation-level change details are documented in 
 For concise daily essentials, see `[BASE]/CHANGELOG.md`.
 All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft.
 
+## 2026-03-13
+
+### Added
+- Mass DCM UTM QA queries (`[BASE]/scripts/sql/qa__repo_stg__dcm_plus_utms_mass_validation.sql`, `[BASE]/scripts/sql/qa__repo_stg__dcm_plus_utms_mass_exceptions.sql`)
+  - What: added one QA SQL script that compares the two-pass baseline, the loose-normalized intermediate state, and the final file-suffix-aware four-pass logic on the Mass DCM reporting slice, plus a second QA SQL script that lists the remaining unmatched exceptions with candidate UTM creatives.
+  - Why: provide repeatable proof before deployment and make it easy to separate “needs more SQL normalization” from “the source UTM sheet is still missing or mismatched”.
+
+### Changed
+- BigQuery object reference default (`[BASE]/AGENTS.md`)
+  - What: added a standing rule that when the user references a BigQuery object path instead of a local file path, the live production object should be inspected first and any matching local SQL or lineage note should be checked for drift before relying on it.
+  - Why: keep future MFT QA grounded in the real warehouse object and surface local-versus-production mismatches before they cause wrong assumptions.
+- Mass-only DCM UTM fallback chain (`[BASE]/scripts/sql/repo_stg__dcm_plus_utms.sql`, `[BASE]/README.md`, `[BASE]/docs/dcm_plus_utms_lineage.md`)
+  - What: replaced the earlier two-pass local SQL with a deployable `repo_stg.dcm_plus_utms` definition that keeps exact matching first, then adds three constrained Mass-only creative fallbacks plus three placement-name-only rescue passes: same-campaign `campaign + placement_id`, then placement-only `placement_id`, then the live DCM `placement` field when no UTM placement exists.
+  - Why: close the known blank-UTM gaps for Mass DCM rows while keeping non-Mass campaigns on strict exact matching only and avoiding unsafe backfill of creative-level UTM fields when only the placement metadata can be trusted.
+- DCM UTM QA documentation (`[BASE]/README.md`, `[BASE]/AGENTS.md`, `[BASE]/docs/dcm_plus_utms_lineage.md`)
+  - What: updated the MFT README, the local agent instructions, and the focused lineage note to describe the new fallback order, show the safe-query wrapper commands, and document the recommended validation order for completeness checks, `utm_content` ID checks, creative validation through `utm_creative_assignment`, placement-only rescue, and final DCM placement fallback.
+  - Why: keep pipeline docs aligned with the new logic and make the QA steps easy to rerun without reconstructing the workflow from chat history or repeating the same false-start creative checks.
+
+## 2026-03-12
+
+### Added
+- DCM Plus UTMs lineage note (`[BASE]/docs/dcm_plus_utms_lineage.md`, `[BASE]/README.md`)
+  - What: documented the live lineage of `repo_stg.dcm_plus_utms` from `DCM.20250505_costModel_v5` and `landing.adswerve_utms` through `final_views.dcm` and `final_views.utms_view`, including exact-match logic, normalized fallback logic, and downstream usage in `repo_mart.mft_view`.
+  - Why: give one beginner-friendly reference for debugging DCM UTM enrichment and clarify that `repo_stg.dcm_plus_utms_upload` is not an input to this view. -codexapp thread `019ce41b-ea18-7492-86c5-e9c259b77c94` (link unavailable in local session).
+
 ## 2026-02-12
 
 ### Changed

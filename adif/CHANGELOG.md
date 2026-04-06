@@ -1,3 +1,209 @@
+## 2026-04-02
+
+### Added
+- **Sandbox-safe Google Cloud auth helper for live notebook reads**
+  What: Added a repo-local Google Cloud helper script and ignore rule so `gcloud`, `bq`, and Dataform notebook reads can run against a writable copy of the user auth state in `./.codex-local/gcloud` instead of failing against the blocked home-folder config. -codexapp (thread id unavailable in local session).
+  Why: Prevents repeat "missing authentication" failures during live warehouse-backed notebook inspection inside Codex and gives the project a repeatable auth entrypoint.
+
+<details><summary>Paths — Sandbox-safe Google Cloud auth helper for live notebook reads</summary>
+
+- [.gitignore](.gitignore)
+- [scripts/use_sandbox_gcloud.sh](scripts/use_sandbox_gcloud.sh)
+
+</details>
+
+### Changed
+- **README now documents the sandbox-safe auth workflow**
+  What: Updated the BigQuery notebook access runbook with the new helper-based setup, token retrieval, refresh flow, and one-command examples for `gcloud` and `bq`. -codexapp (thread id unavailable in local session).
+  Why: Keeps the documented notebook-read workflow aligned with the new project-safe authentication path so future live reads follow the durable fix by default.
+
+<details><summary>Paths — README now documents the sandbox-safe auth workflow</summary>
+
+- [README.md](README.md)
+- [CHANGELOG.md](CHANGELOG.md)
+
+</details>
+
+- **BigQuery access guidance now prefers MCP first**
+  What: Updated the ADIF project instructions and runbook to make BigQuery MCP the default path for warehouse inspection, while keeping the sandbox-safe helper as the repair and advanced access workflow for auth refreshes and Dataform notebook file reads. -codexapp (thread id unavailable in local session).
+  Why: Gives one clear default for everyday BigQuery work while preserving the helper for the narrower cases where direct Google Cloud commands are still the right tool.
+
+<details><summary>Paths — BigQuery access guidance now prefers MCP first</summary>
+
+- [AGENTS.md](AGENTS.md)
+- [README.md](README.md)
+- [CHANGELOG.md](CHANGELOG.md)
+
+</details>
+
+## 2026-04-01
+
+### Changed
+- **BigQuery object references now default to deep links in outputs**
+  What: Added workspace-level and ADIF-local instruction notes telling future responses to render BigQuery table and view names as clickable deep links whenever the client supports them. -codexapp thread `0195f3ef-dde7-7a83-ac66-14489ccf6b90` (thread link unavailable in local session).
+  Why: Makes warehouse object references faster to open and reduces friction when moving from analysis text into live BigQuery inspection.
+
+<details><summary>Paths — BigQuery object references now default to deep links in outputs</summary>
+
+- [AGENTS.md](AGENTS.md)
+- [../AGENTS.md](../AGENTS.md)
+- [CHANGELOG.md](CHANGELOG.md)
+
+</details>
+
+## 2026-03-16
+
+### Added
+- **Canonical base-view SQL for filtered shortcuts FPD intake**
+  What: Added a checked-in SQL definition for `repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test` so the repo has a canonical base-view file that reads original FPD from the shortcuts landing table with the approved De Beers plus FMUS partner-data filter. -codexapp thread `019cf362-0fac-7f70-a93f-2d5aae7ea934` (thread link unavailable in local session).
+  Why: Gives ADIF a maintainable source-of-truth file for the live base view and makes the filtered shortcuts source explicit before QA and promotion.
+
+<details><summary>Paths — Canonical base-view SQL for filtered shortcuts FPD intake</summary>
+
+- [projects/updated_fpd_integration/sql/stg__adif__prisma_expanded_plus_dcm_view_v3_test.sql](projects/updated_fpd_integration/sql/stg__adif__prisma_expanded_plus_dcm_view_v3_test.sql)
+
+</details>
+
+### Changed
+- **ADIF original FPD source now points to filtered shortcuts intake**
+  What: Updated the ADIF docs and integration guides to describe the base original-FPD source as `landing.fpd_data_ranged_shortcutsFolder` filtered to sheet names containing `De Beers` or starting with `FMUS | Partner Data Collection |`, while keeping the updated-FPD merge process itself unchanged. -codexapp thread `019cf362-0fac-7f70-a93f-2d5aae7ea934` (thread link unavailable in local session).
+  Why: Aligns repo documentation with the planned source switch and makes the intended De Beers/FMUS scope explicit for future maintenance and QA.
+
+<details><summary>Paths — ADIF original FPD source now points to filtered shortcuts intake</summary>
+
+- [README.md](README.md)
+- [projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md](projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+- [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
+
+</details>
+
+## 2026-03-15
+
+### Added
+- **Supplier logo propagation for Prisma-backed ADIF rows**
+  What: Added `supplier_logo` to the production and shadow social-layer notebook schemas and documented the upstream Prisma logo mapping so digital rows can carry supplier logos while social-only rows stay blank. -codexapp (thread link unavailable in local session).
+  Why: Makes the Prisma logo lookup available in ADIF without changing the intended null behavior for appended social rows.
+
+<details><summary>Paths — Supplier logo propagation for Prisma-backed ADIF rows</summary>
+
+- [README.md](README.md)
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb)
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb)
+
+</details>
+
+## 2026-03-11
+
+### Added
+- **Low-delivery estimate metrics in the v2 shadow output**
+  What: Added `_est_spend` and `_est_impressions` to the v2 shadow notebook output, using planned daily values when a package has fewer than `1000` total final impressions.
+  Why: Makes low-delivery packages easier to analyze without losing the actual-vs-plan fallback rule requested for reporting. -codexapp (thread link unavailable in local session).
+
+<details><summary>Paths — Low-delivery estimate metrics in the v2 shadow output</summary>
+
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+
+</details>
+
+### Changed
+- **TV/digital base loader stays single-purpose by default**
+  What: Updated the ADIF TV/digital FPD script so downstream loaders remain documented but disabled unless explicitly turned on, and synced the runbook to match that behavior.
+  Why: Makes each run easier to verify and reduces accidental multi-table refreshes during cleanup. -codexapp (thread link unavailable in local session).
+
+<details><summary>Paths — TV/digital base loader stays single-purpose by default</summary>
+
+- [projects/tv_digital_pipeline/util_collect_fpd_v2.r](projects/tv_digital_pipeline/util_collect_fpd_v2.r)
+- [projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md](projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+
+</details>
+
+- **Streamlit reporting app moved out of the active ADIF review path**
+  What: Marked the nested `streamlit_ad_reporting/` app as a parked side project in the ADIF README and removed its local changes from the parent repo cleanup path.
+  Why: Keeps ADIF pipeline review focused on active data workflows instead of unrelated app work. -codexapp (thread link unavailable in local session).
+
+- **Social pacing planned spend is now explicitly named**
+  What: Renamed the v2 shadow notebook column from `pacing_planned_spend` to `social_pacing_planned_spend` to show that it comes from social pacing budgets allocated to social rows.
+  Why: Reduces confusion between social pacing inputs and Prisma planned metrics in the shadow table. -codexapp (thread link unavailable in local session).
+
+- **V2 source labels now separate row-level and package-level meaning**
+  What: Updated the v2 shadow notebook so `row_data_source_primary` preserves the row-level source winner while `data_source_primary` is reassigned at the package level using package totals, planned fallback, and remnant labels, and synced the related QA/docs.
+  Why: Prevents package summaries from inheriting misleading row labels while keeping row-level source validation available. -codexapp (thread link unavailable in local session).
+
+<details><summary>Paths — V2 source labels now separate row-level and package-level meaning</summary>
+
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+- [projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql](projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql)
+- [CHANGELOG.md](CHANGELOG.md)
+
+</details>
+
+<details><summary>Paths — Streamlit reporting app moved out of the active ADIF review path</summary>
+
+- [README.md](README.md)
+
+</details>
+
+### Fixed
+- **Pacing_imps actual-delivery branch now uses planned impressions safely**
+  Issue: `Pacing_imps` could return misleading results for non-estimated runs because one branch divided actual impressions by themselves, which collapses nonzero results to `100`, and it handled missing planned totals inconsistently.
+  Cause: The nested `CASE` logic used different denominators inside the non-estimated branch instead of following the same planned-impressions rule as the existing actual pacing metric.
+  Resolution: Updated `projects/tv_digital_pipeline/2601_AdifLookerDBtoSQL.sql` so both `Pacing_imps` branches use `SAFE_DIVIDE(..., planned_daily_impressions_pk)` semantics, returning `NULL` when planned totals are missing or zero and preserving the expected actual-vs-plan pacing math. -codexapp (thread link unavailable in local session).
+
+- **V2 shadow DCM impression rule now matches current production**
+  Issue: `repo_stg.adif__mainDataTable_notebook_v2_test` was still using `d_daily_recalculated_imps` for DCM `final_impressions`, which kept the shadow table out of parity with the current production definition even after the masking bug was fixed.
+  Cause: The shadow notebook had corrected the DCM masking bug but preserved a different DCM impression-source choice than the upstream production views and current social output table.
+  Resolution: Updated the shadow notebook so DCM `final_impressions` use `d_impressions` while DCM `final_spend` continues to use `d_daily_recalculated_cost`, then rebuilt and verified the shadow totals against the cutoff comparison. -codexapp (thread link unavailable in local session).
+
+## 2026-03-10
+
+### Fixed
+- **V2 shadow table canonical DCM metrics**
+  Issue: `repo_stg.adif__mainDataTable_notebook_v2_test` was zeroing `dcm` final spend and impressions because placeholder FPD zeros were winning before the real DCM values during canonical metric rebuilds.
+  Cause: The v2 notebook used `COALESCE(fpd_*, dcm_*, social_*)`, which treated zero-filled FPD placeholders as real values on digital rows.
+  Resolution: Updated the shadow notebook to use source-aware `CASE` logic for canonical `final_spend`, `final_impressions`, and `final_clicks`, rebuilt the shadow table, and verified that nonzero DCM rows are no longer masked while `planned_only` rows return to `NULL` metrics. -codexapp (thread link unavailable in local session).
+
+## 2026-03-05
+
+### Changed
+- **Required live BigQuery verification for production SQL changes**
+  What: Added an explicit documentation policy requiring `bq`-based live object, schema, and read-only sanity checks before approving or deploying production SQL updates.
+  Why: Prevents trust in stale local SQL assumptions when platform state changes, and enforces evidence-backed release safety for production reporting workflows. -codexapp (thread link unavailable in local session).
+
+<details><summary>Paths — Required live BigQuery verification for production SQL changes</summary>
+
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/CLAUDE.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/CLAUDE.md)
+- [/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/CHANGELOG.md)
+
+</details>
+
+## 2026-02-26
+
+### Added
+- **Self-contained QA dashboard for notebook output vs upstream baseline**
+  What: Added a single-file interactive HTML dashboard for `repo_stg.adif__mainDataTable_notebook` grouped by supplier, package, data source, and impression type, centered on planned-vs-actual impressions/spend with upstream reference columns.
+  Why: Speeds up QA review by giving one portable artifact that can be opened locally without spinning up a server. -codexapp (thread link unavailable in local session).
+
+<details><summary>Paths — Self-contained QA dashboard for notebook output vs upstream baseline</summary>
+
+- [projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html](projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html)
+
+</details>
+
+### Changed
+- **ADIF runbook now documents the QA dashboard workflow**
+  What: Updated the ADIF folder guide with the new grouped planned-vs-actual dashboard structure, filter set, and explicit upstream-table definition.
+  Why: Keeps onboarding/runbook docs aligned with the new QA capability so it is easy to discover and reuse. -codexapp (thread link unavailable in local session).
+
+<details><summary>Paths — ADIF runbook now documents the QA dashboard workflow</summary>
+
+- [README.md](README.md)
+- [CHANGELOG.md](CHANGELOG.md)
+
+</details>
+
 ## 2026-02-18
 
 ### Added
