@@ -186,6 +186,64 @@ normalize_cache_timestamp <- function(x) {
   format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 }
 
+extract_last_modified_time <- function(drive_resource) {
+  if (is.null(drive_resource) || is.null(drive_resource$modifiedTime) || length(drive_resource$modifiedTime) == 0) {
+    return(as.POSIXct(NA, tz = "UTC"))
+  }
+
+  ts_char <- as.character(drive_resource$modifiedTime[[1]])
+  if (is.na(ts_char) || ts_char == "") {
+    return(as.POSIXct(NA, tz = "UTC"))
+  }
+
+  tryCatch(
+    as.POSIXct(ts_char, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC"),
+    error = function(e) as.POSIXct(NA, tz = "UTC")
+  )
+}
+
+extract_last_modified_by <- function(drive_resource) {
+  if (is.null(drive_resource) || is.null(drive_resource$lastModifyingUser)) {
+    return(NA_character_)
+  }
+
+  user <- drive_resource$lastModifyingUser
+  display_name <- user$displayName
+  email <- user$emailAddress
+
+  if (!is.null(display_name) && length(display_name) > 0 && nzchar(display_name[[1]])) {
+    return(as.character(display_name[[1]]))
+  }
+  if (!is.null(email) && length(email) > 0 && nzchar(email[[1]])) {
+    return(as.character(email[[1]]))
+  }
+
+  NA_character_
+}
+
+fetch_sheet_metadata <- function(sheet_id) {
+  metadata <- tryCatch(
+    drive_get(as_id(sheet_id)),
+    error = function(e) {
+      cat("  ⚠ Could not fetch metadata for sheet", sheet_id, ":", e$message, "\n")
+      NULL
+    }
+  )
+
+  if (is.null(metadata) || nrow(metadata) == 0) {
+    return(list(
+      last_modified_time = as.POSIXct(NA, tz = "UTC"),
+      last_modified_by = NA_character_
+    ))
+  }
+
+  drive_resource <- metadata$drive_resource[[1]]
+  list(
+    last_modified_time = extract_last_modified_time(drive_resource),
+    last_modified_by = extract_last_modified_by(drive_resource)
+  )
+}
+
 get_sheet_cache_path <- function(cache_dir, sheet_id) {
   file.path(cache_dir, paste0(gsub("[^A-Za-z0-9_-]", "_", sheet_id), ".rds"))
 }
@@ -425,48 +483,14 @@ if (use_saved_phases && current_phase != 1 && file.exists(phase1_output)) {
       .after = sheet_name
     ) %>%
     distinct(sheet_id, .keep_all = TRUE) %>%
+    rowwise() %>%
     mutate(
-      # Extract last modified date from drive_resource metadata
-      last_modified_time = tryCatch(
-        as.POSIXct(
-          vapply(
-            drive_resource,
-            function(x) {
-              if (is.null(x) || is.null(x$modifiedTime) || length(x$modifiedTime) == 0) {
-                return(NA_character_)
-              }
-              as.character(x$modifiedTime[[1]])
-            },
-            character(1)
-          ),
-          format = "%Y-%m-%dT%H:%M:%S",
-          tz = "UTC"
-        ),
-        error = function(e) as.POSIXct(rep(NA, length(drive_resource)), origin = "1970-01-01", tz = "UTC")
-      ),
-      # Extract last modified by from drive_resource metadata as a plain character vector
-      last_modified_by = tryCatch(
-        vapply(
-          drive_resource,
-          function(x) {
-            if (is.null(x) || is.null(x$lastModifyingUser)) {
-              return(NA_character_)
-            }
-            display_name <- x$lastModifyingUser$displayName
-            email <- x$lastModifyingUser$emailAddress
-            if (!is.null(display_name) && length(display_name) > 0) {
-              return(as.character(display_name[[1]]))
-            }
-            if (!is.null(email) && length(email) > 0) {
-              return(as.character(email[[1]]))
-            }
-            NA_character_
-          },
-          character(1)
-        ),
-        error = function(e) rep(NA_character_, length(drive_resource))
-      )
-    )
+      metadata = list(fetch_sheet_metadata(sheet_id)),
+      last_modified_time = metadata$last_modified_time,
+      last_modified_by = metadata$last_modified_by
+    ) %>%
+    select(-metadata) %>%
+    ungroup()
 
   # Filter out ARCHIVE sheets upstream so they never enter later phases
   # (case-insensitive match on sheet name)
