@@ -248,6 +248,38 @@ get_sheet_cache_path <- function(cache_dir, sheet_id) {
   file.path(cache_dir, paste0(gsub("[^A-Za-z0-9_-]", "_", sheet_id), ".rds"))
 }
 
+cache_status_columns <- c("cache_used", "cache_fields", "cache_last_modified_time")
+
+append_cache_status <- function(df, status_map, key_col = "sheet_id") {
+  if (is.null(df) || nrow(df) == 0 || !key_col %in% names(df)) return(df)
+  if (is.null(status_map) || nrow(status_map) == 0 || !"sheet_id" %in% names(status_map)) {
+    df$cache_used <- FALSE
+    df$cache_fields <- NA_character_
+    df$cache_last_modified_time <- NA_character_
+    return(df)
+  }
+
+  status_map <- status_map %>%
+    mutate(
+      cache_used = dplyr::coalesce(cache_used, FALSE),
+      cache_fields = as.character(cache_fields),
+      cache_last_modified_time = as.character(cache_last_modified_time)
+    )
+
+  df <- df %>%
+    left_join(
+      status_map %>% select(sheet_id, cache_used, cache_fields, cache_last_modified_time),
+      by = setNames("sheet_id", key_col)
+    )
+
+  if (!"cache_used" %in% names(df)) df$cache_used <- FALSE
+  if (!"cache_fields" %in% names(df)) df$cache_fields <- NA_character_
+  if (!"cache_last_modified_time" %in% names(df)) df$cache_last_modified_time <- NA_character_
+
+  df$cache_used[is.na(df$cache_used)] <- FALSE
+  df
+}
+
 read_sheet_cache <- function(cache_dir, sheet_id, last_modified_time) {
   cache_path <- get_sheet_cache_path(cache_dir, sheet_id)
   if (!file.exists(cache_path)) return(NULL)
@@ -515,6 +547,7 @@ print(discovered_files)
 # Checkpoint: phase2_header_detection.csv
 
 cat("\n=== PHASE 2: HEADER ROW DETECTION ===\n")
+phase2_cache_status <- list()
 
 # If requested, load saved Phase 2 results unless this is the active phase
 if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
@@ -539,6 +572,13 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
       cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
       if (!is.null(cached_sheet) && !is.null(cached_sheet$header_row)) {
         cat("  ✓ Reused cached header row:", cached_sheet$header_row, "\n")
+        phase2_cache_status[[length(phase2_cache_status) + 1]] <- data.frame(
+          sheet_id = sheet_id,
+          cache_used = TRUE,
+          cache_fields = "header_row",
+          cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+          stringsAsFactors = FALSE
+        )
         header_detection_results[[i]] <- data.frame(
           sheet_name = sheet_name,
           sheet_id = sheet_id,
@@ -624,6 +664,13 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
       if (use_file_cache) {
         write_sheet_cache(cache_dir, sheet_id, last_mod_time, "header_row", as.integer(header_row_detected))
       }
+      phase2_cache_status[[length(phase2_cache_status) + 1]] <- data.frame(
+        sheet_id = sheet_id,
+        cache_used = FALSE,
+        cache_fields = NA_character_,
+        cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+        stringsAsFactors = FALSE
+      )
       
     }, error = function(e) {
       cat("  ✗ ERROR:", e$message, "\n")
@@ -637,11 +684,20 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         status = paste("error:", e$message),
         stringsAsFactors = FALSE
       )
+      phase2_cache_status[[length(phase2_cache_status) + 1]] <<- data.frame(
+        sheet_id = sheet_id,
+        cache_used = FALSE,
+        cache_fields = NA_character_,
+        cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+        stringsAsFactors = FALSE
+      )
     })
   }
 
   # Combine all detection results
   phase2_results <- bind_rows(header_detection_results)
+  phase2_cache_df <- bind_rows(phase2_cache_status) %>% distinct(sheet_id, .keep_all = TRUE)
+  phase2_results <- append_cache_status(phase2_results, phase2_cache_df, key_col = "sheet_id")
 
   cat("\n=== PHASE 2 SUMMARY ===\n")
   cat("Total sheets processed:", nrow(phase2_results), "\n")
@@ -665,6 +721,7 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
 
 
     cat("\n=== PHASE 3: COLUMN HEADER INGESTION ===\n")
+phase3_cache_status <- list()
 
     # Initialize results list
     header_metadata_results <- list()
@@ -708,6 +765,13 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_headers)) {
           col_names <- as.character(cached_sheet$raw_headers)
           cat("  ✓ Reused cached header list with", length(col_names), "columns\n")
+          phase3_cache_status[[length(phase3_cache_status) + 1]] <- data.frame(
+            sheet_id = sheet_id,
+            cache_used = TRUE,
+            cache_fields = "raw_headers",
+            cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+            stringsAsFactors = FALSE
+          )
         } else {
         # Read the data starting from detected header row to column S (full table width)
         # Use this row as header (col_names = TRUE)
@@ -740,6 +804,13 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         if (use_file_cache) {
           write_sheet_cache(cache_dir, sheet_id, last_mod_time, "raw_headers", col_names)
         }
+          phase3_cache_status[[length(phase3_cache_status) + 1]] <- data.frame(
+            sheet_id = sheet_id,
+            cache_used = FALSE,
+            cache_fields = NA_character_,
+            cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+            stringsAsFactors = FALSE
+          )
         }
         
         cat("  ✓ Found", length(col_names), "columns\n")
@@ -761,11 +832,20 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         header_metadata_index <- header_metadata_index + 1
       }        }, error = function(e) {
         cat("  ✗ ERROR:", e$message, "\n")
+        phase3_cache_status[[length(phase3_cache_status) + 1]] <<- data.frame(
+          sheet_id = sheet_id,
+          cache_used = FALSE,
+          cache_fields = NA_character_,
+          cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+          stringsAsFactors = FALSE
+        )
         })
     }
 
     # Combine all header metadata
     phase3_results <- bind_rows(header_metadata_results)
+    phase3_cache_df <- bind_rows(phase3_cache_status) %>% distinct(sheet_id, .keep_all = TRUE)
+    phase3_results <- append_cache_status(phase3_results, phase3_cache_df, key_col = "sheet_id")
 
     # Add frequency column (count how many sheets have each column name)
     phase3_results <- phase3_results %>%
@@ -945,6 +1025,7 @@ cat("\nPhase 4 complete. Next: Phase 5 will ingest data using this mapping.\n")
 # clean numeric and date columns, add source metadata, and combine into master CSV.
 
 cat("\n=== PHASE 5: DATA INGESTION & COMBINATION ===\n")
+phase5_cache_status <- list()
 
 if (use_saved_phases && current_phase != 5 && file.exists(phase5_output)) {
   cat("Loading saved Phase 5 output from:", phase5_output, "\n")
@@ -982,6 +1063,7 @@ successful_files <- phase2_results %>% filter(status == "success")
     if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_data)) {
       df <- cached_sheet$raw_data
       cat("  ✓ Reused cached raw sheet data\n")
+      cache_used_this_sheet <- TRUE
     } else {
       df <- suppressMessages(read_sheet(
         ss = sheet_id,
@@ -989,6 +1071,7 @@ successful_files <- phase2_results %>% filter(status == "success")
         range = paste0("A", header_row, ":Y"),
         col_names = TRUE
       ))
+      cache_used_this_sheet <- FALSE
     }
 
     # Drop columns that are auto-generated blanks (start with ...)
@@ -1083,6 +1166,15 @@ successful_files <- phase2_results %>% filter(status == "success")
     )
 
     combined_list[[ci]] <- df
+    phase5_cache_status[[length(phase5_cache_status) + 1]] <- data.frame(
+      source_file = sheet_name,
+      source_url = sheet_url,
+      sheet_id = sheet_id,
+      cache_used = cache_used_this_sheet,
+      cache_fields = ifelse(cache_used_this_sheet, "raw_data", NA_character_),
+      cache_last_modified_time = normalize_cache_timestamp(last_mod_time),
+      stringsAsFactors = FALSE
+    )
     ci <- ci + 1
 
     cat("  ✓ Ingested", nrow(df), "rows and", ncol(df), "cols\n")
@@ -1097,6 +1189,7 @@ if (length(combined_list) == 0) {
   cat("\nNo data ingested. Phase 5 ends with no output.\n")
 } else {
   master_df <- bind_rows(combined_list)
+  phase5_cache_df <- bind_rows(phase5_cache_status) %>% distinct(sheet_id, .keep_all = TRUE)
 
   # Filter rows upstream (before output + before validation) to remove rows with no KPI signal.
   # This matches the intent of the Phase 6 filter but avoids Phase 5 vs Phase 7 mismatches.
@@ -1113,6 +1206,8 @@ if (length(combined_list) == 0) {
   } else {
     cat("⚠ Phase 5 pre-filter skipped: none of known_kpi_metrics found in master_df\n")
   }
+
+  master_df <- append_cache_status(master_df, phase5_cache_df, key_col = "sheet_id")
 
   phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
   write_csv(master_df, phase5_output)
