@@ -2,6 +2,43 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-04-07
+
+### Changed
+
+- **FPD shortcuts-folder Drive metadata extraction refactor**
+  What: shortcut sheets now use the target spreadsheet's Drive modified time for cache checks; before, the same per-sheet `.rds` cache was already reused when the stored timestamp matched, but the timestamp pull was done inline and was easier to misread.
+  Why: keeps cache reuse tied to the real sheet instead of the shortcut wrapper, while making the modified-date logic clearer. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — FPD shortcuts-folder Drive metadata extraction refactor</summary>
+
+  [FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r](FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **FPD shortcuts-folder cache usage tracking**
+  What: added reusable cache-status helpers and threaded `cache_used`, `cache_fields`, and `cache_last_modified_time` through the Phase 2, Phase 3, and Phase 5 outputs in `util_collect_fpd_shortcutsFolder.r`.
+  Why: makes it visible when sheet data came from cache versus a fresh read, which helps debugging and auditability across the loader phases. -codexapp (thread link unavailable in local session).
+  <details><summary>Paths — FPD shortcuts-folder cache usage tracking</summary>
+
+  [FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r](FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+### Fixed
+
+- **FPD shortcuts-folder BigQuery upload startup**
+  Issue: `util_collect_fpd_shortcutsFolder.r` failed at the BigQuery upload step with `could not find function "bq_table"`.
+  Cause: the script called BigQuery helper functions without loading the `bigrquery` package first.
+  Verification: pending
+  <details><summary>Paths — FPD shortcuts-folder BigQuery upload startup</summary>
+
+  [FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r](FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-04-02
 
 ### Added

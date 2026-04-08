@@ -9,6 +9,11 @@
 - Working rule:
   - Apply monorepo rules first, then apply these Omni-specific rules for work inside this folder.
 
+## Omni Repo Map
+
+- `omni/AGENTS.md` - local Omni operating rules
+- Local files in this folder are intentionally minimal right now; treat the live Omni platform as the main working surface unless the user explicitly asks for local-file work.
+
 ## Project Working Agreement
 
 This project is Omni-first.

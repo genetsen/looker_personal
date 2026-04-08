@@ -1,6 +1,22 @@
 # AGENTS.md
 
-Global operational notes for this repo.
+Operational notes for work inside `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`.
+
+## Instruction Sources
+
+- Monorepo rules file:
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/AGENTS.md`
+- Local project rules file:
+  - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/AGENTS.md`
+- Working rule:
+  - Apply monorepo rules first, then apply these ADIF-specific rules for work inside this folder.
+
+## ADIF Repo Map
+
+- `projects/social_layering/` - notebook-first social-layer production workflow and related archives
+- `projects/updated_fpd_integration/` - updated FPD deployment and validation workflow
+- `projects/tv_digital_pipeline/` - TV and digital ingestion scripts and docs
+- `scripts/use_sandbox_gcloud.sh` - helper path for sandbox-safe `gcloud` and Dataform-backed notebook access
 
 ## Social Production Mode
 

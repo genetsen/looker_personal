@@ -21,6 +21,7 @@
 #### LOAD LIBRARIES ####
 library(googledrive)
 library(googlesheets4)
+library(bigrquery)
 library(dplyr)
 library(stringr)
 library(readr)

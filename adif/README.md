@@ -125,10 +125,11 @@ zsh scripts/use_sandbox_gcloud.sh gcloud auth application-default login
 
 ## Social Production Pipeline
 
-Production social layering now runs from notebook, not the old scheduled SQL script:
+Production social layering now runs from scheaduled SQL query
 
-- Active: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Active: 
 - Archived legacy SQL and duplicate notebook copy: `projects/social_layering/archive/legacy_scheduled_sql/`
+`projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 
 ## End-to-End Pipeline Lineage (Notebook Production)
 

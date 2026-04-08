@@ -1,11 +1,11 @@
 # AGENTS.md
 
-Operational notes for this repo, grounded in the documented pipelines and scripts.
+Operational notes for looker_personal repo, grounded in the documented pipelines and scripts.
 
 ## Key Workflows
 
 ### ADIF Updated FPD Integration (adif/)
-Primary docs: `adif/README_Updated_FPD_Integration.md` and `adif/DEPLOYMENT_CHECKLIST.md`.
+Primary docs: `adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md` and `adif/projects/updated_fpd_integration/DEPLOYMENT_CHECKLIST.md`.
 
 Commands (from the deployment checklist):
 
@@ -15,10 +15,10 @@ bq show looker-studio-pro-452620:landing.adif_updated_fpd_daily
 
 # Run SQL validation
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < validate_updated_fpd_detailed_v2.sql
+  < adif/projects/updated_fpd_integration/validate_updated_fpd_detailed_v2.sql
 
 # Run R validation
-Rscript util_validate_updated_fpd_impact.r
+Rscript adif/projects/updated_fpd_integration/util_validate_updated_fpd_impact.r
 
 # Review validation CSVs
 ls -lh data/validation_*.csv
@@ -29,22 +29,22 @@ Deploy the updated FPD view:
 ```bash
 # Create new view (recommended first)
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < deploy_updated_fpd_view.sql
+  < adif/projects/updated_fpd_integration/deploy_updated_fpd_view.sql
 ```
 
-Rollback guidance and verification SQL are in `adif/DEPLOYMENT_CHECKLIST.md`.
+Rollback guidance and verification SQL are in `adif/projects/updated_fpd_integration/DEPLOYMENT_CHECKLIST.md`.
 
 ### ADIF TV & Digital Data Pipeline (adif/)
-Primary docs: `adif/README - ADIF TV & Digital Data Pipeline.md`.
+Primary docs: `adif/projects/tv_digital_pipeline/README - ADIF TV & Digital Data Pipeline.md`.
 
 Key ingestion scripts:
 
 ```bash
 # Ingest first-party data (FPD) from Google Sheets
-Rscript adif/util_collect_fpd_v2.r
+Rscript adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r
 
 # Ingest TV monthly estimates (local + national)
-Rscript adif/util_collect_monthly_estimates.r
+Rscript adif/projects/tv_digital_pipeline/util_collect_monthly_estimates.r
 ```
 
 ### FPD Loader Pipelines (util/data_loaders/FPD_loader)
@@ -57,11 +57,19 @@ Quick start commands:
 Rscript -e 'install.packages(c("googledrive", "googlesheets4", "dplyr", "stringr", "readr", "lubridate", "janitor", "bigrquery", "tidyr"))'
 
 # Run the main FPD collection pipeline
-Rscript util_collect_fpd_v3.r
+Rscript util/data_loaders/FPD_loader/util_collect_fpd_v3.r
 
 # Run the manually-updated data loader
-Rscript manually_updated_data_loader.r
+Rscript util/data_loaders/FPD_loader/manually_updated_data_loader.r
 ```
+
+## Repo Map
+
+- `adif/` - ADIF project work, including social layering, updated FPD integration, and TV/digital pipeline assets.
+- `mft/` - MFT project work, including guarded BigQuery query helpers and DCM UTM QA SQL.
+- `omni/` - Omni-specific instruction surface; default to live Omni work instead of local files.
+- `util/` - Shared loaders, R helpers, and reusable warehouse utilities.
+- `docs/` - Cross-project documentation and scheduled-query runbooks.
 
 ### BigQuery Scheduled Queries (docs/)
 Primary docs: `docs/SCHEDULED_QUERIES.md`.
@@ -133,3 +141,7 @@ Use this order:
 - Rebuild the Basis UTM pipeline end-to-end with one canonical runbook that starts from trafficking-sheet ingestion and ends at `looker-studio-pro-452620.mass_mutual_mft_ext.mft_data`.
 - Clean up confusing remnant Basis UTM assets across local folders and BigQuery (especially `landing`, `repo_stg`, and `utm_scrap`) by defining source-of-truth tables/views and archiving or deleting superseded scripts/tables.
 - Practice the daily Git beginner drill from `README.md` at 5:00 PM local time and track confidence improvements week over week.
+
+## Verification TODOs
+
+- Re-run `FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r` end to end and confirm the BigQuery upload succeeds after loading `bigrquery`.
