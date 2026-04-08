@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADIF V2 Test QA Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --paper: #f6f2e8;
+      --paper-deep: #efe3cc;
+      --ink: #1f2a36;
+      --ink-soft: #5d6b78;
+      --navy: #23425f;
+      --teal: #2f7f79;
+      --gold: #d68c32;
+      --rust: #c4572c;
+      --rose: #a43d3d;
+      --sage: #6a8b5f;
+      --cream: rgba(255, 255, 255, 0.82);
+      --line: rgba(31, 42, 54, 0.12);
+      --shadow: 0 20px 40px rgba(31, 42, 54, 0.12);
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 12px;
+      --gap: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(214, 140, 50, 0.22), transparent 28%),
+        radial-gradient(circle at top right, rgba(47, 127, 121, 0.22), transparent 24%),
+        linear-gradient(180deg, #f7f1e7 0%, #f3ece0 48%, #efe6d8 100%);
+      line-height: 1.45;
+    }
+
+    a {
+      color: var(--navy);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .shell {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(145deg, rgba(35, 66, 95, 0.97), rgba(38, 73, 70, 0.94)),
+        linear-gradient(145deg, rgba(214, 140, 50, 0.2), rgba(196, 87, 44, 0.12));
+      color: #fff9f0;
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -80px;
+      top: -80px;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 65%);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+      gap: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 249, 240, 0.76);
+      margin-bottom: 14px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 32px;
+      height: 1px;
+      background: rgba(255, 249, 240, 0.45);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 68ch;
+      color: rgba(255, 249, 240, 0.88);
+      font-size: 15px;
+    }
+
+    .meta-panel {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .meta-card {
+      background: rgba(255, 249, 240, 0.12);
+      border: 1px solid rgba(255, 249, 240, 0.16);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      backdrop-filter: blur(8px);
+    }
+
+    .meta-label {
+      color: rgba(255, 249, 240, 0.72);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff9f0;
+      word-break: break-word;
+    }
+
+    .panel,
+    .chart-card,
+    .table-card,
+    .qa-card,
+    .kpi-card {
+      background: var(--cream);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(10px);
+    }
+
+    .filter-panel {
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+
+    .filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .filter-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .filter-subtitle {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .filter-group {
+      display: grid;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      font-weight: 700;
+    }
+
+    .filter-group select {
+      appearance: none;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .insight-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .insight {
+      border-radius: var(--radius-md);
+      padding: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      min-height: 118px;
+    }
+
+    .insight h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .insight p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .insight.alert {
+      background: rgba(164, 61, 61, 0.1);
+      border-color: rgba(164, 61, 61, 0.18);
+    }
+
+    .insight.warning {
+      background: rgba(214, 140, 50, 0.12);
+      border-color: rgba(214, 140, 50, 0.2);
+    }
+
+    .insight.good {
+      background: rgba(47, 127, 121, 0.11);
+      border-color: rgba(47, 127, 121, 0.2);
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .kpi-card {
+      padding: 18px 18px 16px;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .kpi-note {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .chart-grid + .chart-grid {
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    .chart-card {
+      padding: 18px 20px;
+    }
+
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-title h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .card-title span {
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      min-height: 320px;
+    }
+
+    .lineage-section {
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+
+    .lineage-layout {
+      display: grid;
+      grid-template-columns: minmax(720px, 1.55fr) minmax(300px, 0.85fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .lineage-map-shell {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .lineage-canvas {
+      position: relative;
+      min-width: 920px;
+      min-height: 640px;
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.62)),
+        radial-gradient(circle at top left, rgba(214, 140, 50, 0.08), transparent 25%);
+      border: 1px solid rgba(31, 42, 54, 0.08);
+      overflow: hidden;
+    }
+
+    .lineage-edges {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .lineage-map {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      grid-template-areas:
+        "prisma . updated_view ."
+        "dcm base_view . target"
+        "fpd_orig . . ."
+        "fpd_updated . . ."
+        "raw_social social_stg pacing .";
+      gap: 18px 26px;
+      padding: 22px;
+      min-height: 640px;
+      z-index: 2;
+    }
+
+    .lineage-node {
+      position: relative;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      width: 100%;
+      min-height: 126px;
+      padding: 14px 14px 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(31, 42, 54, 0.12);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 10px 24px rgba(31, 42, 54, 0.08);
+      text-align: left;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+
+    .lineage-node:hover,
+    .lineage-node:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 26px rgba(31, 42, 54, 0.12);
+      outline: none;
+    }
+
+    .lineage-node.active {
+      border-color: rgba(35, 66, 95, 0.42);
+      box-shadow: 0 18px 32px rgba(35, 66, 95, 0.18);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 247, 250, 0.98));
+    }
+
+    .lineage-node::after {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 5px;
+      border-radius: 18px 18px 0 0;
+      background: transparent;
+    }
+
+    .lineage-node.status-needs-rebuild::after { background: var(--rose); }
+    .lineage-node.status-stale::after { background: var(--rust); }
+    .lineage-node.status-warning::after,
+    .lineage-node.status-coverage-short::after { background: var(--gold); }
+    .lineage-node.status-healthy::after,
+    .lineage-node.status-pass::after,
+    .lineage-node.status-coverage-ok::after { background: var(--teal); }
+    .lineage-node.status-unknown::after { background: var(--slate); }
+
+    .lineage-node-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .lineage-layer {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: rgba(35, 66, 95, 0.08);
+      color: var(--ink-soft);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .lineage-node-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+
+    .lineage-node-meta {
+      font-size: 12px;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    .lineage-kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .lineage-kpi {
+      border-radius: 12px;
+      background: rgba(35, 66, 95, 0.05);
+      border: 1px solid rgba(31, 42, 54, 0.08);
+      padding: 8px 9px;
+    }
+
+    .lineage-kpi-label {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 3px;
+      font-weight: 800;
+    }
+
+    .lineage-kpi-value {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .lineage-detail {
+      position: sticky;
+      top: 18px;
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(31, 42, 54, 0.1);
+      box-shadow: var(--shadow);
+      min-height: 520px;
+    }
+
+    .lineage-detail h3 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .lineage-detail p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    .lineage-detail-top {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .lineage-detail-top .status-pill {
+      width: fit-content;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .detail-metric {
+      border-radius: 14px;
+      padding: 11px 12px;
+      background: rgba(35, 66, 95, 0.05);
+      border: 1px solid rgba(31, 42, 54, 0.08);
+    }
+
+    .detail-metric-label {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+
+    .detail-metric-value {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .lineage-jumps {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .lineage-jumps-title {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .lineage-jump-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .lineage-jump {
+      appearance: none;
+      border: 1px solid rgba(31, 42, 54, 0.12);
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .lineage-jump:hover,
+    .lineage-jump:focus-visible {
+      background: rgba(35, 66, 95, 0.08);
+      outline: none;
+    }
+
+    .lineage-empty {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .lineage-detail-note {
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+
+    .qa-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .qa-card {
+      padding: 18px 20px;
+    }
+
+    .qa-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .qa-card h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-pill.needs-rebuild {
+      color: #7f1d1d;
+      background: rgba(164, 61, 61, 0.16);
+    }
+
+    .status-pill.stale {
+      color: #8a3f1d;
+      background: rgba(196, 87, 44, 0.16);
+    }
+
+    .status-pill.warning,
+    .status-pill.coverage-short {
+      color: #7b5608;
+      background: rgba(214, 140, 50, 0.16);
+    }
+
+    .status-pill.healthy,
+    .status-pill.coverage-ok,
+    .status-pill.pass {
+      color: #1f5e57;
+      background: rgba(47, 127, 121, 0.16);
+    }
+
+    .status-pill.unknown {
+      color: #495664;
+      background: rgba(93, 107, 120, 0.14);
+    }
+
+    .qa-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .qa-metric {
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+      padding: 11px 12px;
+    }
+
+    .qa-metric-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-soft);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .qa-metric-value {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .qa-note {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+
+    .table-card {
+      padding: 18px 20px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 960px;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 12px 12px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(31, 42, 54, 0.08);
+    }
+
+    th {
+      background: rgba(35, 66, 95, 0.06);
+      color: var(--ink-soft);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:hover {
+      background: rgba(214, 140, 50, 0.08);
+    }
+
+    td small {
+      display: block;
+      color: var(--ink-soft);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .footer-note {
+      font-size: 13px;
+      color: var(--ink-soft);
+      padding: 0 6px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+
+    .legend span::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--ink-soft);
+    }
+
+    .legend .legend-healthy::before { background: var(--teal); }
+    .legend .legend-warning::before { background: var(--gold); }
+    .legend .legend-stale::before { background: var(--rust); }
+    .legend .legend-rebuild::before { background: var(--rose); }
+
+    .mono {
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .lineage-layout,
+      .chart-grid,
+      .chart-grid + .chart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .lineage-detail {
+        position: static;
+        min-height: auto;
+      }
+
+      .shell {
+        padding: 18px 14px 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Snapshot QA Dashboard</div>
+          <h1>ADIF V2 Test Freshness and Carry-Forward Checks</h1>
+          <p>
+            This dashboard is a self-contained BigQuery snapshot for
+            <a id="hero-target-link" target="_blank" rel="noreferrer"></a>.
+            It answers two plain-English questions: "Did the target table pull in the right source values?"
+            and "Have any upstream tables moved ahead of the target since the last build?"
+          </p>
+        </div>
+        <div class="meta-panel">
+          <div class="meta-card">
+            <div class="meta-label">Target Build</div>
+            <div class="meta-value" id="meta-target-build"></div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Reference Date</div>
+            <div class="meta-value" id="meta-reference-date"></div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Snapshot Coverage</div>
+            <div class="meta-value" id="meta-coverage"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel filter-panel">
+      <div class="filter-header">
+        <div class="filter-title">Source Table Filters</div>
+        <div class="filter-subtitle">Use these to narrow the freshness table and the source freshness chart below.</div>
+      </div>
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label for="filter-stage">Pipeline Stage</label>
+          <select id="filter-stage">
+            <option value="all">All stages</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-family">Source Family</label>
+          <select id="filter-family">
+            <option value="all">All families</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-status">Status</label>
+          <select id="filter-status">
+            <option value="all">All statuses</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="insight-strip" id="insight-strip"></section>
+
+    <section class="kpi-row">
+      <article class="kpi-card">
+        <div class="kpi-label">Sources Newer Than Target</div>
+        <div class="kpi-value" id="kpi-needs-rebuild"></div>
+        <div class="kpi-note">A non-zero count means the target should be rebuilt to catch up.</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">Stale Sources</div>
+        <div class="kpi-value" id="kpi-stale"></div>
+        <div class="kpi-note">These sources are materially older than the target build or reference day.</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">QA Checks Passing</div>
+        <div class="kpi-value" id="kpi-passing"></div>
+        <div class="kpi-note">Carry-forward checks compare the target table against direct source lanes.</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">Target Packages</div>
+        <div class="kpi-value" id="kpi-packages"></div>
+        <div class="kpi-note">The snapshot covers <span id="kpi-row-count"></span> target rows.</div>
+      </article>
+    </section>
+
+    <section class="table-card lineage-section">
+      <div class="card-title">
+        <h2>Interactive Lineage Map</h2>
+        <span>Click a table node to inspect its last load, business-date range, row count, total cost, and total impressions.</span>
+      </div>
+      <div class="lineage-layout">
+        <div class="lineage-map-shell">
+          <div class="lineage-canvas" id="lineage-canvas">
+            <svg class="lineage-edges" id="lineage-edges" aria-hidden="true"></svg>
+            <div class="lineage-map" id="lineage-map"></div>
+          </div>
+        </div>
+        <aside class="lineage-detail" id="lineage-detail"></aside>
+      </div>
+    </section>
+
+    <section class="chart-grid">
+      <article class="chart-card">
+        <div class="card-title">
+          <h2>Source Freshness vs Target Build</h2>
+          <span>Negative means the source updated after the target build.</span>
+        </div>
+        <div class="chart-wrap"><canvas id="freshness-chart"></canvas></div>
+        <div class="legend">
+          <span class="legend-rebuild">Needs rebuild</span>
+          <span class="legend-stale">Stale</span>
+          <span class="legend-warning">Watch</span>
+          <span class="legend-healthy">Healthy</span>
+        </div>
+      </article>
+      <article class="chart-card">
+        <div class="card-title">
+          <h2>Row-Level Source Mix</h2>
+          <span>Based on <span class="mono">row_data_source_primary</span>.</span>
+        </div>
+        <div class="chart-wrap"><canvas id="row-mix-chart"></canvas></div>
+      </article>
+    </section>
+
+    <section class="chart-grid">
+      <article class="chart-card">
+        <div class="card-title">
+          <h2>Estimated Spend by Package Source</h2>
+          <span>Uses the target table&apos;s <span class="mono">_est_spend</span> rollup.</span>
+        </div>
+        <div class="chart-wrap"><canvas id="package-mix-chart"></canvas></div>
+      </article>
+      <article class="chart-card">
+        <div class="card-title">
+          <h2>Social Platform Parity</h2>
+          <span>Source spend vs target <span class="mono">s_spend</span>.</span>
+        </div>
+        <div class="chart-wrap"><canvas id="social-parity-chart"></canvas></div>
+      </article>
+    </section>
+
+    <section class="qa-grid" id="qa-grid"></section>
+
+    <section class="table-card">
+      <div class="card-title">
+        <h2>Dates With Non-Social Drift</h2>
+        <span>The target is very close to the direct non-social source, but not exact.</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Row Delta</th>
+              <th>Spend Delta</th>
+              <th>Impression Delta</th>
+              <th>Click Delta</th>
+              <th>Source Spend</th>
+              <th>Target Spend</th>
+            </tr>
+          </thead>
+          <tbody id="drift-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="card-title">
+        <h2>Upstream Freshness Matrix</h2>
+        <span>Every source listed here came from the BigQuery job metadata or the direct notebook lineage.</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Stage</th>
+              <th>Family</th>
+              <th>Status</th>
+              <th>Freshness Basis</th>
+              <th>Latest Business Date</th>
+              <th>Latest Load Timestamp</th>
+              <th>Lag</th>
+              <th>Rows</th>
+            </tr>
+          </thead>
+          <tbody id="source-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      Snapshot note: this is a point-in-time HTML export built from BigQuery results on April 7, 2026.
+      The dashboard keeps the status logic pinned to that same reference day so it stays consistent when reopened later.
+    </p>
+  </div>
+
+  <script>
+    const SNAPSHOT = {
+      referenceDate: "2026-04-07",
+      targetTable: "looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test",
+      targetOverview: {
+        rowCount: 16671,
+        packageCount: 318,
+        minDate: "2025-09-23",
+        maxDate: "2026-12-31",
+        maxReportDate: "2026-04-07",
+        targetBuildTs: "2026-04-07T00:02:01.542067Z",
+        maxScriptRunDate: "2026-04-07T00:02:01.542067Z",
+        totalFinalSpend: 17562165.23,
+        totalFinalImpressions: 888349232,
+        totalEstSpend: 21532123.46,
+        totalEstImpressions: 1008177629
+      },
+      sourceStatus: [
+        {
+          stage: "target",
+          family: "final",
+          sourceName: "Target table",
+          tablePath: "looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test",
+          freshnessBasis: "final_table_refresh_date",
+          latestBusinessDate: "2026-04-07",
+          latestLoadTs: "2026-04-07T00:02:01.542067Z",
+          rowCount: 16671
+        },
+        {
+          stage: "direct",
+          family: "digital",
+          sourceName: "Updated FPD view",
+          tablePath: "looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view",
+          freshnessBasis: "script_run_date / final_table_refresh_date / fpd_updated_data_timestamp",
+          latestBusinessDate: "2026-02-26",
+          latestLoadTs: "2026-04-07T16:41:22.600049Z",
+          rowCount: 15942
+        },
+        {
+          stage: "direct",
+          family: "pacing",
+          sourceName: "Cross-platform pacing",
+          tablePath: "looker-studio-pro-452620.repo_int.crossplatform_pacing",
+          freshnessBasis: "ag_end_date (coverage)",
+          latestBusinessDate: "2026-05-31",
+          latestLoadTs: null,
+          rowCount: 8511
+        },
+        {
+          stage: "direct",
+          family: "social",
+          sourceName: "Social staging view",
+          tablePath: "looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform",
+          freshnessBasis: "date_day",
+          latestBusinessDate: "2026-04-05",
+          latestLoadTs: null,
+          rowCount: 735
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Facebook ad history",
+          tablePath: "looker-studio-pro-452620.repo_facebook.stg__ad_history_deduped",
+          freshnessBasis: "_fivetran_synced / updated_time",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-06T20:41:24.448000Z",
+          rowCount: 8256
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Facebook ad set history",
+          tablePath: "looker-studio-pro-452620.repo_facebook.stg__ad_set_history_deduped",
+          freshnessBasis: "_fivetran_synced / updated_time",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-06T20:41:23.930000Z",
+          rowCount: 1244
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Facebook campaign history",
+          tablePath: "looker-studio-pro-452620.repo_facebook.stg__campaign_history_deduped",
+          freshnessBasis: "_fivetran_synced / updated_time",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-06T20:41:23.220000Z",
+          rowCount: 289
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Google Ads ad group history",
+          tablePath: "looker-studio-pro-452620.repo_google_ads.stg__ad_group_history_deduped",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-01T20:41:41.145000Z",
+          rowCount: 1215
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Google Ads campaign budget history",
+          tablePath: "looker-studio-pro-452620.repo_google_ads.stg__campaign_budget_history_deduped",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-01T20:41:40.922000Z",
+          rowCount: 83
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Google Ads campaign history",
+          tablePath: "looker-studio-pro-452620.repo_google_ads.stg__campaign_history_deduped",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-01T20:41:40.250000Z",
+          rowCount: 81
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "Google Ads video stats",
+          tablePath: "giant-spoon-299605.google_ads_olipop.video_stats",
+          freshnessBasis: "date / _fivetran_synced",
+          latestBusinessDate: "2026-03-31",
+          latestLoadTs: "2026-04-06T20:41:29.449000Z",
+          rowCount: 4240
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "TikTok ad group history",
+          tablePath: "giant-spoon-299605.tiktok_ads.adgroup_history",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-07T08:41:22.552000Z",
+          rowCount: 392
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "TikTok ad history",
+          tablePath: "giant-spoon-299605.tiktok_ads.ad_history",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-07T08:41:25.201000Z",
+          rowCount: 926
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "TikTok campaign history",
+          tablePath: "giant-spoon-299605.tiktok_ads.campaign_history",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-07T08:41:20.358000Z",
+          rowCount: 166
+        },
+        {
+          stage: "leaf",
+          family: "connector",
+          sourceName: "TikTok video history",
+          tablePath: "giant-spoon-299605.tiktok_ads.video_history",
+          freshnessBasis: "_fivetran_synced / updated_at",
+          latestBusinessDate: null,
+          latestLoadTs: "2026-04-07T08:41:23.079000Z",
+          rowCount: 109
+        },
+        {
+          stage: "leaf",
+          family: "digital",
+          sourceName: "DCM cost model",
+          tablePath: "looker-studio-pro-452620.DCM.20250505_costModel_v5",
+          freshnessBasis: "date",
+          latestBusinessDate: "2026-04-06",
+          latestLoadTs: null,
+          rowCount: 139704
+        },
+        {
+          stage: "leaf",
+          family: "digital",
+          sourceName: "Prisma expanded full",
+          tablePath: "looker-studio-pro-452620.20250327_data_model.prisma_expanded_full",
+          freshnessBasis: "report_date / script_run_date",
+          latestBusinessDate: "2026-02-26",
+          latestLoadTs: "2026-04-06T12:56:08.000000Z",
+          rowCount: 725182
+        },
+        {
+          stage: "leaf",
+          family: "fpd",
+          sourceName: "Original FPD ranged",
+          tablePath: "looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder",
+          freshnessBasis: "date / data_update_datetime / last_modified_time",
+          latestBusinessDate: "2026-02-25",
+          latestLoadTs: "2026-04-06T15:10:25.000000Z",
+          rowCount: 4266
+        },
+        {
+          stage: "leaf",
+          family: "fpd",
+          sourceName: "Updated FPD daily",
+          tablePath: "looker-studio-pro-452620.landing.adif_updated_fpd_daily",
+          freshnessBasis: "date / data_update_datetime",
+          latestBusinessDate: "2026-01-15",
+          latestLoadTs: "2026-04-07T11:34:14.000000Z",
+          rowCount: 2162
+        },
+        {
+          stage: "leaf",
+          family: "social",
+          sourceName: "Raw social cross-platform",
+          tablePath: "looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl",
+          freshnessBasis: "date_day",
+          latestBusinessDate: "2026-04-06",
+          latestLoadTs: null,
+          rowCount: 88554
+        }
+      ],
+      lineageNodes: [
+        {
+          id: "prisma",
+          gridArea: "prisma",
+          label: "Prisma expanded full",
+          layerLabel: "Raw core",
+          layer: "raw_core",
+          tablePath: "looker-studio-pro-452620.20250327_data_model.prisma_expanded_full",
+          freshnessBasis: "script_run_date / date",
+          lastLoadTs: "2026-04-06T12:56:08Z",
+          minDate: "2022-10-01",
+          maxDate: "2027-02-01",
+          rowCount: 725182,
+          totalCost: 9090688016.71,
+          totalImps: 365716514189,
+          totalClicks: 3430125,
+          description: "Planned media scaffold at package-date grain before delivery joins are applied.",
+          note: "This is the broadest planned-media layer in the lineage. It pushes planned cost, planned impressions, and package structure into the downstream base view."
+        },
+        {
+          id: "dcm",
+          gridArea: "dcm",
+          label: "DCM cost model",
+          layerLabel: "Raw core",
+          layer: "raw_core",
+          tablePath: "looker-studio-pro-452620.DCM.20250505_costModel_v5",
+          freshnessBasis: "date",
+          lastLoadTs: null,
+          minDate: "2024-01-30",
+          maxDate: "2026-04-06",
+          rowCount: 139704,
+          totalCost: 1076703132.71,
+          totalImps: 1173072227,
+          totalClicks: 953576,
+          description: "Delivered digital performance feed from DCM.",
+          note: "Because this table does not expose a load timestamp in the dashboard snapshot, freshness is inferred from the newest business date."
+        },
+        {
+          id: "fpd_orig",
+          gridArea: "fpd_orig",
+          label: "Original FPD ranged",
+          layerLabel: "Raw core",
+          layer: "raw_core",
+          tablePath: "looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder",
+          freshnessBasis: "data_update_datetime / date_final",
+          lastLoadTs: "2026-04-06T15:10:25Z",
+          minDate: "2025-05-12",
+          maxDate: "2026-03-31",
+          rowCount: 4266,
+          totalCost: 7895815.0,
+          totalImps: 333707680,
+          totalClicks: 1875044,
+          description: "Original partner-sheet first-party data input.",
+          note: "This is the older FPD loader output. It still feeds the base view and remains part of the combined FPD logic downstream."
+        },
+        {
+          id: "fpd_updated",
+          gridArea: "fpd_updated",
+          label: "Updated FPD daily",
+          layerLabel: "Raw core",
+          layer: "raw_core",
+          tablePath: "looker-studio-pro-452620.landing.adif_updated_fpd_daily",
+          freshnessBasis: "data_update_datetime / date",
+          lastLoadTs: "2026-04-07T14:06:39Z",
+          minDate: "2025-10-01",
+          maxDate: "2026-01-15",
+          rowCount: 2162,
+          totalCost: 3575977.45,
+          totalImps: 267563012,
+          totalClicks: null,
+          description: "New daily updated FPD feed used to enrich the digital branch.",
+          note: "This source loaded after the target table build in the current snapshot, which is why the dashboard flags it as needing a rebuild catch-up."
+        },
+        {
+          id: "base_view",
+          gridArea: "base_view",
+          label: "Base DCM + Prisma view",
+          layerLabel: "Core model",
+          layer: "core_model",
+          tablePath: "looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test",
+          freshnessBasis: "script_run_date / final_table_refresh_date",
+          lastLoadTs: "2026-04-06T12:56:08Z",
+          minDate: "2025-09-23",
+          maxDate: "2026-12-31",
+          rowCount: 15942,
+          totalCost: 13887611.46,
+          totalImps: 586106299,
+          totalClicks: 441012,
+          description: "Core non-social assembly after Prisma, DCM, and original FPD are combined.",
+          note: "This is the pre-updated-FPD version of the digital branch. It becomes the direct parent of the updated FPD integrated view."
+        },
+        {
+          id: "updated_view",
+          gridArea: "updated_view",
+          label: "Updated FPD integrated view",
+          layerLabel: "Core model",
+          layer: "core_model",
+          tablePath: "looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view",
+          freshnessBasis: "script_run_date / final_table_refresh_date / fpd_updated_data_timestamp",
+          lastLoadTs: "2026-04-07T18:07:00.904697Z",
+          minDate: "2025-09-23",
+          maxDate: "2026-12-31",
+          rowCount: 15942,
+          totalCost: 17463588.91,
+          totalImps: 853735045,
+          totalClicks: 441012,
+          description: "Digital branch after the updated FPD data is layered into the base view.",
+          note: "This direct source was rebuilt after the target table snapshot, so it is one of the clearest signals that the target is behind the newest upstream state."
+        },
+        {
+          id: "raw_social",
+          gridArea: "raw_social",
+          label: "Raw social cross-platform",
+          layerLabel: "Raw social",
+          layer: "raw_social",
+          tablePath: "looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl",
+          freshnessBasis: "date_day",
+          lastLoadTs: null,
+          minDate: "2023-04-17",
+          maxDate: "2026-04-06",
+          rowCount: 88554,
+          totalCost: 18531134.92,
+          totalImps: 4527271084,
+          totalClicks: 14620980,
+          description: "Unfiltered cross-platform social feed before ADIF campaign scoping.",
+          note: "This table is much larger than the ADIF social slice because it still contains campaigns outside the ADIF subset."
+        },
+        {
+          id: "social_stg",
+          gridArea: "social_stg",
+          label: "ADIF social staging view",
+          layerLabel: "Social model",
+          layer: "social_model",
+          tablePath: "looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform",
+          freshnessBasis: "date_day",
+          lastLoadTs: null,
+          minDate: "2026-01-12",
+          maxDate: "2026-04-05",
+          rowCount: 735,
+          totalCost: 98647.56,
+          totalImps: 34680105,
+          totalClicks: 41318,
+          description: "ADIF-only social slice after account-name and WP_ campaign filtering.",
+          note: "This is the social feed the V2 target reads before mapping into the wider ADIF schema."
+        },
+        {
+          id: "pacing",
+          gridArea: "pacing",
+          label: "Cross-platform pacing",
+          layerLabel: "Raw social",
+          layer: "raw_social",
+          tablePath: "looker-studio-pro-452620.repo_int.crossplatform_pacing",
+          freshnessBasis: "ag_end_date (coverage)",
+          lastLoadTs: null,
+          minDate: "2019-04-17",
+          maxDate: "2026-05-31",
+          rowCount: 8511,
+          totalCost: 151074466.08,
+          totalImps: null,
+          totalClicks: null,
+          description: "Budget pacing reference used to allocate planned social spend by day.",
+          note: "For this node, freshness is treated as future coverage rather than a load timestamp. Coverage through May 31, 2026 is healthy for the April 7, 2026 reference day."
+        },
+        {
+          id: "target",
+          gridArea: "target",
+          label: "V2 test target table",
+          layerLabel: "Final",
+          layer: "final",
+          tablePath: "looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test",
+          freshnessBasis: "final_table_refresh_date / script_run_date",
+          lastLoadTs: "2026-04-07T00:02:01.542067Z",
+          minDate: "2025-09-23",
+          maxDate: "2026-12-31",
+          rowCount: 16671,
+          totalCost: 17562165.23,
+          totalImps: 888349232,
+          totalClicks: 482328,
+          description: "Single-pass V2 shadow target table that combines the digital and social branches.",
+          note: "This is the dashboard focal point. Click upstream nodes to compare their snapshot metrics to what ultimately lands here."
+        }
+      ],
+      lineageEdges: [
+        { from: "prisma", to: "base_view" },
+        { from: "dcm", to: "base_view" },
+        { from: "fpd_orig", to: "base_view" },
+        { from: "base_view", to: "updated_view" },
+        { from: "fpd_updated", to: "updated_view" },
+        { from: "updated_view", to: "target" },
+        { from: "raw_social", to: "social_stg" },
+        { from: "social_stg", to: "target" },
+        { from: "pacing", to: "target" }
+      ],
+      rowSourceMix: [
+        { label: "planned_only", rowCount: 7395, finalSpend: 0, finalImpressions: 0, finalClicks: 0 },
+        { label: "dcm", rowCount: 4665, finalSpend: 10005426.49, finalImpressions: 405676230, finalClicks: 270387 },
+        { label: "fpd_updated_only", rowCount: 2162, finalSpend: 3575977.45, finalImpressions: 267563012, finalClicks: 0 },
+        { label: "fpd_original_only", rowCount: 1715, finalSpend: 3882113.73, finalImpressions: 180429885, finalClicks: 170623 },
+        { label: "meta", rowCount: 426, finalSpend: 66849.73, finalImpressions: 22476781, finalClicks: 41318 },
+        { label: "tiktok", rowCount: 308, finalSpend: 31797.83, finalImpressions: 12203324, finalClicks: 0 }
+      ],
+      packageSourceMix: [
+        { label: "dcm", rowCount: 5229, finalSpend: 9788678.33, finalImpressions: 398599978, estSpend: 9788678.33, estImpressions: 398599978 },
+        { label: "fpd", rowCount: 4811, finalSpend: 7273801.85, finalImpressions: 455067317, estSpend: 7273801.85, estImpressions: 455067317 },
+        { label: "planned_0-imps", rowCount: 3493, finalSpend: 394848.0, finalImpressions: 0, estSpend: 1244855.29, estImpressions: 0 },
+        { label: "planned", rowCount: 2256, finalSpend: 0, finalImpressions: 0, estSpend: 3076200.0, estImpressions: 119831040 },
+        { label: "meta", rowCount: 403, finalSpend: 66841.6, finalImpressions: 22475970, estSpend: 66841.6, estImpressions: 22475970 },
+        { label: "tiktok", rowCount: 308, finalSpend: 31797.83, finalImpressions: 12203324, estSpend: 31797.83, estImpressions: 12203324 },
+        { label: "remnant-fpd", rowCount: 95, finalSpend: 6189.5, finalImpressions: 1574, estSpend: 6189.5, estImpressions: 0 },
+        { label: "remnant-dcm", rowCount: 53, finalSpend: 0, finalImpressions: 258, estSpend: 43750.0, estImpressions: 0 },
+        { label: "remnant-social", rowCount: 23, finalSpend: 8.13, finalImpressions: 811, estSpend: 9.07, estImpressions: 0 }
+      ],
+      qaChecks: [
+        {
+          name: "Digital carry-forward parity",
+          compareRule: "Compare non-social rows from the direct updated FPD view against non-social rows in the target.",
+          sourceRowCount: 15147,
+          targetRowCount: 15142,
+          rowCountDelta: -5,
+          sourceSpend: 17275908.90,
+          targetSpend: 17275837.67,
+          spendDelta: -71.23,
+          sourceImpressions: 841759289,
+          targetImpressions: 841693371,
+          impressionsDelta: -65918,
+          sourceClicks: 416237,
+          targetClicks: 416235,
+          clicksDelta: -2,
+          note: "The direct source view already contains 795 social-tagged rows, so this check excludes social rows on both sides. The remaining delta is tiny, but it is not exactly zero."
+        },
+        {
+          name: "Social carry-forward parity",
+          compareRule: "Compare social staging totals against target social rows using s_spend, s_impressions, and s_clicks.",
+          sourceRowCount: 735,
+          targetRowCount: 1529,
+          rowCountDelta: 794,
+          sourceSpend: 98647.56,
+          targetSpend: 98647.56,
+          spendDelta: 0,
+          sourceImpressions: 34680105,
+          targetImpressions: 34680105,
+          impressionsDelta: 0,
+          sourceClicks: 41318,
+          targetClicks: 41318,
+          clicksDelta: 0,
+          note: "Target row counts are expected to expand because the social mapping writes into the wider ADIF row shape. Spend, impressions, and clicks still match exactly."
+        },
+        {
+          name: "Updated FPD carry-forward parity",
+          compareRule: "Compare raw updated FPD totals and source timestamps against the target table's fpd_updated_* columns.",
+          sourceRowCount: 2162,
+          targetRowCount: 2162,
+          rowCountDelta: 0,
+          sourceSpend: 3575977.45,
+          targetSpend: 3575977.45,
+          spendDelta: 0,
+          sourceImpressions: 267563012,
+          targetImpressions: 267563012,
+          impressionsDelta: 0,
+          sourceMaxUpdateTs: "2026-04-07T11:34:14.000000Z",
+          targetMaxUpdateTs: "2026-04-06T17:02:04.000000Z",
+          note: "The carried values match exactly, but the raw updated FPD source has a newer timestamp than the target. That means the target snapshot is already behind the latest source load."
+        }
+      ],
+      socialPlatformParity: [
+        { platform: "meta", sourceSpend: 66849.73, targetSpend: 66849.73, spendDelta: 0, sourceImpressions: 22476781, targetImpressions: 22476781, impressionsDelta: 0, sourceClicks: 41318, targetClicks: 41318, clicksDelta: 0 },
+        { platform: "tiktok", sourceSpend: 31797.83, targetSpend: 31797.83, spendDelta: 0, sourceImpressions: 12203324, targetImpressions: 12203324, impressionsDelta: 0, sourceClicks: 0, targetClicks: 0, clicksDelta: 0 }
+      ],
+      digitalDriftDates: [
+        { date: "2026-02-12", rowCountDelta: 0, spendDelta: -9.82, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 20829.59, targetSpend: 20819.77 },
+        { date: "2026-02-26", rowCountDelta: 0, spendDelta: -8.45, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 20077.61, targetSpend: 20069.16 },
+        { date: "2026-03-12", rowCountDelta: 0, spendDelta: -8.01, impressionsDelta: -2908, clicksDelta: 0, sourceSpend: 16411.15, targetSpend: 16403.14 },
+        { date: "2026-03-26", rowCountDelta: 0, spendDelta: -7.83, impressionsDelta: -2854, clicksDelta: 0, sourceSpend: 24366.78, targetSpend: 24358.95 },
+        { date: "2026-04-06", rowCountDelta: -5, spendDelta: -7.43, impressionsDelta: -180, clicksDelta: -2, sourceSpend: 7.43, targetSpend: 0 },
+        { date: "2026-01-29", rowCountDelta: 0, spendDelta: -5.05, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 11131.57, targetSpend: 11126.52 },
+        { date: "2026-01-15", rowCountDelta: 0, spendDelta: -4.41, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 16614.44, targetSpend: 16610.03 },
+        { date: "2026-02-13", rowCountDelta: 0, spendDelta: -2.09, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 21642.45, targetSpend: 21640.36 },
+        { date: "2026-03-27", rowCountDelta: 0, spendDelta: -1.90, impressionsDelta: -2469, clicksDelta: 0, sourceSpend: 17428.11, targetSpend: 17426.21 },
+        { date: "2026-03-13", rowCountDelta: 0, spendDelta: -1.69, impressionsDelta: -2569, clicksDelta: 0, sourceSpend: 12107.43, targetSpend: 12105.74 },
+        { date: "2026-02-27", rowCountDelta: 0, spendDelta: -1.62, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 16807.25, targetSpend: 16805.63 },
+        { date: "2026-01-16", rowCountDelta: 0, spendDelta: -1.15, impressionsDelta: 0, clicksDelta: 0, sourceSpend: 13298.76, targetSpend: 13297.61 }
+      ]
+    };
+
+    const PALETTE = {
+      navy: "#23425f",
+      teal: "#2f7f79",
+      gold: "#d68c32",
+      rust: "#c4572c",
+      rose: "#a43d3d",
+      sage: "#6a8b5f",
+      slate: "#5d6b78",
+      sand: "#c7aa78",
+      sky: "#5d87a1"
+    };
+
+    const TARGET_BUILD = new Date(SNAPSHOT.targetOverview.targetBuildTs);
+    const REFERENCE_DAY = parseDate(SNAPSHOT.referenceDate);
+
+    function parseDate(value) {
+      return value ? new Date(value + "T00:00:00Z") : null;
+    }
+
+    function parseTimestamp(value) {
+      return value ? new Date(value) : null;
+    }
+
+    function bigQueryUrl(tablePath) {
+      const parts = tablePath.split(".");
+      if (parts.length !== 3) return "#";
+      const [project, dataset, table] = parts;
+      return "https://console.cloud.google.com/bigquery?project="
+        + encodeURIComponent(project)
+        + "&ws=!1m5!1m4!4m3!1s"
+        + encodeURIComponent(project)
+        + "!2s"
+        + encodeURIComponent(dataset)
+        + "!3s"
+        + encodeURIComponent(table);
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat("en-US").format(value || 0);
+    }
+
+    function formatNullableNumber(value) {
+      if (value === null || value === undefined) return "-";
+      return new Intl.NumberFormat("en-US").format(value);
+    }
+
+    function formatCompact(value, style = "number") {
+      if (value === null || value === undefined) return "-";
+      return new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+        style: style === "currency" ? "currency" : "decimal",
+        currency: style === "currency" ? "USD" : undefined
+      }).format(value);
+    }
+
+    function formatCurrency(value) {
+      if (value === null || value === undefined) return "-";
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2
+      }).format(value);
+    }
+
+    function formatDate(value) {
+      if (!value) return "-";
+      const date = parseDate(value);
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC"
+      }).format(date);
+    }
+
+    function formatTimestamp(value) {
+      if (!value) return "-";
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+        timeZone: "America/New_York"
+      }).format(parseTimestamp(value));
+    }
+
+    function round(value, digits = 2) {
+      const factor = 10 ** digits;
+      return Math.round(value * factor) / factor;
+    }
+
+    function evaluateFreshness({ freshnessBasis, latestLoadTs, latestBusinessDate }) {
+      const loadTs = parseTimestamp(latestLoadTs);
+      const businessDate = parseDate(latestBusinessDate);
+      const isCoverageCheck = freshnessBasis.includes("(coverage)");
+
+      if (isCoverageCheck) {
+        const daysAhead = businessDate ? round((businessDate - REFERENCE_DAY) / 86400000, 1) : null;
+        if (daysAhead === null) {
+          return {
+            statusKey: "unknown",
+            statusLabel: "Unknown",
+            lagValue: null,
+            lagLabel: "-",
+            detail: "Coverage signal missing."
+          };
+        }
+        if (daysAhead >= 30) {
+          return {
+            statusKey: "coverage-ok",
+            statusLabel: "Coverage ok",
+            lagValue: -daysAhead,
+            lagLabel: daysAhead + " days ahead",
+            detail: "Future pacing coverage extends well beyond the reference day."
+          };
+        }
+        return {
+          statusKey: "coverage-short",
+          statusLabel: "Watch",
+          lagValue: -daysAhead,
+          lagLabel: daysAhead + " days ahead",
+          detail: "Pacing coverage ends less than 30 days after the reference day."
+        };
+      }
+
+      if (loadTs) {
+        const diffDays = (TARGET_BUILD - loadTs) / 86400000;
+        const diffHours = diffDays * 24;
+        if (diffHours < 0) {
+          return {
+            statusKey: "needs-rebuild",
+            statusLabel: "Needs rebuild",
+            lagValue: round(diffDays, 2),
+            lagLabel: Math.abs(round(diffHours, 1)) + " hours after target",
+            detail: "This source loaded after the target build finished."
+          };
+        }
+        if (diffHours <= 24) {
+          return {
+            statusKey: "healthy",
+            statusLabel: "Healthy",
+            lagValue: round(diffDays, 2),
+            lagLabel: round(diffHours, 1) + " hours older",
+            detail: "This source was loaded within 24 hours before the target build."
+          };
+        }
+        if (diffHours <= 72) {
+          return {
+            statusKey: "warning",
+            statusLabel: "Watch",
+            lagValue: round(diffDays, 2),
+            lagLabel: round(diffHours, 1) + " hours older",
+            detail: "This source was 1 to 3 days older than the target build."
+          };
+        }
+        return {
+          statusKey: "stale",
+          statusLabel: "Stale",
+          lagValue: round(diffDays, 2),
+          lagLabel: round(diffDays, 1) + " days older",
+          detail: "This source lagged the target build by more than 3 days."
+        };
+      }
+
+      if (businessDate) {
+        const ageDays = round((REFERENCE_DAY - businessDate) / 86400000, 1);
+        if (ageDays <= 3) {
+          return {
+            statusKey: "healthy",
+            statusLabel: "Healthy",
+            lagValue: ageDays,
+            lagLabel: ageDays + " days old",
+            detail: "Latest business date is within 3 days of the reference day."
+          };
+        }
+        if (ageDays <= 7) {
+          return {
+            statusKey: "warning",
+            statusLabel: "Watch",
+            lagValue: ageDays,
+            lagLabel: ageDays + " days old",
+            detail: "Latest business date is 4 to 7 days old."
+          };
+        }
+        return {
+          statusKey: "stale",
+          statusLabel: "Stale",
+          lagValue: ageDays,
+          lagLabel: ageDays + " days old",
+          detail: "Latest business date is more than 7 days old."
+        };
+      }
+
+      return {
+        statusKey: "unknown",
+        statusLabel: "Unknown",
+        lagValue: null,
+        lagLabel: "-",
+        detail: "No usable freshness signal was available."
+      };
+    }
+
+    function evaluateSource(row) {
+      return evaluateFreshness({
+        freshnessBasis: row.freshnessBasis,
+        latestLoadTs: row.latestLoadTs,
+        latestBusinessDate: row.latestBusinessDate
+      });
+    }
+
+    function evaluateQaCheck(check) {
+      if (check.name === "Social carry-forward parity") {
+        const exactMetricMatch = check.spendDelta === 0 && check.impressionsDelta === 0 && check.clicksDelta === 0;
+        return exactMetricMatch
+          ? { statusKey: "pass", label: "Pass", detail: "Mapped social metrics match exactly even though row counts expand." }
+          : { statusKey: "warning", label: "Watch", detail: "Social metrics do not match exactly." };
+      }
+
+      if (check.name === "Updated FPD carry-forward parity") {
+        const sourceTs = parseTimestamp(check.sourceMaxUpdateTs);
+        const targetTs = parseTimestamp(check.targetMaxUpdateTs);
+        const valuesMatch = check.rowCountDelta === 0 && check.spendDelta === 0 && check.impressionsDelta === 0;
+        if (valuesMatch && sourceTs && targetTs && sourceTs > targetTs) {
+          return {
+            statusKey: "needs-rebuild",
+            label: "Needs rebuild",
+            detail: "The carried values match, but the raw updated FPD source has a newer timestamp than the target."
+          };
+        }
+        return valuesMatch
+          ? { statusKey: "pass", label: "Pass", detail: "Updated FPD values and timestamps match." }
+          : { statusKey: "warning", label: "Watch", detail: "Updated FPD values do not match exactly." };
+      }
+
+      const exactMatch = check.rowCountDelta === 0
+        && check.spendDelta === 0
+        && check.impressionsDelta === 0
+        && check.clicksDelta === 0;
+
+      return exactMatch
+        ? { statusKey: "pass", label: "Pass", detail: "The target matches the direct source exactly." }
+        : { statusKey: "warning", label: "Watch", detail: "The target is close to the direct source, but not exact." };
+    }
+
+    function statusRank(statusKey) {
+      return {
+        "needs-rebuild": 0,
+        stale: 1,
+        warning: 2,
+        "coverage-short": 2,
+        healthy: 3,
+        pass: 3,
+        "coverage-ok": 4,
+        unknown: 5
+      }[statusKey] ?? 9;
+    }
+
+    function statusColor(statusKey) {
+      return {
+        "needs-rebuild": PALETTE.rose,
+        stale: PALETTE.rust,
+        warning: PALETTE.gold,
+        "coverage-short": PALETTE.gold,
+        healthy: PALETTE.teal,
+        pass: PALETTE.teal,
+        "coverage-ok": PALETTE.sage,
+        unknown: PALETTE.slate
+      }[statusKey] ?? PALETTE.slate;
+    }
+
+    class Dashboard {
+      constructor(data) {
+        this.data = data;
+        this.evaluatedSources = data.sourceStatus.map((row) => ({ ...row, evaluation: evaluateSource(row) }));
+        this.evaluatedChecks = data.qaChecks.map((row) => ({ ...row, evaluation: evaluateQaCheck(row) }));
+        this.sourceByTablePath = Object.fromEntries(this.evaluatedSources.map((row) => [row.tablePath, row]));
+        this.lineageNodes = data.lineageNodes.map((node) => {
+          const matched = this.sourceByTablePath[node.tablePath];
+          const evaluation = matched
+            ? matched.evaluation
+            : evaluateFreshness({
+                freshnessBasis: node.freshnessBasis,
+                latestLoadTs: node.lastLoadTs,
+                latestBusinessDate: node.maxDate
+              });
+          return { ...node, evaluation };
+        });
+        this.lineageNodeMap = Object.fromEntries(this.lineageNodes.map((node) => [node.id, node]));
+        this.selectedLineageNodeId = "target";
+        this.filteredSources = [...this.evaluatedSources];
+        this.charts = {};
+        this.init();
+      }
+
+      init() {
+        this.renderMeta();
+        this.renderLineageMap();
+        this.populateFilters();
+        this.bindEvents();
+        this.applyFilters();
+        this.renderQaChecks();
+        this.renderDriftTable();
+      }
+
+      renderMeta() {
+        const targetLink = document.getElementById("hero-target-link");
+        targetLink.textContent = this.data.targetTable;
+        targetLink.href = bigQueryUrl(this.data.targetTable);
+        document.getElementById("meta-target-build").textContent = formatTimestamp(this.data.targetOverview.targetBuildTs);
+        document.getElementById("meta-reference-date").textContent = formatDate(this.data.referenceDate);
+        document.getElementById("meta-coverage").textContent =
+          formatDate(this.data.targetOverview.minDate) + " to " + formatDate(this.data.targetOverview.maxDate);
+      }
+
+      populateFilters() {
+        this.populateSingleFilter("filter-stage", this.evaluatedSources.map((row) => row.stage));
+        this.populateSingleFilter("filter-family", this.evaluatedSources.map((row) => row.family));
+        this.populateSingleFilter("filter-status", this.evaluatedSources.map((row) => row.evaluation.statusKey));
+      }
+
+      populateSingleFilter(id, values) {
+        const select = document.getElementById(id);
+        [...new Set(values)].sort().forEach((value) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value.replace(/-/g, " ");
+          select.appendChild(option);
+        });
+      }
+
+      bindEvents() {
+        ["filter-stage", "filter-family", "filter-status"].forEach((id) => {
+          document.getElementById(id).addEventListener("change", () => this.applyFilters());
+        });
+        window.addEventListener("resize", () => this.drawLineageEdges());
+      }
+
+      applyFilters() {
+        const stage = document.getElementById("filter-stage").value;
+        const family = document.getElementById("filter-family").value;
+        const status = document.getElementById("filter-status").value;
+
+        this.filteredSources = this.evaluatedSources.filter((row) => {
+          if (stage !== "all" && row.stage !== stage) return false;
+          if (family !== "all" && row.family !== family) return false;
+          if (status !== "all" && row.evaluation.statusKey !== status) return false;
+          return true;
+        });
+
+        this.renderInsights();
+        this.renderKpis();
+        this.renderFreshnessChart();
+        this.renderMixCharts();
+        this.renderSocialParityChart();
+        this.renderSourceTable();
+      }
+
+      renderInsights() {
+        const allSources = this.evaluatedSources;
+        const needsRebuild = allSources.filter((row) => row.evaluation.statusKey === "needs-rebuild");
+        const stale = allSources.filter((row) => row.evaluation.statusKey === "stale");
+        const passingChecks = this.evaluatedChecks.filter((row) => row.evaluation.statusKey === "pass").length;
+        const digitalCheck = this.evaluatedChecks.find((row) => row.name === "Digital carry-forward parity");
+
+        const insights = [
+          {
+            tone: needsRebuild.length ? "alert" : "good",
+            title: "Build Catch-Up",
+            text: needsRebuild.length
+              ? needsRebuild.length + " sources are newer than the target build, including "
+                + needsRebuild.slice(0, 3).map((row) => row.sourceName).join(", ")
+                + "."
+              : "No upstream sources were newer than the target build in this snapshot."
+          },
+          {
+            tone: stale.length ? "warning" : "good",
+            title: "Stale Inputs",
+            text: stale.length
+              ? stale.length + " sources are stale versus the target build or reference day. The clearest case is the Google Ads connector trio last synced on April 1, 2026."
+              : "No stale upstream sources were found in this snapshot."
+          },
+          {
+            tone: digitalCheck && digitalCheck.evaluation.statusKey === "pass" ? "good" : "warning",
+            title: "Carry-Forward QA",
+            text: passingChecks + " of " + this.evaluatedChecks.length + " QA checks passed cleanly. Social parity is exact; updated FPD values are exact but the source timestamp is newer than the target."
+          }
+        ];
+
+        const container = document.getElementById("insight-strip");
+        container.innerHTML = insights.map((item) => `
+          <article class="insight ${item.tone}">
+            <h3>${item.title}</h3>
+            <p>${item.text}</p>
+          </article>
+        `).join("");
+      }
+
+      renderKpis() {
+        const allSources = this.evaluatedSources;
+        const needsRebuild = allSources.filter((row) => row.evaluation.statusKey === "needs-rebuild").length;
+        const stale = allSources.filter((row) => row.evaluation.statusKey === "stale").length;
+        const passes = this.evaluatedChecks.filter((row) => row.evaluation.statusKey === "pass").length;
+
+        document.getElementById("kpi-needs-rebuild").textContent = formatNumber(needsRebuild);
+        document.getElementById("kpi-stale").textContent = formatNumber(stale);
+        document.getElementById("kpi-passing").textContent = passes + " / " + this.evaluatedChecks.length;
+        document.getElementById("kpi-packages").textContent = formatNumber(this.data.targetOverview.packageCount);
+        document.getElementById("kpi-row-count").textContent = formatNumber(this.data.targetOverview.rowCount) + " rows";
+      }
+
+      renderLineageMap() {
+        const container = document.getElementById("lineage-map");
+        container.innerHTML = this.lineageNodes.map((node) => {
+          const isActive = node.id === this.selectedLineageNodeId;
+          const lastTouch = node.lastLoadTs
+            ? "Last load: " + formatTimestamp(node.lastLoadTs)
+            : "Max date: " + formatDate(node.maxDate);
+
+          return `
+            <button
+              type="button"
+              class="lineage-node status-${node.evaluation.statusKey}${isActive ? " active" : ""}"
+              style="grid-area:${node.gridArea};"
+              data-node="${node.id}"
+            >
+              <div class="lineage-node-head">
+                <span class="lineage-layer">${node.layerLabel}</span>
+                <span class="status-pill ${node.evaluation.statusKey}">${node.evaluation.statusLabel}</span>
+              </div>
+              <div class="lineage-node-name">${node.label}</div>
+              <div class="lineage-node-meta">${lastTouch}</div>
+              <div class="lineage-kpis">
+                <div class="lineage-kpi">
+                  <div class="lineage-kpi-label">Rows</div>
+                  <div class="lineage-kpi-value">${formatCompact(node.rowCount)}</div>
+                </div>
+                <div class="lineage-kpi">
+                  <div class="lineage-kpi-label">Cost</div>
+                  <div class="lineage-kpi-value">${formatCompact(node.totalCost, "currency")}</div>
+                </div>
+                <div class="lineage-kpi">
+                  <div class="lineage-kpi-label">Imps</div>
+                  <div class="lineage-kpi-value">${formatCompact(node.totalImps)}</div>
+                </div>
+                <div class="lineage-kpi">
+                  <div class="lineage-kpi-label">Clicks</div>
+                  <div class="lineage-kpi-value">${formatCompact(node.totalClicks)}</div>
+                </div>
+              </div>
+            </button>
+          `;
+        }).join("");
+
+        container.querySelectorAll(".lineage-node").forEach((button) => {
+          button.addEventListener("click", () => this.selectLineageNode(button.dataset.node));
+        });
+
+        this.renderLineageDetail();
+        requestAnimationFrame(() => this.drawLineageEdges());
+      }
+
+      selectLineageNode(nodeId) {
+        this.selectedLineageNodeId = nodeId;
+        this.renderLineageMap();
+      }
+
+      renderLineageDetail() {
+        const node = this.lineageNodeMap[this.selectedLineageNodeId];
+        const parents = this.data.lineageEdges
+          .filter((edge) => edge.to === node.id)
+          .map((edge) => this.lineageNodeMap[edge.from]);
+        const children = this.data.lineageEdges
+          .filter((edge) => edge.from === node.id)
+          .map((edge) => this.lineageNodeMap[edge.to]);
+
+        const detail = document.getElementById("lineage-detail");
+        detail.innerHTML = `
+          <div class="lineage-detail-top">
+            <span class="lineage-layer">${node.layerLabel}</span>
+            <span class="status-pill ${node.evaluation.statusKey}">${node.evaluation.statusLabel}</span>
+            <h3>${node.label}</h3>
+            <p>${node.description}</p>
+            <a class="mono" href="${bigQueryUrl(node.tablePath)}" target="_blank" rel="noreferrer">${node.tablePath}</a>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-metric">
+              <div class="detail-metric-label">Last Load</div>
+              <div class="detail-metric-value">${formatTimestamp(node.lastLoadTs)}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Freshness Rule</div>
+              <div class="detail-metric-value">${node.freshnessBasis}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Date Range</div>
+              <div class="detail-metric-value">${formatDate(node.minDate)} to ${formatDate(node.maxDate)}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Freshness Status</div>
+              <div class="detail-metric-value">${node.evaluation.lagLabel}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Rows</div>
+              <div class="detail-metric-value">${formatNumber(node.rowCount)}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Total Cost</div>
+              <div class="detail-metric-value">${formatCurrency(node.totalCost)}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Total Impressions</div>
+              <div class="detail-metric-value">${formatNullableNumber(node.totalImps)}</div>
+            </div>
+            <div class="detail-metric">
+              <div class="detail-metric-label">Total Clicks</div>
+              <div class="detail-metric-value">${formatNullableNumber(node.totalClicks)}</div>
+            </div>
+          </div>
+          <div class="lineage-jumps">
+            <div>
+              <div class="lineage-jumps-title">Upstream Tables</div>
+              <div class="lineage-jump-list">
+                ${parents.length
+                  ? parents.map((parent) => `<button type="button" class="lineage-jump" data-node="${parent.id}">${parent.label}</button>`).join("")
+                  : `<span class="lineage-empty">No upstream table nodes in this snapshot.</span>`}
+              </div>
+            </div>
+            <div>
+              <div class="lineage-jumps-title">Downstream Tables</div>
+              <div class="lineage-jump-list">
+                ${children.length
+                  ? children.map((child) => `<button type="button" class="lineage-jump" data-node="${child.id}">${child.label}</button>`).join("")
+                  : `<span class="lineage-empty">No downstream table nodes in this snapshot.</span>`}
+              </div>
+            </div>
+          </div>
+          <p class="lineage-detail-note">${node.note}</p>
+        `;
+
+        detail.querySelectorAll(".lineage-jump").forEach((button) => {
+          button.addEventListener("click", () => this.selectLineageNode(button.dataset.node));
+        });
+      }
+
+      drawLineageEdges() {
+        const canvas = document.getElementById("lineage-canvas");
+        const svg = document.getElementById("lineage-edges");
+        if (!canvas || !svg) return;
+
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const canvasRect = canvas.getBoundingClientRect();
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        svg.innerHTML = "";
+
+        this.data.lineageEdges.forEach((edge) => {
+          const fromEl = canvas.querySelector(`[data-node="${edge.from}"]`);
+          const toEl = canvas.querySelector(`[data-node="${edge.to}"]`);
+          if (!fromEl || !toEl) return;
+
+          const fromRect = fromEl.getBoundingClientRect();
+          const toRect = toEl.getBoundingClientRect();
+          const sameColumn = Math.abs((fromRect.left + fromRect.width / 2) - (toRect.left + toRect.width / 2)) < 90;
+
+          let startX;
+          let startY;
+          let endX;
+          let endY;
+
+          if (sameColumn) {
+            startX = fromRect.left - canvasRect.left + fromRect.width / 2;
+            startY = fromRect.top - canvasRect.top + fromRect.height;
+            endX = toRect.left - canvasRect.left + toRect.width / 2;
+            endY = toRect.top - canvasRect.top;
+          } else {
+            startX = fromRect.left - canvasRect.left + fromRect.width;
+            startY = fromRect.top - canvasRect.top + fromRect.height / 2;
+            endX = toRect.left - canvasRect.left;
+            endY = toRect.top - canvasRect.top + toRect.height / 2;
+          }
+
+          const active = edge.from === this.selectedLineageNodeId || edge.to === this.selectedLineageNodeId;
+          const midX = (startX + endX) / 2;
+          const midY = (startY + endY) / 2;
+          const d = sameColumn
+            ? `M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`
+            : `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
+
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", d);
+          path.setAttribute("fill", "none");
+          path.setAttribute("stroke", active ? PALETTE.gold : "rgba(35, 66, 95, 0.24)");
+          path.setAttribute("stroke-width", active ? "3.5" : "2");
+          path.setAttribute("stroke-linecap", "round");
+          path.setAttribute("stroke-linejoin", "round");
+          svg.appendChild(path);
+        });
+      }
+
+      renderFreshnessChart() {
+        const chartRows = [...this.filteredSources].sort((a, b) => {
+          const rankDiff = statusRank(a.evaluation.statusKey) - statusRank(b.evaluation.statusKey);
+          if (rankDiff !== 0) return rankDiff;
+          return a.sourceName.localeCompare(b.sourceName);
+        });
+
+        const labels = chartRows.map((row) => row.sourceName);
+        const values = chartRows.map((row) => row.evaluation.lagValue ?? 0);
+        const colors = chartRows.map((row) => statusColor(row.evaluation.statusKey));
+
+        const config = {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{
+              label: "Days",
+              data: values,
+              backgroundColor: colors,
+              borderRadius: 8,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: "y",
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (context) => {
+                    const row = chartRows[context.dataIndex];
+                    return row.evaluation.lagLabel + " — " + row.evaluation.detail;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: "rgba(31, 42, 54, 0.08)" },
+                ticks: {
+                  callback: (value) => value + "d"
+                }
+              },
+              y: {
+                grid: { display: false }
+              }
+            }
+          }
+        };
+
+        this.updateChart("freshness-chart", config);
+      }
+
+      renderMixCharts() {
+        const rowLabels = this.data.rowSourceMix.map((row) => row.label);
+        const rowCounts = this.data.rowSourceMix.map((row) => row.rowCount);
+        const rowColors = [PALETTE.gold, PALETTE.navy, PALETTE.teal, PALETTE.rust, PALETTE.sage, PALETTE.sky];
+
+        this.updateChart("row-mix-chart", {
+          type: "doughnut",
+          data: {
+            labels: rowLabels,
+            datasets: [{
+              data: rowCounts,
+              backgroundColor: rowColors,
+              borderColor: "#f6f2e8",
+              borderWidth: 3
+            }]
+          },
+          options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "58%",
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { boxWidth: 12, padding: 14 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (context) => context.label + ": " + formatNumber(context.parsed) + " rows"
+                }
+              }
+            }
+          }
+        });
+
+        const sortedPackages = [...this.data.packageSourceMix].sort((a, b) => b.estSpend - a.estSpend);
+        this.updateChart("package-mix-chart", {
+          type: "bar",
+          data: {
+            labels: sortedPackages.map((row) => row.label),
+            datasets: [{
+              label: "Estimated Spend",
+              data: sortedPackages.map((row) => row.estSpend),
+              backgroundColor: sortedPackages.map((row, idx) => [
+                PALETTE.navy,
+                PALETTE.teal,
+                PALETTE.gold,
+                PALETTE.rust,
+                PALETTE.sage,
+                PALETTE.sky,
+                "#b86d5a",
+                "#8c9a58",
+                "#75879a"
+              ][idx % 9]),
+              borderRadius: 8,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (context) => formatCurrency(context.parsed.y)
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false }
+              },
+              y: {
+                grid: { color: "rgba(31, 42, 54, 0.08)" },
+                ticks: {
+                  callback: (value) => formatCompact(value, "currency")
+                }
+              }
+            }
+          }
+        });
+      }
+
+      renderSocialParityChart() {
+        this.updateChart("social-parity-chart", {
+          type: "bar",
+          data: {
+            labels: this.data.socialPlatformParity.map((row) => row.platform),
+            datasets: [
+              {
+                label: "Source spend",
+                data: this.data.socialPlatformParity.map((row) => row.sourceSpend),
+                backgroundColor: PALETTE.navy,
+                borderRadius: 8,
+                borderSkipped: false
+              },
+              {
+                label: "Target spend",
+                data: this.data.socialPlatformParity.map((row) => row.targetSpend),
+                backgroundColor: PALETTE.teal,
+                borderRadius: 8,
+                borderSkipped: false
+              }
+            ]
+          },
+          options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "bottom" },
+              tooltip: {
+                callbacks: {
+                  label: (context) => context.dataset.label + ": " + formatCurrency(context.parsed.y)
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false }
+              },
+              y: {
+                grid: { color: "rgba(31, 42, 54, 0.08)" },
+                ticks: {
+                  callback: (value) => formatCompact(value, "currency")
+                }
+              }
+            }
+          }
+        });
+      }
+
+      renderQaChecks() {
+        const qaGrid = document.getElementById("qa-grid");
+        qaGrid.innerHTML = this.evaluatedChecks.map((check) => {
+          const extraTimestamp = check.sourceMaxUpdateTs
+            ? `
+              <div class="qa-metric">
+                <div class="qa-metric-label">Source Max Update</div>
+                <div class="qa-metric-value mono">${formatTimestamp(check.sourceMaxUpdateTs)}</div>
+              </div>
+              <div class="qa-metric">
+                <div class="qa-metric-label">Target Max Update</div>
+                <div class="qa-metric-value mono">${formatTimestamp(check.targetMaxUpdateTs)}</div>
+              </div>
+            `
+            : `
+              <div class="qa-metric">
+                <div class="qa-metric-label">Spend Delta</div>
+                <div class="qa-metric-value">${formatCurrency(check.spendDelta)}</div>
+              </div>
+              <div class="qa-metric">
+                <div class="qa-metric-label">Impression Delta</div>
+                <div class="qa-metric-value">${formatCompact(check.impressionsDelta)}</div>
+              </div>
+            `;
+
+          return `
+            <article class="qa-card">
+              <div class="qa-top">
+                <h3>${check.name}</h3>
+                <span class="status-pill ${check.evaluation.statusKey}">${check.evaluation.label}</span>
+              </div>
+              <p class="qa-note" style="margin-bottom:12px;">${check.compareRule}</p>
+              <div class="qa-metrics">
+                <div class="qa-metric">
+                  <div class="qa-metric-label">Source Rows</div>
+                  <div class="qa-metric-value">${formatNumber(check.sourceRowCount)}</div>
+                </div>
+                <div class="qa-metric">
+                  <div class="qa-metric-label">Target Rows</div>
+                  <div class="qa-metric-value">${formatNumber(check.targetRowCount)}</div>
+                </div>
+                ${extraTimestamp}
+              </div>
+              <p class="qa-note">${check.note}</p>
+            </article>
+          `;
+        }).join("");
+      }
+
+      renderDriftTable() {
+        const body = document.getElementById("drift-body");
+        body.innerHTML = this.data.digitalDriftDates.map((row) => `
+          <tr>
+            <td>${formatDate(row.date)}</td>
+            <td>${row.rowCountDelta}</td>
+            <td>${formatCurrency(row.spendDelta)}</td>
+            <td>${formatNumber(row.impressionsDelta)}</td>
+            <td>${formatNumber(row.clicksDelta)}</td>
+            <td>${formatCurrency(row.sourceSpend)}</td>
+            <td>${formatCurrency(row.targetSpend)}</td>
+          </tr>
+        `).join("");
+      }
+
+      renderSourceTable() {
+        const body = document.getElementById("source-body");
+        const rows = [...this.filteredSources].sort((a, b) => {
+          const rankDiff = statusRank(a.evaluation.statusKey) - statusRank(b.evaluation.statusKey);
+          if (rankDiff !== 0) return rankDiff;
+          return a.sourceName.localeCompare(b.sourceName);
+        });
+
+        body.innerHTML = rows.map((row) => `
+          <tr>
+            <td>
+              <a href="${bigQueryUrl(row.tablePath)}" target="_blank" rel="noreferrer">${row.sourceName}</a>
+              <small class="mono">${row.tablePath}</small>
+            </td>
+            <td>${row.stage}</td>
+            <td>${row.family}</td>
+            <td>
+              <span class="status-pill ${row.evaluation.statusKey}">${row.evaluation.statusLabel}</span>
+              <small>${row.evaluation.detail}</small>
+            </td>
+            <td>${row.freshnessBasis}</td>
+            <td>${formatDate(row.latestBusinessDate)}</td>
+            <td>${formatTimestamp(row.latestLoadTs)}</td>
+            <td>${row.evaluation.lagLabel}</td>
+            <td>${formatNumber(row.rowCount)}</td>
+          </tr>
+        `).join("");
+      }
+
+      updateChart(id, config) {
+        if (this.charts[id]) {
+          this.charts[id].destroy();
+        }
+        this.charts[id] = new Chart(document.getElementById(id), config);
+      }
+    }
+
+    new Dashboard(SNAPSHOT);
+  </script>
+</body>
+</html>
