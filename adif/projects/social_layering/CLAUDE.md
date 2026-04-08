@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Social Layering Pipeline — notebook-driven sub-project that appends normalized social media data (Meta, TikTok) into the ADIF main data table. Production runs from a BigQuery-connected Jupyter notebook, not scheduled SQL.
+Social Layering Pipeline — social append sub-project that adds normalized social media data (Meta, TikTok) into the ADIF main data flow. The main live automated refresh is the scheduled query `ADIF_FullDataRefresh_2604`, which currently writes `repo_stg.adif__mainDataTable_notebook_v2_test`. The notebook remains a key reference for the earlier two-stage workflow.
 
 ## Architecture
 
-**Two-stage notebook build** writes to `repo_stg.adif__mainDataTable_notebook`:
+**Current live scheduled build** writes to `repo_stg.adif__mainDataTable_notebook_v2_test` using one scheduled query.
+
+**Reference two-stage notebook build** writes to `repo_stg.adif__mainDataTable_notebook`:
 
 1. **Section 1 — Table Rebuild:** `CREATE OR REPLACE TABLE` from `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view` (the base Prisma+DCM+FPD view)
 2. **Section 2 — Social Append:** `INSERT INTO` normalized social rows with mapping, pacing, and metric alignment
@@ -24,11 +26,11 @@ stg__olipop__crossplatform_raw_tbl  →  stg__adif__social_crossplatform (view) 
 
 | File | Role |
 |------|------|
-| `build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb` | **Production notebook** — runs both stages + verification queries |
+| `build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb` | Reference notebook for the earlier two-stage build and validation workflow |
 | `sql/stg__adif__social_crossplatform.sql` | View definition: filters raw social to ADIF accounts with `WP_` campaigns, normalizes platform names, adds row keys |
 | `sql/test__adif__social_mapping_v2_vs_current.sql` | Validation: 10-section QA script comparing proposed mapping totals vs raw and current output |
 | `social_mapping_matrix_editable.csv` | Living spec: token-based mapping rules for `ad_set→package` and `ad→placement` with status/notes columns |
-| `archive/legacy_scheduled_sql/` | Retired scheduled SQL approach (replaced by notebook) |
+| `archive/legacy_scheduled_sql/` | Retired scheduled SQL approach |
 
 ## Commands
 
@@ -42,7 +44,14 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < sql/stg__adif__social_crossplatform.sql
 ```
 
-The production notebook is executed interactively (BigQuery DataFrames / Colab connected to `looker-studio-pro-452620`).
+Current live schedule details:
+
+- Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
+- Display name: `ADIF_FullDataRefresh_2604`
+- Schedule: `every 10 hours`
+- Verified on: `2026-04-08`
+
+The notebook is still useful when reviewing or editing the earlier interactive workflow (BigQuery DataFrames / Colab connected to `looker-studio-pro-452620`).
 
 ## Critical Conventions
 
@@ -67,10 +76,10 @@ Required checks:
 
 Example verification commands:
 ```bash
-bq show looker-studio-pro-452620:repo_stg.adif__mainDataTable_notebook
-bq show --schema looker-studio-pro-452620:repo_stg.adif__mainDataTable_notebook
+bq show looker-studio-pro-452620:repo_stg.adif__mainDataTable_notebook_v2_test
+bq show --schema looker-studio-pro-452620:repo_stg.adif__mainDataTable_notebook_v2_test
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  'SELECT COUNT(*) AS row_count FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`'
+  'SELECT COUNT(*) AS row_count FROM `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`'
 ```
 
 ## BigQuery Tables
@@ -81,7 +90,8 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
 | `stg__adif__social_crossplatform` | `repo_stg` | Filtered/flagged ADIF social view |
 | `crossplatform_pacing` | `repo_int` | Planned spend by platform/campaign/ad_group |
 | `adif__prisma_expanded_plus_dcm_updated_fpd_view` | `repo_stg` | Base ADIF table source (Prisma+DCM+FPD) |
-| `adif__mainDataTable_notebook` | `repo_stg` | **Production output** — combined ADIF data |
+| `adif__mainDataTable_notebook_v2_test` | `repo_stg` | Main live scheduled-refresh output as of 2026-04-08 |
+| `adif__mainDataTable_notebook` | `repo_stg` | Older notebook-built output kept for comparison/reference |
 
 ## Validation
 

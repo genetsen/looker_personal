@@ -81,25 +81,115 @@ bash -lc "curl -s -G \
   \"https://dataform.googleapis.com/v1/${WS}:readFile\""
 ```
 
-## Social Production Pipeline
+## Main Scheduled Refresh
 
-Production social layering now runs from notebook, not the old scheduled SQL script:
+The main live ADIF refresh currently runs from a BigQuery scheduled query, not only from the older notebook runbook.
 
-- Active: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
+- Display name: `ADIF_FullDataRefresh_2604`
+- Schedule: `every 10 hours`
+- Verified against live BigQuery on: `2026-04-08`
+- Current live output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Current older notebook output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+
+What the live scheduled query does:
+
+1. Reads the updated digital base view `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`.
+2. Reads normalized social data from `repo_stg.stg__adif__social_crossplatform`.
+3. Reads pacing data from `repo_int.crossplatform_pacing`.
+4. Rebuilds `repo_stg.adif__mainDataTable_notebook_v2_test` in one pass using the V2 single-query flow.
+
+Why this matters:
+
+- The notebook file is still useful as a reference and history artifact.
+- The live transfer config is the best source of truth for the current automated refresh path.
+- The scheduled query currently targets the V2 shadow table, so docs should not describe `repo_stg.adif__mainDataTable_notebook` as the only live refresh target.
+
+Related files:
+
+- Active reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 - Archived legacy SQL and duplicate notebook copy: `projects/social_layering/archive/legacy_scheduled_sql/`
 - Snapshot QA dashboard for the V2 test output:
   `projects/social_layering/dashboard/adif__mainDataTable_notebook_v2_test_qa_dashboard.html`
   - Includes a clickable lineage map with per-table snapshot metrics such as last load, row count, total cost, and total impressions.
 
-## End-to-End Pipeline Lineage (Notebook Production)
+## FPD Layering
 
-Current production social assembly is notebook-driven and writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`.
+ADIF currently uses two separate FPD branches that meet in the ADIF view layer.
+
+### Original FPD Branch
+
+This is the broad partner-sheet branch.
+
+- ADIF-specific loader script: `projects/tv_digital_pipeline/util_collect_fpd_v2.r`
+- Shortcut-aware shared loader script: `FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r`
+- Current base ADIF SQL source table:
+  `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
+
+How it works:
+
+1. Google Sheets partner files are discovered and normalized by the R loaders.
+2. Rows are expanded to daily grain and uploaded to a BigQuery landing table.
+3. The current base ADIF SQL reads `landing.fpd_data_ranged_shortcutsFolder`.
+4. That SQL filters the broad table down to ADIF-only partner sheets:
+   - `source_file` contains `De Beers`
+   - or `source_file` starts with `FMUS | Partner Data Collection |`
+5. The filtered rows are aggregated to one row per `package_id + date`.
+6. That daily FPD layer is FULL OUTER JOINed with DCM, then FULL OUTER JOINed with Prisma.
+
+Result:
+
+- Original FPD is the first actuals layer.
+- In the base ADIF view, original FPD overrides DCM when both exist on the same package/date row.
+
+### Updated FPD Branch
+
+This is the corrected package-level overlay branch.
+
+- Script: `projects/updated_fpd_integration/util_process_updated_fpd.r`
+- Output table:
+  `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
+
+How it works:
+
+1. Read package-level corrected totals from one Google Sheet.
+2. Query Prisma for each package's start and end dates.
+3. Spread each package total evenly across the Prisma date range.
+4. Upload the daily rows to `landing.adif_updated_fpd_daily`.
+5. Join that daily table onto the base ADIF view in `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`.
+
+Result:
+
+- Updated FPD is layered on top of the original FPD + DCM base view.
+- Updated FPD becomes the highest-priority actuals source when present.
+
+### Effective Priority Order
+
+The practical ADIF priority order is:
+
+1. Updated FPD
+2. Original FPD
+3. DCM
+4. Planned-only fallback from Prisma
+
+### Important Current-State Note
+
+Two similar original-FPD table names appear in scripts and docs:
+
+- `landing.adif_fpd_data_ranged`
+- `landing.fpd_data_ranged_shortcutsFolder`
+
+The current base ADIF SQL uses `landing.fpd_data_ranged_shortcutsFolder` as the original FPD source of truth.
+
+## End-to-End Pipeline Lineage (Current Live Scheduled Refresh)
+
+Current live scheduled social assembly writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`.
 
 ```mermaid
 flowchart LR
   subgraph raw_core["Raw Core Inputs"]
     dcm["looker-studio-pro-452620.DCM.20250505_costModel_v5"]
-    fpd_orig["looker-studio-pro-452620.landing.adif_fpd_data_ranged"]
+    fpd_orig["looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder"]
     prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"]
     fpd_upd["looker-studio-pro-452620.landing.adif_updated_fpd_daily"]
   end
@@ -126,8 +216,8 @@ flowchart LR
   end
 
   subgraph notebook["Notebook Build"]
-    social_nb_s1["Notebook Section 1 (table rebuild)"]
-    target_tbl["repo_stg.adif__mainDataTable_notebook"]
+    social_nb_s1["V2 scheduled query digital branch"]
+    target_tbl["repo_stg.adif__mainDataTable_notebook_v2_test"]
   end
 
   social_raw --> social_stg
@@ -139,20 +229,26 @@ flowchart LR
   social_nb_s2 --> target_tbl
 ```
 
-### Notebook-Declared Dependencies
+### Live Scheduled Query Dependencies
 
-- `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view` (Section 1 source)
-- `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform` (Section 2 social source)
-- `looker-studio-pro-452620.repo_int.crossplatform_pacing` (Section 2 pacing source)
+- `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view` (digital base source)
+- `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform` (social source)
+- `looker-studio-pro-452620.repo_int.crossplatform_pacing` (social pacing source)
 
-`repo_int.crossplatform_pacing` upstream views used by notebook logic:
+`repo_int.crossplatform_pacing` upstream views used by the live scheduled query logic:
 - `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
 - `looker-studio-pro-452620.repo_facebook.stg__fb_combined_history`
 - `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
 
-### Notebook Verification Queries
+### Verification Notes
 
-The production notebook includes post-run checks for:
+Live verification completed on `2026-04-08`:
+
+- Transfer config `ADIF_FullDataRefresh_2604` is active and `SUCCEEDED`
+- `repo_stg.adif__mainDataTable_notebook_v2_test` exists and was modified on `2026-04-08T18:03:43Z`
+- `repo_stg.adif__mainDataTable_notebook` also still exists, but its last observed modification was `2026-04-06T14:02:15Z`
+
+The reference notebook still includes post-run checks for:
 - Target table row/date/spend/impression totals
 - Breakdown by `data_source_primary` (2026 filter)
 - Breakdown by `supplier_code`, `p_package_friendly` (2026 filter)

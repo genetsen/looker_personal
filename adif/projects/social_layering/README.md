@@ -1,7 +1,8 @@
 # Social Layering Pipeline
 
-This sub-project owns the notebook-driven social append branch for ADIF.
-Production orchestration runs from notebook (`build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`) and writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`.
+This sub-project owns the social append branch for ADIF.
+The current live automated refresh is the BigQuery scheduled query `ADIF_FullDataRefresh_2604`, which writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`.
+The notebook (`build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`) remains an important reference for the earlier two-stage build path.
 
 ## Lineage Segment to Final Output
 
@@ -18,8 +19,8 @@ flowchart LR
   end
 
   subgraph notebook["Notebook Build"]
-    social_nb_s1["Notebook Section 1 (table rebuild)"]
-    target_tbl["repo_stg.adif__mainDataTable_notebook"]
+    social_nb_s1["Live scheduled query digital branch"]
+    target_tbl["repo_stg.adif__mainDataTable_notebook_v2_test"]
   end
 
   social_raw --> social_stg
@@ -30,34 +31,50 @@ flowchart LR
   social_nb_s2 --> target_tbl
 ```
 
-## Production Notebook
+## Current Live Refresh
 
-- Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
+- Display name: `ADIF_FullDataRefresh_2604`
+- Schedule: `every 10 hours`
+- Verified on: `2026-04-08`
+- Live target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+
+## Reference Notebook and Archived SQL
+
+- Reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Older notebook output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
 - Legacy scheduled SQL and duplicate notebook copies: `projects/social_layering/archive/legacy_scheduled_sql/`
 
 ## Source Coverage
 
-### Notebook Section 1 (`CREATE OR REPLACE TABLE`)
+### Live V2 Digital Branch (`CREATE OR REPLACE TABLE`)
 - Source: `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
-- Output: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
-- Behavior: rebuilds base table before social insert
+- Output: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Behavior: rebuilds the full target in one scheduled query instead of relying on a separate notebook Section 1 run
 
-### Notebook Section 2 (`INSERT INTO`)
+### Live V2 Social Logic
 - Social source: `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
 - Pacing source: `looker-studio-pro-452620.repo_int.crossplatform_pacing`
 - Behavior:
   - Normalizes social platform to `meta` / `tiktok`
   - Maps `ad_set -> package`, `ad -> placement`
   - Computes package pacing rollups and over/under flags
-  - Appends social rows with `channel_group='social'` into the target table
+  - Unions social rows into the rebuilt target table inside the V2 single-pass scheduled query
 
-### `repo_int.crossplatform_pacing` upstream views used by notebook logic
+### `repo_int.crossplatform_pacing` upstream views used by live scheduled-query logic
 - `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
 - `looker-studio-pro-452620.repo_facebook.stg__fb_combined_history`
 - `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
 
-## Verification Queries in Notebook
+## Verification Notes
 
+Live verification completed on `2026-04-08`:
+
+- `repo_stg.adif__mainDataTable_notebook_v2_test` exists and had `16,680` rows at inspection time
+- `repo_stg.adif__mainDataTable_notebook` also exists and had `16,663` rows at inspection time
+- The scheduled transfer updates the V2 test table more recently than the older notebook table
+
+The notebook still contains useful validation queries for:
 - Table totals (`row_count`, `min_date`, `max_date`, `total_spend`, `total_impressions`) for 2026
 - Breakdown by `data_source_primary` for 2026
 - Breakdown by `supplier_code`, `p_package_friendly` for 2026

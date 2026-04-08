@@ -1,3 +1,22 @@
+## 2026-04-08
+
+### Changed
+- **ADIF refresh docs now match the live scheduled transfer**
+  What: Updated the ADIF runbooks and related lineage docs to document the verified main transfer config `ADIF_FullDataRefresh_2604`, its `every 10 hours` cadence, its current live output table `repo_stg.adif__mainDataTable_notebook_v2_test`, and the detailed layering of original versus updated FPD sources in the ADIF view stack.
+  Why: Keeps operational documentation aligned with the real automated refresh that is running in BigQuery today, makes the notebook-vs-shadow-table distinction explicit, and explains which FPD branch actually feeds the current base ADIF SQL. -codexapp 019d6e9e-5a4e-7580-8eae-665c924bdf39
+
+<details><summary>Paths — ADIF refresh docs now match the live scheduled transfer</summary>
+
+- [AGENTS.md](AGENTS.md)
+- [README.md](README.md)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+- [projects/social_layering/CLAUDE.md](projects/social_layering/CLAUDE.md)
+- [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
+- [projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md](projects/tv_digital_pipeline/README%20-%20ADIF%20TV%20%26%20Digital%20Data%20Pipeline.md)
+- [../docs/SCHEDULED_QUERIES.md](../docs/SCHEDULED_QUERIES.md)
+
+</details>
+
 ## 2026-04-07
 
 ### Added

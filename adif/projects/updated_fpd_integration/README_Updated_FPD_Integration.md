@@ -69,9 +69,9 @@ This document describes the integration of **updated first-party data (FPD)** fr
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Lineage Segment to Notebook Production Output
+### Lineage Segment to Current Scheduled Output
 
-This sub-project owns the updated-FPD branch that feeds the social notebook production table.
+This sub-project owns the updated-FPD branch that feeds the current ADIF social refresh.
 
 ```mermaid
 flowchart LR
@@ -80,7 +80,7 @@ flowchart LR
   prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
   core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
   fpd_upd["looker-studio-pro-452620.landing.adif_updated_fpd_daily"] --> upd_view
-  upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook (via notebook Section 1 rebuild)"]
+  upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook_v2_test (via scheduled query ADIF_FullDataRefresh_2604)"]
 ```
 
 ## Files
@@ -281,6 +281,54 @@ if (diff < 1) {
 ```
 
 ## Integration Impact
+
+## How FPD Is Layered In
+
+ADIF uses two FPD branches, and this project owns only the second branch.
+
+### Branch 1: Original FPD
+
+Current source used by the base ADIF SQL:
+
+- `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
+
+How it is layered in:
+
+1. A broad multi-client FPD loader writes daily rows into `landing.fpd_data_ranged_shortcutsFolder`.
+2. The base ADIF view `repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test` reads that table.
+3. The base view filters the rows down to ADIF-specific partner-sheet names.
+4. The filtered rows are aggregated to `package_id + date`.
+5. That original FPD layer is FULL OUTER JOINed with DCM.
+6. The DCM+FPD result is FULL OUTER JOINed with Prisma planning rows.
+7. In that base view, original FPD wins over DCM for the main final actuals fields.
+
+### Branch 2: Updated FPD
+
+This project adds the second branch:
+
+- `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
+
+How it is layered in:
+
+1. `util_process_updated_fpd.r` reads corrected package-level totals from one Google Sheet.
+2. It joins those packages to Prisma date ranges.
+3. It spreads package totals evenly across the Prisma flight dates.
+4. It uploads those daily rows to `landing.adif_updated_fpd_daily`.
+5. The updated-FPD view joins that daily table onto the base ADIF view.
+6. Updated FPD then becomes the highest-priority FPD source for final actual metrics.
+
+### Effective Priority Order
+
+The practical ADIF priority order becomes:
+
+1. Updated FPD
+2. Original FPD
+3. DCM
+4. Planned-only fallback
+
+### Important Current-State Note
+
+The older ADIF-specific loader output `landing.adif_fpd_data_ranged` still appears in scripts and older docs, but the current base ADIF SQL documented in this project reads `landing.fpd_data_ranged_shortcutsFolder` for the original FPD branch.
 
 ### Data Priority Changes
 

@@ -33,9 +33,9 @@ Complete documentation of the ADIF (Advertising Intelligence & Forecasting) data
                    └─────────────────────────────┘
 ```
 
-## Lineage Segment to Notebook Social Output
+## Lineage Segment to Current Scheduled Social Output
 
-This sub-project owns the digital core branch and hands off to the updated-FPD + social notebook assembly that writes the notebook production table.
+This sub-project owns the digital core branch and hands off to the updated-FPD + social refresh that now feeds the live scheduled V2 output table.
 
 ```mermaid
 flowchart LR
@@ -43,13 +43,13 @@ flowchart LR
   fpd_orig["looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder\n(filtered to De Beers + FMUS partner-data sheets)"] --> core_base
   prisma["looker-studio-pro-452620.20250327_data_model.prisma_expanded_full"] --> core_base
   core_base --> upd_view["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"]
-  upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook (via notebook Section 1 rebuild)"]
+  upd_view --> final_tbl["repo_stg.adif__mainDataTable_notebook_v2_test (via scheduled query ADIF_FullDataRefresh_2604)"]
 ```
 
 ## Table of Contents
 
 - [Data Sources](#data-sources)
-- [Lineage Segment to Notebook Social Output](#lineage-segment-to-notebook-social-output)
+- [Lineage Segment to Current Scheduled Social Output](#lineage-segment-to-current-scheduled-social-output)
 - [Staging Layer](#staging-layer)
 - [Mart Layer](#mart-layer)
 - [Data Ingestion Scripts](#data-ingestion-scripts)
@@ -102,6 +102,18 @@ flowchart LR
 - Include rows where `source_file` contains `De Beers`
 - Include rows where `source_file` starts with `FMUS | Partner Data Collection |`
 - Exclude other clients in the shortcuts table, such as `OLI` and `APO`
+
+#### How Original FPD Is Layered In
+
+The original FPD branch reaches ADIF in these steps:
+
+1. A broad Google Sheets loader writes daily partner data into `landing.fpd_data_ranged_shortcutsFolder`.
+2. The base ADIF SQL reads that table in the `fpd_raw` step.
+3. The SQL filters the broad table down to ADIF-only partner sheets.
+4. The filtered rows are aggregated to one row per `package_id + date`.
+5. That aggregated FPD layer is FULL OUTER JOINed with DCM.
+6. The combined DCM+FPD rows are FULL OUTER JOINed with Prisma planning rows.
+7. The row-level final actuals fields prefer FPD over DCM.
 
 ---
 
@@ -228,6 +240,17 @@ COALESCE(fpd_clicks, d_clicks) AS final_clicks
 ```
 
 **Data Prioritization Hierarchy**: FPD → DCM → NULL
+
+#### FPD Branch Clarification
+
+There are two different FPD concepts in this project:
+
+- **Original FPD**:
+  `landing.fpd_data_ranged_shortcutsFolder`
+- **Updated FPD**:
+  `landing.adif_updated_fpd_daily`
+
+This base view section documents only the **original FPD** branch. The **updated FPD** branch is layered later in `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`.
 
 **6. Package-Level Rollups (CTE: `pkg`)**
 - Calculates package-level totals: `pkg_act_imps`, `pkg_act_spend`
@@ -422,6 +445,24 @@ run_downstream_scripts <- FALSE
 - Evenly distributes metrics across date ranges
 - **Output**: `phase7_daily_master_data.csv`
 - **BigQuery Upload**: `landing.adif_fpd_data_ranged`
+
+#### Optional Downstream Handoff
+
+When `run_downstream_scripts <- TRUE`, this script can also trigger:
+
+1. `projects/updated_fpd_integration/util_process_updated_fpd.r`
+   - writes `landing.adif_updated_fpd_daily`
+   - handles the updated package-level overlay branch
+
+2. `FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r`
+   - writes `landing.fpd_data_ranged_shortcutsFolder`
+   - handles the shortcut-aware original FPD branch that the current ADIF base SQL actually reads
+
+Important current-state note:
+
+- `util_collect_fpd_v2.r` writes `landing.adif_fpd_data_ranged`
+- the current ADIF base SQL reads `landing.fpd_data_ranged_shortcutsFolder`
+- so the shortcut-aware loader is the more important original-FPD feed for the current base ADIF view
 
 #### Key Features
 - **Checkpoint System**: Each phase saves CSV for debugging

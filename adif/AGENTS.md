@@ -13,17 +13,26 @@ Operational notes for work inside `/Users/eugenetsenter/Looker_clonedRepo/looker
 
 ## ADIF Repo Map
 
-- `projects/social_layering/` - notebook-first social-layer production workflow and related archives
+- `projects/social_layering/` - social-layer workflow docs, reference notebook assets, and related archives
 - `projects/updated_fpd_integration/` - updated FPD deployment and validation workflow
 - `projects/tv_digital_pipeline/` - TV and digital ingestion scripts and docs
 - `scripts/use_sandbox_gcloud.sh` - helper path for sandbox-safe `gcloud` and Dataform-backed notebook access
 
 ## Social Production Mode
 
-The production social-layer pipeline is notebook-first:
+The main live ADIF refresh schedule is the BigQuery scheduled query:
 
-- Active production notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
-- Notebook target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+- Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
+- Display name: `ADIF_FullDataRefresh_2604`
+- Schedule: `every 10 hours`
+- Verified on: `2026-04-08`
+- Current live target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Current query shape: single-pass V2 `CREATE OR REPLACE TABLE` SQL that combines digital rows and social rows in one scheduled query
+
+Notebook context still matters, but it is no longer enough by itself to describe the live refresh path:
+
+- Reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Older notebook target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
 - Notebook section flow:
   - Section 1: `CREATE OR REPLACE TABLE` from `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
   - Section 2: `INSERT INTO` with social mapping from `repo_stg.stg__adif__social_crossplatform` and `repo_int.crossplatform_pacing`

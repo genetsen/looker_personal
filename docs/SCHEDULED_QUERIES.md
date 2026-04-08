@@ -23,6 +23,9 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 │  09:00  ──► adif update ──► adif_prisma_expanded_plus_dcm_v2                        │
 │             (ADIF FPD + DCM + Prisma integration)                                   │
 │                                                                                     │
+│  EVERY   ──► ADIF_FullDataRefresh_2604                                               │
+│  10 HRS  │    (Main ADIF scheduled refresh to v2 shadow table)                      │
+│                                                                                     │
 │  10:00  ──► basis_update ──► stg__olipop__crossplatform_raw_tbl_sched              │
 │         ──► mart__pacing_table ──► ext_mm_mft_scheadule                             │
 │             (Basis merge, Olipop video, Pacing, MFT export)                         │
@@ -47,11 +50,12 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 | 6 | `UTM UPDATES` | Daily 08:00 UTC | ✅ SUCCEEDED | `mm_utms_snapshot`, `b_sup_pivt_unioned_tab`, `master_utms_raw` |
 | 7 | `adif update` | Daily 09:00 UTC | ✅ SUCCEEDED | `landing.adif_fpd_data_ranged` |
 | 8 | `adif_prisma_expanded_plus_dcm_v2` | Daily 09:00 UTC | ✅ SUCCEEDED | `repo_stg.adif__prisma_expanded_plus_dcm_view_v3_test` |
-| 9 | `basis_update` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.basis_master2` |
-| 10 | `stg__olipop__crossplatform_raw_tbl_sched` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.stg__olipop__crossplatform_raw_tbl` |
-| 11 | `mart__pacing_table` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_mart.fct_crossplatform_pacing_daily` |
-| 12 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
-| 13 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
+| 9 | `ADIF_FullDataRefresh_2604` | Every 10 hours | ✅ SUCCEEDED | `repo_stg.adif__mainDataTable_notebook_v2_test` |
+| 10 | `basis_update` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.basis_master2` |
+| 11 | `stg__olipop__crossplatform_raw_tbl_sched` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.stg__olipop__crossplatform_raw_tbl` |
+| 12 | `mart__pacing_table` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_mart.fct_crossplatform_pacing_daily` |
+| 13 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
+| 14 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
 
 ---
 
@@ -354,7 +358,59 @@ COALESCE(fpd_impressions, d_daily_recalculated_imps) AS final_impressions
 
 ---
 
-### 9. `basis_update`
+### 9. `ADIF_FullDataRefresh_2604`
+
+**Schedule**: Every 10 hours
+**Status**: ✅ SUCCEEDED
+**Verified Against Live Config**: Apr 8, 2026
+
+#### Purpose
+This is the current main ADIF scheduled refresh. It rebuilds the V2 shadow output table with one scheduled query that combines:
+
+- the updated digital ADIF base view
+- normalized ADIF social rows
+- social pacing inputs
+
+#### Live Transfer Config
+```text
+projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0
+```
+
+#### Live Metadata
+- Display name: `ADIF_FullDataRefresh_2604`
+- Data source: `scheduled_query`
+- Owner: `gene.tsenter@giantspoon.com`
+- Last config update: `2026-04-07T22:03:00.832621Z`
+- Next observed run time: `2026-04-09T04:03:00Z`
+
+#### Target
+```text
+looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test
+```
+
+#### Source Tables
+- `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
+- `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
+- `looker-studio-pro-452620.repo_int.crossplatform_pacing`
+
+#### Important Drift Note
+- Earlier ADIF docs in this repo often described the notebook output table `repo_stg.adif__mainDataTable_notebook` as the main production target.
+- The live transfer config verified on Apr 8, 2026 currently writes `repo_stg.adif__mainDataTable_notebook_v2_test` instead.
+- At inspection time, `repo_stg.adif__mainDataTable_notebook_v2_test` had 16,680 rows and was modified on `2026-04-08T18:03:43Z`.
+- The older `repo_stg.adif__mainDataTable_notebook` table still existed with 16,663 rows and an older modification time of `2026-04-06T14:02:15Z`.
+
+#### Query Shape
+The live SQL is a single-pass V2 rebuild, not the older two-step notebook insert pattern:
+
+- `CREATE OR REPLACE TABLE repo_stg.adif__mainDataTable_notebook_v2_test`
+- build digital rows from the updated ADIF base view
+- build social rows with token parsing, pacing allocation, and source-aware metric handling
+- `UNION ALL` the two branches
+- derive canonical final metrics and package-level source labels
+
+---
+
+### 10. `basis_update`
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
@@ -397,7 +453,7 @@ WHEN NOT MATCHED THEN INSERT (all_columns)
 
 ---
 
-### 10. `stg__olipop__crossplatform_raw_tbl_sched`
+### 11. `stg__olipop__crossplatform_raw_tbl_sched`
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
@@ -492,7 +548,7 @@ END AS video_flag
 
 ---
 
-### 11. `mart__pacing_table`
+### 12. `mart__pacing_table`
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
@@ -536,7 +592,7 @@ INSERT INTO fct_crossplatform_pacing_daily SELECT * FROM recent;
 
 ---
 
-### 12. `ext_mm_mft_scheadule`
+### 13. `ext_mm_mft_scheadule`
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
@@ -549,7 +605,7 @@ External system / Google Sheets
 
 ---
 
-### 13. `mart__dcm__joined_0519` ❌ FAILED
+### 14. `mart__dcm__joined_0519` ❌ FAILED
 
 **Schedule**: Daily 03:00 UTC
 **Status**: ❌ FAILED
@@ -610,14 +666,21 @@ This query has been failing since May 2025. Consider disabling or investigating 
 ┌───────────────┐                   │                  ┌───────────────┐
 │adif_prisma_   │                   │                  │mart__pacing   │
 │expanded (09:00)                   │                  │ (10:00)       │
-└───────────────┘                   │                  └───────────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   MART LAYER        │
-                         │ (mft_view, adif,    │
-                         │  pacing, olipop)    │
-                         └─────────────────────┘
+└───────┬───────┘                   │                  └───────────────┘
+        │                           │
+        ▼                           │
+┌──────────────────────┐            │
+│ ADIF_FullDataRefresh │            │
+│ (every 10 hours)     │            │
+└───────────┬──────────┘            │
+            │                       │
+            ▼                       ▼
+   ┌─────────────────────┐  ┌─────────────────────┐
+   │  ADIF V2 shadow     │  │   MART LAYER        │
+   │  scheduled output   │  │ (mft_view, adif,    │
+   │  repo_stg.adif__    │  │  pacing, olipop)    │
+   │  mainDataTable_...  │  └─────────────────────┘
+   └─────────────────────┘
 ```
 
 ---
@@ -657,6 +720,7 @@ ORDER BY creation_time DESC
    - `Prisma_expanded` depends on `process_prisma` (both at 07:00 UTC; race risk)
    - Recommended: run `Prisma_expanded` at 07:15 UTC or add retry/backoff
    - `adif_prisma_expanded_plus_dcm_v2` depends on DCM cost model (09:00 UTC vs 4-hour cadence); monitor for stale upstream data
+   - `ADIF_FullDataRefresh_2604` depends on the updated ADIF base view plus social and pacing inputs; if shadow-vs-production promotion status matters, compare `repo_stg.adif__mainDataTable_notebook_v2_test` against `repo_stg.adif__mainDataTable_notebook` before changing downstream consumers
 
 3. **Fee Filtering**:
    - Multiple queries filter `%feeorder%`, `%fees_%`, `%fee_%`
@@ -669,4 +733,4 @@ ORDER BY creation_time DESC
 
 ---
 
-**Last Updated**: March 6, 2026
+**Last Updated**: April 8, 2026
