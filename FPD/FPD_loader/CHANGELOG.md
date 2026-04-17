@@ -1,3 +1,17 @@
+## 2026-04-17
+
+### Changed
+
+- **APO creative refresh triggered only for changed `final_img_path` sheets -codexapp (threadID unavailable in local session)**
+  What: Updated `util_collect_fpd_shortcutsFolder.r` so it snapshots the prior Phase 5 APO `final_img_path` state, detects which APO sheets changed in the current run, and calls the existing APO creative refresh script only for those changed sheet titles after a successful BigQuery sync.
+  Why: Keeps `creative_git_link` write-backs aligned with the normal FPD pipeline without rescanning every APO sheet on every run.
+  <details><summary>Paths — APO creative refresh triggered only for changed `final_img_path` sheets</summary>
+
+  [util_collect_fpd_shortcutsFolder.r](util_collect_fpd_shortcutsFolder.r)
+  [README.md](README.md)
+
+  </details>
+
 ## 2026-04-09
 
 ### Fixed

@@ -148,6 +148,7 @@ day_to_wstart <- c(Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7
   phase7_output <- file.path(output_dir, "phase7_daily_master_data.csv")
   phase6_filter_audit_output <- file.path(output_dir, "phase6_filter_audit.csv")
   phase7_validation_output <- file.path(output_dir, "phase7_validation_table.csv")
+  previous_phase5_creative_snapshot <- NULL
 #
 # Keep validation results available for final end-of-run reporting
 validation_table <- data.frame()
@@ -322,6 +323,8 @@ run_creative_refresh_targets <- function(sheet_titles) {
 
   invisible(TRUE)
 }
+
+previous_phase5_creative_snapshot <- capture_phase5_creative_snapshot(phase5_output)
 
 est_tz <- "America/New_York"
 
@@ -1440,6 +1443,20 @@ if (length(combined_list) == 0) {
   phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
   write_csv(master_df, phase5_output)
   cat("\n✓ Phase 5 complete. Combined data written to:", phase5_output, "\n")
+  creative_refresh_target_sheets <- detect_creative_refresh_targets(
+    previous_phase5_creative_snapshot,
+    master_df
+  )
+  if (length(creative_refresh_target_sheets) > 0) {
+    cat(
+      "Creative refresh target sheets based on Final_img_path changes:\n",
+      paste0(" - ", creative_refresh_target_sheets, collapse = "\n"),
+      "\n",
+      sep = ""
+    )
+  } else {
+    cat("No APO sheets with new or changed Final_img_path values were detected in Phase 5.\n")
+  }
   cat("Total rows:", nrow(master_df), "Total cols:", ncol(master_df), "\n")
 }
 
@@ -2392,6 +2409,8 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
       stop(paste0("Failed incremental prod sync from staging: ", e$message))
     })
   }
+
+  run_creative_refresh_targets(creative_refresh_target_sheets)
 
   cat("\n-----------\n-----------\n First party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 
