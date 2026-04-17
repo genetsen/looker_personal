@@ -114,6 +114,11 @@ known_kpi_metrics <- c(
   "benchmark"
 )
 
+# Preserve these columns as numeric when checkpoint CSVs are read back in.
+# Some sparse rate fields can be mis-inferred as logical by readr when most rows
+# are blank, which later breaks the BigQuery sync schema.
+checkpoint_numeric_fields <- c(known_kpi_metrics, "ctr", "ctr_vcr")
+
 # Per-client week configuration: which day the reporting week starts on.
 # Used to fill in missing `week` values in the final output.
 # Clients are matched case-insensitively against the `client` column.
@@ -167,6 +172,20 @@ build_bq_fields <- function(df) {
   })
 }
 
+coerce_checkpoint_numeric_fields <- function(df) {
+  numeric_cols <- intersect(checkpoint_numeric_fields, names(df))
+
+  if (length(numeric_cols) == 0) {
+    return(df)
+  }
+
+  for (col_name in numeric_cols) {
+    df[[col_name]] <- suppressWarnings(as.numeric(as.character(df[[col_name]])))
+  }
+
+  df
+}
+
 sql_quote_string <- function(x) {
   if (is.na(x)) return("NULL")
   paste0("'", gsub("'", "''", as.character(x), fixed = TRUE), "'")
@@ -180,27 +199,50 @@ normalize_bq_sql_type <- function(type_name) {
   type_upper
 }
 
+est_tz <- "America/New_York"
+
+convert_to_est <- function(x) {
+  if (length(x) == 0 || is.null(x) || all(is.na(x))) {
+    return(as.POSIXct(NA, tz = est_tz))
+  }
+
+  parsed <- as.POSIXct(x, tz = "UTC")
+  if (is.na(parsed)) {
+    return(as.POSIXct(NA, tz = est_tz))
+  }
+
+  as.POSIXct(format(parsed, tz = est_tz, usetz = FALSE), tz = est_tz)
+}
+
+format_est_timestamp <- function(x) {
+  if (length(x) == 0 || is.null(x) || all(is.na(x))) {
+    return(NA_character_)
+  }
+  format(as.POSIXct(x, tz = est_tz), "%Y-%m-%dT%H:%M:%S%z", tz = est_tz)
+}
+
 normalize_cache_timestamp <- function(x) {
   if (length(x) == 0 || is.null(x) || all(is.na(x))) {
     return(NA_character_)
   }
-  format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  format_est_timestamp(x)
 }
 
 extract_last_modified_time <- function(drive_resource) {
   if (is.null(drive_resource) || is.null(drive_resource$modifiedTime) || length(drive_resource$modifiedTime) == 0) {
-    return(as.POSIXct(NA, tz = "UTC"))
+    return(as.POSIXct(NA, tz = est_tz))
   }
 
   ts_char <- as.character(drive_resource$modifiedTime[[1]])
   if (is.na(ts_char) || ts_char == "") {
-    return(as.POSIXct(NA, tz = "UTC"))
+    return(as.POSIXct(NA, tz = est_tz))
   }
 
-  tryCatch(
-    as.POSIXct(ts_char, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC"),
-    error = function(e) as.POSIXct(NA, tz = "UTC")
-  )
+  parsed_utc <- suppressWarnings(as.POSIXct(ts_char, format = "%Y-%m-%dT%H:%M:%OSZ", tz = "UTC"))
+  if (is.na(parsed_utc)) {
+    parsed_utc <- suppressWarnings(as.POSIXct(ts_char, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC"))
+  }
+  convert_to_est(parsed_utc)
 }
 
 extract_last_modified_by <- function(drive_resource) {
@@ -233,20 +275,30 @@ fetch_sheet_metadata <- function(sheet_id) {
 
   if (is.null(metadata) || nrow(metadata) == 0) {
     return(list(
-      last_modified_time = as.POSIXct(NA, tz = "UTC"),
+      last_modified_time = NA_character_,
       last_modified_by = NA_character_
     ))
   }
 
   drive_resource <- metadata$drive_resource[[1]]
   list(
-    last_modified_time = extract_last_modified_time(drive_resource),
+    last_modified_time = format_est_timestamp(extract_last_modified_time(drive_resource)),
     last_modified_by = extract_last_modified_by(drive_resource)
   )
 }
 
-get_sheet_cache_path <- function(cache_dir, sheet_id) {
-  file.path(cache_dir, paste0(gsub("[^A-Za-z0-9_-]", "_", sheet_id), ".rds"))
+sanitize_cache_name <- function(x) {
+  clean <- gsub("[^A-Za-z0-9_-]", "_", as.character(x))
+  clean <- gsub("_+", "_", clean)
+  clean <- gsub("^_+|_+$", "", clean)
+  ifelse(is.na(clean) | clean == "", "unknown_sheet", clean)
+}
+
+get_sheet_cache_path <- function(cache_dir, sheet_name, sheet_id = NULL) {
+  # New cache naming convention: sheet-name based filename.
+  # Keep old sheet-id path as a fallback read path in read_sheet_cache.
+  base_name <- sanitize_cache_name(sheet_name)
+  file.path(cache_dir, paste0(base_name, ".rds"))
 }
 
 cache_status_columns <- c("cache_used", "cache_fields", "cache_last_modified_time")
@@ -281,8 +333,13 @@ append_cache_status <- function(df, status_map, key_col = "sheet_id") {
   df
 }
 
-read_sheet_cache <- function(cache_dir, sheet_id, last_modified_time) {
-  cache_path <- get_sheet_cache_path(cache_dir, sheet_id)
+read_sheet_cache <- function(cache_dir, sheet_id, sheet_name, last_modified_time) {
+  cache_path <- get_sheet_cache_path(cache_dir, sheet_name, sheet_id)
+  legacy_cache_path <- file.path(cache_dir, paste0(gsub("[^A-Za-z0-9_-]", "_", sheet_id), ".rds"))
+
+  if (!file.exists(cache_path) && file.exists(legacy_cache_path)) {
+    cache_path <- legacy_cache_path
+  }
   if (!file.exists(cache_path)) return(NULL)
 
   cache_obj <- tryCatch(readRDS(cache_path), error = function(e) NULL)
@@ -295,8 +352,8 @@ read_sheet_cache <- function(cache_dir, sheet_id, last_modified_time) {
   cache_obj
 }
 
-write_sheet_cache <- function(cache_dir, sheet_id, last_modified_time, field_name, field_value) {
-  cache_path <- get_sheet_cache_path(cache_dir, sheet_id)
+write_sheet_cache <- function(cache_dir, sheet_id, sheet_name, last_modified_time, field_name, field_value) {
+  cache_path <- get_sheet_cache_path(cache_dir, sheet_name, sheet_id)
   cache_obj <- if (file.exists(cache_path)) {
     tryCatch(readRDS(cache_path), error = function(e) list())
   } else {
@@ -305,7 +362,7 @@ write_sheet_cache <- function(cache_dir, sheet_id, last_modified_time, field_nam
 
   if (!is.list(cache_obj)) cache_obj <- list()
   cache_obj$sheet_id <- sheet_id
-  cache_obj$last_modified_time <- as.POSIXct(last_modified_time, tz = "UTC")
+  cache_obj$last_modified_time <- normalize_cache_timestamp(last_modified_time)
   cache_obj[[field_name]] <- field_value
   saveRDS(cache_obj, cache_path)
 }
@@ -570,7 +627,7 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
     cat("\nProcessing file", i, "of", nrow(discovered_files), ":", sheet_name, "\n")
     
     tryCatch({
-      cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
+      cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time) else NULL
       if (!is.null(cached_sheet) && !is.null(cached_sheet$header_row)) {
         cat("  ✓ Reused cached header row:", cached_sheet$header_row, "\n")
         phase2_cache_status[[length(phase2_cache_status) + 1]] <- data.frame(
@@ -663,7 +720,7 @@ if (use_saved_phases && current_phase != 2 && file.exists(phase2_output)) {
         stringsAsFactors = FALSE
       )
       if (use_file_cache) {
-        write_sheet_cache(cache_dir, sheet_id, last_mod_time, "header_row", as.integer(header_row_detected))
+        write_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time, "header_row", as.integer(header_row_detected))
       }
       phase2_cache_status[[length(phase2_cache_status) + 1]] <- data.frame(
         sheet_id = sheet_id,
@@ -762,7 +819,7 @@ phase3_cache_status <- list()
     cat("\nProcessing file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
         
         tryCatch({
-        cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
+        cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time) else NULL
         if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_headers)) {
           col_names <- as.character(cached_sheet$raw_headers)
           cat("  ✓ Reused cached header list with", length(col_names), "columns\n")
@@ -803,7 +860,7 @@ phase3_cache_status <- list()
       }        # Extract column names (as read by googlesheets4)
         col_names <- names(sheet_data)
         if (use_file_cache) {
-          write_sheet_cache(cache_dir, sheet_id, last_mod_time, "raw_headers", col_names)
+          write_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time, "raw_headers", col_names)
         }
           phase3_cache_status[[length(phase3_cache_status) + 1]] <- data.frame(
             sheet_id = sheet_id,
@@ -1031,6 +1088,7 @@ phase5_cache_status <- list()
 if (use_saved_phases && current_phase != 5 && file.exists(phase5_output)) {
   cat("Loading saved Phase 5 output from:", phase5_output, "\n")
   master_df <- read_csv(phase5_output, show_col_types = FALSE)
+  master_df <- coerce_checkpoint_numeric_fields(master_df)
   cat("✓ Loaded", nrow(master_df), "rows from saved Phase 5 file\n")
 } else {
 
@@ -1060,7 +1118,7 @@ successful_files <- phase2_results %>% filter(status == "success")
     cat("\nIngesting file", i, "of", nrow(successful_files), ":", sheet_name, "\n")
 
   tryCatch({
-    cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, last_mod_time) else NULL
+    cached_sheet <- if (use_file_cache) read_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time) else NULL
     if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_data)) {
       df <- cached_sheet$raw_data
       cat("  ✓ Reused cached raw sheet data\n")
@@ -1084,7 +1142,7 @@ successful_files <- phase2_results %>% filter(status == "success")
       next
     }
     if (use_file_cache && (is.null(cached_sheet) || is.null(cached_sheet$raw_data))) {
-      write_sheet_cache(cache_dir, sheet_id, last_mod_time, "raw_data", df)
+      write_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time, "raw_data", df)
     }
 
     # Current column names (raw) as read
@@ -1330,6 +1388,7 @@ phase6_filter_audit <- data.frame(
 if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   cat("Loading saved Phase 6 output from:", phase6_output, "\n")
   phase6_df <- read_csv(phase6_output, show_col_types = FALSE)
+  phase6_df <- coerce_checkpoint_numeric_fields(phase6_df)
   cat("✓ Loaded", nrow(phase6_df), "rows from saved Phase 6 file\n")
 
   if (file.exists(phase6_filter_audit_output)) {
@@ -1343,6 +1402,7 @@ if (use_saved_phases && current_phase != 6 && file.exists(phase6_output)) {
   if (!file.exists(phase5_output)) stop("Phase 5 output not found: ", phase5_output)
   cat("Reading Phase 5 master from:", phase5_output, "\n")
   phase6_df <- read_csv(phase5_output, show_col_types = FALSE)
+  phase6_df <- coerce_checkpoint_numeric_fields(phase6_df)
 
   # Normalize column name typos: pacakge_id -> package_id
   if ("pacakge_id" %in% names(phase6_df) && !"package_id" %in% names(phase6_df)) {
@@ -1675,6 +1735,7 @@ if (use_saved_phases && current_phase != 7 && file.exists(phase7_output)) {
   if (!file.exists(phase6_output)) stop("Phase 6 output not found: ", phase6_output)
   cat("Reading Phase 6 master from:", phase6_output, "\n")
   base_df <- read_csv(phase6_output, show_col_types = FALSE)
+  base_df <- coerce_checkpoint_numeric_fields(base_df)
 
   # Ensure date columns are Date class
   date_cols <- c("start_date_final", "end_date_final")
@@ -1813,6 +1874,7 @@ if (length(integer_output_cols) > 0) {
 cat("\nBuilding KPI validation table between Phase 5 and Phase 7...\n")
 if (file.exists(phase5_output)) {
   phase5_df <- read_csv(phase5_output, show_col_types = FALSE)
+  phase5_df <- coerce_checkpoint_numeric_fields(phase5_df)
 
   # KPI metrics to validate (exclude benchmarks; those are often non-additive / metadata)
   validate_kpis <- setdiff(known_kpi_metrics, c("benchmark", "benchmark_metric"))

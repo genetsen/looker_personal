@@ -1,3 +1,44 @@
+## 2026-04-10
+
+### Added
+- **Beginner-friendly ADIF lineage one-pager**
+  What: Added a short single-page guide that explains the live ADIF main-table lineage from raw delivery, planning, original FPD, updated FPD, social, and pacing sources through the current production target table.
+  Why: Makes the production pipeline easier to understand without reading several larger runbooks first. -codexapp thread-id-unavailable
+
+<details><summary>Paths — Beginner-friendly ADIF lineage one-pager</summary>
+
+- [projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md](projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md)
+
+</details>
+
+### Changed
+- **ADIF lineage docs refreshed against live warehouse state**
+  What: Re-validated the documented ADIF lineage against the current warehouse objects, refreshed the live row counts and verification dates for the main table and older notebook table, and updated the updated-FPD guide to match the current landing-table row count, package count, and date range.
+  Why: Keeps the docs aligned with the production warehouse and makes it clearer which numbers are live checks versus older snapshots. -codexapp thread-id-unavailable
+
+<details><summary>Paths — ADIF lineage docs refreshed against live warehouse state</summary>
+
+- [README.md](README.md)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+- [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
+
+</details>
+
+## 2026-04-09
+
+### Changed
+- **Updated FPD now carries both refresh-time and source-edit time**
+  What: Added `source_sheet_modified_time` to the updated-FPD landing load, and threaded source edit metadata into the main ADIF build as `fpd_source_sheet_modified_date` using both updated-FPD (`package_id + date`) and shortcuts-FPD (`package_id + date_final`) joins.
+  Why: Makes freshness debugging clearer by separating “when the pipeline ran” from “when the business source was last updated”. -codexapp 019d7390-6c00-7531-ab32-bd7bd1a64981
+
+<details><summary>Paths — Updated FPD now carries both refresh-time and source-edit time</summary>
+
+- [projects/updated_fpd_integration/util_process_updated_fpd.r](projects/updated_fpd_integration/util_process_updated_fpd.r)
+- [projects/updated_fpd_integration/README_Updated_FPD_Integration.md](projects/updated_fpd_integration/README_Updated_FPD_Integration.md)
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl_v2.ipynb)
+
+</details>
+
 ## 2026-04-08
 
 ### Changed

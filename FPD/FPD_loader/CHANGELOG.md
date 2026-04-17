@@ -1,3 +1,12 @@
+## 2026-04-09
+
+### Fixed
+
+- **Checkpoint CSV numeric type preservation -codexapp (threadID unavailable in local session)**
+  Issue: The main shortcut-aware loader could reread sparse rate columns like `ctr_vcr` from checkpoint CSVs as logical blanks, which later caused a staging/prod BigQuery schema mismatch and blocked the prod sync.
+  Cause: `read_csv()` inferred mostly-empty rate columns too loosely during the Phase 5 to Phase 6 checkpoint round-trip, and the later upload logic then wrote the affected column as text.
+  Resolution: Added an explicit checkpoint-read numeric coercion safeguard for KPI/rate fields including `ctr` and `ctr_vcr`, then verified the loader completed and updated the prod BigQuery table.
+
 ## 2026-03-11
 
 ### Changed

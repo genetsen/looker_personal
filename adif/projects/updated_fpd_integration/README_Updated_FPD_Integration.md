@@ -55,9 +55,9 @@ This document describes the integration of **updated first-party data (FPD)** fr
                          ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │         STEP 4: Upload to BigQuery                              │
-│  landing.adif_updated_fpd_daily (1,297 rows)                    │
+│  landing.adif_updated_fpd_daily (2,162 rows)                    │
 │  • One row per package per day                                  │
-│  • Date range: 2025-10-26 to 2026-01-12                        │
+│  • Date range: 2025-10-01 to 2026-01-15                        │
 └────────────────────────┬─────────────────────────────────────────┘
                          │
                          ▼
@@ -148,7 +148,7 @@ flowchart LR
 - `data/updated_fpd_package_summary.csv` - Summary by package
 - BigQuery table: `landing.adif_updated_fpd_daily`
 
-**Runtime**: ~7 seconds for 46 packages → 1,297 daily rows
+**Runtime**: recent production output reflects 62 packages → 2,162 daily rows
 
 ### SQL Scripts
 
@@ -211,14 +211,15 @@ COALESCE(
 | `total_package_impressions` | FLOAT | Original package-level total (reference) |
 | `total_package_spend` | FLOAT | Original package-level total (reference) |
 | `data_source` | STRING | Always "updated_fpd_sheet" |
+| `source_sheet_modified_time` | TIMESTAMP | When the source Google Sheet was last edited (Drive metadata) |
 | `data_update_datetime` | TIMESTAMP | When the data was processed |
 
 **Current Data**:
-- **Rows**: 1,297
-- **Packages**: 46
-- **Date Range**: 2025-10-26 to 2026-01-12
-- **Total Impressions**: 244,251,156
-- **Total Spend**: $3,265,977
+- **Rows**: 2,162
+- **Packages**: 62
+- **Date Range**: 2025-10-01 to 2026-01-15
+- **Total Impressions**: 267,563,012
+- **Total Spend**: $3,575,977
 
 ### Top 5 Packages by Spend
 

@@ -36,7 +36,7 @@ flowchart LR
 - Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
 - Display name: `ADIF_FullDataRefresh_2604`
 - Schedule: `every 10 hours`
-- Verified on: `2026-04-08`
+- Verified on: `2026-04-10`
 - Live target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
 
 ## Reference Notebook and Archived SQL
@@ -68,11 +68,12 @@ flowchart LR
 
 ## Verification Notes
 
-Live verification completed on `2026-04-08`:
+Warehouse-side verification completed on `2026-04-10`:
 
-- `repo_stg.adif__mainDataTable_notebook_v2_test` exists and had `16,680` rows at inspection time
+- `repo_stg.adif__mainDataTable_notebook_v2_test` exists and had `16,701` rows at inspection time
 - `repo_stg.adif__mainDataTable_notebook` also exists and had `16,663` rows at inspection time
-- The scheduled transfer updates the V2 test table more recently than the older notebook table
+- The V2 test table was modified on `2026-04-10T10:03:13Z`, which is newer than the older notebook table modification time `2026-04-06T14:02:15Z`
+- `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`, `repo_stg.stg__adif__social_crossplatform`, and `repo_int.crossplatform_pacing` still match the documented live lineage chain
 
 The notebook still contains useful validation queries for:
 - Table totals (`row_count`, `min_date`, `max_date`, `total_spend`, `total_impressions`) for 2026
@@ -101,3 +102,9 @@ The notebook still contains useful validation queries for:
 - Snapshot notes:
   - This HTML is a point-in-time export built from BigQuery results captured on `2026-04-07`
   - Status logic stays pinned to that same reference day so the snapshot stays stable when reopened later
+  - Treat the HTML row counts and freshness badges as a snapshot, not as live production truth
+
+## One-Page Guide
+
+- File: `projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md`
+- Purpose: beginner-friendly summary of the current production lineage from raw inputs to `repo_stg.adif__mainDataTable_notebook_v2_test`

@@ -88,7 +88,7 @@ The main live ADIF refresh currently runs from a BigQuery scheduled query, not o
 - Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
 - Display name: `ADIF_FullDataRefresh_2604`
 - Schedule: `every 10 hours`
-- Verified against live BigQuery on: `2026-04-08`
+- Verified against live BigQuery on: `2026-04-10`
 - Current live output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
 - Current older notebook output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
 
@@ -108,6 +108,7 @@ Why this matters:
 Related files:
 
 - Active reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- One-page lineage guide: `projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md`
 - Archived legacy SQL and duplicate notebook copy: `projects/social_layering/archive/legacy_scheduled_sql/`
 - Snapshot QA dashboard for the V2 test output:
   `projects/social_layering/dashboard/adif__mainDataTable_notebook_v2_test_qa_dashboard.html`
@@ -122,7 +123,7 @@ ADIF currently uses two separate FPD branches that meet in the ADIF view layer.
 This is the broad partner-sheet branch.
 
 - ADIF-specific loader script: `projects/tv_digital_pipeline/util_collect_fpd_v2.r`
-- Shortcut-aware shared loader script: `FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r`
+- Shortcut-aware shared loader script: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r`
 - Current base ADIF SQL source table:
   `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
 
@@ -141,6 +142,9 @@ Result:
 
 - Original FPD is the first actuals layer.
 - In the base ADIF view, original FPD overrides DCM when both exist on the same package/date row.
+- In the live scheduled main table, `fpd_source_sheet_modified_date` now reads from both FPD branches:
+  - updated FPD uses `landing.adif_updated_fpd_daily.source_sheet_modified_time` on `package_id + date`
+  - original shortcuts FPD uses `landing.fpd_data_ranged_shortcutsFolder.last_modified_time` on `package_id + date_final`
 
 ### Updated FPD Branch
 
@@ -242,11 +246,12 @@ flowchart LR
 
 ### Verification Notes
 
-Live verification completed on `2026-04-08`:
+Warehouse-side verification completed on `2026-04-10`:
 
-- Transfer config `ADIF_FullDataRefresh_2604` is active and `SUCCEEDED`
-- `repo_stg.adif__mainDataTable_notebook_v2_test` exists and was modified on `2026-04-08T18:03:43Z`
-- `repo_stg.adif__mainDataTable_notebook` also still exists, but its last observed modification was `2026-04-06T14:02:15Z`
+- `repo_stg.adif__mainDataTable_notebook_v2_test` exists, had `16,701` rows, and was last modified on `2026-04-10T10:03:13Z`
+- `repo_stg.adif__mainDataTable_notebook` also still exists, had `16,663` rows, and was last modified on `2026-04-06T14:02:15Z`
+- `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`, `repo_stg.stg__adif__social_crossplatform`, and `repo_int.crossplatform_pacing` all still exist in production
+- The transfer config identifier and schedule remain documented here, but I could not re-check scheduler-service metadata from this environment because neither `bq` nor `gcloud` is installed
 
 The reference notebook still includes post-run checks for:
 - Target table row/date/spend/impression totals

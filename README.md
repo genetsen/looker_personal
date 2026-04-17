@@ -7,26 +7,31 @@ SQL- and BigQuery-first analytics workspace for campaign reporting pipelines acr
 This workspace uses a monorepo + project subrepo structure.
 
 Default preference for long-term simplicity:
+
 - Use a single repo with folders as the default operating model.
 - Treat subrepos as exceptions, not the default.
 - Keep project boundaries with folder structure and local instruction files before introducing nested Git repos.
 
 Monorepo (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal`):
+
 - Purpose: data model platform at large.
 - Scope: shared SQL, shared R/scripts, warehouse workflows, AI agent/skill assets, notes, and cross-project docs.
 - Rule: if content is reusable across clients/projects, keep it here.
 
 Project subrepos (for example `mft`, and future `adif`/`apollo` if promoted):
+
 - Purpose: project- or client-specific implementation and operations.
 - Scope: project-only transformations, runbooks, project docs, and project instructions.
 - Rule: if content is specific to one project/client, keep it in that project subrepo.
 
 When to allow a subrepo (all should be true):
+
 - The project has an independent release cadence.
 - The project needs separate access control or ownership boundaries.
 - The project requires separate lifecycle/tooling from the root workspace.
 
 Instruction files policy:
+
 - Keep root-level instructions for monorepo rules (`AGENTS.md`, `CLAUDE.md`).
 - Keep separate instruction files per project subrepo for local project behavior.
 - Every subrepo `AGENTS.md` should explicitly reference both:
@@ -47,15 +52,16 @@ Instruction files policy:
 - TV Gmail loaders (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md`) documenting the shared local and national estimate-ingestion flow into `landing.tv_local_estimates` and `landing.tv_national_estimates`
 
 TV national Gmail loader note:
-- [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r) now recognizes the current national CSV impression header variants, including `total_planned_impressions_all_demos`, before falling back to objective-impression fields.
+
+- `[/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r)` now recognizes the current national CSV impression header variants, including `total_planned_impressions_all_demos`, before falling back to objective-impression fields.
 - The TV Gmail loaders now stay focused on ingestion, while the universal runner owns the `Incoming` vs `Post-update` verification and surfaces the result from `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/verifications/`.
-- Both TV Gmail loaders now source the shared helper [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r), which is available to other R scripts and now sends standardized failure emails with a script-based subject line, a 12-hour timestamp, and direct file paths for alert-helper update instructions documented in [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md).
+- Both TV Gmail loaders now source the shared helper `[/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r)`, which is available to other R scripts and now sends standardized failure emails with a script-based subject line, a 12-hour timestamp, and direct file paths for alert-helper update instructions documented in `[/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md)`.
 - Those TV loaders now also check the runner-managed `util/data_loaders -> ../R_functions` layout and the local compatibility shim when they are sourced from the external universal runner, so the shared helper still resolves correctly during scheduled runs.
 
 ## Cross-Brand Data Flow Diagram (Ingestion -> BigQuery -> dbt -> Dashboards)
 
 - OLI (Olipop), MassMutual (MFT), and ADIF flow diagram:
-  `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/DATA_FLOW_DIAGRAMS.md`
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/DATA_FLOW_DIAGRAMS.md`
 - This view maps each brand’s path from source ingestion to BigQuery datasets/tables, dbt/SQL model layer, and final BI dashboards.
 
 ## New Capability: ADIF Social Layer From Cross-Platform Raw
@@ -63,7 +69,7 @@ TV national Gmail loader note:
 - Source table: `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
 - Layer SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/stg__adif__social_crossplatform.sql`
 - Default output view: `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
-- Current inclusion logic: keep rows where `account_name` is one of `ADIF USA`, `A Diamond is Forever - US`, `A Diamond is Forever`, or `De Beers Group`, and `campaign_name` contains literal `WP_`
+- Current inclusion logic: keep rows where `account_name` is one of `ADIF USA`, `A Diamond is Forever - US`, `A Diamond is Forever`, or `De Beers Group`, and `campaign_name` contains literal `WP`_
 - Social-layered ADIF table build SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql`
 - Scheduled-query payload SQL: `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql`
 - Social-layered table target: `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_with_social_tbl`
@@ -123,6 +129,7 @@ git rev-list --left-right --count refs/heads/dev...refs/remotes/Omni_remote/dev
 ```
 
 Expected validation result after rollback:
+
 - The three SHAs are identical for `dev`, `Omni_remote/dev`, and `backup/dev-before-adif-cutover-2026-02-13`.
 - Ahead/behind count is `0 0`.
 

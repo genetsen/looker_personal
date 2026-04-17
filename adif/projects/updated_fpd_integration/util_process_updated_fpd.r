@@ -6,6 +6,7 @@
 ################################################################################
 
 library(googlesheets4)
+library(googledrive)
 library(bigrquery)
 library(dplyr)
 library(tidyr)
@@ -19,6 +20,7 @@ cat("Started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n\n")
 
 # Authenticate
 gs4_auth(email = "gene.tsenter@giantspoon.com")
+drive_auth(email = "gene.tsenter@giantspoon.com")
 bq_auth(email = "gene.tsenter@giantspoon.com")
 
 # Configuration
@@ -27,6 +29,27 @@ output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
 bq_project <- "looker-studio-pro-452620"
 bq_dataset <- "landing"
 bq_table <- "adif_updated_fpd_daily"
+
+# Capture a "source was edited at" timestamp from Google Drive metadata.
+# This is different from `data_update_datetime`, which is "this script ran at".
+source_sheet_modified_time <- tryCatch({
+  sheet_drive <- drive_get(as_id(sheet_id))
+  modified_raw <- tryCatch(
+    sheet_drive$drive_resource[[1]]$modifiedTime,
+    error = function(e) NA_character_
+  )
+
+  if (is.na(modified_raw)) {
+    as.POSIXct(NA)
+  } else {
+    modified_raw <- gsub("Z$", "", modified_raw)
+    as.POSIXct(modified_raw, format = "%Y-%m-%dT%H:%M:%OS", tz = "UTC")
+  }
+}, error = function(e) {
+  as.POSIXct(NA)
+})
+
+cat("Source sheet last modified time (Drive):", format(source_sheet_modified_time, "%Y-%m-%d %H:%M:%S %Z"), "\n\n")
 
 ################################################################################
 #### STEP 1: READ UPDATED FPD FROM GOOGLE SHEET ####
@@ -215,11 +238,12 @@ for (i in seq_len(nrow(fpd_ready))) {
       daily_fpd_spend = daily_spend,
       # Original package totals for reference
       total_package_impressions = pkg$updated_FPD_IMPRESSIONS,
-      total_package_spend = pkg$updated_FPD_SPEND,
-      data_source = "updated_fpd_sheet",
-      data_update_datetime = Sys.time(),
-      stringsAsFactors = FALSE
-    )
+	      total_package_spend = pkg$updated_FPD_SPEND,
+	      data_source = "updated_fpd_sheet",
+	      source_sheet_modified_time = source_sheet_modified_time,
+	      data_update_datetime = Sys.time(),
+	      stringsAsFactors = FALSE
+	    )
 
     row_idx <- row_idx + 1
   }

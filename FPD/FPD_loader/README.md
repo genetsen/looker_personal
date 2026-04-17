@@ -57,7 +57,7 @@ Use this quick checklist before and after every run:
 ## What Changed / How To Undo
 
 - What changed:
-  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, and staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery.
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery, and a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run.
 - How to undo:
   if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
 
@@ -130,6 +130,8 @@ known_kpi_metrics <- c(
 ```
 
 If a new partner includes a metric column not in this list, add it here. Only columns in this list are coerced to numeric and divided during daily expansion.
+
+Checkpoint CSV reads also force `ctr` and `ctr_vcr` back to numeric so sparse rate fields do not get re-read as logical blank columns before BigQuery upload.
 
 ## Inputs
 
