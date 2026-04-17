@@ -152,11 +152,14 @@ day_to_wstart <- c(Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7
 # Keep validation results available for final end-of-run reporting
 validation_table <- data.frame()
 validation_diff_cols <- character(0)
+creative_refresh_target_sheets <- character(0)
 
 project_id <- "looker-studio-pro-452620"
 dataset_id <- "landing"
 prod_table <- "fpd_data_ranged_shortcutsFolder"
 staging_table <- paste0(prod_table, "__staging")
+creative_refresh_script <- "/Users/eugenetsenter/.codex/skills/refresh-creative-gs-apo/scripts/refresh_apo_creatives.py"
+creative_refresh_title_prefix <- "APO | Partner Data Collection"
 
 map_bq_type <- function(x) {
   if (inherits(x, "POSIXct") || inherits(x, "POSIXt")) return("TIMESTAMP")
@@ -198,6 +201,126 @@ normalize_bq_sql_type <- function(type_name) {
   if (type_upper == "INTEGER") return("INT64")
   if (type_upper == "BOOLEAN") return("BOOL")
   type_upper
+}
+
+capture_phase5_creative_snapshot <- function(path) {
+  if (!file.exists(path)) {
+    return(NULL)
+  }
+
+  tryCatch(
+    read_csv(path, show_col_types = FALSE),
+    error = function(e) {
+      cat("⚠ Could not read prior Phase 5 creative snapshot:", e$message, "\n")
+      NULL
+    }
+  )
+}
+
+build_creative_refresh_signature <- function(df) {
+  if (is.null(df) || !is.data.frame(df)) {
+    return(data.frame(
+      source_file = character(0),
+      final_img_signature = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  required_cols <- c("source_file", "final_img_path")
+  if (!all(required_cols %in% names(df))) {
+    return(data.frame(
+      source_file = character(0),
+      final_img_signature = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  df %>%
+    transmute(
+      source_file = trimws(as.character(source_file)),
+      final_img_path = trimws(as.character(final_img_path))
+    ) %>%
+    filter(
+      !is.na(source_file),
+      source_file != "",
+      str_starts(source_file, fixed(creative_refresh_title_prefix)),
+      !is.na(final_img_path),
+      final_img_path != ""
+    ) %>%
+    distinct(source_file, final_img_path) %>%
+    arrange(source_file, final_img_path) %>%
+    group_by(source_file) %>%
+    summarize(
+      final_img_signature = paste(final_img_path, collapse = " ||| "),
+      .groups = "drop"
+    )
+}
+
+detect_creative_refresh_targets <- function(previous_df, current_df) {
+  current_sig <- build_creative_refresh_signature(current_df)
+  if (nrow(current_sig) == 0) {
+    return(character(0))
+  }
+
+  previous_sig <- build_creative_refresh_signature(previous_df)
+
+  current_sig %>%
+    left_join(previous_sig, by = "source_file", suffix = c(".current", ".previous")) %>%
+    filter(
+      is.na(final_img_signature.previous) |
+        final_img_signature.current != final_img_signature.previous
+    ) %>%
+    pull(source_file) %>%
+    unique()
+}
+
+run_creative_refresh_targets <- function(sheet_titles) {
+  sheet_titles <- unique(sheet_titles[!is.na(sheet_titles) & sheet_titles != ""])
+  if (length(sheet_titles) == 0) {
+    cat("No APO sheets need creative_git_link refresh based on Final_img_path changes.\n")
+    return(invisible(TRUE))
+  }
+
+  if (!file.exists(creative_refresh_script)) {
+    cat("⚠ Creative refresh script not found; skipping creative_git_link refresh.\n")
+    return(invisible(FALSE))
+  }
+
+  cat("\n=== Running creative_git_link refresh for changed APO sheets ===\n")
+  for (sheet_title in sheet_titles) {
+    cat("Refreshing creative links for:", sheet_title, "\n")
+    refresh_output <- tryCatch(
+      system2(
+        "python3",
+        c(creative_refresh_script, "--drive-title-prefix", sheet_title),
+        stdout = TRUE,
+        stderr = TRUE
+      ),
+      error = function(e) {
+        structure(
+          paste("ERROR launching creative refresh:", e$message),
+          status = 1
+        )
+      }
+    )
+
+    refresh_status <- attr(refresh_output, "status")
+    if (is.null(refresh_status)) {
+      refresh_status <- 0
+    }
+
+    if (length(refresh_output) > 0) {
+      cat(paste(refresh_output, collapse = "\n"), "\n")
+    }
+
+    if (!identical(refresh_status, 0L) && !identical(refresh_status, 0)) {
+      cat("⚠ Creative refresh failed for", sheet_title, "- continuing after BigQuery sync.\n")
+    } else {
+      cat("✓ Creative refresh completed for", sheet_title, "\n")
+    }
+  }
+
+  invisible(TRUE)
 }
 
 est_tz <- "America/New_York"
