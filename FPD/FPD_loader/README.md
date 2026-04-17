@@ -117,8 +117,10 @@ Rscript util_collect_fpd_shortcutsFolder.r --help
 ```
 
 If `--pattern` is not provided, the script uses the default value from the configuration block.
-By default, the script stores per-sheet cache files in `output/sheet_cache/` and reuses them only when the Drive `last_modified_time` for that file matches the cached copy.
-Use `--no-file-cache` when you want to force a fully fresh Google Sheets pull.
+By default, the script stores per-sheet cache files in `output/sheet_cache/`.
+Phase 5 now always reads live Google Sheets row data for production ingestion because formula-driven sheets can expose new visible rows without a reliable Drive `last_modified_time` change.
+The cache is still refreshed on each run and can still be reused for structural metadata like detected header rows and raw header lists.
+Use `--no-file-cache` when you want to bypass cache reads for those metadata lookups while still rebuilding the cache files from fresh sheet reads.
 
 ### KPI Metrics List
 
