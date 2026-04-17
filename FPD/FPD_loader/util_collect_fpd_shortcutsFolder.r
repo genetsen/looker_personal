@@ -148,29 +148,22 @@ day_to_wstart <- c(Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7
   phase7_output <- file.path(output_dir, "phase7_daily_master_data.csv")
   phase6_filter_audit_output <- file.path(output_dir, "phase6_filter_audit.csv")
   phase7_validation_output <- file.path(output_dir, "phase7_validation_table.csv")
-  previous_phase5_creative_snapshot <- NULL
 #
 # Keep validation results available for final end-of-run reporting
 validation_table <- data.frame()
 validation_diff_cols <- character(0)
-creative_refresh_target_sheets <- character(0)
-skip_creative_refresh_hook <- identical(Sys.getenv("FPD_SKIP_CREATIVE_REFRESH", unset = "0"), "1")
 
 project_id <- "looker-studio-pro-452620"
 dataset_id <- "landing"
 prod_table <- "fpd_data_ranged_shortcutsFolder"
 staging_table <- paste0(prod_table, "__staging")
-creative_refresh_script <- "/Users/eugenetsenter/.codex/skills/refresh-creative-gs-apo/scripts/refresh_apo_creatives.py"
 creative_refresh_title_prefix <- "APO | Partner Data Collection"
-creative_refresh_ssl_cert_file <- "/etc/ssl/cert.pem"
-current_rscript_path <- {
-  file_arg <- grep("^--file=", commandArgs(), value = TRUE)
-  if (length(file_arg) > 0) {
-    normalizePath(sub("^--file=", "", file_arg[[1]]), winslash = "/", mustWork = FALSE)
-  } else {
-    "util_collect_fpd_shortcutsFolder.r"
-  }
-}
+creative_repo_owner <- "genetsen"
+creative_repo_name <- "apo-db-creat"
+creative_repo_asset_root <- "assets/apo"
+creative_repo_url <- paste0("https://github.com/", creative_repo_owner, "/", creative_repo_name, ".git")
+creative_repo_state <- new.env(parent = emptyenv())
+creative_repo_state$repo_dir <- NULL
 
 map_bq_type <- function(x) {
   if (inherits(x, "POSIXct") || inherits(x, "POSIXt")) return("TIMESTAMP")
@@ -201,6 +194,27 @@ coerce_checkpoint_numeric_fields <- function(df) {
   df
 }
 
+drop_blank_generated_columns <- function(df) {
+  if (ncol(df) == 0) return(df)
+
+  generated_cols <- names(df)[grepl("^x\\d+$", names(df), ignore.case = TRUE)]
+  if (length(generated_cols) == 0) return(df)
+
+  keep_cols <- vapply(
+    generated_cols,
+    function(col_name) {
+      values <- df[[col_name]]
+      any(!is.na(values) & trimws(as.character(values)) != "")
+    },
+    logical(1)
+  )
+
+  drop_cols <- generated_cols[!keep_cols]
+  if (length(drop_cols) == 0) return(df)
+
+  df %>% select(-all_of(drop_cols))
+}
+
 sql_quote_string <- function(x) {
   if (is.na(x)) return("NULL")
   paste0("'", gsub("'", "''", as.character(x), fixed = TRUE), "'")
@@ -214,222 +228,253 @@ normalize_bq_sql_type <- function(type_name) {
   type_upper
 }
 
-capture_phase5_creative_snapshot <- function(path) {
-  if (!file.exists(path)) {
-    return(NULL)
-  }
+apo_clean_text <- function(x) {
+  if (length(x) == 0 || is.null(x) || all(is.na(x))) return("")
+  trimws(as.character(x[[1]]))
+}
 
-  tryCatch(
-    read_csv(path, show_col_types = FALSE),
-    error = function(e) {
-      cat("⚠ Could not read prior Phase 5 creative snapshot:", e$message, "\n")
-      NULL
-    }
+apo_is_target_sheet <- function(sheet_name) {
+  !is.na(sheet_name) && str_starts(as.character(sheet_name), fixed(creative_refresh_title_prefix))
+}
+
+apo_col_to_a1 <- function(col_index) {
+  stopifnot(col_index >= 1)
+  out <- ""
+  n <- as.integer(col_index)
+  while (n > 0) {
+    rem <- (n - 1) %% 26
+    out <- paste0(intToUtf8(65 + rem), out)
+    n <- (n - 1) %/% 26
+  }
+  out
+}
+
+apo_raw_github_url <- function(rel_path) {
+  encoded_parts <- vapply(strsplit(rel_path, "/", fixed = TRUE)[[1]], URLencode, character(1), reserved = TRUE)
+  paste0(
+    "https://raw.githubusercontent.com/",
+    creative_repo_owner,
+    "/",
+    creative_repo_name,
+    "/main/",
+    paste(encoded_parts, collapse = "/")
   )
 }
 
-build_creative_refresh_signature <- function(df) {
-  if (is.null(df) || !is.data.frame(df)) {
-    return(data.frame(
-      source_file = character(0),
-      final_img_signature = character(0),
-      stringsAsFactors = FALSE
-    ))
+apo_git_run <- function(args) {
+  out <- system2("git", args, stdout = TRUE, stderr = TRUE)
+  status <- attr(out, "status")
+  if (!is.null(status) && status != 0) {
+    stop(paste(c(out), collapse = "\n"))
   }
-
-  required_cols <- c("source_file", "final_img_path")
-  if (!all(required_cols %in% names(df))) {
-    return(data.frame(
-      source_file = character(0),
-      final_img_signature = character(0),
-      stringsAsFactors = FALSE
-    ))
-  }
-
-  df %>%
-    transmute(
-      source_file = trimws(as.character(source_file)),
-      final_img_path = trimws(as.character(final_img_path))
-    ) %>%
-    filter(
-      !is.na(source_file),
-      source_file != "",
-      str_starts(source_file, fixed(creative_refresh_title_prefix)),
-      !is.na(final_img_path),
-      final_img_path != ""
-    ) %>%
-    distinct(source_file, final_img_path) %>%
-    arrange(source_file, final_img_path) %>%
-    group_by(source_file) %>%
-    summarize(
-      final_img_signature = paste(final_img_path, collapse = " ||| "),
-      .groups = "drop"
-    )
+  out
 }
 
-detect_creative_refresh_targets <- function(previous_df, current_df) {
-  current_sig <- build_creative_refresh_signature(current_df)
-  changed_path_sheets <- character(0)
-  if (nrow(current_sig) > 0) {
-    previous_sig <- build_creative_refresh_signature(previous_df)
-    changed_path_sheets <- current_sig %>%
-      left_join(previous_sig, by = "source_file", suffix = c(".current", ".previous")) %>%
-      filter(
-        is.na(final_img_signature.previous) |
-          final_img_signature.current != final_img_signature.previous
-      ) %>%
-      pull(source_file) %>%
-      unique()
+apo_ensure_repo_clone <- function() {
+  repo_dir <- creative_repo_state$repo_dir
+  if (!is.null(repo_dir) && dir.exists(file.path(repo_dir, ".git"))) {
+    return(repo_dir)
   }
 
-  blank_link_sheets <- character(0)
-  if (!is.null(current_df) && is.data.frame(current_df) && "source_file" %in% names(current_df) && "final_img_path" %in% names(current_df)) {
-    if ("creative_git_link" %in% names(current_df)) {
-      blank_link_sheets <- current_df %>%
-        transmute(
-          source_file = trimws(as.character(source_file)),
-          final_img_path = trimws(as.character(final_img_path)),
-          creative_git_link = trimws(as.character(creative_git_link))
-        ) %>%
-        filter(
-          !is.na(source_file),
-          source_file != "",
-          str_starts(source_file, fixed(creative_refresh_title_prefix)),
-          !is.na(final_img_path),
-          final_img_path != "",
-          is.na(creative_git_link) | creative_git_link == ""
-        ) %>%
-        pull(source_file) %>%
-        unique()
-    } else {
-      blank_link_sheets <- current_df %>%
-        transmute(
-          source_file = trimws(as.character(source_file)),
-          final_img_path = trimws(as.character(final_img_path))
-        ) %>%
-        filter(
-          !is.na(source_file),
-          source_file != "",
-          str_starts(source_file, fixed(creative_refresh_title_prefix)),
-          !is.na(final_img_path),
-          final_img_path != ""
-        ) %>%
-        pull(source_file) %>%
-        unique()
-    }
+  repo_dir <- file.path(tempdir(), paste0("apo-db-creat-", Sys.getpid()))
+  if (dir.exists(repo_dir)) {
+    unlink(repo_dir, recursive = TRUE, force = TRUE)
   }
-
-  unique(c(changed_path_sheets, blank_link_sheets))
+  apo_git_run(c("clone", creative_repo_url, repo_dir))
+  creative_repo_state$repo_dir <- repo_dir
+  repo_dir
 }
 
-run_creative_refresh_targets <- function(sheet_titles) {
-  sheet_titles <- unique(sheet_titles[!is.na(sheet_titles) & sheet_titles != ""])
-  if (length(sheet_titles) == 0) {
-    cat("No APO sheets need creative_git_link refresh based on Final_img_path changes.\n")
-    return(character(0))
+apo_normalize_local_path <- function(raw_path) {
+  cleaned <- apo_clean_text(raw_path)
+  cleaned <- sub("'$", "", cleaned)
+  if (cleaned == "") return(NULL)
+
+  candidates <- cleaned
+  if (grepl("^/Users/[^/]+/", cleaned)) {
+    remapped <- sub("^/Users/[^/]+/", "/Users/eugenetsenter/", cleaned)
+    candidates <- unique(c(candidates, remapped))
   }
 
-  if (!file.exists(creative_refresh_script)) {
-    cat("⚠ Creative refresh script not found; skipping creative_git_link refresh.\n")
-    return(character(0))
-  }
-
-  cat("\n=== Running creative_git_link refresh for changed APO sheets ===\n")
-  refreshed_sheets <- character(0)
-  for (sheet_title in sheet_titles) {
-    cat("Refreshing creative links for:", sheet_title, "\n")
-    refresh_output <- tryCatch(
-      system2(
-        "env",
-        c(
-          paste0("SSL_CERT_FILE=", creative_refresh_ssl_cert_file),
-          "python3",
-          creative_refresh_script,
-          "--drive-title-prefix",
-          sheet_title
-        ),
-        stdout = TRUE,
-        stderr = TRUE
-      ),
-      error = function(e) {
-        structure(
-          paste("ERROR launching creative refresh:", e$message),
-          status = 1
-        )
-      }
-    )
-
-    refresh_status <- attr(refresh_output, "status")
-    if (is.null(refresh_status)) {
-      refresh_status <- 0
-    }
-
-    if (length(refresh_output) > 0) {
-      cat(paste(refresh_output, collapse = "\n"), "\n")
-    }
-
-    if (!identical(refresh_status, 0L) && !identical(refresh_status, 0)) {
-      cat("⚠ Creative refresh failed for", sheet_title, "- continuing after BigQuery sync.\n")
-    } else {
-      cat("✓ Creative refresh completed for", sheet_title, "\n")
-      refreshed_sheets <- c(refreshed_sheets, sheet_title)
+  for (candidate in candidates) {
+    candidate_path <- path.expand(candidate)
+    if (file.exists(candidate_path) && !dir.exists(candidate_path)) {
+      return(normalizePath(candidate_path, winslash = "/", mustWork = TRUE))
     }
   }
 
-  unique(refreshed_sheets)
+  NULL
 }
 
-rerun_bq_sync_for_refreshed_sheets <- function(sheet_titles) {
-  sheet_titles <- unique(sheet_titles[!is.na(sheet_titles) & sheet_titles != ""])
-  if (length(sheet_titles) == 0) {
-    cat("No sheet-scoped BigQuery resync is needed after creative refresh.\n")
-    return(invisible(TRUE))
+apo_sheet_needs_refresh <- function(raw_df, sheet_name) {
+  if (!apo_is_target_sheet(sheet_name) || !"Final_img_path" %in% names(raw_df)) {
+    return(FALSE)
   }
 
-  cat("\n=== Re-running changed APO sheets so BigQuery captures refreshed creative_git_link values ===\n")
-  for (sheet_title in sheet_titles) {
-    cat("Re-running loader for:", sheet_title, "\n")
-    rerun_output <- tryCatch(
-      system2(
-        "env",
-        c(
-          "FPD_SKIP_CREATIVE_REFRESH=1",
-          "Rscript",
-          current_rscript_path,
-          paste0("--pattern=", sheet_title),
-          "--no-file-cache"
-        ),
-        stdout = TRUE,
-        stderr = TRUE
-      ),
-      error = function(e) {
-        structure(
-          paste("ERROR launching BigQuery resync:", e$message),
-          status = 1
-        )
-      }
+  source_vals <- trimws(as.character(raw_df[["Final_img_path"]]))
+  source_present <- !is.na(source_vals) & source_vals != ""
+  if (!any(source_present)) {
+    return(FALSE)
+  }
+
+  if (!"creative_git_link" %in% names(raw_df)) {
+    return(TRUE)
+  }
+
+  link_vals <- trimws(as.character(raw_df[["creative_git_link"]]))
+  any(is.na(link_vals[source_present]) | link_vals[source_present] == "")
+}
+
+apo_range_write_matrix <- function(sheet_id, cell_range, values_matrix) {
+  write_df <- as.data.frame(values_matrix, stringsAsFactors = FALSE)
+  suppressMessages(
+    googlesheets4::range_write(
+      ss = sheet_id,
+      sheet = "data",
+      range = cell_range,
+      data = write_df,
+      col_names = FALSE,
+      reformat = FALSE
     )
+  )
+}
 
-    rerun_status <- attr(rerun_output, "status")
-    if (is.null(rerun_status)) {
-      rerun_status <- 0
-    }
+apo_commit_repo_changes <- function(repo_dir, rel_paths) {
+  if (length(rel_paths) == 0) return(invisible(FALSE))
 
-    if (length(rerun_output) > 0) {
-      cat(paste(rerun_output, collapse = "\n"), "\n")
-    }
-
-    if (!identical(rerun_status, 0L) && !identical(rerun_status, 0)) {
-      cat("⚠ BigQuery resync failed for", sheet_title, "\n")
-    } else {
-      cat("✓ BigQuery resync completed for", sheet_title, "\n")
-    }
+  apo_git_run(c("-C", repo_dir, "add", rel_paths))
+  status_lines <- apo_git_run(c("-C", repo_dir, "status", "--short"))
+  if (length(status_lines) == 0) {
+    return(invisible(FALSE))
   }
 
+  apo_git_run(c("-C", repo_dir, "commit", "-m", "Add APO creative image assets rerun"))
+  apo_git_run(c("-C", repo_dir, "push"))
   invisible(TRUE)
 }
 
-previous_phase5_creative_snapshot <- capture_phase5_creative_snapshot(phase5_output)
+refresh_apo_creative_links <- function(sheet_id, sheet_name, header_row, raw_df) {
+  if (!apo_is_target_sheet(sheet_name) || !"Final_img_path" %in% names(raw_df)) {
+    return(list(data = raw_df, refreshed = FALSE))
+  }
+
+  source_idx <- match("Final_img_path", names(raw_df))
+  box_idx <- match("Creative box link", names(raw_df))
+  link_idx <- match("creative_git_link", names(raw_df))
+  track_path_idx <- match("creative_git_last_final_img_path", names(raw_df))
+  track_box_idx <- match("creative_git_last_box_link", names(raw_df))
+
+  next_col_idx <- ncol(raw_df) + 1
+  missing_headers <- list()
+  if (is.na(link_idx)) {
+    link_idx <- next_col_idx
+    missing_headers[[length(missing_headers) + 1]] <- list(name = "creative_git_link", col_index = link_idx)
+    next_col_idx <- next_col_idx + 1
+  }
+  if (is.na(track_path_idx)) {
+    track_path_idx <- next_col_idx
+    missing_headers[[length(missing_headers) + 1]] <- list(name = "creative_git_last_final_img_path", col_index = track_path_idx)
+    next_col_idx <- next_col_idx + 1
+  }
+  if (is.na(track_box_idx)) {
+    track_box_idx <- next_col_idx
+    missing_headers[[length(missing_headers) + 1]] <- list(name = "creative_git_last_box_link", col_index = track_box_idx)
+    next_col_idx <- next_col_idx + 1
+  }
+
+  pending_rows <- list()
+  asset_paths <- character(0)
+  asset_targets <- character(0)
+  site_slug <- tolower(trimws(tail(strsplit(sheet_name, "\\|")[[1]], 1)))
+
+  for (row_idx in seq_len(nrow(raw_df))) {
+    source_val <- apo_clean_text(raw_df[row_idx, source_idx, drop = TRUE])
+    if (source_val == "") next
+
+    current_link <- if (link_idx <= ncol(raw_df)) apo_clean_text(raw_df[row_idx, link_idx, drop = TRUE]) else ""
+    current_box <- if (!is.na(box_idx) && box_idx <= ncol(raw_df)) apo_clean_text(raw_df[row_idx, box_idx, drop = TRUE]) else ""
+    last_synced_path <- if (track_path_idx <= ncol(raw_df)) apo_clean_text(raw_df[row_idx, track_path_idx, drop = TRUE]) else ""
+    last_synced_box <- if (track_box_idx <= ncol(raw_df)) apo_clean_text(raw_df[row_idx, track_box_idx, drop = TRUE]) else ""
+
+    resolved_path <- apo_normalize_local_path(source_val)
+    if (is.null(resolved_path)) {
+      cat("  ⚠ APO creative path not found locally for", sheet_name, "row", header_row + row_idx, ":", source_val, "\n")
+      next
+    }
+
+    rel_path <- file.path(creative_repo_asset_root, site_slug, basename(resolved_path))
+    rel_path <- gsub("\\\\", "/", rel_path)
+    expected_url <- apo_raw_github_url(rel_path)
+
+    reasons <- character(0)
+    if (current_link == "") reasons <- c(reasons, "missing creative_git_link")
+    if (current_link != "" && current_link != expected_url) reasons <- c(reasons, "Final_img_path changed")
+    if (last_synced_path != "" && last_synced_path != source_val) reasons <- c(reasons, "Final_img_path changed")
+    if (last_synced_box != "" && current_box != last_synced_box) reasons <- c(reasons, "Creative box link changed")
+    if (current_link != "" && last_synced_path == "") reasons <- c(reasons, "missing sync snapshot")
+
+    if (length(reasons) == 0) next
+
+    asset_paths <- c(asset_paths, resolved_path)
+    asset_targets <- c(asset_targets, rel_path)
+    pending_rows[[length(pending_rows) + 1]] <- list(
+      row_number = header_row + row_idx,
+      write_url = expected_url,
+      source_path_value = source_val,
+      box_link_value = current_box
+    )
+    cat("  APO creative refresh pending for", sheet_name, "row", header_row + row_idx, "->", paste(unique(reasons), collapse = ", "), "\n")
+  }
+
+  if (length(pending_rows) == 0) {
+    return(list(data = raw_df, refreshed = FALSE))
+  }
+
+  repo_dir <- apo_ensure_repo_clone()
+
+  copied_rel_paths <- character(0)
+  if (length(asset_targets) > 0) {
+    unique_assets <- split(asset_paths, asset_targets)
+    for (rel_path in names(unique_assets)) {
+      src_path <- unique_assets[[rel_path]][[1]]
+      dest_path <- file.path(repo_dir, rel_path)
+      dir.create(dirname(dest_path), recursive = TRUE, showWarnings = FALSE)
+      if (!file.exists(dest_path)) {
+        ok <- file.copy(src_path, dest_path, overwrite = FALSE)
+        if (!ok) {
+          stop(paste("Failed to copy APO creative asset into repo clone:", src_path))
+        }
+        copied_rel_paths <- c(copied_rel_paths, rel_path)
+      }
+    }
+  }
+
+  if (length(copied_rel_paths) > 0) {
+    apo_commit_repo_changes(repo_dir, copied_rel_paths)
+  }
+
+  if (length(missing_headers) > 0) {
+    for (header_info in missing_headers) {
+      header_range <- paste0(apo_col_to_a1(header_info$col_index), header_row)
+      apo_range_write_matrix(sheet_id, header_range, matrix(header_info$name, nrow = 1, ncol = 1))
+    }
+  }
+
+  for (pending in pending_rows) {
+    apo_range_write_matrix(sheet_id, paste0(apo_col_to_a1(link_idx), pending$row_number), matrix(pending$write_url, nrow = 1, ncol = 1))
+    apo_range_write_matrix(sheet_id, paste0(apo_col_to_a1(track_path_idx), pending$row_number), matrix(pending$source_path_value, nrow = 1, ncol = 1))
+    apo_range_write_matrix(sheet_id, paste0(apo_col_to_a1(track_box_idx), pending$row_number), matrix(pending$box_link_value, nrow = 1, ncol = 1))
+  }
+
+  updated_df <- suppressMessages(read_sheet(
+    ss = sheet_id,
+    sheet = "data",
+    range = paste0("A", header_row, ":Y"),
+    col_names = TRUE
+  ))
+
+  list(data = updated_df, refreshed = TRUE)
+}
 
 est_tz <- "America/New_York"
 
@@ -1396,11 +1441,18 @@ successful_files <- phase2_results %>% filter(status == "success")
 
   tryCatch({
     cached_sheet <- if (use_file_cache_reads) read_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time) else NULL
-    if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_data)) {
+    force_live_read <- !is.null(cached_sheet) &&
+      !is.null(cached_sheet$raw_data) &&
+      apo_sheet_needs_refresh(cached_sheet$raw_data, sheet_name)
+
+    if (!is.null(cached_sheet) && !is.null(cached_sheet$raw_data) && !force_live_read) {
       df <- cached_sheet$raw_data
       cat("  ✓ Reused cached raw sheet data\n")
       cache_used_this_sheet <- TRUE
     } else {
+      if (force_live_read) {
+        cat("  APO creative links need refresh; bypassing cached raw sheet data\n")
+      }
       df <- suppressMessages(read_sheet(
         ss = sheet_id,
         sheet = "data",
@@ -1412,14 +1464,28 @@ successful_files <- phase2_results %>% filter(status == "success")
 
     # Drop columns that are auto-generated blanks (start with ...)
     df <- df %>% select(-starts_with("..."))
+    df <- drop_blank_generated_columns(df)
 
     # If dataframe is empty after dropping, skip
     if (nrow(df) == 0 || ncol(df) == 0) {
       cat("  ✗ Skipping - no usable data after dropping autogenerated columns\n")
       next
     }
-    if (use_file_cache_writes && (is.null(cached_sheet) || is.null(cached_sheet$raw_data) || !use_file_cache_reads)) {
+
+    creative_refresh_result <- list(data = df, refreshed = FALSE)
+    if (!cache_used_this_sheet) {
+      creative_refresh_result <- refresh_apo_creative_links(sheet_id, sheet_name, header_row, df)
+      df <- creative_refresh_result$data
+      df <- drop_blank_generated_columns(df)
+      if (isTRUE(creative_refresh_result$refreshed)) {
+        cat("  ✓ APO creative_git_link values refreshed in-sheet before ingest\n")
+      }
+    }
+
+    if (use_file_cache_writes && (is.null(cached_sheet) || is.null(cached_sheet$raw_data) || !use_file_cache_reads) && !isTRUE(creative_refresh_result$refreshed)) {
       write_sheet_cache(cache_dir, sheet_id, sheet_name, last_mod_time, "raw_data", df)
+    } else if (isTRUE(creative_refresh_result$refreshed)) {
+      cat("  ⚠ Skipped raw-data cache write because the sheet was updated during this run\n")
     }
 
     # Current column names (raw) as read
@@ -1548,20 +1614,6 @@ if (length(combined_list) == 0) {
   phase5_output <- file.path(output_dir, "phase5_combined_master_data.csv")
   write_csv(master_df, phase5_output)
   cat("\n✓ Phase 5 complete. Combined data written to:", phase5_output, "\n")
-  creative_refresh_target_sheets <- detect_creative_refresh_targets(
-    previous_phase5_creative_snapshot,
-    master_df
-  )
-  if (length(creative_refresh_target_sheets) > 0) {
-    cat(
-      "Creative refresh target sheets based on Final_img_path changes:\n",
-      paste0(" - ", creative_refresh_target_sheets, collapse = "\n"),
-      "\n",
-      sep = ""
-    )
-  } else {
-    cat("No APO sheets with new or changed Final_img_path values were detected in Phase 5.\n")
-  }
   cat("Total rows:", nrow(master_df), "Total cols:", ncol(master_df), "\n")
 }
 
@@ -2513,13 +2565,6 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
     }, error = function(e) {
       stop(paste0("Failed incremental prod sync from staging: ", e$message))
     })
-  }
-
-  if (skip_creative_refresh_hook) {
-    cat("Creative refresh hook skipped for this run via FPD_SKIP_CREATIVE_REFRESH=1.\n")
-  } else {
-    refreshed_creative_sheets <- run_creative_refresh_targets(creative_refresh_target_sheets)
-    rerun_bq_sync_for_refreshed_sheets(refreshed_creative_sheets)
   }
 
   cat("\n-----------\n-----------\n First party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")

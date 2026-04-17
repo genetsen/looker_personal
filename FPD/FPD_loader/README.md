@@ -57,7 +57,7 @@ Use this quick checklist before and after every run:
 ## What Changed / How To Undo
 
 - What changed:
-  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery, a post-sync APO `creative_git_link` refresh that runs only for sheets whose `final_img_path` values changed versus the prior Phase 5 snapshot, and a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run.
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, and a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run.
 - How to undo:
   if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
 
@@ -80,17 +80,23 @@ Google Drive (partner sheets)
   BigQuery (landing.fpd_data_ranged_shortcutsFolder)
      │
      ▼
-  Optional APO creative GitHub link refresh
-    runs only for APO sheets with changed `final_img_path` values
+  APO creative GitHub link refresh (APO sheets only, inside Phase 5)
+    updates the sheet before the final BigQuery write
 ```
 
 ### APO Creative Refresh Handoff
 
-After a successful BigQuery sync, the main loader now compares the current Phase 5 APO `final_img_path` values against the prior saved Phase 5 snapshot. If any APO sheet has a new or changed `final_img_path`, the loader calls:
+For APO sheets, the main loader now refreshes `creative_git_link` values during Phase 5 before the data is normalized and uploaded to BigQuery.
 
-`python3 /Users/eugenetsenter/.codex/skills/refresh-creative-gs-apo/scripts/refresh_apo_creatives.py`
+The in-pipeline APO refresh does this only for live-read APO sheets:
 
-It calls that script once per changed APO sheet by passing the full sheet title as the Drive title prefix. The Python script then handles the row-level `creative_git_link` write-back logic for that sheet only.
+- reads `Final_img_path` and existing `creative_git_link` / tracking columns
+- normalizes the local file path to the current machine
+- uploads any missing creative files to `genetsen/apo-db-creat`
+- writes `creative_git_link`, `creative_git_last_final_img_path`, and `creative_git_last_box_link` back into the sheet
+- re-reads the updated sheet data and continues the normal Phase 5 -> Phase 7 -> BigQuery flow
+
+This keeps BigQuery current in the same run instead of requiring a second sync after a separate creative-refresh script.
 
 ## Configuration
 
