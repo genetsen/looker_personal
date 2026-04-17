@@ -201,12 +201,49 @@ normalize_bq_sql_type <- function(type_name) {
 
 est_tz <- "America/New_York"
 
-convert_to_est <- function(x) {
+normalize_to_est_posix <- function(x) {
   if (length(x) == 0 || is.null(x) || all(is.na(x))) {
     return(as.POSIXct(NA, tz = est_tz))
   }
 
-  parsed <- as.POSIXct(x, tz = "UTC")
+  if (inherits(x, "POSIXct") || inherits(x, "POSIXt")) {
+    return(as.POSIXct(format(x, tz = est_tz, usetz = FALSE), tz = est_tz))
+  }
+
+  if (inherits(x, "Date")) {
+    return(as.POSIXct(x, tz = est_tz))
+  }
+
+  if (is.character(x)) {
+    x_chr <- as.character(x[[1]])
+    if (is.na(x_chr) || x_chr == "") {
+      return(as.POSIXct(NA, tz = est_tz))
+    }
+
+    parsed <- suppressWarnings(as.POSIXct(x_chr, format = "%Y-%m-%dT%H:%M:%OS%z", tz = "UTC"))
+    if (is.na(parsed)) {
+      parsed <- suppressWarnings(as.POSIXct(x_chr, format = "%Y-%m-%dT%H:%M:%S%z", tz = "UTC"))
+    }
+    if (is.na(parsed)) {
+      parsed <- suppressWarnings(as.POSIXct(x_chr, format = "%Y-%m-%dT%H:%M:%OSZ", tz = "UTC"))
+    }
+    if (is.na(parsed)) {
+      parsed <- suppressWarnings(as.POSIXct(x_chr, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
+    }
+    if (is.na(parsed)) {
+      parsed <- suppressWarnings(as.POSIXct(x_chr, format = "%Y-%m-%d %H:%M:%S", tz = est_tz))
+    }
+    if (is.na(parsed)) {
+      parsed <- suppressWarnings(as.POSIXct(x_chr, format = "%Y-%m-%d", tz = est_tz))
+    }
+    if (is.na(parsed)) {
+      return(as.POSIXct(NA, tz = est_tz))
+    }
+
+    return(as.POSIXct(format(parsed, tz = est_tz, usetz = FALSE), tz = est_tz))
+  }
+
+  parsed <- suppressWarnings(as.POSIXct(x, tz = "UTC"))
   if (is.na(parsed)) {
     return(as.POSIXct(NA, tz = est_tz))
   }
@@ -214,11 +251,19 @@ convert_to_est <- function(x) {
   as.POSIXct(format(parsed, tz = est_tz, usetz = FALSE), tz = est_tz)
 }
 
+convert_to_est <- function(x) {
+  normalize_to_est_posix(x)
+}
+
 format_est_timestamp <- function(x) {
   if (length(x) == 0 || is.null(x) || all(is.na(x))) {
     return(NA_character_)
   }
-  format(as.POSIXct(x, tz = est_tz), "%Y-%m-%dT%H:%M:%S%z", tz = est_tz)
+  normalized <- normalize_to_est_posix(x)
+  if (is.na(normalized)) {
+    return(NA_character_)
+  }
+  format(normalized, "%Y-%m-%dT%H:%M:%S%z", tz = est_tz)
 }
 
 normalize_cache_timestamp <- function(x) {
