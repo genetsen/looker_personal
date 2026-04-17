@@ -154,6 +154,7 @@ day_to_wstart <- c(Mon = 1, Tue = 2, Wed = 3, Thu = 4, Fri = 5, Sat = 6, Sun = 7
 validation_table <- data.frame()
 validation_diff_cols <- character(0)
 creative_refresh_target_sheets <- character(0)
+skip_creative_refresh_hook <- identical(Sys.getenv("FPD_SKIP_CREATIVE_REFRESH", unset = "0"), "1")
 
 project_id <- "looker-studio-pro-452620"
 dataset_id <- "landing"
@@ -161,6 +162,15 @@ prod_table <- "fpd_data_ranged_shortcutsFolder"
 staging_table <- paste0(prod_table, "__staging")
 creative_refresh_script <- "/Users/eugenetsenter/.codex/skills/refresh-creative-gs-apo/scripts/refresh_apo_creatives.py"
 creative_refresh_title_prefix <- "APO | Partner Data Collection"
+creative_refresh_ssl_cert_file <- "/etc/ssl/cert.pem"
+current_rscript_path <- {
+  file_arg <- grep("^--file=", commandArgs(), value = TRUE)
+  if (length(file_arg) > 0) {
+    normalizePath(sub("^--file=", "", file_arg[[1]]), winslash = "/", mustWork = FALSE)
+  } else {
+    "util_collect_fpd_shortcutsFolder.r"
+  }
+}
 
 map_bq_type <- function(x) {
   if (inherits(x, "POSIXct") || inherits(x, "POSIXt")) return("TIMESTAMP")
@@ -259,41 +269,85 @@ build_creative_refresh_signature <- function(df) {
 
 detect_creative_refresh_targets <- function(previous_df, current_df) {
   current_sig <- build_creative_refresh_signature(current_df)
-  if (nrow(current_sig) == 0) {
-    return(character(0))
+  changed_path_sheets <- character(0)
+  if (nrow(current_sig) > 0) {
+    previous_sig <- build_creative_refresh_signature(previous_df)
+    changed_path_sheets <- current_sig %>%
+      left_join(previous_sig, by = "source_file", suffix = c(".current", ".previous")) %>%
+      filter(
+        is.na(final_img_signature.previous) |
+          final_img_signature.current != final_img_signature.previous
+      ) %>%
+      pull(source_file) %>%
+      unique()
   }
 
-  previous_sig <- build_creative_refresh_signature(previous_df)
+  blank_link_sheets <- character(0)
+  if (!is.null(current_df) && is.data.frame(current_df) && "source_file" %in% names(current_df) && "final_img_path" %in% names(current_df)) {
+    if ("creative_git_link" %in% names(current_df)) {
+      blank_link_sheets <- current_df %>%
+        transmute(
+          source_file = trimws(as.character(source_file)),
+          final_img_path = trimws(as.character(final_img_path)),
+          creative_git_link = trimws(as.character(creative_git_link))
+        ) %>%
+        filter(
+          !is.na(source_file),
+          source_file != "",
+          str_starts(source_file, fixed(creative_refresh_title_prefix)),
+          !is.na(final_img_path),
+          final_img_path != "",
+          is.na(creative_git_link) | creative_git_link == ""
+        ) %>%
+        pull(source_file) %>%
+        unique()
+    } else {
+      blank_link_sheets <- current_df %>%
+        transmute(
+          source_file = trimws(as.character(source_file)),
+          final_img_path = trimws(as.character(final_img_path))
+        ) %>%
+        filter(
+          !is.na(source_file),
+          source_file != "",
+          str_starts(source_file, fixed(creative_refresh_title_prefix)),
+          !is.na(final_img_path),
+          final_img_path != ""
+        ) %>%
+        pull(source_file) %>%
+        unique()
+    }
+  }
 
-  current_sig %>%
-    left_join(previous_sig, by = "source_file", suffix = c(".current", ".previous")) %>%
-    filter(
-      is.na(final_img_signature.previous) |
-        final_img_signature.current != final_img_signature.previous
-    ) %>%
-    pull(source_file) %>%
-    unique()
+  unique(c(changed_path_sheets, blank_link_sheets))
 }
 
 run_creative_refresh_targets <- function(sheet_titles) {
   sheet_titles <- unique(sheet_titles[!is.na(sheet_titles) & sheet_titles != ""])
   if (length(sheet_titles) == 0) {
     cat("No APO sheets need creative_git_link refresh based on Final_img_path changes.\n")
-    return(invisible(TRUE))
+    return(character(0))
   }
 
   if (!file.exists(creative_refresh_script)) {
     cat("⚠ Creative refresh script not found; skipping creative_git_link refresh.\n")
-    return(invisible(FALSE))
+    return(character(0))
   }
 
   cat("\n=== Running creative_git_link refresh for changed APO sheets ===\n")
+  refreshed_sheets <- character(0)
   for (sheet_title in sheet_titles) {
     cat("Refreshing creative links for:", sheet_title, "\n")
     refresh_output <- tryCatch(
       system2(
-        "python3",
-        c(creative_refresh_script, "--drive-title-prefix", sheet_title),
+        "env",
+        c(
+          paste0("SSL_CERT_FILE=", creative_refresh_ssl_cert_file),
+          "python3",
+          creative_refresh_script,
+          "--drive-title-prefix",
+          sheet_title
+        ),
         stdout = TRUE,
         stderr = TRUE
       ),
@@ -318,6 +372,57 @@ run_creative_refresh_targets <- function(sheet_titles) {
       cat("⚠ Creative refresh failed for", sheet_title, "- continuing after BigQuery sync.\n")
     } else {
       cat("✓ Creative refresh completed for", sheet_title, "\n")
+      refreshed_sheets <- c(refreshed_sheets, sheet_title)
+    }
+  }
+
+  unique(refreshed_sheets)
+}
+
+rerun_bq_sync_for_refreshed_sheets <- function(sheet_titles) {
+  sheet_titles <- unique(sheet_titles[!is.na(sheet_titles) & sheet_titles != ""])
+  if (length(sheet_titles) == 0) {
+    cat("No sheet-scoped BigQuery resync is needed after creative refresh.\n")
+    return(invisible(TRUE))
+  }
+
+  cat("\n=== Re-running changed APO sheets so BigQuery captures refreshed creative_git_link values ===\n")
+  for (sheet_title in sheet_titles) {
+    cat("Re-running loader for:", sheet_title, "\n")
+    rerun_output <- tryCatch(
+      system2(
+        "env",
+        c(
+          "FPD_SKIP_CREATIVE_REFRESH=1",
+          "Rscript",
+          current_rscript_path,
+          paste0("--pattern=", sheet_title),
+          "--no-file-cache"
+        ),
+        stdout = TRUE,
+        stderr = TRUE
+      ),
+      error = function(e) {
+        structure(
+          paste("ERROR launching BigQuery resync:", e$message),
+          status = 1
+        )
+      }
+    )
+
+    rerun_status <- attr(rerun_output, "status")
+    if (is.null(rerun_status)) {
+      rerun_status <- 0
+    }
+
+    if (length(rerun_output) > 0) {
+      cat(paste(rerun_output, collapse = "\n"), "\n")
+    }
+
+    if (!identical(rerun_status, 0L) && !identical(rerun_status, 0)) {
+      cat("⚠ BigQuery resync failed for", sheet_title, "\n")
+    } else {
+      cat("✓ BigQuery resync completed for", sheet_title, "\n")
     }
   }
 
@@ -2410,7 +2515,12 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
     })
   }
 
-  run_creative_refresh_targets(creative_refresh_target_sheets)
+  if (skip_creative_refresh_hook) {
+    cat("Creative refresh hook skipped for this run via FPD_SKIP_CREATIVE_REFRESH=1.\n")
+  } else {
+    refreshed_creative_sheets <- run_creative_refresh_targets(creative_refresh_target_sheets)
+    rerun_bq_sync_for_refreshed_sheets(refreshed_creative_sheets)
+  }
 
   cat("\n-----------\n-----------\n First party data pipeline completed at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 
