@@ -2,6 +2,58 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-04-29
+
+### Changed
+
+- **BigQuery Documentation Orientation Rule**
+  What: Updated the repo instructions to allow narrow Markdown docs as orientation before BigQuery inspection while still requiring production validation before relying on doc or local SQL takeaways.
+  Why: Keeps repo docs useful for navigation without letting stale local guidance override the live warehouse.
+  <details><summary>Paths - BigQuery Documentation Orientation Rule</summary>
+
+  [AGENTS.md](AGENTS.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+### Added
+
+- **Master Data Model TV Layer Deployment**
+  What: Added `landing.tv_combined` as a TV branch in the master data model SQL, preserving TV source fields in `tv_*` columns, validating the candidate in `master_stg.data_model_qa_tv_layer`, and deploying it to production `master_stg.data_model`.
+  Why: Brings local and national TV estimate rows into the cross-client model with production proof for row counts, dates, synthetic keys, and TV totals.
+  <details><summary>Paths - Master Data Model TV Layer QA Candidate</summary>
+
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [master_data_model/README.md](master_data_model/README.md)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Master Data Model Project Folder**
+  What: Moved the generalized `looker-studio-pro-452620.master_stg.data_model` SQL and continuation notes into the top-level `master_data_model/` project folder, with a dedicated README covering purpose, sources, verification, deploy commands, and QA queries.
+  Why: Keeps the cross-client master model out of the ADIF project boundary while preserving enough context to continue work seamlessly.
+  <details><summary>Paths — Master Data Model Project Folder</summary>
+
+  [master_data_model/README.md](master_data_model/README.md)
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [README.md](README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Ritual Master Data Model View**
+  What: Created `looker-studio-pro-452620.master_stg.ritual_data_model`, a Ritual-only view over the generalized master data model, and saved the reusable SQL definition.
+  Why: Gives Ritual a stable client-specific surface while keeping the generalized master model unchanged.
+  <details><summary>Paths — Ritual Master Data Model View</summary>
+
+  [master_data_model/README.md](master_data_model/README.md)
+  [master_data_model/create_ritual_data_model_view.sql](master_data_model/create_ritual_data_model_view.sql)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-04-06
 
 ### Fixed

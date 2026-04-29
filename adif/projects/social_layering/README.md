@@ -2,7 +2,7 @@
 
 This sub-project owns the social append branch for ADIF.
 The current live automated refresh is the BigQuery scheduled query `ADIF_FullDataRefresh_2604`, which writes to `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`.
-The notebook (`build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`) remains an important reference for the earlier two-stage build path.
+Older notebook copies are historical artifacts and are not the active build path for this table.
 
 ## Lineage Segment to Final Output
 
@@ -15,20 +15,20 @@ flowchart LR
 
   subgraph social_models["Social Layer Models"]
     social_stg["repo_stg.stg__adif__social_crossplatform"]
-    social_nb_s2["Notebook Section 2 (social insert)"]
   end
 
-  subgraph notebook["Notebook Build"]
-    social_nb_s1["Live scheduled query digital branch"]
+  subgraph scheduled_query["BigQuery Scheduled Query"]
+    social_sched["Social branch in ADIF_FullDataRefresh_2604"]
+    digital_sched["Digital branch in ADIF_FullDataRefresh_2604"]
     target_tbl["repo_stg.adif__mainDataTable_notebook_v2_test"]
   end
 
   social_raw --> social_stg
-  social_stg --> social_nb_s2
-  pacing --> social_nb_s2
-  core_upd["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"] --> social_nb_s1
-  social_nb_s1 --> target_tbl
-  social_nb_s2 --> target_tbl
+  social_stg --> social_sched
+  pacing --> social_sched
+  core_upd["repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view"] --> digital_sched
+  digital_sched --> target_tbl
+  social_sched --> target_tbl
 ```
 
 ## Current Live Refresh
@@ -39,9 +39,9 @@ flowchart LR
 - Verified on: `2026-04-10`
 - Live target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
 
-## Reference Notebook and Archived SQL
+## Historical Notebook Copies and Archived SQL
 
-- Reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Historical notebook copy: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 - Older notebook output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
 - Legacy scheduled SQL and duplicate notebook copies: `projects/social_layering/archive/legacy_scheduled_sql/`
 
@@ -50,7 +50,7 @@ flowchart LR
 ### Live V2 Digital Branch (`CREATE OR REPLACE TABLE`)
 - Source: `looker-studio-pro-452620.repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
 - Output: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
-- Behavior: rebuilds the full target in one scheduled query instead of relying on a separate notebook Section 1 run
+- Behavior: rebuilds the full target in one scheduled query
 
 ### Live V2 Social Logic
 - Social source: `looker-studio-pro-452620.repo_stg.stg__adif__social_crossplatform`
@@ -75,7 +75,7 @@ Warehouse-side verification completed on `2026-04-10`:
 - The V2 test table was modified on `2026-04-10T10:03:13Z`, which is newer than the older notebook table modification time `2026-04-06T14:02:15Z`
 - `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`, `repo_stg.stg__adif__social_crossplatform`, and `repo_int.crossplatform_pacing` still match the documented live lineage chain
 
-The notebook still contains useful validation queries for:
+Historical notebook copies still contain useful validation queries for:
 - Table totals (`row_count`, `min_date`, `max_date`, `total_spend`, `total_impressions`) for 2026
 - Breakdown by `data_source_primary` for 2026
 - Breakdown by `supplier_code`, `p_package_friendly` for 2026

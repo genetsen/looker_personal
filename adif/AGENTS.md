@@ -13,10 +13,10 @@ Operational notes for work inside `/Users/eugenetsenter/Looker_clonedRepo/looker
 
 ## ADIF Repo Map
 
-- `projects/social_layering/` - social-layer workflow docs, reference notebook assets, and related archives
+- `projects/social_layering/` - social-layer workflow docs, scheduled-query validation assets, and archived notebook copies
 - `projects/updated_fpd_integration/` - updated FPD deployment and validation workflow
 - `projects/tv_digital_pipeline/` - TV and digital ingestion scripts and docs
-- `scripts/use_sandbox_gcloud.sh` - helper path for sandbox-safe `gcloud` and Dataform-backed notebook access
+- `scripts/use_sandbox_gcloud.sh` - helper path for sandbox-safe `gcloud` and BigQuery/Dataform access when needed
 
 ## Social Production Mode
 
@@ -27,15 +27,11 @@ The main live ADIF refresh schedule is the BigQuery scheduled query:
 - Schedule: `every 10 hours`
 - Verified on: `2026-04-08`
 - Current live target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
-- Current query shape: single-pass V2 `CREATE OR REPLACE TABLE` SQL that combines digital rows and social rows in one scheduled query
+- Current query shape: single-pass V2 `CREATE OR REPLACE TABLE` SQL that combines digital rows and social rows in one scheduled query; treat this scheduled query as the active builder for table changes
 
-Notebook context still matters, but it is no longer enough by itself to describe the live refresh path:
+Older notebook copies still exist as historical artifacts, but they are not the active build path for this table.
 
-- Reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 - Older notebook target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
-- Notebook section flow:
-  - Section 1: `CREATE OR REPLACE TABLE` from `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`
-  - Section 2: `INSERT INTO` with social mapping from `repo_stg.stg__adif__social_crossplatform` and `repo_int.crossplatform_pacing`
 - Legacy scheduled SQL and duplicate notebook copies are archived under `projects/social_layering/archive/legacy_scheduled_sql/`
 
 ## BigQuery Notebook Access (Dataform-backed)

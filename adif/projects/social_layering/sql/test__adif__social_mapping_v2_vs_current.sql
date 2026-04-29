@@ -14,9 +14,10 @@
 --     that spend, impressions, and pacing numbers all add up correctly.
 --     Use this when developing or changing the mapping rules.
 --
---   PART 2 (Checks 7–13): "Does the new table match the current production table?"
---     Compares a candidate (test) table against the current production table
---     side by side. Use this after running the v2 notebook to confirm it
+--   PART 2 (Checks 7–13): "Does the scheduled-query output match the older comparison table?"
+--     Compares a candidate (test) table against the older comparison table
+--     side by side. Use this after rebuilding the V2 test table from the live
+--     scheduled query SQL to confirm it
 --     produces the same results before swapping it into production.
 --
 -- HOW TO READ THE RESULTS
@@ -452,8 +453,9 @@ LIMIT 25;
 -- ┌─────────────────────────────────────────────────────────────────────────────┐
 -- │  PART 2: V2 TABLE vs PRODUCTION TABLE                                     │
 -- │                                                                            │
--- │  These checks compare the V2 candidate table against the live production   │
--- │  table. Run these AFTER building the V2 test table from the v2 notebook.   │
+-- │  These checks compare the V2 candidate table against the older comparison   │
+-- │  table. Run these AFTER rebuilding the V2 test table from the live         │
+-- │  scheduled query SQL.                                                      │
 -- │                                                                            │
 -- │  Candidate table: repo_stg.adif__mainDataTable_notebook_v2_test            │
 -- │  Baseline table:  repo_stg.adif__mainDataTable_notebook (production)       │

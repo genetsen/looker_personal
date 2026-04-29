@@ -1,3 +1,39 @@
+## 2026-04-29
+
+### Added
+- **Generalized master staging data model**
+  What: Created `looker-studio-pro-452620.master_stg.data_model`, then moved its SQL and continuation docs into the top-level `master_data_model/` project. The view combines DCM, original FPD, updated FPD, Prisma planning, package rollups, and social rows where compatible social grain is available, while removing ADIF-only client filters and keeping 2025+ package/date gates.
+  Why: Provides a broader cross-client model without patching the ADIF notebook-style final table or changing the existing ADIF scheduled refresh, and keeps future master-model work outside the ADIF project boundary. -codexapp thread-id-unavailable
+
+<details><summary>Paths — Generalized master staging data model</summary>
+
+- [../master_data_model/README.md](../master_data_model/README.md)
+- [../master_data_model/create_master_stg_data_model.sql](../master_data_model/create_master_stg_data_model.sql)
+- [README.md](README.md)
+- [CHANGELOG.md](CHANGELOG.md)
+
+</details>
+
+## 2026-04-22
+
+### Changed
+- **ADIF docs now treat the BigQuery scheduled query as the active builder**
+  What: Updated the active ADIF docs to describe `ADIF_FullDataRefresh_2604` as the real builder for `repo_stg.adif__mainDataTable_notebook_v2_test`, demoted notebook copies to historical/reference-only status, and refreshed lineage diagrams, validation notes, and helper docs to match that project update.
+  Why: Prevents future edits from targeting stale notebook artifacts when the live table is actually built by the scheduled query in BigQuery. -codexapp thread-id-unavailable
+
+<details><summary>Paths — ADIF docs now treat the BigQuery scheduled query as the active builder</summary>
+
+- [AGENTS.md](AGENTS.md)
+- [README.md](README.md)
+- [projects/social_layering/README.md](projects/social_layering/README.md)
+- [projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md](projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md)
+- [projects/social_layering/archive/legacy_scheduled_sql/README.md](projects/social_layering/archive/legacy_scheduled_sql/README.md)
+- [projects/social_layering/CLAUDE.md](projects/social_layering/CLAUDE.md)
+- [skills/sql-change-guard/SKILL.md](skills/sql-change-guard/SKILL.md)
+- [projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql](projects/social_layering/sql/test__adif__social_mapping_v2_vs_current.sql)
+
+</details>
+
 ## 2026-04-10
 
 ### Added

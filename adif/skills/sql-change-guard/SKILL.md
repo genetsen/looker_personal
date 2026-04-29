@@ -58,14 +58,14 @@ Default query backend is MCP (`--query-backend mcp`), with optional direct BigQu
 
 ## Run Commands
 
-In the first command, candidate is the notebook production table and baseline is the legacy `stg` table for regression comparison.
+In the first command, candidate is the scheduled-query-built table and baseline is the legacy `stg` table for regression comparison.
 
 ```bash
 python3 skills/sql-change-guard/scripts/run_sql_change_guard.py \
   --project looker-studio-pro-452620 \
   --qa-dataset repo_stg \
   --query-backend mcp \
-  --candidate-table looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook \
+  --candidate-table looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test \
   --baseline-table looker-studio-pro-452620.stg.adif__prisma_expanded_plus_dcm_with_social_tbl \
   --date-column date \
   --exclude-recent-days 5 \

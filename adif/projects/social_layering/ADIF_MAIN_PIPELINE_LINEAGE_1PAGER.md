@@ -11,7 +11,7 @@ This page is the shortest reliable explanation of how the live ADIF main table i
 
 ## The Pipeline in One Sentence
 
-ADIF starts with digital delivery, planning data, and two first-party data branches, combines those into one digital base view, then adds social rows and pacing logic to produce the final main table.
+ADIF starts with digital delivery, planning data, and two first-party data branches, combines those into one digital base view, then the live BigQuery scheduled query adds social rows and pacing logic to produce the final main table.
 
 ## Full Lineage
 
@@ -111,9 +111,11 @@ For the digital side, the documented and still-live priority order is:
 
 - Live production target today:
   - `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Live active builder today:
+  - BigQuery scheduled query `ADIF_FullDataRefresh_2604`
 - Older reference table that still exists:
   - `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
-- Reference notebook:
+- Historical notebook copy:
   - `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 - Snapshot QA artifact:
   - `projects/social_layering/dashboard/adif__mainDataTable_notebook_v2_test_qa_dashboard.html`

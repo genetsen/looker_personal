@@ -44,6 +44,7 @@ Instruction files policy:
 - ADIF TV and digital pipeline (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`)
 - ADIF updated FPD integration (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif`)
 - ADIF notebook QA dashboard (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/adif_mainDataTable_notebook_qa_dashboard.html`) for supplier/package/data source/impression-type planned-vs-actual QA with upstream reference
+- Master data model (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model`) for the cross-client `looker-studio-pro-452620.master_stg.data_model` view that combines DCM, original FPD, updated FPD, Prisma, TV estimates, package rollups, and social rows with 2025+ gates
 - Olipop cross-platform delivery + video joins (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/marts/olipop`) plus the folder-level lineage guide for `looker-studio-pro-452620.Olipop.MMM_crossplatform` (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/olipop/README.md`)
 - MFT export and mart views (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`), including DCM UTM lineage notes and Mass validation queries for `repo_stg.dcm_plus_utms`
 - Prisma supplier logo reload (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/reload_prisma_supplier_logos.sh`) to rebuild `looker-studio-pro-452620.landing.prisma_supplier_logos` from `Supplier_logos.xlsx` `Logos!A:C`
@@ -80,7 +81,7 @@ TV national Gmail loader note:
 - The ADIF social layer keeps original grain (daily ad-level rows) and all source metrics.
 - If you want a mart/table target, materialize from the staging view to your selected dataset.
 - SQL QA guardrail: validate in isolated `_qa` objects first, share proof results, and only then apply live SQL patches after explicit approval.
-- BigQuery object references default to the live production table or view when you mention a warehouse path like `project.dataset.object`; if a local SQL file also exists, compare local versus production and call out drift before relying on the local definition.
+- BigQuery object references default to the live production table or view when you mention a warehouse path like `project.dataset.object`; repo Markdown docs may be read first for orientation, but doc and local SQL takeaways must be validated against production, with drift called out before relying on the local definition.
 - Omni dashboard edits default to a preview-first workflow: inspect the live widget, show a rendered before-and-after preview of the entire widget, explain whether the change is visual or behavioral, and wait for confirmation before making the live dashboard change.
 
 ## Restore Instructions (Dev Cutover)

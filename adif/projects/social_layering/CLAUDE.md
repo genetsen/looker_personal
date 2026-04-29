@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Social Layering Pipeline — social append sub-project that adds normalized social media data (Meta, TikTok) into the ADIF main data flow. The main live automated refresh is the scheduled query `ADIF_FullDataRefresh_2604`, which currently writes `repo_stg.adif__mainDataTable_notebook_v2_test`. The notebook remains a key reference for the earlier two-stage workflow.
+Social Layering Pipeline — social append sub-project that adds normalized social media data (Meta, TikTok) into the ADIF main data flow. The main live automated refresh is the scheduled query `ADIF_FullDataRefresh_2604`, which currently writes `repo_stg.adif__mainDataTable_notebook_v2_test`. Older notebook copies are historical artifacts, not the active build path for this table.
 
 ## Architecture
 
 **Current live scheduled build** writes to `repo_stg.adif__mainDataTable_notebook_v2_test` using one scheduled query.
 
-**Reference two-stage notebook build** writes to `repo_stg.adif__mainDataTable_notebook`:
+**Older two-stage notebook build** wrote to `repo_stg.adif__mainDataTable_notebook`:
 
 1. **Section 1 — Table Rebuild:** `CREATE OR REPLACE TABLE` from `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view` (the base Prisma+DCM+FPD view)
 2. **Section 2 — Social Append:** `INSERT INTO` normalized social rows with mapping, pacing, and metric alignment
@@ -26,7 +26,7 @@ stg__olipop__crossplatform_raw_tbl  →  stg__adif__social_crossplatform (view) 
 
 | File | Role |
 |------|------|
-| `build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb` | Reference notebook for the earlier two-stage build and validation workflow |
+| `build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb` | Historical notebook copy for the earlier two-stage build and validation workflow |
 | `sql/stg__adif__social_crossplatform.sql` | View definition: filters raw social to ADIF accounts with `WP_` campaigns, normalizes platform names, adds row keys |
 | `sql/test__adif__social_mapping_v2_vs_current.sql` | Validation: 10-section QA script comparing proposed mapping totals vs raw and current output |
 | `social_mapping_matrix_editable.csv` | Living spec: token-based mapping rules for `ad_set→package` and `ad→placement` with status/notes columns |
@@ -51,7 +51,7 @@ Current live schedule details:
 - Schedule: `every 10 hours`
 - Verified on: `2026-04-08`
 
-The notebook is still useful when reviewing or editing the earlier interactive workflow (BigQuery DataFrames / Colab connected to `looker-studio-pro-452620`).
+The notebook only matters when reviewing or cleaning up the older interactive workflow (BigQuery DataFrames / Colab connected to `looker-studio-pro-452620`).
 
 ## Critical Conventions
 

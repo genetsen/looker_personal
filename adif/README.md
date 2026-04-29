@@ -83,14 +83,14 @@ bash -lc "curl -s -G \
 
 ## Main Scheduled Refresh
 
-The main live ADIF refresh currently runs from a BigQuery scheduled query, not only from the older notebook runbook.
+The main live ADIF refresh runs from a BigQuery scheduled query. The older notebook path is not the active builder for this table.
 
 - Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
 - Display name: `ADIF_FullDataRefresh_2604`
 - Schedule: `every 10 hours`
 - Verified against live BigQuery on: `2026-04-10`
 - Current live output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
-- Current older notebook output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
+- Older notebook-era table that still exists: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
 
 What the live scheduled query does:
 
@@ -101,18 +101,28 @@ What the live scheduled query does:
 
 Why this matters:
 
-- The notebook file is still useful as a reference and history artifact.
 - The live transfer config is the best source of truth for the current automated refresh path.
-- The scheduled query currently targets the V2 shadow table, so docs should not describe `repo_stg.adif__mainDataTable_notebook` as the only live refresh target.
+- The scheduled query currently targets the V2 shadow table, so docs should not describe `repo_stg.adif__mainDataTable_notebook` as the live builder.
+- Notebook copies are historical artifacts, not the active production path for table changes.
 
 Related files:
 
-- Active reference notebook: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
+- Historical notebook copy: `projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb`
 - One-page lineage guide: `projects/social_layering/ADIF_MAIN_PIPELINE_LINEAGE_1PAGER.md`
 - Archived legacy SQL and duplicate notebook copy: `projects/social_layering/archive/legacy_scheduled_sql/`
 - Snapshot QA dashboard for the V2 test output:
   `projects/social_layering/dashboard/adif__mainDataTable_notebook_v2_test_qa_dashboard.html`
   - Includes a clickable lineage map with per-table snapshot metrics such as last load, row count, total cost, and total impressions.
+
+## Master Staging Data Model
+
+The generalized cross-client `looker-studio-pro-452620.master_stg.data_model` view now lives outside ADIF at:
+
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model`
+
+This view is separate from the ADIF scheduled refresh and does not replace `repo_stg.adif__mainDataTable_notebook_v2_test`. Continue master-model work from the top-level project README:
+
+`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md`
 
 ## FPD Layering
 
@@ -216,21 +226,21 @@ flowchart LR
 
   subgraph social_models["Social Layer Models"]
     social_stg["repo_stg.stg__adif__social_crossplatform"]
-    social_nb_s2["Notebook Section 2 (social insert)"]
   end
 
-  subgraph notebook["Notebook Build"]
-    social_nb_s1["V2 scheduled query digital branch"]
+  subgraph scheduled_query["BigQuery Scheduled Query"]
+    social_sched["Social branch in ADIF_FullDataRefresh_2604"]
+    digital_sched["Digital branch in ADIF_FullDataRefresh_2604"]
     target_tbl["repo_stg.adif__mainDataTable_notebook_v2_test"]
   end
 
   social_raw --> social_stg
-  social_stg --> social_nb_s2
-  pacing --> social_nb_s2
-  core_upd --> social_nb_s1
+  social_stg --> social_sched
+  pacing --> social_sched
+  core_upd --> digital_sched
 
-  social_nb_s1 --> target_tbl
-  social_nb_s2 --> target_tbl
+  digital_sched --> target_tbl
+  social_sched --> target_tbl
 ```
 
 ### Live Scheduled Query Dependencies
@@ -253,7 +263,7 @@ Warehouse-side verification completed on `2026-04-10`:
 - `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`, `repo_stg.stg__adif__social_crossplatform`, and `repo_int.crossplatform_pacing` all still exist in production
 - The transfer config identifier and schedule remain documented here, but I could not re-check scheduler-service metadata from this environment because neither `bq` nor `gcloud` is installed
 
-The reference notebook still includes post-run checks for:
+Historical notebook copies still include post-run checks for:
 - Target table row/date/spend/impression totals
 - Breakdown by `data_source_primary` (2026 filter)
 - Breakdown by `supplier_code`, `p_package_friendly` (2026 filter)
@@ -280,7 +290,7 @@ The reference notebook still includes post-run checks for:
 
 #### 3. Social Layering
 - [projects/social_layering/README.md](projects/social_layering/README.md)
-- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb)
+- [projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb](projects/social_layering/build__adif__prisma_expanded_plus_dcm_with_social_tbl.ipynb) - historical only, not the active builder
 - [projects/social_layering/dashboard/adif__mainDataTable_notebook_v2_test_qa_dashboard.html](projects/social_layering/dashboard/adif__mainDataTable_notebook_v2_test_qa_dashboard.html)
 - [projects/social_layering/sql/stg__adif__social_crossplatform.sql](projects/social_layering/sql/stg__adif__social_crossplatform.sql)
 - [projects/social_layering/social_mapping_matrix_editable.csv](projects/social_layering/social_mapping_matrix_editable.csv)

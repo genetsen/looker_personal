@@ -59,14 +59,14 @@ combined AS (
 -- STEP 4: Recalculate final_* columns with updated FPD priority
 final_with_updated_priority AS (
   SELECT
-    *,
+    * EXCEPT(final_impressions, final_spend, data_source_primary),
 
     -- Recalculated final_impressions: Updated FPD → Original FPD → DCM
     COALESCE(
       updated_fpd_impressions,
       fpd_impressions,
       d_daily_recalculated_imps
-    ) AS final_impressions_new,
+    ) AS final_impressions,
 
     -- Recalculated final_spend: Updated FPD → Original FPD → DCM
     COALESCE(
@@ -90,7 +90,7 @@ final_with_updated_priority AS (
 pkg_rollups_updated AS (
   SELECT
     package_id_joined,
-    SUM(final_impressions_new) AS pkg_act_imps_new,
+    SUM(final_impressions) AS pkg_act_imps_new,
     SUM(final_spend_new) AS pkg_act_spend_new,
     SUM(updated_fpd_impressions) AS pkg_updated_fpd_impressions,
     SUM(updated_fpd_spend) AS pkg_updated_fpd_spend
@@ -100,13 +100,10 @@ pkg_rollups_updated AS (
 
 -- FINAL OUTPUT: All original columns + new columns + updated final_* columns
 SELECT
-  f.* EXCEPT(final_impressions, final_spend, pkg_act_imps, pkg_act_spend),
-
-  -- Replace final_* columns with recalculated values
-  f.final_impressions_new AS final_impressions,
-  f.final_spend_new AS final_spend,
+  f.* EXCEPT(pkg_act_imps, pkg_act_spend),
 
   -- Replace package rollup columns with recalculated values
+  f.final_spend_new AS final_spend,
   p.pkg_act_imps_new AS pkg_act_imps,
   p.pkg_act_spend_new AS pkg_act_spend,
 
@@ -213,8 +210,8 @@ combined AS (
 
 final_with_updated_priority AS (
   SELECT
-    *,
-    COALESCE(updated_fpd_impressions, fpd_impressions, d_daily_recalculated_imps) AS final_impressions_new,
+    * EXCEPT(final_impressions, final_spend, data_source_primary),
+    COALESCE(updated_fpd_impressions, fpd_impressions, d_daily_recalculated_imps) AS final_impressions,
     COALESCE(updated_fpd_spend, fpd_spend, d_daily_recalculated_cost) AS final_spend_new,
     CASE
       WHEN updated_fpd_impressions IS NOT NULL OR updated_fpd_spend IS NOT NULL THEN 'updated_fpd'
@@ -228,7 +225,7 @@ final_with_updated_priority AS (
 pkg_rollups_updated AS (
   SELECT
     package_id_joined,
-    SUM(final_impressions_new) AS pkg_act_imps_new,
+    SUM(final_impressions) AS pkg_act_imps_new,
     SUM(final_spend_new) AS pkg_act_spend_new,
     SUM(updated_fpd_impressions) AS pkg_updated_fpd_impressions,
     SUM(updated_fpd_spend) AS pkg_updated_fpd_spend
@@ -237,8 +234,7 @@ pkg_rollups_updated AS (
 )
 
 SELECT
-  f.* EXCEPT(final_impressions, final_spend, pkg_act_imps, pkg_act_spend),
-  f.final_impressions_new AS final_impressions,
+  f.* EXCEPT(pkg_act_imps, pkg_act_spend),
   f.final_spend_new AS final_spend,
   p.pkg_act_imps_new AS pkg_act_imps,
   p.pkg_act_spend_new AS pkg_act_spend,

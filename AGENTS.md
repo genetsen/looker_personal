@@ -100,17 +100,26 @@ Applies to all SQL QA work in this workspace across all datasets/projects.
 1. Run QA in isolated `_qa` tables/views only.
 2. Provide proof before live changes (for example: query results, row counts, schema compatibility checks, and error diffs).
 3. Do not patch live scripts/configs/tables until explicit user approval after proof review.
+4. For new or replacement combined/master views, do a source-field coverage audit before proposing or deploying the output schema: inventory columns from every contributing live source, mark each as keep, rename, null-fill, aggregate, nested/preserved, or intentionally omit, and get approval for intentional omissions. Do not silently curate away user-facing planning/reporting fields such as package names, package-friendly labels, channel/grouping fields, supplier/site fields, or source lineage fields when they exist upstream.
 
 ## BigQuery Object Reference Default
 
 When the user mentions a BigQuery table or view path, treat the live warehouse object as the default source of truth unless the user explicitly asks for the local SQL file instead.
 
+Before any BigQuery-backed data-model task, state the source-of-truth gate before tool use:
+
+- `SOURCE OF TRUTH`: live warehouse object, unless the user named a local file path.
+- `FIRST ORIENTATION`: repo Markdown docs may be read first for context, especially README/runbook notes, but only as orientation.
+- `FIRST EVIDENCE TOOL`: BigQuery MCP for live warehouse validation before relying on any repo takeaway.
+- `LOCAL FILE RULE`: read local SQL only after live inspection, when comparing local-vs-live drift, or when the user explicitly named the local file; validate Markdown doc takeaways against production before acting on them.
+
 Use this order:
 
-1. Inspect the live production object first.
-2. If a likely local SQL file or documentation entry also exists, compare the local definition or description against production.
-3. Tell the user clearly if the local file appears to drift from production before relying on the local version for analysis or edits.
-4. If the user mentions a local file path, then work from the file directly instead of assuming the production object is the target.
+1. Optionally read narrow repo Markdown docs first to understand names, lineage, and intended workflow.
+2. Inspect the live production object with BigQuery MCP before treating any repo doc or SQL takeaway as true.
+3. If a likely local SQL file or documentation entry also exists, compare the local definition or description against production.
+4. Tell the user clearly if the repo doc or local SQL appears to drift from production, then work together to resolve the mismatch before relying on the local version for analysis or edits.
+5. If the user mentions a local file path, then work from the file directly instead of assuming the production object is the target.
 
 When referencing a BigQuery table or view in user-facing outputs, render it as a clickable deep link whenever the client supports one instead of plain text only.
 
