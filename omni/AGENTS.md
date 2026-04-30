@@ -55,6 +55,7 @@ For Omni dashboard or widget work in this project:
 2. Build and show a before-and-after preview.
 3. Call out whether the change is visual, behavioral, or both.
 4. Wait for user confirmation before making the live dashboard change.
+5. For single-widget edits, use the Omni UI or a scoped widget-level update. Do not replace the full dashboard document payload to change one widget because that can break tile IDs, query mappings, and layout bindings.
 
 ## Verification TODOs
 
