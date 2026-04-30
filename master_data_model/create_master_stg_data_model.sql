@@ -304,11 +304,12 @@ digital_final AS (
     ) AS final_spend,
     COALESCE(
       NULLIF(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0), 0),
+      d_daily_recalculated_imps,
       d_impressions
     ) AS final_impressions,
     COALESCE(fpd_orig_clicks, d_clicks) AS final_clicks,
-    CAST(NULL AS FLOAT64) AS final_video_plays,
-    CAST(NULL AS FLOAT64) AS final_video_comps,
+    CAST(d_video_plays AS FLOAT64) AS final_video_plays,
+    CAST(d_video_comps AS FLOAT64) AS final_video_comps,
     CAST(NULL AS DATE) AS tv_data_refresh_date,
     CAST(NULL AS STRING) AS tv_media_outlet,
     CAST(NULL AS STRING) AS tv_type,
@@ -752,7 +753,14 @@ with_rollups AS (
 
 SELECT
   *,
-  pkg_est_spend > pkg_act_spend AS pkg_over_bool,
-  IF(pkg_est_spend > pkg_act_spend, 1, 0) AS pkg_over_flag,
+  CASE
+    WHEN pkg_est_spend = 0 THEN NULL
+    ELSE pkg_act_spend > pkg_est_spend
+  END AS pkg_over_bool,
+  CASE
+    WHEN pkg_est_spend = 0 THEN NULL
+    WHEN pkg_act_spend > pkg_est_spend THEN 1
+    ELSE 0
+  END AS pkg_over_flag,
   CURRENT_TIMESTAMP() AS model_view_runtime_timestamp
 FROM with_rollups;
