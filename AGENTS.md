@@ -136,6 +136,10 @@ Use this order:
 2. Use direct `gcloud` / `bq` command flows only when MCP is unavailable, when authentication needs repair, or when the task requires advanced access such as token-based Dataform notebook file reads.
 3. If a helper script exists for sandbox-safe auth in the current project, use that helper instead of raw home-folder `gcloud` config paths.
 
+## Shared BigQuery QA Object Hygiene
+
+For `master_data_model`, any QA/test BigQuery object published into a shared dataset such as `master_stg` must have warehouse-visible metadata before handoff. At minimum, set a BigQuery `description` and include a preservable SQL comment directly under the outer `SELECT` statement. Both should state: what the object is for, what changed versus the prior/local SQL with local file and line references where applicable, whether it is safe to delete, and any cleanup owner or condition. Do not publish context-free QA views/tables into shared datasets.
+
 ## Omni Dashboard Change Preview Default
 
 When making or proposing changes to an Omni dashboard or widget in this workspace, use a preview-first workflow unless the user explicitly asks to skip it.

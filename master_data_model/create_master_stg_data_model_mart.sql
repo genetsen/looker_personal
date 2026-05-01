@@ -9,51 +9,51 @@ WITH
 filtered_rows AS (
   SELECT *
   FROM `looker-studio-pro-452620.master_stg.data_model`
-  WHERE NOT CONTAINS_SUBSTR(row_data_issue_category, 'low_signal_dcm')
+  WHERE NOT CONTAINS_SUBSTR(`qa_row_data_issue_category`, 'low_signal_dcm')
 ),
 
 with_rollups AS (
   SELECT
     * EXCEPT(
-      pkg_est_spend,
-      pkg_est_impressions,
-      pkg_act_spend,
-      pkg_act_impressions,
-      pkg_act_clicks,
-      pkg_fpd_orig_impressions,
-      pkg_fpd_orig_spend,
-      pkg_fpd_updated_impressions,
-      pkg_fpd_updated_spend,
-      pkg_fpd_combined_impressions,
-      pkg_fpd_combined_spend,
-      pkg_over_bool,
-      pkg_over_flag,
-      model_view_runtime_timestamp
+      `qa_pkg_est_spend_doNotSum`,
+      `qa_pkg_est_impressions_doNotSum`,
+      `qa_pkg_act_spend_doNotSum`,
+      `qa_pkg_act_impressions_doNotSum`,
+      `qa_pkg_act_clicks_doNotSum`,
+      `qa_pkg_fpd_orig_impressions_doNotSum`,
+      `qa_pkg_fpd_orig_spend_doNotSum`,
+      `qa_pkg_fpd_updated_impressions_doNotSum`,
+      `qa_pkg_fpd_updated_spend_doNotSum`,
+      `qa_pkg_fpd_combined_impressions_doNotSum`,
+      `qa_pkg_fpd_combined_spend_doNotSum`,
+      `qa_pkg_over_bool`,
+      `qa_pkg_over_flag`,
+      `qa_model_view_runtime_timestamp`
     ),
-    SUM(COALESCE(planned_daily_spend_pk, 0)) OVER (PARTITION BY package_id_joined) AS pkg_est_spend,
-    SUM(COALESCE(planned_daily_impressions_pk, 0)) OVER (PARTITION BY package_id_joined) AS pkg_est_impressions,
-    SUM(COALESCE(final_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_act_spend,
-    SUM(COALESCE(final_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_act_impressions,
-    SUM(COALESCE(final_clicks, 0)) OVER (PARTITION BY package_id_joined) AS pkg_act_clicks,
-    SUM(COALESCE(fpd_orig_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_orig_impressions,
-    SUM(COALESCE(fpd_orig_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_orig_spend,
-    SUM(COALESCE(fpd_updated_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_updated_impressions,
-    SUM(COALESCE(fpd_updated_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_updated_spend,
-    SUM(COALESCE(fpd_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_impressions,
-    SUM(COALESCE(fpd_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_spend
+    SUM(COALESCE(`_planned_spend`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_est_spend_doNotSum`,
+    SUM(COALESCE(`_planned_impressions`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_est_impressions_doNotSum`,
+    SUM(COALESCE(`_spend`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_act_spend_doNotSum`,
+    SUM(COALESCE(`_impressions`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_act_impressions_doNotSum`,
+    SUM(COALESCE(`_clicks`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_act_clicks_doNotSum`,
+    SUM(COALESCE(`fpd_orig_impressions`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_fpd_orig_impressions_doNotSum`,
+    SUM(COALESCE(`fpd_orig_spend`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_fpd_orig_spend_doNotSum`,
+    SUM(COALESCE(`fpd_updated_impressions`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_fpd_updated_impressions_doNotSum`,
+    SUM(COALESCE(`fpd_updated_spend`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_fpd_updated_spend_doNotSum`,
+    SUM(COALESCE(`fpd_impressions`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_fpd_combined_impressions_doNotSum`,
+    SUM(COALESCE(`fpd_spend`, 0)) OVER (PARTITION BY `_package_id`) AS `qa_pkg_fpd_combined_spend_doNotSum`
   FROM filtered_rows
 )
 
 SELECT
   *,
   CASE
-    WHEN pkg_est_spend = 0 THEN NULL
-    ELSE pkg_act_spend > pkg_est_spend
-  END AS pkg_over_bool,
+    WHEN `qa_pkg_est_spend_doNotSum` = 0 THEN NULL
+    ELSE `qa_pkg_act_spend_doNotSum` > `qa_pkg_est_spend_doNotSum`
+  END AS `qa_pkg_over_bool`,
   CASE
-    WHEN pkg_est_spend = 0 THEN NULL
-    WHEN pkg_act_spend > pkg_est_spend THEN 1
+    WHEN `qa_pkg_est_spend_doNotSum` = 0 THEN NULL
+    WHEN `qa_pkg_act_spend_doNotSum` > `qa_pkg_est_spend_doNotSum` THEN 1
     ELSE 0
-  END AS pkg_over_flag,
-  CURRENT_TIMESTAMP() AS model_view_runtime_timestamp
+  END AS `qa_pkg_over_flag`,
+  CURRENT_TIMESTAMP() AS `qa_model_view_runtime_timestamp`
 FROM with_rollups;
