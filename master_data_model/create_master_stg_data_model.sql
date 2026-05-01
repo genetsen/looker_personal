@@ -7,20 +7,12 @@
 --
 -- Scope rules:
 --   - No advertiser/client/source-file filters.
---   - Prisma package universe includes packages with start_date >= 2025-01-01.
---   - Delivery rows only include dates >= 2025-01-01.
+--   - Prisma rows include packages with start_date >= 2025-01-01.
+--   - Delivery rows only include dates >= 2025-01-01, even when no matching
+--     Prisma package exists.
 
 CREATE OR REPLACE VIEW `looker-studio-pro-452620.master_stg.data_model` AS
 WITH
-package_universe AS (
-  SELECT DISTINCT
-    package_id
-  FROM `looker-studio-pro-452620.20250327_data_model.prisma_expanded_full`
-  WHERE package_type != 'Child'
-    AND start_date >= DATE '2025-01-01'
-    AND package_id IS NOT NULL
-),
-
 dcm_daily AS (
   SELECT
     d.package_id,
@@ -50,9 +42,8 @@ dcm_daily AS (
     MAX(d.pkg_total_imps) AS d_total_delivered_imps,
     MAX(d.total_inflight_impressions) AS d_total_del_inflight_imps
   FROM `looker-studio-pro-452620.DCM.20250505_costModel_v5` AS d
-  INNER JOIN package_universe AS pu
-    ON d.package_id = pu.package_id
   WHERE DATE(d.date) >= DATE '2025-01-01'
+    AND d.package_id IS NOT NULL
   GROUP BY d.package_id, DATE(d.date)
 ),
 
@@ -76,9 +67,8 @@ fpd_original_raw AS (
     f.site,
     f.package_name
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` AS f
-  INNER JOIN package_universe AS pu
-    ON f.package_id = pu.package_id
   WHERE DATE(f.date_final) >= DATE '2025-01-01'
+    AND f.package_id IS NOT NULL
 ),
 
 fpd_original_daily AS (
@@ -116,9 +106,8 @@ fpd_updated_daily AS (
     MAX(u.source_sheet_modified_time) AS fpd_updated_source_sheet_modified_time,
     ARRAY_AGG(u.package_name IGNORE NULLS ORDER BY u.package_name LIMIT 1)[SAFE_OFFSET(0)] AS fpd_updated_package_name
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily` AS u
-  INNER JOIN package_universe AS pu
-    ON u.package_id = pu.package_id
   WHERE DATE(u.date) >= DATE '2025-01-01'
+    AND u.package_id IS NOT NULL
   GROUP BY u.package_id, DATE(u.date)
 ),
 
@@ -198,6 +187,22 @@ digital_with_meta AS (
     ON j.package_id_joined = m.package_id
 ),
 
+dcm_low_signal_primary_packages AS (
+  SELECT
+    package_id_joined AS low_signal_package_id
+  FROM digital_with_meta
+  WHERE fpd_updated_impressions IS NULL
+    AND fpd_updated_spend IS NULL
+    AND fpd_orig_impressions IS NULL
+    AND fpd_orig_spend IS NULL
+    AND (d_daily_recalculated_imps IS NOT NULL OR d_daily_recalculated_cost IS NOT NULL)
+    AND COALESCE(d_impressions, 0) < 1000
+    AND COALESCE(d_media_cost, 0) < 0.1
+    AND COALESCE(d_clicks, 0) < 5
+  GROUP BY package_id_joined
+  HAVING SAFE_DIVIDE(SUM(COALESCE(d_impressions, 0)), COUNT(*)) < 100
+),
+
 digital_final AS (
   SELECT
     'digital' AS row_type,
@@ -211,47 +216,142 @@ digital_final AS (
       WHEN d_daily_recalculated_imps IS NOT NULL OR d_daily_recalculated_cost IS NOT NULL THEN 'dcm'
       ELSE 'planned_only'
     END AS row_data_source_primary,
+    COALESCE(
+      NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
+        IF(prisma_package_id IS NOT NULL, ['prisma'], []),
+        IF(planned_daily_spend_pk IS NOT NULL
+          OR planned_daily_impressions_pk IS NOT NULL
+          OR planned_clicks IS NOT NULL, ['prisma_daily'], []),
+        IF(d_daily_recalculated_imps IS NOT NULL
+          OR d_daily_recalculated_cost IS NOT NULL, ['dcm'], []),
+        IF(fpd_orig_impressions IS NOT NULL
+          OR fpd_orig_spend IS NOT NULL, ['fpd_original'], []),
+        IF(fpd_updated_impressions IS NOT NULL
+          OR fpd_updated_spend IS NOT NULL, ['fpd_updated'], [])
+      ), ' | '), ''),
+      'none'
+    ) AS row_data_sources_available,
+    COALESCE(
+      NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
+        IF(prisma_package_id IS NULL
+          AND (
+            d_daily_recalculated_imps IS NOT NULL
+            OR d_daily_recalculated_cost IS NOT NULL
+            OR fpd_orig_impressions IS NOT NULL
+            OR fpd_orig_spend IS NOT NULL
+            OR fpd_updated_impressions IS NOT NULL
+            OR fpd_updated_spend IS NOT NULL
+          ), ['missing_prisma_package'], []),
+        IF(prisma_package_id IS NOT NULL
+          AND planned_daily_spend_pk IS NULL
+          AND planned_daily_impressions_pk IS NULL
+          AND planned_clicks IS NULL
+          AND (
+            d_daily_recalculated_imps IS NOT NULL
+            OR d_daily_recalculated_cost IS NOT NULL
+            OR fpd_orig_impressions IS NOT NULL
+            OR fpd_orig_spend IS NOT NULL
+            OR fpd_updated_impressions IS NOT NULL
+            OR fpd_updated_spend IS NOT NULL
+          ), ['missing_prisma_daily'], []),
+        IF(
+          (
+            d_daily_recalculated_imps IS NOT NULL
+            OR d_daily_recalculated_cost IS NOT NULL
+          )
+          AND (
+            fpd_orig_impressions IS NOT NULL
+            OR fpd_orig_spend IS NOT NULL
+            OR fpd_updated_impressions IS NOT NULL
+            OR fpd_updated_spend IS NOT NULL
+          )
+          AND (
+            ABS(COALESCE(fpd_orig_spend, 0) + COALESCE(fpd_updated_spend, 0) - COALESCE(d_daily_recalculated_cost, 0)) > 1
+            OR ABS(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0) - COALESCE(d_daily_recalculated_imps, d_impressions, 0)) > 1
+          ), ['actual_source_conflict'], []),
+        IF(low_signal.low_signal_package_id IS NOT NULL
+          AND fpd_updated_impressions IS NULL
+          AND fpd_updated_spend IS NULL
+          AND fpd_orig_impressions IS NULL
+          AND fpd_orig_spend IS NULL
+          AND (d_daily_recalculated_imps IS NOT NULL OR d_daily_recalculated_cost IS NOT NULL)
+          AND COALESCE(d_impressions, 0) < 1000
+          AND COALESCE(d_media_cost, 0) < 0.1
+          AND COALESCE(d_clicks, 0) < 5, ['low_signal_dcm'], []),
+        IF(prisma_package_id IS NOT NULL
+          AND d_daily_recalculated_imps IS NULL
+          AND d_daily_recalculated_cost IS NULL
+          AND fpd_orig_impressions IS NULL
+          AND fpd_orig_spend IS NULL
+          AND fpd_updated_impressions IS NULL
+          AND fpd_updated_spend IS NULL, ['missing_actuals'], []),
+        IF(prisma_package_id IS NOT NULL
+          AND COALESCE(
+            NULLIF(COALESCE(fpd_orig_spend, 0) + COALESCE(fpd_updated_spend, 0), 0),
+            d_daily_recalculated_cost
+          ) IS NULL
+          AND COALESCE(
+            NULLIF(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0), 0),
+            d_daily_recalculated_imps,
+            d_impressions
+          ) IS NULL
+          AND COALESCE(fpd_orig_clicks, d_clicks) IS NULL
+          AND (
+            d_daily_recalculated_imps IS NOT NULL
+            OR d_daily_recalculated_cost IS NOT NULL
+            OR fpd_orig_impressions IS NOT NULL
+            OR fpd_orig_spend IS NOT NULL
+            OR fpd_updated_impressions IS NOT NULL
+            OR fpd_updated_spend IS NOT NULL
+          ), ['missing_final_metrics'], [])
+      ), ' | '), ''),
+      'ok'
+    ) AS row_data_issue_category,
     package_id_joined,
     date,
-    start_date AS package_start_date,
-    end_date AS package_end_date,
-    advertiser_name,
+    COALESCE(start_date, d_package_start_date, date) AS package_start_date,
+    COALESCE(end_date, d_package_end_date, date) AS package_end_date,
+    COALESCE(advertiser_name, d_advertiser_name, fpd_orig_client) AS advertiser_name,
     advertiser_short_name,
-    campaign_name,
-    campaign_friendly,
+    COALESCE(campaign_name, d_campaign_name, fpd_orig_campaign_name) AS campaign_name,
+    COALESCE(campaign_friendly, d_campaign_name, fpd_orig_campaign_name) AS campaign_friendly,
     product_code,
     product_name,
-    package_type,
-    package_name,
+    COALESCE(package_type, 'UnmatchedDigitalPackage') AS package_type,
+    COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name, package_id_joined) AS package_name,
     p_package_friendly,
     CASE
-      WHEN package_name IS NULL OR package_name = '' THEN NULL
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(iHeart|SiriusXM|WeAreAOk|Wonder)') THEN 'Audio'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(Peacock|DISNED|ESPN|Hulu|Roku|HBO|Paramount|Tubi|YouTube|NBCU)') THEN 'Video'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(NBC|WBD|CBS|Playfly|Audience Express|Disney)') THEN 'Linear'
+      WHEN COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name) IS NULL
+        OR COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name) = '' THEN NULL
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(iHeart|SiriusXM|WeAreAOk|Wonder)') THEN 'Audio'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(Peacock|DISNED|ESPN|Hulu|Roku|HBO|Paramount|Tubi|YouTube|NBCU)') THEN 'Video'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(NBC|WBD|CBS|Playfly|Audience Express|Disney)') THEN 'Linear'
       WHEN REGEXP_CONTAINS(supplier_code, r'(?i)(PROJEX|Quan|QUAN)') THEN 'OOH Regional'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(PROJEX|Quan|QUAN)') THEN 'OOH Regional'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(ScreenVision|NCM)') THEN 'Cinema Regional'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(Vox|CondeNast|NYT|Meredi|TINYBE|NATVLY)') THEN 'Publisher Partnership'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)People First') THEN 'Influencer'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(People|STLWED|NJB|BLISS)') THEN 'Publisher Partnership'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)(Jeweler|JCK|Instore|Gem|AGS|Centurion|Zimnisky|KENIL|RELX)') THEN 'Trade'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)MIQ') THEN 'Programmatic'
-      WHEN REGEXP_CONTAINS(package_name, r'(?i)feeorder') THEN 'fee'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(PROJEX|Quan|QUAN)') THEN 'OOH Regional'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(ScreenVision|NCM)') THEN 'Cinema Regional'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(Vox|CondeNast|NYT|Meredi|TINYBE|NATVLY)') THEN 'Publisher Partnership'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)People First') THEN 'Influencer'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(People|STLWED|NJB|BLISS)') THEN 'Publisher Partnership'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)(Jeweler|JCK|Instore|Gem|AGS|Centurion|Zimnisky|KENIL|RELX)') THEN 'Trade'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)MIQ') THEN 'Programmatic'
+      WHEN REGEXP_CONTAINS(COALESCE(package_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name), r'(?i)feeorder') THEN 'fee'
       WHEN REGEXP_CONTAINS(package_type, r'(?i)Print') THEN 'Publisher Partnership'
       ELSE 'Unmapped'
     END AS gsMediaTeam_channel,
-    placement_id,
-    placement_name,
-    supplier_code,
-    supplier_name,
+    COALESCE(placement_id, package_id_joined) AS placement_id,
+    COALESCE(placement_name, d_package_name, fpd_updated_package_name, fpd_orig_package_name, package_id_joined) AS placement_name,
+    COALESCE(
+      supplier_code,
+      UPPER(REGEXP_REPLACE(COALESCE(d_supplier_name, fpd_updated_suppliers, fpd_orig_supplier_name, 'UNKNOWN'), r'[^A-Za-z0-9]+', '_'))
+    ) AS supplier_code,
+    COALESCE(supplier_name, d_supplier_name, fpd_updated_suppliers, fpd_orig_supplier_name) AS supplier_name,
     supplier_logo,
-    buy_type,
-    buy_category,
-    channel,
-    channel_raw,
-    channel_group,
-    media_name,
+    COALESCE(buy_type, d_channel_group, 'Unmapped') AS buy_type,
+    COALESCE(buy_category, d_channel_group, 'Unmapped') AS buy_category,
+    COALESCE(channel, d_channel_group, 'unmapped') AS channel,
+    COALESCE(channel_raw, d_channel_group, 'Unmapped') AS channel_raw,
+    COALESCE(channel_group, d_channel_group, 'unmapped') AS channel_group,
+    COALESCE(media_name, 'Digital') AS media_name,
     cost_method,
     planned_amount,
     planned_impressions,
@@ -298,18 +398,33 @@ digital_final AS (
     fpd_orig_clicks AS fpd_clicks,
     fpd_orig_sends AS fpd_sends,
     fpd_orig_opens AS fpd_opens,
-    COALESCE(
-      NULLIF(COALESCE(fpd_orig_spend, 0) + COALESCE(fpd_updated_spend, 0), 0),
-      d_daily_recalculated_cost
-    ) AS final_spend,
-    COALESCE(
-      NULLIF(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0), 0),
-      d_daily_recalculated_imps,
-      d_impressions
-    ) AS final_impressions,
-    COALESCE(fpd_orig_clicks, d_clicks) AS final_clicks,
-    CAST(d_video_plays AS FLOAT64) AS final_video_plays,
-    CAST(d_video_comps AS FLOAT64) AS final_video_comps,
+    CASE
+      WHEN prisma_package_id IS NULL THEN NULL
+      ELSE COALESCE(
+        NULLIF(COALESCE(fpd_orig_spend, 0) + COALESCE(fpd_updated_spend, 0), 0),
+        d_daily_recalculated_cost
+      )
+    END AS final_spend,
+    CASE
+      WHEN prisma_package_id IS NULL THEN NULL
+      ELSE COALESCE(
+        NULLIF(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0), 0),
+        d_daily_recalculated_imps,
+        d_impressions
+      )
+    END AS final_impressions,
+    CASE
+      WHEN prisma_package_id IS NULL THEN NULL
+      ELSE COALESCE(fpd_orig_clicks, d_clicks)
+    END AS final_clicks,
+    CASE
+      WHEN prisma_package_id IS NULL THEN NULL
+      ELSE CAST(d_video_plays AS FLOAT64)
+    END AS final_video_plays,
+    CASE
+      WHEN prisma_package_id IS NULL THEN NULL
+      ELSE CAST(d_video_comps AS FLOAT64)
+    END AS final_video_comps,
     CAST(NULL AS DATE) AS tv_data_refresh_date,
     CAST(NULL AS STRING) AS tv_media_outlet,
     CAST(NULL AS STRING) AS tv_type,
@@ -333,6 +448,8 @@ digital_final AS (
     CAST(NULL AS FLOAT64) AS social_video_views,
     CAST(NULL AS FLOAT64) AS social_video_comps
   FROM digital_with_meta
+  LEFT JOIN dcm_low_signal_primary_packages AS low_signal
+    ON package_id_joined = low_signal.low_signal_package_id
   WHERE package_id_joined IS NOT NULL
 ),
 
@@ -424,6 +541,17 @@ social_final AS (
   SELECT
     'social' AS row_type,
     'social' AS row_data_source_primary,
+    ARRAY_TO_STRING(ARRAY_CONCAT(
+      ['social'],
+      IF(planned_daily_spend IS NOT NULL, ['social_pacing'], [])
+    ), ' | ') AS row_data_sources_available,
+    COALESCE(
+      NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
+        IF(planned_daily_spend IS NULL, ['missing_social_pacing'], []),
+        IF(spend IS NULL AND impressions IS NULL AND clicks IS NULL, ['missing_final_metrics'], [])
+      ), ' | '), ''),
+      'ok'
+    ) AS row_data_issue_category,
     CONCAT('social:', social_platform, ':', campaign_id, ':', ad_group_id) AS package_id_joined,
     date_day AS date,
     COALESCE(pacing_start_date, date_day) AS package_start_date,
@@ -605,6 +733,11 @@ tv_final AS (
   SELECT
     'tv' AS row_type,
     'tv_combined' AS row_data_source_primary,
+    'tv_combined' AS row_data_sources_available,
+    CASE
+      WHEN net_cost IS NULL AND net_impressions IS NULL THEN 'missing_final_metrics'
+      ELSE 'ok'
+    END AS row_data_issue_category,
     package_id_joined,
     date,
     package_start_date,
@@ -753,6 +886,7 @@ with_rollups AS (
 
 SELECT
   *,
+  NULLIF(row_data_issue_category, 'ok') AS row_data_callouts,
   CASE
     WHEN pkg_est_spend = 0 THEN NULL
     ELSE pkg_act_spend > pkg_est_spend

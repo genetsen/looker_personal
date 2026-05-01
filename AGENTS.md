@@ -101,10 +101,13 @@ Applies to all SQL QA work in this workspace across all datasets/projects.
 2. Provide proof before live changes (for example: query results, row counts, schema compatibility checks, and error diffs).
 3. Do not patch live scripts/configs/tables until explicit user approval after proof review.
 4. For new or replacement combined/master views, do a source-field coverage audit before proposing or deploying the output schema: inventory columns from every contributing live source, mark each as keep, rename, null-fill, aggregate, nested/preserved, or intentionally omit, and get approval for intentional omissions. Do not silently curate away user-facing planning/reporting fields such as package names, package-friendly labels, channel/grouping fields, supplier/site fields, or source lineage fields when they exist upstream.
+5. For `master_data_model`, allowing unmatched DCM/FPD delivery rows into a QA or production candidate means raw evidence visibility only unless the user explicitly approves metric inclusion. Rows without a matching Prisma package may preserve `d_*`, `fpd_*`, source labels, and issue labels, but must not populate `final_*` metrics or contribute to package actual rollups. Validate this explicitly before presenting the candidate as correct.
 
 ## BigQuery Object Reference Default
 
 When the user mentions a BigQuery table or view path, treat the live warehouse object as the default source of truth unless the user explicitly asks for the local SQL file instead.
+
+For `master_data_model`, row counts, source mix counts, package-key counts, and media totals are live QA evidence, not documentation state. Do not update README, maps, or durable docs just to track fluctuating counts; recheck them live when needed and summarize them only in the run-specific handoff unless the user explicitly asks to preserve a snapshot.
 
 Before any BigQuery-backed data-model task, state the source-of-truth gate before tool use:
 

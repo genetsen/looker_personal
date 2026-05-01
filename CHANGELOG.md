@@ -2,6 +2,44 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-05-01
+
+### Changed
+
+- **Master Data Model Interactive Map Refinement**
+  What: Reworked the map into collapsible parallel lanes for digital, social, and TV capture; clarified that the lanes meet only at union and rollups; showed the Ritual slice as flowing out of the Master View; rewrote the node descriptions to focus on production fields, mappings, and caveats; and added update paths for the upstream tables/views.
+  Why: Makes the map match the real model shape and shows which upstream objects need to refresh before each production element is current.
+  <details><summary>Paths - Master Data Model Interactive Map Refinement</summary>
+
+  [master_data_model/docs/master-data-model-map.html](master_data_model/docs/master-data-model-map.html)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Master Data Model Count Documentation Policy**
+  What: Added the repo rule that fluctuating master-model row counts, source mix counts, package-key counts, and media totals should be checked live for QA instead of tracked in durable docs.
+  Why: Prevents README and map churn when source tables refresh naturally.
+  <details><summary>Paths - Master Data Model Count Documentation Policy</summary>
+
+  [AGENTS.md](AGENTS.md)
+  [master_data_model/README.md](master_data_model/README.md)
+  [master_data_model/docs/master-data-model-map.html](master_data_model/docs/master-data-model-map.html)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Master Data Model Source Issue QA Candidate**
+  What: Added candidate logic for `row_data_sources_available`, `row_data_issue_category`, and `row_data_callouts`; removed the Prisma-only gate from DCM and FPD inputs; kept non-Prisma rows out of `final_*` metrics; moved DCM low-signal filtering into a new reporting mart script; and validated the result in QA views without replacing production.
+  Why: Keeps the master model as an evidence layer while letting the mart apply reporting-only exclusions and recalculate package rollups after filtering.
+  <details><summary>Paths - Master Data Model Source Issue QA Candidate</summary>
+
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [master_data_model/create_master_stg_data_model_mart.sql](master_data_model/create_master_stg_data_model_mart.sql)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-04-29
 
 ### Changed
@@ -21,7 +59,7 @@ All notable changes to this repository are documented in this file.
 
 - **Master Data Model TV Layer Deployment**
   What: Added `landing.tv_combined` as a TV branch in the master data model SQL, preserving TV source fields in `tv_*` columns, validating the candidate in `master_stg.data_model_qa_tv_layer`, and deploying it to production `master_stg.data_model`.
-  Why: Brings local and national TV estimate rows into the cross-client model with production proof for row counts, dates, synthetic keys, and TV totals.
+  Why: Brings local and national TV estimate rows into the cross-client model with production proof for date gates, synthetic keys, and TV field coverage.
   <details><summary>Paths - Master Data Model TV Layer QA Candidate</summary>
 
   [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)

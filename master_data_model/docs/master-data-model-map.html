@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Master Data Model Interactive Map</title>
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --paper: #fffdf8;
+      --ink: #1b2733;
+      --muted: #62717f;
+      --line: #d9d3c7;
+      --teal: #0f766e;
+      --amber: #b7791f;
+      --plum: #7c3f58;
+      --blue: #3563a8;
+      --green: #4f7d35;
+      --red: #b84a3f;
+      --soft-teal: rgba(15, 118, 110, 0.07);
+      --soft-blue: rgba(53, 99, 168, 0.07);
+      --soft-plum: rgba(124, 63, 88, 0.08);
+      --soft-amber: rgba(183, 121, 31, 0.09);
+      --soft-green: rgba(79, 125, 53, 0.08);
+      --shadow: 0 18px 48px rgba(28, 37, 46, 0.12);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 7px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 820px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .snapshot {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(92px, 1fr));
+      gap: 8px;
+      min-width: 500px;
+    }
+
+    .metric {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 8px 22px rgba(28, 37, 46, 0.06);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 16px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.86);
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .pip {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .pip.live { background: var(--teal); }
+    .pip.docs { background: var(--blue); }
+    .pip.write { background: var(--amber); }
+    .pip.risk-low { background: var(--green); }
+    .pip.risk-med { background: var(--amber); }
+    .pip.risk-high { background: var(--red); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .map-panel,
+    .inspector {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .map-panel {
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .flow-map {
+      display: grid;
+      grid-template-columns:
+        minmax(118px, 1.15fr)
+        20px
+        minmax(118px, 1fr)
+        20px
+        minmax(112px, 0.9fr)
+        20px
+        minmax(118px, 1fr);
+      grid-template-rows: auto auto auto;
+      gap: 12px 8px;
+      align-items: center;
+    }
+
+    .map-stage {
+      border: 1px solid rgba(27, 39, 51, 0.16);
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 116px;
+      background: rgba(255, 253, 248, 0.86);
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+
+    .map-stage[open] {
+      box-shadow: 0 8px 22px rgba(28, 37, 46, 0.07);
+    }
+
+    .map-stage.capture { background: linear-gradient(180deg, var(--soft-teal), rgba(255, 253, 248, 0.92)); }
+    .map-stage.shape { background: linear-gradient(180deg, var(--soft-blue), rgba(255, 253, 248, 0.92)); }
+    .map-stage.merge { background: linear-gradient(180deg, var(--soft-amber), rgba(255, 253, 248, 0.92)); }
+    .map-stage.output { background: linear-gradient(180deg, var(--soft-green), rgba(255, 253, 248, 0.92)); }
+    .map-stage.slice { background: linear-gradient(180deg, var(--soft-plum), rgba(255, 253, 248, 0.92)); }
+
+    summary {
+      cursor: pointer;
+      list-style: none;
+      outline: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .stage-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .stage-head h2 {
+      margin: 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stage-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .collapse-mark {
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      background: rgba(255, 253, 248, 0.8);
+    }
+
+    details[open] .collapse-mark::before { content: "-"; }
+    details:not([open]) .collapse-mark::before { content: "+"; }
+
+    .node-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .node {
+      width: 100%;
+      min-height: 64px;
+      padding: 10px;
+      border: 1px solid rgba(27, 39, 51, 0.18);
+      border-left: 5px solid var(--teal);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.96);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(28, 37, 46, 0.08);
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .node:hover,
+    .node:focus-visible,
+    .node.active {
+      transform: translateY(-2px);
+      border-color: rgba(27, 39, 51, 0.45);
+      box-shadow: 0 12px 28px rgba(28, 37, 46, 0.14);
+      outline: none;
+    }
+
+    .node h3 {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .node p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.32;
+    }
+
+    .node .callouts {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .node[data-risk="medium"] { border-left-color: var(--amber); }
+    .node[data-risk="high"] { border-left-color: var(--red); }
+    .node[data-risk="low"] { border-left-color: var(--green); }
+    .node[data-kind="output"] { border-left-color: var(--plum); }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(27, 39, 51, 0.5);
+      font-weight: 800;
+      font-size: 22px;
+      min-height: 100px;
+    }
+
+    .arrow.down {
+      min-height: 24px;
+      font-size: 20px;
+    }
+
+    .union-stage {
+      grid-column: 5;
+      grid-row: 1 / span 3;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .output-stack {
+      grid-column: 7;
+      grid-row: 1 / span 3;
+      align-self: stretch;
+      display: grid;
+      gap: 10px;
+      align-content: center;
+    }
+
+    .inspector {
+      padding: 18px;
+      min-height: 420px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .inspector-eyebrow {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .inspector h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .inspector-summary {
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .detail-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbf7ef;
+    }
+
+    .detail-box strong {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .detail-box span {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .section-title {
+      margin: 14px 0 8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .source-list,
+    .note-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .source-list a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(53, 99, 168, 0.25);
+    }
+
+    .source-list a:hover,
+    .source-list a:focus-visible {
+      border-bottom-color: var(--blue);
+      outline: none;
+    }
+
+    footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1100px) {
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .snapshot {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .inspector {
+        position: static;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        padding: 14px;
+      }
+
+      .snapshot {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .flow-map {
+        grid-template-columns: 1fr;
+      }
+
+      .map-stage,
+      .union-stage,
+      .output-stack {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+      }
+
+      .arrow {
+        min-height: 18px;
+        transform: rotate(90deg);
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Master Model Map</h1>
+        <p class="subtitle">Digital, social, and TV into production Master.</p>
+      </div>
+      <section class="snapshot" aria-label="Orientation snapshot">
+        <div class="metric"><strong>Live</strong><span>sources</span></div>
+        <div class="metric"><strong>Prod</strong><span>view</span></div>
+        <div class="metric"><strong>3</strong><span>parallel lanes</span></div>
+        <div class="metric"><strong>Ritual</strong><span>slice</span></div>
+      </section>
+    </header>
+
+    <section class="legend" aria-label="Callout legend">
+      <span class="legend-item"><span class="pip live"></span>Live object</span>
+      <span class="legend-item"><span class="pip docs"></span>View logic</span>
+      <span class="legend-item"><span class="pip write"></span>Updater</span>
+      <span class="legend-item"><span class="pip risk-low"></span>Lower risk</span>
+      <span class="legend-item"><span class="pip risk-med"></span>Mapping</span>
+      <span class="legend-item"><span class="pip risk-high"></span>Production caveat</span>
+    </section>
+
+    <section class="workspace">
+      <section class="map-panel" aria-label="Clickable master data model flow">
+        <div class="flow-map" id="flowMap">
+          <details class="map-stage capture" data-group-id="digital-capture" style="grid-column: 1; grid-row: 1;" open>
+            <summary class="stage-head">
+              <span>
+                <h2>Digital Capture</h2>
+                <p>Prisma, DCM, and FPD inputs.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" style="grid-column: 2; grid-row: 1;" aria-hidden="true">→</div>
+          <details class="map-stage shape" data-group-id="digital-shape" style="grid-column: 3; grid-row: 1;" open>
+            <summary class="stage-head">
+              <span>
+                <h2>Digital Stitch</h2>
+                <p>Digital package/date alignment.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" style="grid-column: 4; grid-row: 1;" aria-hidden="true">→</div>
+
+          <details class="map-stage capture" data-group-id="social-capture" style="grid-column: 1; grid-row: 2;" open>
+            <summary class="stage-head">
+              <span>
+                <h2>Social Capture</h2>
+                <p>Social actuals and pacing.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" style="grid-column: 2; grid-row: 2;" aria-hidden="true">→</div>
+          <details class="map-stage shape" data-group-id="social-shape" style="grid-column: 3; grid-row: 2;" open>
+            <summary class="stage-head">
+              <span>
+                <h2>Social Branch</h2>
+                <p>Social output shaping.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" style="grid-column: 4; grid-row: 2;" aria-hidden="true">→</div>
+
+          <details class="map-stage capture" data-group-id="tv-capture" style="grid-column: 1; grid-row: 3;" open>
+            <summary class="stage-head">
+              <span>
+                <h2>TV Capture</h2>
+                <p>Local and national TV estimates.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" style="grid-column: 2; grid-row: 3;" aria-hidden="true">→</div>
+          <details class="map-stage shape" data-group-id="tv-shape" style="grid-column: 3; grid-row: 3;" open>
+            <summary class="stage-head">
+              <span>
+                <h2>TV Branch</h2>
+                <p>TV output shaping.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" style="grid-column: 4; grid-row: 3;" aria-hidden="true">→</div>
+
+          <details class="map-stage merge union-stage" data-group-id="union-rollups" open>
+            <summary class="stage-head">
+              <span>
+                <h2>Union &amp; Rollups</h2>
+                <p>Three lanes meet here.</p>
+              </span>
+              <span class="collapse-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="node-list"></div>
+          </details>
+          <div class="arrow" aria-hidden="true" style="grid-column: 6; grid-row: 1 / span 3;">→</div>
+
+          <div class="output-stack">
+            <details class="map-stage output" data-group-id="master-output" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Master View</h2>
+                  <p>Production output.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow down" aria-hidden="true">↓</div>
+            <details class="map-stage slice" data-group-id="ritual-slice" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Ritual Slice</h2>
+                  <p>Filtered from Master.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector" aria-live="polite" aria-label="Selected map detail">
+        <p class="inspector-eyebrow" id="detailGroup">Select a node</p>
+        <h2 id="detailTitle">Start with the live master view</h2>
+        <p class="inspector-summary" id="detailSummary">Click a node for source, update, and caveat.</p>
+        <div class="detail-grid">
+          <div class="detail-box"><strong>Object</strong><span id="detailTruth">Live BigQuery decides production state.</span></div>
+          <div class="detail-box"><strong>Update</strong><span id="detailWrites">Click a node for its refresh path.</span></div>
+          <div class="detail-box"><strong>Freshness</strong><span id="detailFreshness">Click a node for upstream dependencies.</span></div>
+          <div class="detail-box"><strong>Caveat</strong><span id="detailRisk">Click a node for the production caveat.</span></div>
+        </div>
+        <p class="section-title">Notes</p>
+        <ul class="note-list" id="detailNotes"></ul>
+        <p class="section-title">Sources</p>
+        <ul class="source-list" id="detailSources"></ul>
+      </aside>
+    </section>
+
+    <footer>
+      Counts omitted because they fluctuate. Verify live in BigQuery.
+    </footer>
+  </main>
+
+  <script>
+    const bq = (dataset, table) =>
+      `https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=${dataset}&t=${table}&page=table`;
+
+    const local = (path, line) => `../${path}${line ? `#L${line}` : ""}`;
+
+    const groupLabels = new Map([
+      ["digital-capture", "Digital Capture"],
+      ["digital-shape", "Digital Stitch"],
+      ["social-capture", "Social Capture"],
+      ["social-shape", "Social Branch"],
+      ["tv-capture", "TV Capture"],
+      ["tv-shape", "TV Branch"],
+      ["union-rollups", "Union & Rollups"],
+      ["master-output", "Master View"],
+      ["ritual-slice", "Ritual Slice"]
+    ]);
+
+    const nodes = [
+      {
+        id: "prisma",
+        groupId: "digital-capture",
+        title: "Prisma Plan",
+        summary: "Packages, planned spend, metadata, and friendly names.",
+        truth: "Table: 20250327_data_model.prisma_expanded_full.",
+        writes: "Refresh: Prisma_expanded scheduled query.",
+        freshness: "Current after prisma_expanded_full refreshes.",
+        risk: "medium",
+        reviewReason: "Mapping: Prisma fields become package_id_joined, package dates, and planned metrics.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Feeds package, campaign, supplier, channel, cost, planned spend, planned impressions, and p_package_friendly fields."
+        ],
+        sources: [
+          ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
+          ["Refresh doc: Prisma_expanded scheduled query", "../docs/SCHEDULED_QUERIES.md#5-prisma_expanded"]
+        ]
+      },
+      {
+        id: "delivery",
+        groupId: "digital-capture",
+        title: "DCM Delivery",
+        summary: "Aggregated cost, impressions, clicks, and video.",
+        truth: "Table: DCM.20250505_costModel_v5.",
+        writes: "Refresh: mm_dcm_costmodel scheduled query.",
+        freshness: "Current after 20250505_costModel_v5 refreshes.",
+        risk: "medium",
+        reviewReason: "Mapping: DCM delivery becomes production d_* fields.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Feeds d_impressions, d_media_cost, d_clicks, d_video_plays, and d_video_comps."
+        ],
+        sources: [
+          ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
+          ["Refresh doc: mm_dcm_costmodel scheduled query", "../docs/SCHEDULED_QUERIES.md#1-mm_dcm_costmodel"],
+          ["Builder SQL: 20250505_costModel_v5.sql", "../sql/base/dcm/20250505_costModel_v5.sql"]
+        ]
+      },
+      {
+        id: "fpd",
+        groupId: "digital-capture",
+        title: "FPD Layers",
+        summary: "Original and updated FPD sources.",
+        truth: "Tables: landing.fpd_data_ranged_shortcutsFolder and landing.adif_updated_fpd_daily.",
+        writes: "Refresh: shortcut FPD loader and updated FPD loader.",
+        freshness: "Current after both FPD tables refresh.",
+        risk: "medium",
+        reviewReason: "Mapping: original and updated FPD stay separate, then combine into fpd_* fields.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Original feeds fpd_orig_*; updated feeds fpd_updated_*."
+        ],
+        sources: [
+          ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
+          ["Original FPD loader", "../FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r"],
+          ["Updated FPD loader", "../adif/projects/updated_fpd_integration/util_process_updated_fpd.r"]
+        ]
+      },
+      {
+        id: "digital-join",
+        groupId: "digital-shape",
+        title: "Digital Join",
+        summary: "Aligns Prisma, DCM, and FPD by package/date.",
+        truth: "View logic: master_stg.data_model.",
+        writes: "View only. Refresh Prisma, DCM, and both FPD tables.",
+        freshness: "Current when digital inputs are current.",
+        risk: "medium",
+        reviewReason: "Mapping: package/date joins set planned-only, DCM, FPD, or combined rows.",
+        kind: "transform",
+        callouts: { truth: "logic", writes: false },
+        notes: [
+          "Digital lane only; it does not feed social or TV."
+        ],
+        sources: [
+          ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
+          ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
+          ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")]
+        ]
+      },
+      {
+        id: "digital-final",
+        groupId: "digital-shape",
+        title: "Digital Final",
+        summary: "Sets row source, metadata, and final metrics.",
+        truth: "View logic: master_stg.data_model.",
+        writes: "View only. Refresh digital inputs.",
+        freshness: "Current when Prisma, DCM, and FPD inputs are current.",
+        risk: "high",
+        reviewReason: "Caveat: metric precedence affects spend, impressions, clicks, video, and rollups.",
+        kind: "transform",
+        callouts: { truth: "logic", writes: false },
+        notes: [
+          "Sets row_data_source_primary plus final_spend, final_impressions, final_clicks, final_video_plays, and final_video_comps."
+        ],
+        sources: [
+          ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
+          ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
+          ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")]
+        ]
+      },
+      {
+        id: "social-raw",
+        groupId: "social-capture",
+        title: "Social Raw",
+        summary: "Daily social actuals.",
+        truth: "Table: repo_stg.stg__olipop__crossplatform_raw_tbl.",
+        writes: "Refresh: stg__olipop__crossplatform_raw_tbl_sched scheduled query.",
+        freshness: "Current after the social raw table refreshes.",
+        risk: "medium",
+        reviewReason: "Mapping: social IDs become social_* fields and a synthetic package key.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "This branch does not depend on the digital stitch."
+        ],
+        sources: [
+          ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
+          ["Refresh doc: social raw scheduled query", "../docs/SCHEDULED_QUERIES.md#11-stg__olipop__crossplatform_raw_tbl_sched"]
+        ]
+      },
+      {
+        id: "social-pacing",
+        groupId: "social-capture",
+        title: "Social Pacing",
+        summary: "Pacing budgets spread to daily planned spend.",
+        truth: "View: repo_int.crossplatform_pacing.",
+        writes: "View only. Refresh platform history models.",
+        freshness: "Current when platform history models are current.",
+        risk: "medium",
+        reviewReason: "Mapping: pacing becomes planned daily spend; coverage affects plan-vs-actual reads.",
+        kind: "source",
+        callouts: { truth: "live", writes: false },
+        notes: [
+          "Feeds social_pacing_planned_spend and planned_daily_spend_pk."
+        ],
+        sources: [
+          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")],
+          ["View definition: crossplatform pacing", "../sql/crossplatform/int__crossplatform_pacing.sql"]
+        ]
+      },
+      {
+        id: "social-final",
+        groupId: "social-shape",
+        title: "Social Final",
+        summary: "Shapes social rows for the shared schema.",
+        truth: "View logic: master_stg.data_model.",
+        writes: "View only. Refresh social raw and pacing.",
+        freshness: "Current when social raw and pacing are current.",
+        risk: "medium",
+        reviewReason: "Mapping: social rows use synthetic package IDs, not Prisma package IDs.",
+        kind: "transform",
+        callouts: { truth: "logic", writes: false },
+        notes: [
+          "Flows directly into the shared union, not into digital."
+        ],
+        sources: [
+          ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
+          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")]
+        ]
+      },
+      {
+        id: "tv-combined",
+        groupId: "tv-capture",
+        title: "TV Combined",
+        summary: "Local and national TV estimates.",
+        truth: "View: landing.tv_combined.",
+        writes: "Refresh: TV Gmail loaders for local and national tables.",
+        freshness: "Current when local and national TV tables are current.",
+        risk: "low",
+        reviewReason: "Lower risk: TV already has its own lane; freshness is the main check.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Does not depend on digital package IDs."
+        ],
+        sources: [
+          ["BigQuery: TV combined", bq("landing", "tv_combined")],
+          ["TV loader docs", "../util/data_loaders/README.md"],
+          ["Local TV loader", "../util/data_loaders/gmail_to_bq__tv_local.r"],
+          ["National TV loader", "../util/data_loaders/gmail_to_bq__tv_nat.r"]
+        ]
+      },
+      {
+        id: "tv-final",
+        groupId: "tv-shape",
+        title: "TV Final",
+        summary: "Adds TV package and placement keys.",
+        truth: "View logic: master_stg.data_model.",
+        writes: "View only. Refresh local and national TV tables.",
+        freshness: "Current when landing.tv_combined is current.",
+        risk: "low",
+        reviewReason: "Lower risk: TV fields map directly to tv_* columns.",
+        kind: "transform",
+        callouts: { truth: "logic", writes: false },
+        notes: [
+          "Synthetic keys keep TV rows usable in the shared model."
+        ],
+        sources: [
+          ["BigQuery: TV combined", bq("landing", "tv_combined")]
+        ]
+      },
+      {
+        id: "union",
+        groupId: "union-rollups",
+        title: "Union",
+        summary: "Stacks digital, social, and TV rows.",
+        truth: "View logic: master_stg.data_model.",
+        writes: "View only. Refresh all upstream lanes.",
+        freshness: "Current when all lanes are current.",
+        risk: "medium",
+        reviewReason: "Mapping: all lanes must output the same column set.",
+        kind: "transform",
+        callouts: { truth: "logic", writes: false },
+        notes: [
+          "Column order and types must stay compatible."
+        ],
+        sources: [
+          ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
+          ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
+          ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
+          ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
+          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")],
+          ["BigQuery: TV combined", bq("landing", "tv_combined")]
+        ]
+      },
+      {
+        id: "rollup",
+        groupId: "union-rollups",
+        title: "Rollups",
+        summary: "Recalculates package totals and over-delivery.",
+        truth: "View logic: master_stg.data_model.",
+        writes: "View only. Refresh upstream lane data.",
+        freshness: "Current when final lane metrics are current.",
+        risk: "high",
+        reviewReason: "Caveat: upstream metric choices change package totals.",
+        kind: "transform",
+        callouts: { truth: "logic", writes: false },
+        notes: [
+          "Calculates pkg_est_*, pkg_act_*, pkg_fpd_*, pkg_over_bool, and pkg_over_flag."
+        ],
+        sources: [
+          ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
+          ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
+          ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
+          ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
+          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")],
+          ["BigQuery: TV combined", bq("landing", "tv_combined")]
+        ]
+      },
+      {
+        id: "master-output-node",
+        groupId: "master-output",
+        title: "Master View",
+        summary: "Production package/date view.",
+        truth: "View: master_stg.data_model.",
+        writes: "View only. Refresh Prisma, DCM, FPD, social, and TV upstreams.",
+        freshness: "Current when all upstreams are current.",
+        risk: "high",
+        reviewReason: "Caveat: downstream client slices inherit this logic.",
+        kind: "output",
+        callouts: { truth: "live", writes: false },
+        notes: [
+          "Contains digital, social, and TV rows in one shared schema."
+        ],
+        sources: [
+          ["BigQuery: master_stg.data_model", bq("master_stg", "data_model")]
+        ]
+      },
+      {
+        id: "ritual-output",
+        groupId: "ritual-slice",
+        title: "Ritual Slice",
+        summary: "Filtered Ritual view from Master.",
+        truth: "View: master_stg.ritual_data_model.",
+        writes: "View only. Refresh Master View upstreams.",
+        freshness: "Current when master_stg.data_model is current.",
+        risk: "low",
+        reviewReason: "Lower risk: simple filter, but it inherits Master logic.",
+        kind: "output",
+        callouts: { truth: "live", writes: false },
+        notes: [
+          "Filter: advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'."
+        ],
+        sources: [
+          ["BigQuery: master_stg.ritual_data_model", bq("master_stg", "ritual_data_model")]
+        ]
+      }
+    ];
+
+    const detail = {
+      group: document.getElementById("detailGroup"),
+      title: document.getElementById("detailTitle"),
+      summary: document.getElementById("detailSummary"),
+      truth: document.getElementById("detailTruth"),
+      writes: document.getElementById("detailWrites"),
+      freshness: document.getElementById("detailFreshness"),
+      risk: document.getElementById("detailRisk"),
+      notes: document.getElementById("detailNotes"),
+      sources: document.getElementById("detailSources")
+    };
+
+    function calloutPips(node) {
+      const pips = [];
+      if (node.callouts.truth === "live") pips.push(["live", "Live warehouse truth"]);
+      if (node.callouts.truth === "logic") pips.push(["docs", "Production view logic"]);
+      if (node.callouts.writes) pips.push(["write", "Updater documented"]);
+      const riskLabels = { low: "Lower risk", medium: "Mapping caveat", high: "Production caveat" };
+      pips.push([`risk-${node.risk}`, riskLabels[node.risk]]);
+      return pips.map(([klass, label]) => `<span class="pip ${klass}" title="${label}" aria-label="${label}"></span>`).join("");
+    }
+
+    function renderNodes() {
+      document.querySelectorAll("[data-group-id]").forEach((groupEl) => {
+        const list = groupEl.querySelector(".node-list");
+        const groupNodes = nodes.filter((node) => node.groupId === groupEl.dataset.groupId);
+        list.innerHTML = groupNodes.map((node) => `
+          <button class="node" type="button" data-node-id="${node.id}" data-risk="${node.risk}" data-kind="${node.kind}">
+            <h3>${node.title}</h3>
+            <p>${node.summary}</p>
+            <div class="callouts">${calloutPips(node)}</div>
+          </button>
+        `).join("");
+      });
+
+      document.querySelectorAll(".node").forEach((button) => {
+        button.addEventListener("click", () => selectNode(button.dataset.nodeId));
+      });
+    }
+
+    function selectNode(id) {
+      const node = nodes.find((item) => item.id === id) || nodes[0];
+      document.querySelectorAll(".node").forEach((el) => {
+        el.classList.toggle("active", el.dataset.nodeId === node.id);
+      });
+      detail.group.textContent = groupLabels.get(node.groupId);
+      detail.title.textContent = node.title;
+      detail.summary.textContent = node.summary;
+      detail.truth.textContent = node.truth;
+      detail.writes.textContent = node.writes;
+      detail.freshness.textContent = node.freshness;
+      detail.risk.textContent = node.reviewReason;
+      detail.notes.innerHTML = node.notes.map((note) => `<li>${note}</li>`).join("");
+      detail.sources.innerHTML = node.sources.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join("");
+    }
+
+    renderNodes();
+    selectNode("master-output-node");
+  </script>
+</body>
+</html>
