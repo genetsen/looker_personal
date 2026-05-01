@@ -20,4 +20,5 @@
 
 - `unit_type -> p_unit_type` is confirmed.
 - Future tasks were noted for supplier-name cleanup and supplier-logo update-path documentation.
-- SQL has not been rewritten yet.
+- SQL was rewritten, committed, and deployed to production.
+- All `master_stg` QA views from this project were deleted after production validation; only `data_model`, `data_model_mart`, and `ritual_data_model` remain.
