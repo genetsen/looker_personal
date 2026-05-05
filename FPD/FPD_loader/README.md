@@ -133,6 +133,7 @@ Rscript util_collect_fpd_shortcutsFolder.r --help
 
 If `--pattern` is not provided, the script uses the default value from the configuration block.
 By default, the script stores per-sheet cache files in `output/sheet_cache/` and reuses them only when the Drive `last_modified_time` for that file matches the cached copy.
+Cache files now include a schema version, and a modified-time or schema change resets the cached payload before writing a refreshed field. This prevents a fresh `header_row` or `raw_headers` write from making older `raw_data` look current.
 Use `--no-file-cache` when you want to bypass cache reads while still rebuilding the cache files from fresh sheet reads during that run.
 
 ### KPI Metrics List

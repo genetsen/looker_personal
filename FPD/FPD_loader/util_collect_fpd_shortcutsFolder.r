@@ -624,6 +624,13 @@ get_sheet_cache_path <- function(cache_dir, sheet_name, sheet_id = NULL) {
 }
 
 cache_status_columns <- c("cache_used", "cache_fields", "cache_last_modified_time")
+cache_schema_version <- 2L
+
+is_current_cache_schema <- function(cache_obj) {
+  !is.null(cache_obj$cache_schema_version) &&
+    !is.na(cache_obj$cache_schema_version) &&
+    as.integer(cache_obj$cache_schema_version) == cache_schema_version
+}
 
 append_cache_status <- function(df, status_map, key_col = "sheet_id") {
   if (is.null(df) || nrow(df) == 0 || !key_col %in% names(df)) return(df)
@@ -666,6 +673,7 @@ read_sheet_cache <- function(cache_dir, sheet_id, sheet_name, last_modified_time
 
   cache_obj <- tryCatch(readRDS(cache_path), error = function(e) NULL)
   if (is.null(cache_obj) || !is.list(cache_obj)) return(NULL)
+  if (!is_current_cache_schema(cache_obj)) return(NULL)
 
   cache_ts <- normalize_cache_timestamp(cache_obj$last_modified_time)
   current_ts <- normalize_cache_timestamp(last_modified_time)
@@ -683,8 +691,14 @@ write_sheet_cache <- function(cache_dir, sheet_id, sheet_name, last_modified_tim
   }
 
   if (!is.list(cache_obj)) cache_obj <- list()
+  old_cache_ts <- normalize_cache_timestamp(cache_obj$last_modified_time)
+  new_cache_ts <- normalize_cache_timestamp(last_modified_time)
+  if (!is_current_cache_schema(cache_obj) || is.na(old_cache_ts) || old_cache_ts != new_cache_ts) {
+    cache_obj <- list()
+  }
+  cache_obj$cache_schema_version <- cache_schema_version
   cache_obj$sheet_id <- sheet_id
-  cache_obj$last_modified_time <- normalize_cache_timestamp(last_modified_time)
+  cache_obj$last_modified_time <- new_cache_ts
   cache_obj[[field_name]] <- field_value
   saveRDS(cache_obj, cache_path)
 }

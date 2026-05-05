@@ -1,3 +1,12 @@
+## 2026-05-04
+
+### Fixed
+
+- **Per-sheet cache payload invalidation -codexapp (threadID unavailable in local session)**
+  Issue: A changed Google Sheet could refresh only `header_row` or `raw_headers` in the `.rds` cache while preserving older `raw_data`, then mark the whole cache object with the new `last_modified_time`.
+  Cause: `write_sheet_cache()` used one shared cache timestamp for mixed fields and did not clear stale sibling fields when the timestamp changed.
+  Resolution: Added a cache schema version and reset cached payload fields whenever the cache schema or sheet modified time changes before writing the refreshed field.
+
 ## 2026-04-17
 
 ### Changed

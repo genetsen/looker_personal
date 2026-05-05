@@ -47,8 +47,8 @@ Rscript adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r
 Rscript adif/projects/tv_digital_pipeline/util_collect_monthly_estimates.r
 ```
 
-### FPD Loader Pipelines (util/data_loaders/FPD_loader)
-Primary docs: `util/data_loaders/FPD_loader/README.md`.
+### FPD Loader Pipelines (FPD/FPD_loader and util/data_loaders/FPD_loader)
+Primary docs: `FPD/FPD_loader/README.md` for the shortcut-aware loader and `util/data_loaders/FPD_loader/README.md` for the older utility copy.
 
 Quick start commands:
 
@@ -56,12 +56,17 @@ Quick start commands:
 # Install R packages (one-time)
 Rscript -e 'install.packages(c("googledrive", "googlesheets4", "dplyr", "stringr", "readr", "lubridate", "janitor", "bigrquery", "tidyr"))'
 
-# Run the main FPD collection pipeline
+# Run the main shortcut-aware FPD collection pipeline
+Rscript FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r
+
+# Run the older utility-copy loader only when that path is explicitly targeted
 Rscript util/data_loaders/FPD_loader/util_collect_fpd_v3.r
 
 # Run the manually-updated data loader
 Rscript util/data_loaders/FPD_loader/manually_updated_data_loader.r
 ```
+
+For FPD Loader cache, Google Sheet, shortcut, or timestamp mismatches, audit the cache boundary before naming a root cause. Distinguish formula edits, row data edits, Drive metadata freshness, cache-read freshness checks, and cache-write persistence as separate failure modes. Inspect the exact affected rows across live sheet, `.rds` cache, phase outputs, and BigQuery when applicable, and quote the cache read/write condition and compared values before proposing a cause.
 
 ## Repo Map
 
