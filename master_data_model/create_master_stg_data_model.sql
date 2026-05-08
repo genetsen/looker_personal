@@ -875,6 +875,28 @@ all_rows AS (
   SELECT * FROM tv_final
 ),
 
+planned_metric_backfills AS (
+  SELECT
+    * REPLACE (
+      CASE
+        -- CHANGE 2026-05-08: If a row clearly delivered media and had planned
+        -- spend, but planned impressions are zero or missing, use final
+        -- impressions as the planned-impressions fallback. This preserves the
+        -- spend plan while preventing a paid/delivered row from carrying an
+        -- impossible zero-impression plan. Null planned impressions are treated
+        -- like zero here because downstream QA callouts also evaluate missing
+        -- planned impressions as zero for mismatch detection.
+        WHEN COALESCE(final_impressions, 0) > 0
+          AND COALESCE(final_spend, 0) > 0
+          AND COALESCE(planned_daily_impressions_pk, 0) = 0
+          AND COALESCE(planned_daily_spend_pk, 0) > 0
+          THEN final_impressions
+        ELSE planned_daily_impressions_pk
+      END AS planned_daily_impressions_pk
+    )
+  FROM all_rows
+),
+
 row_callouts AS (
   SELECT
     * REPLACE (
@@ -916,7 +938,7 @@ row_callouts AS (
         'ok'
       ) AS row_data_issue_category
     )
-  FROM all_rows
+  FROM planned_metric_backfills
 ),
 
 with_rollups AS (
