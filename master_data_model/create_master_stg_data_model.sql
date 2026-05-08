@@ -59,6 +59,7 @@ fpd_original_raw AS (
     f.benchmark,
     f.benchmark_metric,
     f.partner_creative_name AS creative,
+    f.creative_git_link,
     f.source_file,
     f.source_url,
     f.last_modified_time,
@@ -83,6 +84,7 @@ fpd_original_daily AS (
     MAX(benchmark) AS fpd_orig_benchmark,
     SAFE_CAST(ROUND(MAX(benchmark_metric)) AS INT64) AS fpd_orig_benchmark_metric,
     STRING_AGG(DISTINCT CAST(creative AS STRING), ' | ' ORDER BY CAST(creative AS STRING)) AS fpd_orig_creative,
+    STRING_AGG(DISTINCT CAST(creative_git_link AS STRING), ' | ' ORDER BY CAST(creative_git_link AS STRING)) AS fpd_creative_img,
     STRING_AGG(DISTINCT CAST(source_file AS STRING), ' | ' ORDER BY CAST(source_file AS STRING)) AS fpd_orig_source_files,
     STRING_AGG(DISTINCT CAST(source_url AS STRING), ' | ' ORDER BY CAST(source_url AS STRING)) AS fpd_orig_source_urls,
     MAX(last_modified_time) AS fpd_orig_source_modified_time,
@@ -384,6 +386,7 @@ digital_final AS (
     fpd_orig_benchmark,
     fpd_orig_benchmark_metric,
     fpd_orig_creative,
+    fpd_creative_img,
     fpd_orig_source_files,
     fpd_orig_source_urls,
     fpd_orig_source_modified_time,
@@ -409,7 +412,7 @@ digital_final AS (
       WHEN prisma_package_id IS NULL THEN NULL
       ELSE COALESCE(
         NULLIF(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0), 0),
-        d_daily_recalculated_imps,
+        
         d_impressions
       )
     END AS final_impressions,
@@ -609,6 +612,7 @@ social_final AS (
     CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
     CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
     CAST(NULL AS STRING) AS fpd_orig_creative,
+    CAST(NULL AS STRING) AS fpd_creative_img,
     CAST(NULL AS STRING) AS fpd_orig_source_files,
     CAST(NULL AS STRING) AS fpd_orig_source_urls,
     CAST(NULL AS TIMESTAMP) AS fpd_orig_source_modified_time,
@@ -789,8 +793,11 @@ tv_final AS (
     CAST(NULL AS INT64) AS planned_units,
     CAST(NULL AS STRING) AS unit_type,
     CAST(NULL AS FLOAT64) AS payable_rate,
-    CAST(NULL AS FLOAT64) AS planned_daily_spend_pk,
-    CAST(NULL AS FLOAT64) AS planned_daily_impressions_pk,
+    -- CHANGE 2026-05-08: Linear TV net cost/impressions now populate planned
+    -- daily fields so `_planned_spend` and `_planned_impressions` match the
+    -- TV values already carried in `_spend`, `_impressions`, and `tv_*`.
+    net_cost AS planned_daily_spend_pk,
+    CAST(net_impressions AS FLOAT64) AS planned_daily_impressions_pk,
     CAST(NULL AS INT64) AS prisma_planned_clicks,
     CAST(NULL AS DATE) AS max_prisma_report_date,
     CAST(NULL AS FLOAT64) AS d_daily_recalculated_cost,
@@ -815,6 +822,7 @@ tv_final AS (
     CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
     CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
     CAST(NULL AS STRING) AS fpd_orig_creative,
+    CAST(NULL AS STRING) AS fpd_creative_img,
     CAST(NULL AS STRING) AS fpd_orig_source_files,
     CAST(NULL AS STRING) AS fpd_orig_source_urls,
     CAST(NULL AS TIMESTAMP) AS fpd_orig_source_modified_time,
@@ -867,6 +875,50 @@ all_rows AS (
   SELECT * FROM tv_final
 ),
 
+row_callouts AS (
+  SELECT
+    * REPLACE (
+      COALESCE(
+        NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
+          IF(
+            COALESCE(row_data_issue_category, 'ok') != 'ok',
+            SPLIT(row_data_issue_category, ' | '),
+            ARRAY<STRING>[]
+          ),
+          -- CHANGE 2026-05-08: Flag row-level planned-vs-delivered metric
+          -- mismatches so qa_row_data_callouts shows when delivery and plan
+          -- values do not line up on impressions or spend.
+          IF(
+            COALESCE(final_impressions, 0) > 0
+              AND COALESCE(planned_daily_impressions_pk, 0) = 0,
+            ['actual_impressions_without_planned'],
+            []
+          ),
+          IF(
+            COALESCE(final_spend, 0) > 0
+              AND COALESCE(planned_daily_spend_pk, 0) = 0,
+            ['actual_spend_without_planned'],
+            []
+          ),
+          IF(
+            COALESCE(planned_daily_impressions_pk, 0) > 0
+              AND COALESCE(final_impressions, 0) = 0,
+            ['planned_impressions_without_actual'],
+            []
+          ),
+          IF(
+            COALESCE(planned_daily_spend_pk, 0) > 0
+              AND COALESCE(final_spend, 0) = 0,
+            ['planned_spend_without_actual'],
+            []
+          )
+        ), ' | '), ''),
+        'ok'
+      ) AS row_data_issue_category
+    )
+  FROM all_rows
+),
+
 with_rollups AS (
   SELECT
     *,
@@ -881,7 +933,7 @@ with_rollups AS (
     SUM(COALESCE(fpd_updated_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_updated_spend,
     SUM(COALESCE(fpd_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_impressions,
     SUM(COALESCE(fpd_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_spend
-  FROM all_rows
+  FROM row_callouts
 )
 
 SELECT
@@ -895,6 +947,39 @@ SELECT
   package_end_date AS `_end_date`,
   advertiser_name AS `_advertiser_name`,
   advertiser_short_name AS `_advertiser_short_name`,
+  CASE
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'APO'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'APO'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'APOLLO|apollo') THEN 'Apollo'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'OLI'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'OLI'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'OLIPOP') THEN 'Olipop'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'MASS'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'MASS'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'MASSMUTUAL') THEN 'MassMutual'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'FMUS'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'(ADIF|DIAMOND|FOREVERMARK|DE BEERS)') THEN 'A Diamond Is Forever'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'GEA'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'GEA'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'GE AEROSPACE') THEN 'GE Aerospace'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'RTL'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'RTL'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'RITUAL') THEN 'Ritual'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'ICE'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'ICE'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'INTERCONTINENTAL EXCHANGE') THEN 'ICE'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'ADSK'
+      OR UPPER(COALESCE(advertiser_name, '')) = 'ADSK'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'AUTODESK') THEN 'Autodesk'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'ITR'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'CUMBERLAND') THEN 'Cumberland Packing'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'NBC'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'NBC') THEN 'NBC Entertainment'
+    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'SYNC'
+      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'SYNCHRONY') THEN 'Synchrony'
+    WHEN REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'HIGHLIGHTS') THEN 'Highlights'
+    ELSE COALESCE(NULLIF(TRIM(advertiser_name), ''), NULLIF(TRIM(advertiser_short_name), ''), 'Unknown')
+  END AS `_advertiser`,
   campaign_name AS `_campaign_name`,
   campaign_friendly AS `_campaign_friendly`,
   product_code AS `_product_code`,
@@ -946,6 +1031,7 @@ SELECT
   fpd_orig_benchmark AS `fpd_orig_benchmark`,
   fpd_orig_benchmark_metric AS `fpd_orig_benchmark_metric`,
   fpd_orig_creative AS `fpd_orig_creative`,
+  fpd_creative_img AS `fpd_creative_img`,
   fpd_orig_source_files AS `fpd_orig_source_files`,
   fpd_orig_source_urls AS `fpd_orig_source_urls`,
   fpd_orig_source_modified_time AS `fpd_orig_source_modified_time`,
