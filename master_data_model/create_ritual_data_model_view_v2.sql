@@ -5,9 +5,9 @@
 --   generalized master data model exposes the renamed schema.
 --
 -- Source of truth:
---   `looker-studio-pro-452620.master_stg.data_model`
+--   `looker-studio-pro-452620.master_stg.data_model_v2`
 
-CREATE OR REPLACE VIEW `looker-studio-pro-452620.master_stg.ritual_data_model` AS
+CREATE OR REPLACE VIEW `looker-studio-pro-452620.master_stg.ritual_data_model_v2` AS
 SELECT
   `qa_row_type` AS `row_type`,
   `qa_row_data_source_primary` AS `row_data_source_primary`,
@@ -27,6 +27,7 @@ SELECT
   `_package_type` AS `package_type`,
   `_package_name` AS `package_name`,
   `_package_name_friendly` AS `p_package_friendly`,
+  `initiative` AS `initiative`,
   `ADIF_channel` AS `gsMediaTeam_channel`,
   `_placement_id` AS `placement_id`,
   `_placement_name` AS `placement_name`,
@@ -149,6 +150,6 @@ SELECT
   `qa_pkg_over_bool` AS `pkg_over_bool`,
   `qa_pkg_over_flag` AS `pkg_over_flag`,
   `qa_model_view_runtime_timestamp` AS `model_view_runtime_timestamp`
-FROM `looker-studio-pro-452620.master_stg.data_model`
+FROM `looker-studio-pro-452620.master_stg.data_model_v2`
 WHERE `_advertiser_name` = 'Ritual'
    OR `_advertiser_short_name` = 'RTL';

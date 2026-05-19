@@ -2,6 +2,85 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-05-19
+
+### Fixed
+
+- **Manual Package Editor Formatting And Exact Totals**
+  What: Fixed the manual package editor setup so internal baseline/manual-marker columns stay hidden after formatting, added number/date formats to hidden baseline helper columns, and changed manual daily allocation so count metrics preserve exact replacement totals as whole daily units while spend metrics preserve exact totals by cents.
+  Why: Prevents backend helper columns and raw date serials from appearing in the user-facing sheet, and makes manual replacement totals land exactly in the daily table, final data model, and reporting mart instead of drifting by small floating-point amounts.
+
+  <details><summary>Paths - Manual Package Editor Formatting And Exact Totals</summary>
+
+  [master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs](master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs)
+  [master_data_model/manual_package_edits/load_manual_package_edits.R](master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [master_data_model/manual_package_edits/README.md](master_data_model/manual_package_edits/README.md)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+## 2026-05-15
+
+### Added
+
+- **Master Data Model Manual Package Edit Path**
+  What: Added a manual package edit path with landing table schemas, a single-tab Google Sheet package editor, a loader that detects in-place edits against the live mart and last run, and master-model logic that applies backend `man_` values before final package rollups.
+  Why: Lets users find a package and edit the dashboard value directly without separate lookup, replacement, delta, validation, or proof tabs while keeping manual overrides visible and auditable in the final model.
+
+  <details><summary>Paths - Master Data Model Manual Package Edit Path</summary>
+
+  [master_data_model/create_manual_package_edit_tables.sql](master_data_model/create_manual_package_edit_tables.sql)
+  [master_data_model/manual_package_edits/load_manual_package_edits.R](master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs](master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs)
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [master_data_model/create_ritual_data_model_view.sql](master_data_model/create_ritual_data_model_view.sql)
+  [master_data_model/create_ritual_data_model_view_v2.sql](master_data_model/create_ritual_data_model_view_v2.sql)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Manual Package Editor UX Setup Split**
+  What: Split Google Sheet formatting and user-experience setup out of the R loader into a standalone sheet setup script, added native slicers for Advertiser/Channel/Campaign/Site browsing, added a dedicated `Instructions` tab, and kept required metadata columns visible at the far right while hiding only internal baseline comparison columns.
+  Why: Keeps the loader focused on data refresh and backend writes, while browsing controls, table formatting, frozen panes, instructions, metadata visibility, and editable-cell styling are managed as intentional sheet configuration.
+
+- **Manual Package Editor Planned Metrics And Request Flow**
+  What: Added changed-cell conditional formatting against hidden baseline columns, restricted planned metric edits to full-flight rows, kept planned totals visible as flight totals, added a sheet-level update-request control that emails Gene, registered the loader in the universal script runner, and changed `_package_name_friendly` to fall back to the full package name when blank.
+  Why: Makes the sheet easier for media buyers to use safely while keeping backend `man_*` evidence, final planned totals, and package lookup labels consistent.
+
+### Changed
+
+- **Master Data Model Initiative Consolidation**
+  What: Moved `initiative` into `master_stg.data_model`, simplified `master_stg.data_model_v2` to a compatibility `SELECT *` wrapper over the main model, and refreshed `master_stg.data_model_mart` so the reporting mart includes the consolidated field.
+  Why: Makes `data_model` the owner of the package/date reporting shape while keeping existing v2 consumers working without duplicate initiative logic.
+
+  <details><summary>Paths - Master Data Model Initiative Consolidation</summary>
+
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [master_data_model/create_master_stg_data_model_v2.sql](master_data_model/create_master_stg_data_model_v2.sql)
+  [master_data_model/create_master_stg_data_model_mart.sql](master_data_model/create_master_stg_data_model_mart.sql)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+## 2026-05-08
+
+### Changed
+
+- **Master Data Model Planned Metrics And Callout Cleanup**
+  What: Reconciled the local master SQL with the live `master_stg.data_model` definition, carried the FPD creative image link field through the model, populated linear TV planned spend and impressions from TV delivery values, backfilled planned impressions from final impressions when spend exists on both plan and actuals, and simplified row callouts so source/cause labels suppress redundant metric symptoms. Added the `spend_no_imps` callout for rows with planned and final spend but zero planned and final impressions.
+  Why: Keeps local SQL deploy-safe against production, makes TV planned metrics usable, and gives dashboard users shorter row callouts that point to the real issue instead of repeating symptoms.
+  <details><summary>Paths - Master Data Model Planned Metrics And Callout Cleanup</summary>
+
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [master_data_model/README.md](master_data_model/README.md)
+  [master_data_model/AGENTS.md](master_data_model/AGENTS.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-05-01
 
 ### Changed

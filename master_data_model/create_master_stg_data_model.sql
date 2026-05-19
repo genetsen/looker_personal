@@ -113,6 +113,66 @@ fpd_updated_daily AS (
   GROUP BY u.package_id, DATE(u.date)
 ),
 
+manual_package_daily AS (
+  SELECT
+    package_id,
+    DATE(date) AS date,
+    man_start_date,
+    man_end_date,
+    man_daily_spend,
+    man_daily_impressions,
+    man_daily_planned_spend,
+    man_daily_planned_impressions,
+    man_daily_clicks,
+    man_daily_video_plays,
+    man_daily_video_comps,
+    man_total_spend_doNotSum,
+    man_total_impressions_doNotSum,
+    man_total_planned_spend_doNotSum,
+    man_total_planned_impressions_doNotSum,
+    man_total_clicks_doNotSum,
+    man_total_video_plays_doNotSum,
+    man_total_video_comps_doNotSum,
+    advertiser_name,
+    advertiser_short_name,
+    campaign_name,
+    campaign_friendly,
+    product_code,
+    product_name,
+    package_type,
+    package_name,
+    package_name_friendly,
+    ADIF_channel,
+    placement_id,
+    placement_name,
+    supplier_code,
+    supplier_name,
+    supplier_logo,
+    p_buy_type,
+    p_buy_category,
+    channel,
+    channel_raw,
+    channel_group,
+    media_name,
+    p_cost_method,
+    p_planned_amount_doNotSum,
+    p_planned_impressions_doNotSum,
+    p_planned_units_doNotSum,
+    p_unit_type,
+    p_rate,
+    edit_id,
+    edit_reason,
+    editor_email,
+    source_sheet_url,
+    source_sheet_modified_time,
+    loaded_at
+  FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
+  WHERE is_active = TRUE
+    AND validation_status = 'valid'
+    AND package_id IS NOT NULL
+    AND date IS NOT NULL
+),
+
 prisma_daily_raw AS (
   SELECT
     p.package_id,
@@ -875,6 +935,228 @@ all_rows AS (
   SELECT * FROM tv_final
 ),
 
+manual_existing_rows AS (
+  SELECT
+    r.* REPLACE (
+      IF(m.edit_id IS NOT NULL, 'manual_package_edits', r.row_data_source_primary) AS row_data_source_primary,
+      CASE
+        WHEN m.edit_id IS NULL THEN r.row_data_sources_available
+        ELSE ARRAY_TO_STRING(
+          ARRAY_CONCAT(
+            IF(COALESCE(r.row_data_sources_available, 'none') IN ('', 'none'), ARRAY<STRING>[], SPLIT(r.row_data_sources_available, ' | ')),
+            ['manual_package_edits']
+          ),
+          ' | '
+        )
+      END AS row_data_sources_available,
+      COALESCE(m.man_start_date, r.package_start_date) AS package_start_date,
+      COALESCE(m.man_end_date, r.package_end_date) AS package_end_date,
+      COALESCE(m.advertiser_name, r.advertiser_name) AS advertiser_name,
+      COALESCE(m.advertiser_short_name, r.advertiser_short_name) AS advertiser_short_name,
+      COALESCE(m.campaign_name, r.campaign_name) AS campaign_name,
+      COALESCE(m.campaign_friendly, r.campaign_friendly) AS campaign_friendly,
+      COALESCE(m.product_code, r.product_code) AS product_code,
+      COALESCE(m.product_name, r.product_name) AS product_name,
+      COALESCE(m.package_type, r.package_type) AS package_type,
+      COALESCE(m.package_name, r.package_name) AS package_name,
+      COALESCE(m.package_name_friendly, r.p_package_friendly) AS p_package_friendly,
+      COALESCE(m.ADIF_channel, r.gsMediaTeam_channel) AS gsMediaTeam_channel,
+      COALESCE(m.placement_id, r.placement_id) AS placement_id,
+      COALESCE(m.placement_name, r.placement_name) AS placement_name,
+      COALESCE(m.supplier_code, r.supplier_code) AS supplier_code,
+      COALESCE(m.supplier_name, r.supplier_name) AS supplier_name,
+      COALESCE(m.supplier_logo, r.supplier_logo) AS supplier_logo,
+      COALESCE(m.p_buy_type, r.buy_type) AS buy_type,
+      COALESCE(m.p_buy_category, r.buy_category) AS buy_category,
+      COALESCE(m.channel, r.channel) AS channel,
+      COALESCE(m.channel_raw, r.channel_raw) AS channel_raw,
+      COALESCE(m.channel_group, r.channel_group) AS channel_group,
+      COALESCE(m.media_name, r.media_name) AS media_name,
+      COALESCE(m.p_cost_method, r.cost_method) AS cost_method,
+      COALESCE(m.man_total_planned_spend_doNotSum, m.p_planned_amount_doNotSum, r.planned_amount) AS planned_amount,
+      COALESCE(SAFE_CAST(ROUND(COALESCE(m.man_total_planned_impressions_doNotSum, m.p_planned_impressions_doNotSum)) AS INT64), r.planned_impressions) AS planned_impressions,
+      COALESCE(SAFE_CAST(ROUND(m.p_planned_units_doNotSum) AS INT64), r.planned_units) AS planned_units,
+      COALESCE(m.p_unit_type, r.unit_type) AS unit_type,
+      COALESCE(m.p_rate, r.payable_rate) AS payable_rate,
+      COALESCE(m.man_daily_planned_spend, r.planned_daily_spend_pk) AS planned_daily_spend_pk,
+      COALESCE(m.man_daily_planned_impressions, r.planned_daily_impressions_pk) AS planned_daily_impressions_pk,
+      COALESCE(m.man_daily_spend, r.final_spend) AS final_spend,
+      COALESCE(m.man_daily_impressions, r.final_impressions) AS final_impressions,
+      COALESCE(m.man_daily_clicks, r.final_clicks) AS final_clicks,
+      COALESCE(m.man_daily_video_plays, r.final_video_plays) AS final_video_plays,
+      COALESCE(m.man_daily_video_comps, r.final_video_comps) AS final_video_comps
+    ),
+    m.edit_id AS man_edit_id,
+    m.edit_reason AS man_edit_reason,
+    m.editor_email AS man_editor_email,
+    m.source_sheet_url AS man_source_sheet_url,
+    m.source_sheet_modified_time AS man_source_sheet_modified_time,
+    m.loaded_at AS man_loaded_at,
+    m.man_start_date,
+    m.man_end_date,
+    m.man_daily_spend,
+    m.man_daily_impressions,
+    m.man_daily_planned_spend,
+    m.man_daily_planned_impressions,
+    m.man_daily_clicks,
+    m.man_daily_video_plays,
+    m.man_daily_video_comps,
+    m.man_total_spend_doNotSum,
+    m.man_total_impressions_doNotSum,
+    m.man_total_planned_spend_doNotSum,
+    m.man_total_planned_impressions_doNotSum,
+    m.man_total_clicks_doNotSum,
+    m.man_total_video_plays_doNotSum,
+    m.man_total_video_comps_doNotSum
+  FROM all_rows AS r
+  LEFT JOIN manual_package_daily AS m
+    ON r.package_id_joined = m.package_id
+   AND r.date = m.date
+),
+
+manual_only_rows AS (
+  SELECT
+    'manual' AS row_type,
+    'manual_package_edits' AS row_data_source_primary,
+    'manual_package_edits' AS row_data_sources_available,
+    'ok' AS row_data_issue_category,
+    m.package_id AS package_id_joined,
+    m.date,
+    m.man_start_date AS package_start_date,
+    m.man_end_date AS package_end_date,
+    m.advertiser_name,
+    m.advertiser_short_name,
+    m.campaign_name,
+    m.campaign_friendly,
+    m.product_code,
+    m.product_name,
+    COALESCE(m.package_type, 'ManualPackage') AS package_type,
+    m.package_name,
+    m.package_name_friendly AS p_package_friendly,
+    m.ADIF_channel AS gsMediaTeam_channel,
+    COALESCE(m.placement_id, m.package_id) AS placement_id,
+    COALESCE(m.placement_name, m.package_name, m.package_id) AS placement_name,
+    m.supplier_code,
+    m.supplier_name,
+    m.supplier_logo,
+    m.p_buy_type AS buy_type,
+    m.p_buy_category AS buy_category,
+    m.channel,
+    m.channel_raw,
+    m.channel_group,
+    m.media_name,
+    m.p_cost_method AS cost_method,
+    COALESCE(m.man_total_planned_spend_doNotSum, m.p_planned_amount_doNotSum) AS planned_amount,
+    SAFE_CAST(ROUND(COALESCE(m.man_total_planned_impressions_doNotSum, m.p_planned_impressions_doNotSum)) AS INT64) AS planned_impressions,
+    SAFE_CAST(ROUND(m.p_planned_units_doNotSum) AS INT64) AS planned_units,
+    m.p_unit_type AS unit_type,
+    m.p_rate AS payable_rate,
+    m.man_daily_planned_spend AS planned_daily_spend_pk,
+    m.man_daily_planned_impressions AS planned_daily_impressions_pk,
+    CAST(NULL AS INT64) AS prisma_planned_clicks,
+    CAST(NULL AS DATE) AS max_prisma_report_date,
+    CAST(NULL AS FLOAT64) AS d_daily_recalculated_cost,
+    CAST(NULL AS INT64) AS d_daily_recalculated_imps,
+    CAST(NULL AS INT64) AS d_impressions,
+    CAST(NULL AS FLOAT64) AS d_media_cost,
+    CAST(NULL AS INT64) AS d_clicks,
+    CAST(NULL AS INT64) AS d_video_plays,
+    CAST(NULL AS INT64) AS d_video_comps,
+    CAST(NULL AS DATE) AS d_min_date,
+    CAST(NULL AS DATE) AS d_max_date,
+    CAST(NULL AS DATE) AS d_min_flight_date,
+    CAST(NULL AS DATE) AS d_max_flight_date,
+    CAST(NULL AS FLOAT64) AS d_daily_cpm,
+    CAST(NULL AS INT64) AS d_total_delivered_imps,
+    CAST(NULL AS INT64) AS d_total_del_inflight_imps,
+    CAST(NULL AS FLOAT64) AS fpd_orig_impressions,
+    CAST(NULL AS FLOAT64) AS fpd_orig_spend,
+    CAST(NULL AS FLOAT64) AS fpd_orig_clicks,
+    CAST(NULL AS INT64) AS fpd_orig_sends,
+    CAST(NULL AS INT64) AS fpd_orig_opens,
+    CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
+    CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
+    CAST(NULL AS STRING) AS fpd_orig_creative,
+    CAST(NULL AS STRING) AS fpd_creative_img,
+    CAST(NULL AS STRING) AS fpd_orig_source_files,
+    CAST(NULL AS STRING) AS fpd_orig_source_urls,
+    CAST(NULL AS TIMESTAMP) AS fpd_orig_source_modified_time,
+    CAST(NULL AS FLOAT64) AS fpd_updated_impressions,
+    CAST(NULL AS FLOAT64) AS fpd_updated_spend,
+    CAST(NULL AS STRING) AS fpd_updated_suppliers,
+    CAST(NULL AS STRING) AS fpd_updated_initiatives,
+    CAST(NULL AS TIMESTAMP) AS fpd_updated_data_timestamp,
+    CAST(NULL AS TIMESTAMP) AS fpd_updated_source_sheet_modified_time,
+    CAST(NULL AS FLOAT64) AS fpd_impressions,
+    CAST(NULL AS FLOAT64) AS fpd_spend,
+    CAST(NULL AS FLOAT64) AS fpd_clicks,
+    CAST(NULL AS INT64) AS fpd_sends,
+    CAST(NULL AS INT64) AS fpd_opens,
+    m.man_daily_spend AS final_spend,
+    m.man_daily_impressions AS final_impressions,
+    m.man_daily_clicks AS final_clicks,
+    m.man_daily_video_plays AS final_video_plays,
+    m.man_daily_video_comps AS final_video_comps,
+    CAST(NULL AS DATE) AS tv_data_refresh_date,
+    CAST(NULL AS STRING) AS tv_media_outlet,
+    CAST(NULL AS STRING) AS tv_type,
+    CAST(NULL AS STRING) AS tv_program_name,
+    CAST(NULL AS STRING) AS tv_market,
+    CAST(NULL AS STRING) AS tv_quarter,
+    CAST(NULL AS INT64) AS tv_year,
+    CAST(NULL AS INT64) AS tv_net_impressions,
+    CAST(NULL AS FLOAT64) AS tv_net_cost,
+    CAST(NULL AS INT64) AS tv_total_units,
+    CAST(NULL AS STRING) AS social_platform,
+    CAST(NULL AS STRING) AS social_campaign_id,
+    CAST(NULL AS STRING) AS social_ad_group_id,
+    CAST(NULL AS STRING) AS social_ad_id,
+    CAST(NULL AS STRING) AS social_account_name,
+    CAST(NULL AS FLOAT64) AS social_pacing_planned_spend,
+    CAST(NULL AS FLOAT64) AS social_spend,
+    CAST(NULL AS FLOAT64) AS social_impressions,
+    CAST(NULL AS FLOAT64) AS social_clicks,
+    CAST(NULL AS FLOAT64) AS social_video_plays,
+    CAST(NULL AS FLOAT64) AS social_video_views,
+    CAST(NULL AS FLOAT64) AS social_video_comps,
+    m.edit_id AS man_edit_id,
+    m.edit_reason AS man_edit_reason,
+    m.editor_email AS man_editor_email,
+    m.source_sheet_url AS man_source_sheet_url,
+    m.source_sheet_modified_time AS man_source_sheet_modified_time,
+    m.loaded_at AS man_loaded_at,
+    m.man_start_date,
+    m.man_end_date,
+    m.man_daily_spend,
+    m.man_daily_impressions,
+    m.man_daily_planned_spend,
+    m.man_daily_planned_impressions,
+    m.man_daily_clicks,
+    m.man_daily_video_plays,
+    m.man_daily_video_comps,
+    m.man_total_spend_doNotSum,
+    m.man_total_impressions_doNotSum,
+    m.man_total_planned_spend_doNotSum,
+    m.man_total_planned_impressions_doNotSum,
+    m.man_total_clicks_doNotSum,
+    m.man_total_video_plays_doNotSum,
+    m.man_total_video_comps_doNotSum
+  FROM manual_package_daily AS m
+  LEFT JOIN (
+    SELECT DISTINCT package_id_joined, date
+    FROM all_rows
+  ) AS existing
+    ON m.package_id = existing.package_id_joined
+   AND m.date = existing.date
+  WHERE existing.package_id_joined IS NULL
+),
+
+manual_applied_rows AS (
+  SELECT * FROM manual_existing_rows
+  UNION ALL
+  SELECT * FROM manual_only_rows
+),
+
 planned_metric_backfills AS (
   SELECT
     * REPLACE (
@@ -894,7 +1176,7 @@ planned_metric_backfills AS (
         ELSE planned_daily_impressions_pk
       END AS planned_daily_impressions_pk
     )
-  FROM all_rows
+  FROM manual_applied_rows
 ),
 
 row_callouts AS (
@@ -902,36 +1184,56 @@ row_callouts AS (
     * REPLACE (
       COALESCE(
         NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
+          -- CHANGE 2026-05-08: Keep source/cause callouts first, then add only
+          -- metric-symptom callouts that still add information. For example,
+          -- `missing_actuals` already explains planned delivery with no actuals,
+          -- so it suppresses the planned-without-actual symptom labels. Likewise,
+          -- missing Prisma daily or social pacing already explains actuals that
+          -- have no planned values, so those suppress actual-without-plan symptom
+          -- labels. Standalone metric symptoms still surface with shorter labels.
+          IF('missing_prisma_package' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['missing_prisma_package'], []),
+          IF('missing_prisma_daily' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['missing_prisma_daily'], []),
+          IF('missing_social_pacing' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['missing_social_pacing'], []),
+          IF('missing_actuals' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['missing_actuals'], []),
+          IF('actual_source_conflict' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['actual_source_conflict'], []),
+          IF('low_signal_dcm' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['low_signal_dcm'], []),
+          IF('missing_final_metrics' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['missing_final_metrics'], []),
           IF(
-            COALESCE(row_data_issue_category, 'ok') != 'ok',
-            SPLIT(row_data_issue_category, ' | '),
-            ARRAY<STRING>[]
+            COALESCE(planned_daily_impressions_pk, 0) = 0
+              AND COALESCE(final_impressions, 0) = 0
+              AND COALESCE(planned_daily_spend_pk, 0) > 0
+              AND COALESCE(final_spend, 0) > 0,
+            ['spend_no_imps'],
+            []
           ),
-          -- CHANGE 2026-05-08: Flag row-level planned-vs-delivered metric
-          -- mismatches so qa_row_data_callouts shows when delivery and plan
-          -- values do not line up on impressions or spend.
           IF(
             COALESCE(final_impressions, 0) > 0
-              AND COALESCE(planned_daily_impressions_pk, 0) = 0,
-            ['actual_impressions_without_planned'],
+              AND COALESCE(planned_daily_impressions_pk, 0) = 0
+              AND 'missing_prisma_daily' NOT IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | '))
+              AND 'missing_social_pacing' NOT IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')),
+            ['actual_imps_no_plan'],
             []
           ),
           IF(
             COALESCE(final_spend, 0) > 0
-              AND COALESCE(planned_daily_spend_pk, 0) = 0,
-            ['actual_spend_without_planned'],
+              AND COALESCE(planned_daily_spend_pk, 0) = 0
+              AND 'missing_prisma_daily' NOT IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | '))
+              AND 'missing_social_pacing' NOT IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')),
+            ['actual_spend_no_plan'],
             []
           ),
           IF(
             COALESCE(planned_daily_impressions_pk, 0) > 0
-              AND COALESCE(final_impressions, 0) = 0,
-            ['planned_impressions_without_actual'],
+              AND COALESCE(final_impressions, 0) = 0
+              AND 'missing_actuals' NOT IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')),
+            ['planned_imps_no_actual'],
             []
           ),
           IF(
             COALESCE(planned_daily_spend_pk, 0) > 0
-              AND COALESCE(final_spend, 0) = 0,
-            ['planned_spend_without_actual'],
+              AND COALESCE(final_spend, 0) = 0
+              AND 'missing_actuals' NOT IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')),
+            ['planned_spend_no_actual'],
             []
           )
         ), ' | '), ''),
@@ -956,6 +1258,17 @@ with_rollups AS (
     SUM(COALESCE(fpd_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_impressions,
     SUM(COALESCE(fpd_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_spend
   FROM row_callouts
+),
+
+with_initiative AS (
+  SELECT
+    wr.*,
+    -- CHANGE 2026-05-15: Consolidate the v2 initiative field into the main
+    -- package/date model so data_model owns the reporting column directly.
+    COALESCE(pm.initative, wr.package_name) AS initiative
+  FROM with_rollups AS wr
+  LEFT JOIN prisma_meta AS pm
+    ON wr.package_id_joined = pm.package_id
 )
 
 SELECT
@@ -1008,7 +1321,7 @@ SELECT
   product_name AS `_product_name`,
   package_type AS `_package_type`,
   package_name AS `_package_name`,
-  p_package_friendly AS `_package_name_friendly`,
+  COALESCE(NULLIF(p_package_friendly, ''), package_name) AS `_package_name_friendly`,
   gsMediaTeam_channel AS `ADIF_channel`,
   placement_id AS `_placement_id`,
   placement_name AS `_placement_name`,
@@ -1095,6 +1408,28 @@ SELECT
   social_video_plays AS `s_video_plays`,
   social_video_views AS `s_video_views`,
   social_video_comps AS `s_video_comps`,
+  man_edit_id AS `man_edit_id`,
+  man_edit_reason AS `man_edit_reason`,
+  man_editor_email AS `man_editor_email`,
+  man_source_sheet_url AS `man_source_sheet_url`,
+  man_source_sheet_modified_time AS `man_source_sheet_modified_time`,
+  man_loaded_at AS `man_loaded_at`,
+  man_start_date AS `man_start_date`,
+  man_end_date AS `man_end_date`,
+  man_daily_spend AS `man_daily_spend`,
+  man_daily_impressions AS `man_daily_impressions`,
+  man_daily_planned_spend AS `man_daily_planned_spend`,
+  man_daily_planned_impressions AS `man_daily_planned_impressions`,
+  man_daily_clicks AS `man_daily_clicks`,
+  man_daily_video_plays AS `man_daily_video_plays`,
+  man_daily_video_comps AS `man_daily_video_comps`,
+  man_total_spend_doNotSum AS `man_total_spend_doNotSum`,
+  man_total_impressions_doNotSum AS `man_total_impressions_doNotSum`,
+  man_total_planned_spend_doNotSum AS `man_total_planned_spend_doNotSum`,
+  man_total_planned_impressions_doNotSum AS `man_total_planned_impressions_doNotSum`,
+  man_total_clicks_doNotSum AS `man_total_clicks_doNotSum`,
+  man_total_video_plays_doNotSum AS `man_total_video_plays_doNotSum`,
+  man_total_video_comps_doNotSum AS `man_total_video_comps_doNotSum`,
   pkg_est_spend AS `qa_pkg_est_spend_doNotSum`,
   pkg_est_impressions AS `qa_pkg_est_impressions_doNotSum`,
   pkg_act_spend AS `qa_pkg_act_spend_doNotSum`,
@@ -1116,5 +1451,6 @@ SELECT
     WHEN pkg_act_spend > pkg_est_spend THEN 1
     ELSE 0
   END AS `qa_pkg_over_flag`,
-  CURRENT_TIMESTAMP() AS `qa_model_view_runtime_timestamp`
-FROM with_rollups;
+  CURRENT_TIMESTAMP() AS `qa_model_view_runtime_timestamp`,
+  initiative AS `initiative`
+FROM with_initiative;
