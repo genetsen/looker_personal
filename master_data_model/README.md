@@ -17,9 +17,10 @@ Use this when a dashboard value needs a direct manual correction.
 - Sheet: `Package Editor` in the manual updates Google Sheet.
 - User action: filter to the package, edit the visible value directly, and look for markers: orange means changed from the current dashboard snapshot, purple means already using a validated manual update, and red means a started new row needs fixing.
 - Best identifiers: `Package ID`, `Site`, and `Package Friendly Name`.
-- Delivered metrics: can be edited for a full flight, one week, or one day by changing `Start Date` and `End Date`.
+- Flight dates and package metadata: package-level corrections apply to the whole `Package ID`, across all delivery dates.
+- Delivered metrics: can be edited for a full flight, one week, or one day by changing `Delivery Override Start Date` and `Delivery Override End Date`.
 - Planned metrics: `Planned Spend` and `Planned Impressions` are full-flight only. Partial-range planned edits are blocked.
-- New rows: require `Package ID`, `Site`, `Package Friendly Name`, dates, at least one metric, and the visible required metadata fields.
+- New rows: require `Package ID`, `Site`, `Package Friendly Name`, flight dates, delivery override dates, at least one metric, and the visible required metadata fields.
 - Refresh request: users can check the `Request refresh` control in the sheet to send Gene an email notification. It does not run the loader by itself.
 - Loader: `manual_package_edits/load_manual_package_edits.R`, also registered in the universal script runner through `automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`.
 - Backend evidence: valid edits land in `man_*` fields and take priority for final `_` fields with `COALESCE(man_value, normal_value)` behavior.
@@ -59,7 +60,7 @@ The view:
 7. Adds social rows from the cross-platform raw social table when compatible daily social grain is available.
 8. Candidate logic also exposes all available row sources in `row_data_sources_available`, short issue labels in `row_data_issue_category`, and dashboard-friendly row callouts in `row_data_callouts`.
 9. Adds `_advertiser` as the canonical advertiser grouping field while preserving raw `_advertiser_name` and `_advertiser_short_name`.
-10. Applies valid active manual package edits from `landing.master_data_model_manual_package_daily` before package rollups are calculated.
+10. Applies valid active manual package edits from `landing.master_data_model_manual_package_daily` and package-level metadata edits from `landing.master_data_model_manual_package_edits_raw` before package rollups are calculated.
 11. Adds `initiative` from Prisma's source column `initative` at the package/date model grain.
 
 ## Source Tables And Views
@@ -132,15 +133,15 @@ Ritual delivery detail v2:
 - TV source fields are preserved in `tv_*` fields, including outlet, type, program, market, quarter, year, net impressions, net cost, total units, and data refresh date.
 - Updated FPD is layered before `final_spend`, `final_impressions`, and package actual rollups are calculated.
 - Original FPD and updated FPD are both preserved in separate `fpd_orig_*` and `fpd_updated_*` fields, then combined into `fpd_*` fields.
-- Manual package edits are layered after the normal digital/social/TV rows and before planned backfills, row callouts, and package rollups. Non-null `man_daily_*` values win for their matching final `_` fields, while untouched sheet cells leave normal source logic unchanged.
+- Manual package edits are layered after the normal digital/social/TV rows and before planned backfills, row callouts, and package rollups. Non-null `man_daily_*` metric values win for their matching final `_` fields on the edited delivery dates, while package-level `man_*` metadata values override Prisma metadata for the whole package.
 - The manual edit sheet uses a single `Package Editor` tab. It shows package lookup context and dashboard values in the same row; users edit the value cell directly, and the loader compares that cell to the live mart and last run to decide whether to write a backend manual value.
 - The visible editor starts with the fields a media buyer needs to recognize the row: `Package ID`, `Site`, and `Package Friendly Name`, followed by pale-yellow editable date and metric columns.
 - The package lookup facets live in native Google Sheets slicers for Advertiser, Channel, Campaign, and Site. They filter the real editable package rows without Apps Script-driven dropdowns or hidden helper columns.
 - The sheet has a `Request refresh` checkbox-style control. Checking it notifies Gene by email; if a Slack webhook script property exists, the same request can post to Slack. It is notification-only and does not run the loader or write to the warehouse by itself.
-- Date ranges define the override window. To change delivery for one week while leaving other weeks as-is, users set `Start Date` and `End Date` to that week and enter replacement totals for that week only.
+- `Flight Start Date` and `Flight End Date` are package-level fields. `Delivery Override Start Date` and `Delivery Override End Date` define the metric override window. To change delivery for one week while leaving other weeks as-is, users add or duplicate a row, set the delivery override dates to that week, and enter replacement delivered totals for that week only.
 - Planned metrics display as full-flight totals and can only be edited on full-flight rows. Delivered actual metrics can use day, week, or full-flight replacement totals.
 - Manual daily allocation preserves exact replacement totals after upload: count metrics distribute whole units across the selected dates, and spend metrics distribute by cents.
-- New manual-only rows need enough metadata to enter the main model: `Package ID`, `Site`, `Package Friendly Name`, `Start Date`, `End Date`, at least one edited metric, plus visible required metadata fields for Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. Started new rows turn red when required fields are missing or dates are invalid.
+- New manual-only rows need enough metadata to enter the main model: `Package ID`, `Site`, `Package Friendly Name`, `Flight Start Date`, `Flight End Date`, `Delivery Override Start Date`, `Delivery Override End Date`, at least one edited metric, plus visible required metadata fields for Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. Started new rows turn red when required fields are missing or dates are invalid.
 - The editor UX is managed separately from the R loader by `manual_package_edits/setup_manual_package_editor_sheet.mjs`. That setup owns the instruction area, frozen header row, base table filter, table banding, borders, protected source/context columns, hidden baseline comparison columns, visual validation rules, native slicers, and pale-yellow editable date/metric columns.
 - The R loader only refreshes data values and backend manual tables. It does not own sheet design, filters, widths, colors, or table formatting.
 - Edited/manual-backed cells are marked only with Google Sheet formatting. The user-facing sheet does not expose replacement columns, delta columns, validation tabs, proof tabs, or `man_*` backend fields.

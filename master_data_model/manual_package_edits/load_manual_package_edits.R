@@ -31,9 +31,9 @@ EDITOR_HEADER_ROW <- 4
 EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
 EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
 REQUEST_STATUS_CELL <- "C3"
-EDITOR_VISIBLE_LAST_COLUMN <- "AD"
-MANUAL_MARKER_START_COLUMN <- "AE"
-EDITOR_LAST_COLUMN <- "AM"
+EDITOR_VISIBLE_LAST_COLUMN <- "AR"
+MANUAL_MARKER_START_COLUMN <- "AS"
+EDITOR_LAST_COLUMN <- "BM"
 LEGACY_TABS <- c(
   "Sheet1", "Package Lookup", "Start Here", "Manual Package Edits",
   "Validation Preview", "Daily Proof", "Publish Status", "Change History"
@@ -57,8 +57,10 @@ display_columns <- c(
   "Package ID",
   "Site",
   "Package Friendly Name",
-  "Start Date",
-  "End Date",
+  "Flight Start Date",
+  "Flight End Date",
+  "Delivery Override Start Date",
+  "Delivery Override End Date",
   "Spend",
   "Impressions",
   "Planned Spend",
@@ -75,27 +77,51 @@ display_columns <- c(
   "Supplier Name",
   "Package Name",
   "GS Channel",
-  "Baseline Start Date",
-  "Baseline End Date",
+  "Baseline Flight Start Date",
+  "Baseline Flight End Date",
+  "Baseline Delivery Start Date",
+  "Baseline Delivery End Date",
   "Baseline Spend",
   "Baseline Impressions",
   "Baseline Planned Spend",
   "Baseline Planned Impressions",
   "Baseline Clicks",
   "Baseline Video Plays",
-  "Baseline Video Completions"
+  "Baseline Video Completions",
+  "Baseline Advertiser",
+  "Baseline Package Type",
+  "Baseline Channel",
+  "Baseline Campaign",
+  "Baseline Initiative",
+  "Baseline Supplier Code",
+  "Baseline Supplier Name",
+  "Baseline Package Name",
+  "Baseline Package Friendly Name",
+  "Baseline GS Channel"
 )
 
 manual_marker_columns <- c(
-  "Manual Marker Start Date",
-  "Manual Marker End Date",
+  "Manual Marker Flight Start Date",
+  "Manual Marker Flight End Date",
+  "Manual Marker Delivery Start Date",
+  "Manual Marker Delivery End Date",
   "Manual Marker Spend",
   "Manual Marker Impressions",
   "Manual Marker Planned Spend",
   "Manual Marker Planned Impressions",
   "Manual Marker Clicks",
   "Manual Marker Video Plays",
-  "Manual Marker Video Completions"
+  "Manual Marker Video Completions",
+  "Manual Marker Advertiser",
+  "Manual Marker Package Type",
+  "Manual Marker Channel",
+  "Manual Marker Campaign",
+  "Manual Marker Initiative",
+  "Manual Marker Supplier Code",
+  "Manual Marker Supplier Name",
+  "Manual Marker Package Name",
+  "Manual Marker Package Friendly Name",
+  "Manual Marker GS Channel"
 )
 
 metric_specs <- tibble::tribble(
@@ -113,18 +139,40 @@ planned_metric_names <- c("planned_spend", "planned_impressions")
 currency_metric_names <- c("spend", "planned_spend")
 whole_number_metric_names <- c("impressions", "planned_impressions", "clicks", "video_plays", "video_comps")
 
+metadata_specs <- tibble::tribble(
+  ~display_col, ~value_key, ~current_col, ~manual_col,
+  "Advertiser", "advertiser_name", "current_advertiser_name", "man_advertiser_name",
+  "Package Type", "package_type", "current_package_type", "man_package_type",
+  "Channel", "channel", "current_channel", "man_channel",
+  "Campaign", "campaign_name", "current_campaign_name", "man_campaign_name",
+  "Initiative", "initiative", "current_initiative", "man_initiative",
+  "Supplier Code", "supplier_code", "current_supplier_code", "man_supplier_code",
+  "Supplier Name", "supplier_name", "current_supplier_name", "man_supplier_name",
+  "Package Name", "package_name", "current_package_name", "man_package_name",
+  "Package Friendly Name", "package_name_friendly", "current_package_name_friendly", "man_package_name_friendly",
+  "GS Channel", "ADIF_channel", "current_ADIF_channel", "man_ADIF_channel"
+)
+
 raw_columns <- c(
   "is_active",
   "edit_id",
   "package_id",
   "man_start_date",
   "man_end_date",
+  "man_flight_start_date",
+  "man_flight_end_date",
   "current_row_count",
   "current_first_date",
   "current_last_date",
+  "current_flight_start_date",
+  "current_flight_end_date",
+  "replacement_flight_start_date",
+  "replacement_flight_end_date",
   metric_specs$current_col,
   metric_specs$replacement_col,
   metric_specs$delta_col,
+  metadata_specs$current_col,
+  metadata_specs$manual_col,
   "advertiser_name",
   "advertiser_short_name",
   "campaign_name",
@@ -181,9 +229,15 @@ parse_date <- function(x) {
   if (inherits(x, "POSIXt")) {
     return(as.Date(x))
   }
+  if (is.numeric(x)) {
+    return(as.Date(x, origin = "1899-12-30"))
+  }
   y <- str_trim(as.character(x))
   y[y == "" | str_to_lower(y) %in% c("na", "nan", "null")] <- NA_character_
-  suppressWarnings(as.Date(y))
+  parsed <- suppressWarnings(as.Date(y))
+  serial_date <- suppressWarnings(as.numeric(y))
+  serial_date[is.na(serial_date)] <- NA_real_
+  dplyr::coalesce(parsed, as.Date(serial_date, origin = "1899-12-30"))
 }
 
 same_num <- function(a, b, tol = 0.01) {
@@ -319,8 +373,10 @@ normalize_existing_editor <- function(data) {
     supplier_code = as_trimmed_character(pick_existing_col(data, c("Supplier Code", "supplier_code"))),
     supplier_name = as_trimmed_character(pick_existing_col(data, c("Site", "Supplier Name", "Supplier", "supplier_name"))),
     channel = as_trimmed_character(pick_existing_col(data, c("Channel", "channel"))),
-    start_date = parse_date(pick_existing_col(data, c("Start Date", "man_start_date", "current_first_date"))),
-    end_date = parse_date(pick_existing_col(data, c("End Date", "man_end_date", "current_last_date"))),
+    flight_start_date = parse_date(pick_existing_col(data, c("Flight Start Date", "man_flight_start_date", "current_flight_start_date"))),
+    flight_end_date = parse_date(pick_existing_col(data, c("Flight End Date", "man_flight_end_date", "current_flight_end_date"))),
+    delivery_start_date = parse_date(pick_existing_col(data, c("Delivery Override Start Date", "Start Date", "man_start_date", "current_first_date"))),
+    delivery_end_date = parse_date(pick_existing_col(data, c("Delivery Override End Date", "End Date", "man_end_date", "current_last_date"))),
     campaign_name = as_trimmed_character(pick_existing_col(data, c("Campaign", "campaign_name", "campaign_friendly"))),
     initiative = as_trimmed_character(pick_existing_col(data, c("Initiative", "initiative"))),
     advertiser_name = as_trimmed_character(pick_existing_col(data, c("Advertiser", "advertiser_name"))),
@@ -363,8 +419,14 @@ download_previous_raw <- function() {
   out$package_id <- as_trimmed_character(out$package_id)
   out$man_start_date <- parse_date(out$man_start_date)
   out$man_end_date <- parse_date(out$man_end_date)
+  out$man_flight_start_date <- parse_date(out$man_flight_start_date)
+  out$man_flight_end_date <- parse_date(out$man_flight_end_date)
   out$current_first_date <- parse_date(out$current_first_date)
   out$current_last_date <- parse_date(out$current_last_date)
+  out$current_flight_start_date <- parse_date(out$current_flight_start_date)
+  out$current_flight_end_date <- parse_date(out$current_flight_end_date)
+  out$replacement_flight_start_date <- parse_date(out$replacement_flight_start_date)
+  out$replacement_flight_end_date <- parse_date(out$replacement_flight_end_date)
   out$is_active <- out$is_active %in% TRUE
   out %>%
     filter(!is.na(package_id))
@@ -382,6 +444,45 @@ choose_metric_value <- function(sheet_value, live_value, prior_current, prior_re
   }
   if (same_num(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
+  }
+  list(value = sheet_value, edited = TRUE)
+}
+
+same_text <- function(a, b) {
+  a <- as_trimmed_character(a)
+  b <- as_trimmed_character(b)
+  if (length(a) == 0) a <- NA_character_
+  if (length(b) == 0) b <- NA_character_
+  if (is.na(a[[1]]) && is.na(b[[1]])) return(TRUE)
+  if (is.na(a[[1]]) || is.na(b[[1]])) return(FALSE)
+  a[[1]] == b[[1]]
+}
+
+choose_text_value <- function(sheet_value, live_value, prior_current, prior_replacement) {
+  sheet_value <- as_trimmed_character(sheet_value)
+  live_value <- as_trimmed_character(live_value)
+  prior_current <- as_trimmed_character(prior_current)
+  prior_replacement <- as_trimmed_character(prior_replacement)
+
+  sheet_value <- if (length(sheet_value) == 0) NA_character_ else sheet_value[[1]]
+  live_value <- if (length(live_value) == 0) NA_character_ else live_value[[1]]
+  prior_current <- if (length(prior_current) == 0) NA_character_ else prior_current[[1]]
+  prior_replacement <- if (length(prior_replacement) == 0) NA_character_ else prior_replacement[[1]]
+
+  if (is.na(sheet_value)) {
+    return(list(value = live_value, edited = FALSE))
+  }
+  if (!is.na(prior_replacement) && !is.na(prior_current) && same_text(sheet_value, prior_replacement)) {
+    return(list(value = sheet_value, edited = TRUE))
+  }
+  if (!is.na(prior_current) && same_text(sheet_value, prior_current)) {
+    return(list(value = live_value, edited = FALSE))
+  }
+  if (same_text(sheet_value, live_value)) {
+    return(list(value = live_value, edited = FALSE))
+  }
+  if (is.na(live_value) && is.na(prior_current) && is.na(prior_replacement)) {
+    return(list(value = sheet_value, edited = FALSE))
   }
   list(value = sheet_value, edited = TRUE)
 }
@@ -538,6 +639,8 @@ SELECT
   COUNT(*) AS current_row_count,
   MIN(`_date`) AS current_first_date,
   MAX(`_date`) AS current_last_date,
+  ARRAY_AGG(`_start_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_start_date,
+  ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_end_date,
   SUM(COALESCE(`_spend`, 0)) AS current_spend,
   SUM(COALESCE(`_impressions`, 0)) AS current_impressions,
   SUM(COALESCE(`_planned_spend`, 0)) AS current_planned_spend,
@@ -553,6 +656,19 @@ ORDER BY advertiser_name, package_type, channel, campaign_name, initiative, supp
 cat("Refreshing package editor from ", MART_TABLE, "...\n", sep = "")
 live_packages <- bq_table_download(bq_project_query(PROJECT_ID, mart_lookup_query))
 live_packages$package_id <- as_trimmed_character(live_packages$package_id)
+live_packages <- live_packages %>%
+  mutate(
+    current_advertiser_name = advertiser_name,
+    current_package_type = package_type,
+    current_channel = channel,
+    current_campaign_name = campaign_name,
+    current_initiative = initiative,
+    current_supplier_code = supplier_code,
+    current_supplier_name = supplier_name,
+    current_package_name = coalesce(package_name, package_name_friendly),
+    current_package_name_friendly = coalesce(package_name_friendly, package_name),
+    current_ADIF_channel = ADIF_channel
+  )
 
 existing_editor <- read_first_existing_tab(SHEET_ID, c(TAB_EDITOR, "Manual Package Edits"))
 existing_editor <- normalize_existing_editor(existing_editor)
@@ -603,9 +719,9 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   sheet_value <- function(col) {
     if (has_sheet && col %in% names(sheet)) sheet[[col]][[1]] else NA
   }
-  sheet_start_date <- sheet_value("start_date")
-  sheet_end_date <- sheet_value("end_date")
-  prior <- previous_by_row_key[[manual_row_key(pkg, sheet_start_date, sheet_end_date)]]
+  sheet_delivery_start_date <- sheet_value("delivery_start_date")
+  sheet_delivery_end_date <- sheet_value("delivery_end_date")
+  prior <- previous_by_row_key[[manual_row_key(pkg, sheet_delivery_start_date, sheet_delivery_end_date)]]
   if (is.null(prior)) {
     prior <- tibble::tibble()
   } else if (nrow(prior) > 1) {
@@ -616,20 +732,45 @@ for (row_idx in seq_len(nrow(editor_rows))) {
     if (has_prior && col %in% names(prior)) prior[[col]][[1]] else NA
   }
 
-  start_choice <- choose_date_value(
-    sheet_value("start_date"),
+  flight_start_choice <- choose_date_value(
+    sheet_value("flight_start_date"),
+    live_value("current_flight_start_date"),
+    prior_value("current_flight_start_date"),
+    prior_value("replacement_flight_start_date"),
+    has_prior && prior_value("is_active") %in% TRUE
+  )
+  flight_end_choice <- choose_date_value(
+    sheet_value("flight_end_date"),
+    live_value("current_flight_end_date"),
+    prior_value("current_flight_end_date"),
+    prior_value("replacement_flight_end_date"),
+    has_prior && prior_value("is_active") %in% TRUE
+  )
+  delivery_start_choice <- choose_date_value(
+    sheet_value("delivery_start_date"),
     live_value("current_first_date"),
     prior_value("current_first_date"),
     prior_value("man_start_date"),
     has_prior && prior_value("is_active") %in% TRUE
   )
-  end_choice <- choose_date_value(
-    sheet_value("end_date"),
+  delivery_end_choice <- choose_date_value(
+    sheet_value("delivery_end_date"),
     live_value("current_last_date"),
     prior_value("current_last_date"),
     prior_value("man_end_date"),
     has_prior && prior_value("is_active") %in% TRUE
   )
+
+  metadata_choices <- list()
+  for (metadata_idx in seq_len(nrow(metadata_specs))) {
+    spec <- metadata_specs[metadata_idx, ]
+    metadata_choices[[spec$value_key]] <- choose_text_value(
+      sheet_value(spec$value_key),
+      live_value(spec$current_col),
+      prior_value(spec$current_col),
+      prior_value(spec$manual_col)
+    )
+  }
 
   metric_choices <- list()
   for (metric_idx in seq_len(nrow(metric_specs))) {
@@ -644,10 +785,12 @@ for (row_idx in seq_len(nrow(editor_rows))) {
 
   display <- tibble::tibble(
       `Package ID` = pkg,
-      Site = as.character(sheet_value("supplier_name") %pick% live_value("supplier_name")),
-      `Package Friendly Name` = as.character(sheet_value("package_name_friendly") %pick% live_value("package_name_friendly")),
-      `Start Date` = start_choice$value,
-      `End Date` = end_choice$value,
+      Site = metadata_choices$supplier_name$value,
+      `Package Friendly Name` = metadata_choices$package_name_friendly$value %pick% metadata_choices$package_name$value,
+      `Flight Start Date` = flight_start_choice$value,
+      `Flight End Date` = flight_end_choice$value,
+      `Delivery Override Start Date` = delivery_start_choice$value,
+      `Delivery Override End Date` = delivery_end_choice$value,
       Spend = metric_choices$spend$value,
     Impressions = metric_choices$impressions$value,
     `Planned Spend` = metric_choices$planned_spend$value,
@@ -655,24 +798,36 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       Clicks = metric_choices$clicks$value,
       `Video Plays` = metric_choices$video_plays$value,
       `Video Completions` = metric_choices$video_comps$value,
-      Advertiser = as.character(live_value("advertiser_name") %pick% sheet_value("advertiser_name")),
-      `Package Type` = as.character(sheet_value("package_type") %pick% live_value("package_type")),
-      Channel = as.character(sheet_value("channel") %pick% live_value("channel")),
-      Campaign = as.character(sheet_value("campaign_name") %pick% live_value("campaign_name")),
-      Initiative = as.character(live_value("initiative") %pick% sheet_value("initiative")),
-      `Supplier Code` = as.character(sheet_value("supplier_code") %pick% live_value("supplier_code")),
-      `Supplier Name` = as.character(sheet_value("supplier_name") %pick% live_value("supplier_name")),
-      `Package Name` = as.character(sheet_value("package_name") %pick% live_value("package_name")),
-      `GS Channel` = as.character(sheet_value("ADIF_channel") %pick% live_value("ADIF_channel")),
-      `Baseline Start Date` = live_value("current_first_date"),
-      `Baseline End Date` = live_value("current_last_date"),
+      Advertiser = metadata_choices$advertiser_name$value,
+      `Package Type` = metadata_choices$package_type$value,
+      Channel = metadata_choices$channel$value,
+      Campaign = metadata_choices$campaign_name$value,
+      Initiative = metadata_choices$initiative$value,
+      `Supplier Code` = metadata_choices$supplier_code$value,
+      `Supplier Name` = metadata_choices$supplier_name$value,
+      `Package Name` = metadata_choices$package_name$value,
+      `GS Channel` = metadata_choices$ADIF_channel$value,
+      `Baseline Flight Start Date` = live_value("current_flight_start_date"),
+      `Baseline Flight End Date` = live_value("current_flight_end_date"),
+      `Baseline Delivery Start Date` = live_value("current_first_date"),
+      `Baseline Delivery End Date` = live_value("current_last_date"),
       `Baseline Spend` = live_value("current_spend"),
       `Baseline Impressions` = live_value("current_impressions"),
       `Baseline Planned Spend` = live_value("current_planned_spend"),
       `Baseline Planned Impressions` = live_value("current_planned_impressions"),
       `Baseline Clicks` = live_value("current_clicks"),
       `Baseline Video Plays` = live_value("current_video_plays"),
-      `Baseline Video Completions` = live_value("current_video_comps")
+      `Baseline Video Completions` = live_value("current_video_comps"),
+      `Baseline Advertiser` = live_value("current_advertiser_name"),
+      `Baseline Package Type` = live_value("current_package_type"),
+      `Baseline Channel` = live_value("current_channel"),
+      `Baseline Campaign` = live_value("current_campaign_name"),
+      `Baseline Initiative` = live_value("current_initiative"),
+      `Baseline Supplier Code` = live_value("current_supplier_code"),
+      `Baseline Supplier Name` = live_value("current_supplier_name"),
+      `Baseline Package Name` = live_value("current_package_name"),
+      `Baseline Package Friendly Name` = live_value("current_package_name_friendly"),
+      `Baseline GS Channel` = live_value("current_ADIF_channel")
     )
   display_rows[[length(display_rows) + 1]] <- display
 
@@ -680,11 +835,15 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   names(raw) <- raw_columns
   raw$edit_id <- stable_edit_id(pkg, row_idx)
   raw$package_id <- pkg
-  raw$man_start_date <- start_choice$value
-  raw$man_end_date <- end_choice$value
+  raw$man_start_date <- delivery_start_choice$value
+  raw$man_end_date <- delivery_end_choice$value
+  raw$man_flight_start_date <- flight_start_choice$value
+  raw$man_flight_end_date <- flight_end_choice$value
   raw$current_row_count <- live_value("current_row_count")
   raw$current_first_date <- live_value("current_first_date")
   raw$current_last_date <- live_value("current_last_date")
+  raw$current_flight_start_date <- live_value("current_flight_start_date")
+  raw$current_flight_end_date <- live_value("current_flight_end_date")
 
   raw$advertiser_name <- display$Advertiser
   raw$advertiser_short_name <- live_value("advertiser_short_name")
@@ -715,21 +874,45 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   raw$p_rate <- live_value("p_rate")
   raw$editor_email <- AUTH_EMAIL
 
-  date_edited <- start_choice$edited || end_choice$edited
+  flight_date_edited <- flight_start_choice$edited || flight_end_choice$edited
+  delivery_date_edited <- delivery_start_choice$edited || delivery_end_choice$edited
+  metadata_edited <- FALSE
   metric_edited <- FALSE
 
-  if (date_edited) {
+  if (flight_start_choice$edited) {
+    raw$replacement_flight_start_date <- flight_start_choice$value
+  }
+  if (flight_end_choice$edited) {
+    raw$replacement_flight_end_date <- flight_end_choice$value
+  }
+
+  for (metadata_idx in seq_len(nrow(metadata_specs))) {
+    spec <- metadata_specs[metadata_idx, ]
+    raw[[spec$current_col]] <- live_value(spec$current_col)
+    if (metadata_choices[[spec$value_key]]$edited) {
+      raw[[spec$manual_col]] <- metadata_choices[[spec$value_key]]$value
+      metadata_edited <- TRUE
+      edited_cells[[length(edited_cells) + 1]] <- tibble::tibble(
+        row_number = row_idx,
+        col_number = match(spec$display_col, display_columns) - 1,
+        validation_status = "pending",
+        validation_messages = "Manual package metadata edit captured."
+      )
+    }
+  }
+
+  if (flight_date_edited) {
     edited_cells[[length(edited_cells) + 1]] <- tibble::tibble(
       row_number = row_idx,
-      col_number = match("Start Date", display_columns) - 1,
+      col_number = match("Flight Start Date", display_columns) - 1,
       validation_status = "pending",
-      validation_messages = "Manual date edit captured."
+      validation_messages = "Manual package flight date edit captured."
     )
     edited_cells[[length(edited_cells) + 1]] <- tibble::tibble(
       row_number = row_idx,
-      col_number = match("End Date", display_columns) - 1,
+      col_number = match("Flight End Date", display_columns) - 1,
       validation_status = "pending",
-      validation_messages = "Manual date edit captured."
+      validation_messages = "Manual package flight date edit captured."
     )
   }
 
@@ -748,7 +931,7 @@ for (row_idx in seq_len(nrow(editor_rows))) {
     }
   }
 
-  raw$is_active <- date_edited || metric_edited
+  raw$is_active <- flight_date_edited || metadata_edited || metric_edited
   raw_rows[[length(raw_rows) + 1]] <- tibble::as_tibble(raw)
 }
 
@@ -771,15 +954,28 @@ for (col in metric_specs$replacement_col) {
 }
 raw_upload$man_start_date <- parse_date(raw_upload$man_start_date)
 raw_upload$man_end_date <- parse_date(raw_upload$man_end_date)
+raw_upload$man_flight_start_date <- parse_date(raw_upload$man_flight_start_date)
+raw_upload$man_flight_end_date <- parse_date(raw_upload$man_flight_end_date)
 raw_upload$current_first_date <- parse_date(raw_upload$current_first_date)
 raw_upload$current_last_date <- parse_date(raw_upload$current_last_date)
+raw_upload$current_flight_start_date <- parse_date(raw_upload$current_flight_start_date)
+raw_upload$current_flight_end_date <- parse_date(raw_upload$current_flight_end_date)
+raw_upload$replacement_flight_start_date <- parse_date(raw_upload$replacement_flight_start_date)
+raw_upload$replacement_flight_end_date <- parse_date(raw_upload$replacement_flight_end_date)
 raw_upload$current_row_count <- parse_num(raw_upload$current_row_count)
 
 has_replacement <- apply(!is.na(raw_upload[, metric_specs$replacement_col, drop = FALSE]), 1, any)
+has_metadata_replacement <- apply(!is.na(raw_upload[, metadata_specs$manual_col, drop = FALSE]), 1, any)
+has_flight_replacement <- !is.na(raw_upload$replacement_flight_start_date) | !is.na(raw_upload$replacement_flight_end_date)
 planned_replacement_cols <- metric_specs$replacement_col[metric_specs$value_key %in% planned_metric_names]
 has_planned_replacement <- apply(!is.na(raw_upload[, planned_replacement_cols, drop = FALSE]), 1, any)
-date_ok <- !is.na(raw_upload$man_start_date) & !is.na(raw_upload$man_end_date) & raw_upload$man_end_date >= raw_upload$man_start_date
-date_edited <- raw_upload$is_active & (
+delivery_date_ok <- !is.na(raw_upload$man_start_date) & !is.na(raw_upload$man_end_date) & raw_upload$man_end_date >= raw_upload$man_start_date
+flight_date_ok <- (!has_flight_replacement) | (
+  !is.na(raw_upload$man_flight_start_date) &
+    !is.na(raw_upload$man_flight_end_date) &
+    raw_upload$man_flight_end_date >= raw_upload$man_flight_start_date
+)
+delivery_date_edited <- raw_upload$is_active & has_replacement & (
   !mapply(same_date, raw_upload$man_start_date, raw_upload$current_first_date) |
     !mapply(same_date, raw_upload$man_end_date, raw_upload$current_last_date)
 )
@@ -789,23 +985,18 @@ full_flight_range <- manual_only | (
     mapply(same_date, raw_upload$man_end_date, raw_upload$current_last_date)
 )
 planned_range_ok <- !has_planned_replacement | full_flight_range
-base_ok <- !is.na(raw_upload$package_id) & date_ok & planned_range_ok & (has_replacement | date_edited)
+base_ok <- !is.na(raw_upload$package_id) &
+  flight_date_ok &
+  ((!has_replacement) | (delivery_date_ok & planned_range_ok)) &
+  (has_replacement | has_metadata_replacement | has_flight_replacement)
 required_for_new <- c("advertiser_name", "campaign_name", "package_type", "package_name", "ADIF_channel", "supplier_name", "channel", "channel_group", "media_name")
 metadata_ok <- apply(!is.na(raw_upload[, required_for_new, drop = FALSE]), 1, all)
 
 duplicate_messages <- rep(NA_character_, nrow(raw_upload))
 active_metric_days <- list()
 for (i in seq_len(nrow(raw_upload))) {
-  if (!raw_upload$is_active[[i]] || !date_ok[[i]] || is.na(raw_upload$package_id[[i]])) next
+  if (!raw_upload$is_active[[i]] || !has_replacement[[i]] || !delivery_date_ok[[i]] || is.na(raw_upload$package_id[[i]])) next
   days <- seq(raw_upload$man_start_date[[i]], raw_upload$man_end_date[[i]], by = "day")
-  if (date_edited[[i]]) {
-    active_metric_days[[length(active_metric_days) + 1]] <- tibble::tibble(
-      edit_row = i,
-      package_id = raw_upload$package_id[[i]],
-      date = days,
-      metric_name = "dates"
-    )
-  }
   for (metric_idx in seq_len(nrow(metric_specs))) {
     spec <- metric_specs[metric_idx, ]
     if (is.na(raw_upload[[spec$replacement_col]][[i]])) next
@@ -835,9 +1026,10 @@ for (i in seq_len(nrow(raw_upload))) {
   msg <- character()
   if (!raw_upload$is_active[[i]]) msg <- c(msg, "not edited")
   if (is.na(raw_upload$package_id[[i]])) msg <- c(msg, "missing package ID")
-  if (!date_ok[[i]]) msg <- c(msg, "invalid or missing date range")
+  if (has_replacement[[i]] && !delivery_date_ok[[i]]) msg <- c(msg, "invalid or missing delivery override date range")
+  if (!flight_date_ok[[i]]) msg <- c(msg, "invalid package flight date range")
   if (!planned_range_ok[[i]]) msg <- c(msg, "planned metrics can only be edited on the full flight date range")
-  if (!has_replacement[[i]] && !date_edited[[i]] && raw_upload$is_active[[i]]) msg <- c(msg, "no changed values")
+  if (!has_replacement[[i]] && !has_metadata_replacement[[i]] && !has_flight_replacement[[i]] && raw_upload$is_active[[i]]) msg <- c(msg, "no changed values")
   if (manual_only[[i]] && raw_upload$is_active[[i]] && !metadata_ok[[i]]) msg <- c(msg, "new package missing required metadata")
   if (!is.na(duplicate_messages[[i]])) msg <- c(msg, duplicate_messages[[i]])
   validation_messages[[i]] <- paste(msg, collapse = " | ")
@@ -879,11 +1071,13 @@ bq_table_upload(raw_ref, raw_upload, write_disposition = "WRITE_TRUNCATE")
 
 valid_edits <- raw_upload %>%
   filter(is_active, validation_status == "valid")
+valid_metric_edits <- valid_edits %>%
+  filter(apply(!is.na(.[, metric_specs$replacement_col, drop = FALSE]), 1, any))
 
 daily_rows <- list()
-if (nrow(valid_edits) > 0) {
-  for (i in seq_len(nrow(valid_edits))) {
-    row <- valid_edits[i, ]
+if (nrow(valid_metric_edits) > 0) {
+  for (i in seq_len(nrow(valid_metric_edits))) {
+    row <- valid_metric_edits[i, ]
     days <- seq(row$man_start_date, row$man_end_date, by = "day")
     day_count <- length(days)
     daily <- tibble::tibble(
@@ -1006,8 +1200,10 @@ if (nrow(edited_cells_df) > 0) {
 write_editor_tab(SHEET_ID, TAB_EDITOR, display_data)
 
 manual_marker_data <- tibble::tibble(
-  `Manual Marker Start Date` = raw_upload$is_active & raw_upload$validation_status == "valid" & date_edited,
-  `Manual Marker End Date` = raw_upload$is_active & raw_upload$validation_status == "valid" & date_edited
+  `Manual Marker Flight Start Date` = raw_upload$is_active & raw_upload$validation_status == "valid" & !is.na(raw_upload$replacement_flight_start_date),
+  `Manual Marker Flight End Date` = raw_upload$is_active & raw_upload$validation_status == "valid" & !is.na(raw_upload$replacement_flight_end_date),
+  `Manual Marker Delivery Start Date` = raw_upload$is_active & raw_upload$validation_status == "valid" & has_replacement & delivery_date_edited,
+  `Manual Marker Delivery End Date` = raw_upload$is_active & raw_upload$validation_status == "valid" & has_replacement & delivery_date_edited
 )
 for (metric_idx in seq_len(nrow(metric_specs))) {
   spec <- metric_specs[metric_idx, ]
@@ -1015,6 +1211,13 @@ for (metric_idx in seq_len(nrow(metric_specs))) {
   manual_marker_data[[marker_col]] <- raw_upload$is_active &
     raw_upload$validation_status == "valid" &
     !is.na(raw_upload[[spec$replacement_col]])
+}
+for (metadata_idx in seq_len(nrow(metadata_specs))) {
+  spec <- metadata_specs[metadata_idx, ]
+  marker_col <- paste("Manual Marker", spec$display_col)
+  manual_marker_data[[marker_col]] <- raw_upload$is_active &
+    raw_upload$validation_status == "valid" &
+    !is.na(raw_upload[[spec$manual_col]])
 }
 manual_marker_data <- manual_marker_data[, manual_marker_columns, drop = FALSE]
 write_manual_marker_columns(SHEET_ID, TAB_EDITOR, manual_marker_data)

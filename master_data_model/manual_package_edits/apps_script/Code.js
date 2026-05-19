@@ -45,7 +45,7 @@ function setupManualEditorControls() {
   const sheet = getEditorSheet_();
 
   sheet.getRange("A1:J1").clearContent();
-  sheet.getRange("A2").setValue("Filter above. Find the package, then edit only yellow/green date and metric cells. Orange means changed. Purple means already manual. Red means fix before load.");
+  sheet.getRange("A2").setValue("Filter above. Find the package, then edit the visible value that needs correction. Metadata and flight dates apply to the whole package; delivered metrics apply only to Delivery Override Start/End. Orange means changed, purple means already manual, red means fix before load.");
   sheet.getRange("A3").setValue("Request refresh");
   sheet.getRange(REQUEST_UPDATE_CELL).setValue(false);
   sheet.getRange("C3").setValue("Notification only. Check this when edits are ready; Gene still needs to review or run the loader before dashboards update.");

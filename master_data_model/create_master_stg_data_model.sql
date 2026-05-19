@@ -173,6 +173,50 @@ manual_package_daily AS (
     AND date IS NOT NULL
 ),
 
+manual_package_metadata AS (
+  SELECT
+    package_id,
+    ARRAY_AGG(edit_id IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS edit_id,
+    ARRAY_AGG(edit_reason IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS edit_reason,
+    ARRAY_AGG(editor_email IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS editor_email,
+    ARRAY_AGG(source_sheet_url IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS source_sheet_url,
+    ARRAY_AGG(source_sheet_modified_time IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS source_sheet_modified_time,
+    MAX(loaded_at) AS loaded_at,
+    ARRAY_AGG(replacement_flight_start_date IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS man_flight_start_date,
+    ARRAY_AGG(replacement_flight_end_date IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS man_flight_end_date,
+    ARRAY_AGG(man_advertiser_name IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS advertiser_name,
+    ARRAY_AGG(man_campaign_name IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS campaign_name,
+    ARRAY_AGG(man_package_type IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_type,
+    ARRAY_AGG(man_package_name IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name,
+    ARRAY_AGG(man_package_name_friendly IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name_friendly,
+    ARRAY_AGG(man_ADIF_channel IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS ADIF_channel,
+    ARRAY_AGG(man_supplier_code IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_code,
+    ARRAY_AGG(man_supplier_name IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_name,
+    ARRAY_AGG(man_channel IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel,
+    ARRAY_AGG(man_channel IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel_group,
+    ARRAY_AGG(man_package_type IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS media_name,
+    ARRAY_AGG(man_initiative IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS initiative
+  FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+  WHERE is_active = TRUE
+    AND validation_status = 'valid'
+    AND package_id IS NOT NULL
+    AND (
+      replacement_flight_start_date IS NOT NULL
+      OR replacement_flight_end_date IS NOT NULL
+      OR man_advertiser_name IS NOT NULL
+      OR man_campaign_name IS NOT NULL
+      OR man_package_type IS NOT NULL
+      OR man_package_name IS NOT NULL
+      OR man_package_name_friendly IS NOT NULL
+      OR man_ADIF_channel IS NOT NULL
+      OR man_supplier_code IS NOT NULL
+      OR man_supplier_name IS NOT NULL
+      OR man_channel IS NOT NULL
+      OR man_initiative IS NOT NULL
+    )
+  GROUP BY package_id
+),
+
 prisma_daily_raw AS (
   SELECT
     p.package_id,
@@ -938,9 +982,9 @@ all_rows AS (
 manual_existing_rows AS (
   SELECT
     r.* REPLACE (
-      IF(m.edit_id IS NOT NULL, 'manual_package_edits', r.row_data_source_primary) AS row_data_source_primary,
+      IF(COALESCE(m.edit_id, pm.edit_id) IS NOT NULL, 'manual_package_edits', r.row_data_source_primary) AS row_data_source_primary,
       CASE
-        WHEN m.edit_id IS NULL THEN r.row_data_sources_available
+        WHEN COALESCE(m.edit_id, pm.edit_id) IS NULL THEN r.row_data_sources_available
         ELSE ARRAY_TO_STRING(
           ARRAY_CONCAT(
             IF(COALESCE(r.row_data_sources_available, 'none') IN ('', 'none'), ARRAY<STRING>[], SPLIT(r.row_data_sources_available, ' | ')),
@@ -949,29 +993,29 @@ manual_existing_rows AS (
           ' | '
         )
       END AS row_data_sources_available,
-      COALESCE(m.man_start_date, r.package_start_date) AS package_start_date,
-      COALESCE(m.man_end_date, r.package_end_date) AS package_end_date,
-      COALESCE(m.advertiser_name, r.advertiser_name) AS advertiser_name,
-      COALESCE(m.advertiser_short_name, r.advertiser_short_name) AS advertiser_short_name,
-      COALESCE(m.campaign_name, r.campaign_name) AS campaign_name,
+      COALESCE(pm.man_flight_start_date, r.package_start_date) AS package_start_date,
+      COALESCE(pm.man_flight_end_date, r.package_end_date) AS package_end_date,
+      COALESCE(pm.advertiser_name, r.advertiser_name) AS advertiser_name,
+      r.advertiser_short_name AS advertiser_short_name,
+      COALESCE(pm.campaign_name, r.campaign_name) AS campaign_name,
       COALESCE(m.campaign_friendly, r.campaign_friendly) AS campaign_friendly,
       COALESCE(m.product_code, r.product_code) AS product_code,
       COALESCE(m.product_name, r.product_name) AS product_name,
-      COALESCE(m.package_type, r.package_type) AS package_type,
-      COALESCE(m.package_name, r.package_name) AS package_name,
-      COALESCE(m.package_name_friendly, r.p_package_friendly) AS p_package_friendly,
-      COALESCE(m.ADIF_channel, r.gsMediaTeam_channel) AS gsMediaTeam_channel,
+      COALESCE(pm.package_type, r.package_type) AS package_type,
+      COALESCE(pm.package_name, r.package_name) AS package_name,
+      COALESCE(pm.package_name_friendly, r.p_package_friendly) AS p_package_friendly,
+      COALESCE(pm.ADIF_channel, r.gsMediaTeam_channel) AS gsMediaTeam_channel,
       COALESCE(m.placement_id, r.placement_id) AS placement_id,
       COALESCE(m.placement_name, r.placement_name) AS placement_name,
-      COALESCE(m.supplier_code, r.supplier_code) AS supplier_code,
-      COALESCE(m.supplier_name, r.supplier_name) AS supplier_name,
+      COALESCE(pm.supplier_code, r.supplier_code) AS supplier_code,
+      COALESCE(pm.supplier_name, r.supplier_name) AS supplier_name,
       COALESCE(m.supplier_logo, r.supplier_logo) AS supplier_logo,
       COALESCE(m.p_buy_type, r.buy_type) AS buy_type,
       COALESCE(m.p_buy_category, r.buy_category) AS buy_category,
-      COALESCE(m.channel, r.channel) AS channel,
+      COALESCE(pm.channel, r.channel) AS channel,
       COALESCE(m.channel_raw, r.channel_raw) AS channel_raw,
-      COALESCE(m.channel_group, r.channel_group) AS channel_group,
-      COALESCE(m.media_name, r.media_name) AS media_name,
+      COALESCE(pm.channel_group, r.channel_group) AS channel_group,
+      COALESCE(pm.media_name, r.media_name) AS media_name,
       COALESCE(m.p_cost_method, r.cost_method) AS cost_method,
       COALESCE(m.man_total_planned_spend_doNotSum, m.p_planned_amount_doNotSum, r.planned_amount) AS planned_amount,
       COALESCE(SAFE_CAST(ROUND(COALESCE(m.man_total_planned_impressions_doNotSum, m.p_planned_impressions_doNotSum)) AS INT64), r.planned_impressions) AS planned_impressions,
@@ -986,12 +1030,12 @@ manual_existing_rows AS (
       COALESCE(m.man_daily_video_plays, r.final_video_plays) AS final_video_plays,
       COALESCE(m.man_daily_video_comps, r.final_video_comps) AS final_video_comps
     ),
-    m.edit_id AS man_edit_id,
-    m.edit_reason AS man_edit_reason,
-    m.editor_email AS man_editor_email,
-    m.source_sheet_url AS man_source_sheet_url,
-    m.source_sheet_modified_time AS man_source_sheet_modified_time,
-    m.loaded_at AS man_loaded_at,
+    COALESCE(m.edit_id, pm.edit_id) AS man_edit_id,
+    COALESCE(m.edit_reason, pm.edit_reason) AS man_edit_reason,
+    COALESCE(m.editor_email, pm.editor_email) AS man_editor_email,
+    COALESCE(m.source_sheet_url, pm.source_sheet_url) AS man_source_sheet_url,
+    COALESCE(m.source_sheet_modified_time, pm.source_sheet_modified_time) AS man_source_sheet_modified_time,
+    COALESCE(m.loaded_at, pm.loaded_at) AS man_loaded_at,
     m.man_start_date,
     m.man_end_date,
     m.man_daily_spend,
@@ -1012,6 +1056,8 @@ manual_existing_rows AS (
   LEFT JOIN manual_package_daily AS m
     ON r.package_id_joined = m.package_id
    AND r.date = m.date
+  LEFT JOIN manual_package_metadata AS pm
+    ON r.package_id_joined = pm.package_id
 ),
 
 manual_only_rows AS (
@@ -1022,29 +1068,29 @@ manual_only_rows AS (
     'ok' AS row_data_issue_category,
     m.package_id AS package_id_joined,
     m.date,
-    m.man_start_date AS package_start_date,
-    m.man_end_date AS package_end_date,
-    m.advertiser_name,
+    COALESCE(pm.man_flight_start_date, m.man_start_date) AS package_start_date,
+    COALESCE(pm.man_flight_end_date, m.man_end_date) AS package_end_date,
+    COALESCE(pm.advertiser_name, m.advertiser_name) AS advertiser_name,
     m.advertiser_short_name,
-    m.campaign_name,
+    COALESCE(pm.campaign_name, m.campaign_name) AS campaign_name,
     m.campaign_friendly,
     m.product_code,
     m.product_name,
-    COALESCE(m.package_type, 'ManualPackage') AS package_type,
-    m.package_name,
-    m.package_name_friendly AS p_package_friendly,
-    m.ADIF_channel AS gsMediaTeam_channel,
+    COALESCE(pm.package_type, m.package_type, 'ManualPackage') AS package_type,
+    COALESCE(pm.package_name, m.package_name) AS package_name,
+    COALESCE(pm.package_name_friendly, m.package_name_friendly) AS p_package_friendly,
+    COALESCE(pm.ADIF_channel, m.ADIF_channel) AS gsMediaTeam_channel,
     COALESCE(m.placement_id, m.package_id) AS placement_id,
     COALESCE(m.placement_name, m.package_name, m.package_id) AS placement_name,
-    m.supplier_code,
-    m.supplier_name,
+    COALESCE(pm.supplier_code, m.supplier_code) AS supplier_code,
+    COALESCE(pm.supplier_name, m.supplier_name) AS supplier_name,
     m.supplier_logo,
     m.p_buy_type AS buy_type,
     m.p_buy_category AS buy_category,
-    m.channel,
+    COALESCE(pm.channel, m.channel) AS channel,
     m.channel_raw,
-    m.channel_group,
-    m.media_name,
+    COALESCE(pm.channel_group, m.channel_group) AS channel_group,
+    COALESCE(pm.media_name, m.media_name) AS media_name,
     m.p_cost_method AS cost_method,
     COALESCE(m.man_total_planned_spend_doNotSum, m.p_planned_amount_doNotSum) AS planned_amount,
     SAFE_CAST(ROUND(COALESCE(m.man_total_planned_impressions_doNotSum, m.p_planned_impressions_doNotSum)) AS INT64) AS planned_impressions,
@@ -1119,12 +1165,12 @@ manual_only_rows AS (
     CAST(NULL AS FLOAT64) AS social_video_plays,
     CAST(NULL AS FLOAT64) AS social_video_views,
     CAST(NULL AS FLOAT64) AS social_video_comps,
-    m.edit_id AS man_edit_id,
-    m.edit_reason AS man_edit_reason,
-    m.editor_email AS man_editor_email,
-    m.source_sheet_url AS man_source_sheet_url,
-    m.source_sheet_modified_time AS man_source_sheet_modified_time,
-    m.loaded_at AS man_loaded_at,
+    COALESCE(m.edit_id, pm.edit_id) AS man_edit_id,
+    COALESCE(m.edit_reason, pm.edit_reason) AS man_edit_reason,
+    COALESCE(m.editor_email, pm.editor_email) AS man_editor_email,
+    COALESCE(m.source_sheet_url, pm.source_sheet_url) AS man_source_sheet_url,
+    COALESCE(m.source_sheet_modified_time, pm.source_sheet_modified_time) AS man_source_sheet_modified_time,
+    COALESCE(m.loaded_at, pm.loaded_at) AS man_loaded_at,
     m.man_start_date,
     m.man_end_date,
     m.man_daily_spend,
@@ -1148,6 +1194,8 @@ manual_only_rows AS (
   ) AS existing
     ON m.package_id = existing.package_id_joined
    AND m.date = existing.date
+  LEFT JOIN manual_package_metadata AS pm
+    ON m.package_id = pm.package_id
   WHERE existing.package_id_joined IS NULL
 ),
 
@@ -1265,10 +1313,12 @@ with_initiative AS (
     wr.*,
     -- CHANGE 2026-05-15: Consolidate the v2 initiative field into the main
     -- package/date model so data_model owns the reporting column directly.
-    COALESCE(pm.initative, wr.package_name) AS initiative
+    COALESCE(mpm.initiative, pm.initative, wr.package_name) AS initiative
   FROM with_rollups AS wr
   LEFT JOIN prisma_meta AS pm
     ON wr.package_id_joined = pm.package_id
+  LEFT JOIN manual_package_metadata AS mpm
+    ON wr.package_id_joined = mpm.package_id
 )
 
 SELECT

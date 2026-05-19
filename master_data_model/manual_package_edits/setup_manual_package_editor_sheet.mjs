@@ -16,8 +16,10 @@ const columns = [
   "Package ID",
   "Site",
   "Package Friendly Name",
-  "Start Date",
-  "End Date",
+  "Flight Start Date",
+  "Flight End Date",
+  "Delivery Override Start Date",
+  "Delivery Override End Date",
   "Spend",
   "Impressions",
   "Planned Spend",
@@ -34,8 +36,10 @@ const columns = [
   "Supplier Name",
   "Package Name",
   "GS Channel",
-  "Baseline Start Date",
-  "Baseline End Date",
+  "Baseline Flight Start Date",
+  "Baseline Flight End Date",
+  "Baseline Delivery Start Date",
+  "Baseline Delivery End Date",
   "Baseline Spend",
   "Baseline Impressions",
   "Baseline Planned Spend",
@@ -43,8 +47,20 @@ const columns = [
   "Baseline Clicks",
   "Baseline Video Plays",
   "Baseline Video Completions",
-  "Manual Marker Start Date",
-  "Manual Marker End Date",
+  "Baseline Advertiser",
+  "Baseline Package Type",
+  "Baseline Channel",
+  "Baseline Campaign",
+  "Baseline Initiative",
+  "Baseline Supplier Code",
+  "Baseline Supplier Name",
+  "Baseline Package Name",
+  "Baseline Package Friendly Name",
+  "Baseline GS Channel",
+  "Manual Marker Flight Start Date",
+  "Manual Marker Flight End Date",
+  "Manual Marker Delivery Start Date",
+  "Manual Marker Delivery End Date",
   "Manual Marker Spend",
   "Manual Marker Impressions",
   "Manual Marker Planned Spend",
@@ -52,50 +68,80 @@ const columns = [
   "Manual Marker Clicks",
   "Manual Marker Video Plays",
   "Manual Marker Video Completions",
+  "Manual Marker Advertiser",
+  "Manual Marker Package Type",
+  "Manual Marker Channel",
+  "Manual Marker Campaign",
+  "Manual Marker Initiative",
+  "Manual Marker Supplier Code",
+  "Manual Marker Supplier Name",
+  "Manual Marker Package Name",
+  "Manual Marker Package Friendly Name",
+  "Manual Marker GS Channel",
 ];
 
 const headerRowIndex = 3;
 const dataStartRowIndex = 4;
 const colCount = columns.length;
 const blankManualEntryRows = 250;
-const editableColumnIndexes = new Set([3, 4, 5, 6, 7, 8, 9, 10, 11]);
-const deliveredMetricColumnIndexes = new Set([5, 6, 9, 10, 11]);
-const plannedMetricColumnIndexes = new Set([7, 8]);
+const colIndex = Object.fromEntries(columns.map((name, index) => [name, index]));
+const visibleColumnCount = colIndex["Baseline Flight Start Date"];
+const markerStartIndex = colIndex["Manual Marker Flight Start Date"];
+const editableColumnIndexes = new Set([
+  "Flight Start Date", "Flight End Date", "Delivery Override Start Date", "Delivery Override End Date",
+  "Spend", "Impressions", "Planned Spend", "Planned Impressions", "Clicks", "Video Plays", "Video Completions",
+  "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel",
+].map((name) => colIndex[name]));
+const deliveredMetricColumnIndexes = new Set(["Spend", "Impressions", "Clicks", "Video Plays", "Video Completions"].map((name) => colIndex[name]));
+const plannedMetricColumnIndexes = new Set(["Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
+const metadataColumnIndexes = new Set(["Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel"].map((name) => colIndex[name]));
+const hiddenColumnIndexes = new Set(columns.map((_, index) => index).filter((index) => index >= visibleColumnCount));
+const markerNames = [
+  "Flight Start Date", "Flight End Date", "Delivery Start Date", "Delivery End Date",
+  "Spend", "Impressions", "Planned Spend", "Planned Impressions", "Clicks", "Video Plays", "Video Completions",
+  "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "Package Friendly Name", "GS Channel",
+];
 const editMarkerPairs = [
-  { editedIndex: 3, baselineIndex: 21 },
-  { editedIndex: 4, baselineIndex: 22 },
-  { editedIndex: 5, baselineIndex: 23 },
-  { editedIndex: 6, baselineIndex: 24 },
-  { editedIndex: 7, baselineIndex: 25 },
-  { editedIndex: 8, baselineIndex: 26 },
-  { editedIndex: 9, baselineIndex: 27 },
-  { editedIndex: 10, baselineIndex: 28 },
-  { editedIndex: 11, baselineIndex: 29 },
-];
-const manualMarkerPairs = [
-  { editedIndex: 3, markerIndex: 30 },
-  { editedIndex: 4, markerIndex: 31 },
-  { editedIndex: 5, markerIndex: 32 },
-  { editedIndex: 6, markerIndex: 33 },
-  { editedIndex: 7, markerIndex: 34 },
-  { editedIndex: 8, markerIndex: 35 },
-  { editedIndex: 9, markerIndex: 36 },
-  { editedIndex: 10, markerIndex: 37 },
-  { editedIndex: 11, markerIndex: 38 },
-];
-const metadataColumnIndexes = new Set([12, 13, 14, 15, 16, 17, 18, 19, 20]);
-const hiddenColumnIndexes = new Set([21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38]);
+  { editedName: "Flight Start Date", baselineName: "Baseline Flight Start Date" },
+  { editedName: "Flight End Date", baselineName: "Baseline Flight End Date" },
+  { editedName: "Delivery Override Start Date", baselineName: "Baseline Delivery Start Date" },
+  { editedName: "Delivery Override End Date", baselineName: "Baseline Delivery End Date" },
+  { editedName: "Spend", baselineName: "Baseline Spend" },
+  { editedName: "Impressions", baselineName: "Baseline Impressions" },
+  { editedName: "Planned Spend", baselineName: "Baseline Planned Spend" },
+  { editedName: "Planned Impressions", baselineName: "Baseline Planned Impressions" },
+  { editedName: "Clicks", baselineName: "Baseline Clicks" },
+  { editedName: "Video Plays", baselineName: "Baseline Video Plays" },
+  { editedName: "Video Completions", baselineName: "Baseline Video Completions" },
+  { editedName: "Advertiser", baselineName: "Baseline Advertiser" },
+  { editedName: "Package Type", baselineName: "Baseline Package Type" },
+  { editedName: "Channel", baselineName: "Baseline Channel" },
+  { editedName: "Campaign", baselineName: "Baseline Campaign" },
+  { editedName: "Initiative", baselineName: "Baseline Initiative" },
+  { editedName: "Supplier Code", baselineName: "Baseline Supplier Code" },
+  { editedName: "Supplier Name", baselineName: "Baseline Supplier Name" },
+  { editedName: "Package Name", baselineName: "Baseline Package Name" },
+  { editedName: "Package Friendly Name", baselineName: "Baseline Package Friendly Name" },
+  { editedName: "GS Channel", baselineName: "Baseline GS Channel" },
+].map((pair) => ({
+  editedIndex: colIndex[pair.editedName],
+  baselineIndex: colIndex[pair.baselineName],
+}));
+const manualMarkerPairs = markerNames.map((name) => ({
+  editedIndex: colIndex[name === "Delivery Start Date" ? "Delivery Override Start Date" : name === "Delivery End Date" ? "Delivery Override End Date" : name],
+  markerIndex: colIndex[`Manual Marker ${name}`],
+})).filter((pair) => pair.editedIndex !== undefined && pair.markerIndex !== undefined);
 const slicers = [
-  { title: "Advertiser", columnIndex: 12, offsetXPixels: 0, widthPixels: 210, heightPixels: 58 },
-  { title: "Channel", columnIndex: 14, offsetXPixels: 220, widthPixels: 210, heightPixels: 58 },
-  { title: "Campaign", columnIndex: 15, offsetXPixels: 440, widthPixels: 210, heightPixels: 58 },
+  { title: "Advertiser", columnIndex: colIndex["Advertiser"], offsetXPixels: 0, widthPixels: 210, heightPixels: 58 },
+  { title: "Channel", columnIndex: colIndex["Channel"], offsetXPixels: 220, widthPixels: 210, heightPixels: 58 },
+  { title: "Campaign", columnIndex: colIndex["Campaign"], offsetXPixels: 440, widthPixels: 210, heightPixels: 58 },
   { title: "Site", columnIndex: 1, offsetXPixels: 660, widthPixels: 210, heightPixels: 58 },
 ];
 const widths = [
-  105, 135, 720, 100, 100, 105, 120, 125, 140, 90,
-  110, 130, 140, 110, 105, 150, 115, 90, 140, 220, 120,
-  110, 110, 110, 120, 130, 145, 100, 120, 150,
-  90, 90, 90, 90, 90, 90, 90, 90, 90,
+  105, 135, 720, 112, 112, 132, 132, 105, 120, 125,
+  140, 90, 110, 130, 140, 110, 105, 150, 115, 90,
+  140, 220, 120,
+  ...Array(colCount - 23).fill(100),
 ];
 
 function color(red, green, blue) {
@@ -210,7 +256,7 @@ async function writeInstructions() {
       "", "", "", "", "", "", "", "", "", "",
     ],
     [
-      "Filter above. Find the package, then edit only yellow/green date and metric cells. Orange means changed. Purple means already manual. Red means fix before load.", "", "", "", "", "", "", "", "", "",
+      "Filter above. Find the package, then edit the visible value that needs correction. Metadata and flight dates apply to the whole package; delivered metrics apply only to Delivery Override Start/End. Orange means changed, purple means already manual, red means fix before load.", "", "", "", "", "", "", "", "", "",
     ],
     [
       "Request refresh", false,
@@ -437,14 +483,14 @@ function buildRequests(sheet, existingDataEndRowIndex) {
   requests.push(
     {
       updateDimensionProperties: {
-        range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 21 },
+        range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: visibleColumnCount },
         properties: { hiddenByUser: false },
         fields: "hiddenByUser",
       },
     },
     {
       updateDimensionProperties: {
-        range: { sheetId, dimension: "COLUMNS", startIndex: 21, endIndex: colCount },
+        range: { sheetId, dimension: "COLUMNS", startIndex: visibleColumnCount, endIndex: colCount },
         properties: { hiddenByUser: true },
         fields: "hiddenByUser",
       },
@@ -653,13 +699,13 @@ function buildRequests(sheet, existingDataEndRowIndex) {
   requests.push({
     addConditionalFormatRule: {
       rule: {
-        ranges: [gridRange(sheetId, dataStartRowIndex, rowCount, 0, 21)],
+        ranges: [gridRange(sheetId, dataStartRowIndex, rowCount, 0, visibleColumnCount)],
         booleanRule: {
           condition: {
             type: "CUSTOM_FORMULA",
             values: [
               {
-                userEnteredValue: `=AND($A${firstDataSheetRow}<>"",$V${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$U${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$D${firstDataSheetRow}="",$E${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$T${firstDataSheetRow}="",$U${firstDataSheetRow}="",$D${firstDataSheetRow}>$E${firstDataSheetRow}))`,
+                userEnteredValue: `=AND($A${firstDataSheetRow}<>"",$X${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$F${firstDataSheetRow}="",$G${firstDataSheetRow}="",COUNTA($H${firstDataSheetRow}:$N${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$F${firstDataSheetRow}>$G${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow})))`,
               },
             ],
           },
@@ -680,13 +726,13 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       {
         addConditionalFormatRule: {
           rule: {
-            ranges: [gridRange(sheetId, firstBlankRow, rowCount, 0, 21)],
+            ranges: [gridRange(sheetId, firstBlankRow, rowCount, 0, visibleColumnCount)],
             booleanRule: {
               condition: {
                 type: "CUSTOM_FORMULA",
                 values: [
                   {
-                    userEnteredValue: `=AND(COUNTA($A${firstBlankSheetRow}:$U${firstBlankSheetRow})>0,OR($A${firstBlankSheetRow}="",$B${firstBlankSheetRow}="",$C${firstBlankSheetRow}="",$D${firstBlankSheetRow}="",$E${firstBlankSheetRow}="",COUNTA($F${firstBlankSheetRow}:$L${firstBlankSheetRow})=0,$M${firstBlankSheetRow}="",$N${firstBlankSheetRow}="",$O${firstBlankSheetRow}="",$P${firstBlankSheetRow}="",$T${firstBlankSheetRow}="",$U${firstBlankSheetRow}=""))`,
+                    userEnteredValue: `=AND(COUNTA($A${firstBlankSheetRow}:$W${firstBlankSheetRow})>0,OR($A${firstBlankSheetRow}="",$B${firstBlankSheetRow}="",$C${firstBlankSheetRow}="",$F${firstBlankSheetRow}="",$G${firstBlankSheetRow}="",COUNTA($H${firstBlankSheetRow}:$N${firstBlankSheetRow})=0,$O${firstBlankSheetRow}="",$P${firstBlankSheetRow}="",$Q${firstBlankSheetRow}="",$R${firstBlankSheetRow}="",$V${firstBlankSheetRow}="",$W${firstBlankSheetRow}=""))`,
                   },
                 ],
               },
@@ -705,14 +751,12 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       {
         addConditionalFormatRule: {
           rule: {
-            ranges: [gridRange(sheetId, firstBlankRow, rowCount, 3, 5)],
+            ranges: [gridRange(sheetId, firstBlankRow, rowCount, colIndex["Delivery Override Start Date"], colIndex["Delivery Override End Date"] + 1)],
             booleanRule: {
               condition: {
                 type: "CUSTOM_FORMULA",
                 values: [
-                  {
-                    userEnteredValue: `=AND($D${firstBlankSheetRow}<>"",$E${firstBlankSheetRow}<>"",$D${firstBlankSheetRow}>$E${firstBlankSheetRow})`,
-                  },
+                  { userEnteredValue: `=AND($F${firstBlankSheetRow}<>"",$G${firstBlankSheetRow}<>"",$F${firstBlankSheetRow}>$G${firstBlankSheetRow})` },
                 ],
               },
               format: {
@@ -735,13 +779,13 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     requests.push({
       addConditionalFormatRule: {
         rule: {
-          ranges: [gridRange(sheetId, dataStartRowIndex, existingDataEndRowIndex, 7, 9)],
+          ranges: [gridRange(sheetId, dataStartRowIndex, existingDataEndRowIndex, colIndex["Planned Spend"], colIndex["Planned Impressions"] + 1)],
           booleanRule: {
             condition: {
               type: "CUSTOM_FORMULA",
               values: [
                 {
-                  userEnteredValue: `=AND(OR($H${firstDataRow}<>$Z${firstDataRow},$I${firstDataRow}<>$AA${firstDataRow}),OR($D${firstDataRow}<>$V${firstDataRow},$E${firstDataRow}<>$W${firstDataRow}))`,
+                  userEnteredValue: `=AND(OR($J${firstDataRow}<>$AD${firstDataRow},$K${firstDataRow}<>$AE${firstDataRow}),OR($F${firstDataRow}<>$Z${firstDataRow},$G${firstDataRow}<>$AA${firstDataRow}))`,
                 },
               ],
             },
@@ -1074,7 +1118,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       repeatCell: {
         range: gridRange(sheetId, 0, 3, 0, 10),
         cell: {
-          note: "Use the native slicers for Advertiser, Channel, Campaign, and Site to find the package row. Edit the date and metric value columns directly. Changed values turn orange. Red means the row needs fixing before it can load. Actual delivery metrics can use any Start/End date range. Planned Spend and Planned Impressions are flight-level only: leave Start/End on the full flight when editing planned values. To add a new package, use the blank rows below the current package list and include Package ID, Site, Package Friendly Name, Start Date, End Date, at least one metric, and required metadata.",
+          note: "Use the slicers for Advertiser, Channel, Campaign, and Site to find the package row. Package metadata edits apply to all dates for that Package ID. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red rows must be fixed before load.",
         },
         fields: "note",
       },
@@ -1099,43 +1143,52 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, 3, 5),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Flight Start Date"], colIndex["Flight End Date"] + 1),
         cell: {
-          note: "Use the exact dates you want to override for actual delivery metrics. To edit one week only, set Start Date and End Date to that week; dates outside the range keep normal dashboard values. Planned metric edits must keep the full flight range. Edited dates turn orange when they differ from the current dashboard flight dates.",
+          note: "Package-level flight dates. Editing these overrides the package flight dates everywhere that Package ID appears.",
         },
         fields: "note",
       },
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, 5, 7),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Delivery Override Start Date"], colIndex["Delivery Override End Date"] + 1),
         cell: {
-          note: "Delivered actuals: enter the replacement total for the selected Start/End date range only. Leave unchanged metrics as-is. Edited values turn orange when they differ from the current dashboard value.",
+          note: "Metric override window. Delivered metric edits affect only these dates. To correct one day or one week, add/duplicate a row for the same Package ID and set these dates to that smaller range.",
         },
         fields: "note",
       },
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, 7, 9),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Spend"], colIndex["Impressions"] + 1),
         cell: {
-          note: "Planned metrics are flight totals only. Edit Planned Spend or Planned Impressions only when Start Date and End Date cover the full flight. Partial planned edits are blocked by the loader. Edited planned values turn orange when they differ from the current dashboard flight total.",
+          note: "Delivered actuals. Enter the replacement total for the Delivery Override Start/End range only. Leave unchanged metrics as-is.",
         },
         fields: "note",
       },
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, 9, 12),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Planned Spend"], colIndex["Planned Impressions"] + 1),
         cell: {
-          note: "Delivered actuals: enter the replacement total for the selected Start/End date range only. Leave unchanged metrics as-is. Edited values turn orange when they differ from the current dashboard value.",
+          note: "Planned metrics are package-level flight totals. They must use the full delivery range, not a one-day or one-week exception row.",
         },
         fields: "note",
       },
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, 12, colCount),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Clicks"], colIndex["Video Completions"] + 1),
+        cell: {
+          note: "Delivered actuals. Enter the replacement total for the Delivery Override Start/End range only. Leave unchanged metrics as-is.",
+        },
+        fields: "note",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Advertiser"], visibleColumnCount),
         cell: {
           note: "Metadata fields. Keep existing values unless you are adding a new package or correcting package metadata. New manual packages need Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel completed. Hidden columns to the right are internal comparison and manual-marker fields used only for formatting.",
         },
@@ -1144,7 +1197,16 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
   );
 
-  for (const index of [3, 4]) {
+  for (const index of [
+    colIndex["Flight Start Date"],
+    colIndex["Flight End Date"],
+    colIndex["Delivery Override Start Date"],
+    colIndex["Delivery Override End Date"],
+    colIndex["Baseline Flight Start Date"],
+    colIndex["Baseline Flight End Date"],
+    colIndex["Baseline Delivery Start Date"],
+    colIndex["Baseline Delivery End Date"],
+  ]) {
     requests.push({
       repeatCell: {
         range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
@@ -1154,7 +1216,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     });
   }
 
-  for (const index of [5, 7]) {
+  for (const index of [colIndex["Spend"], colIndex["Planned Spend"], colIndex["Baseline Spend"], colIndex["Baseline Planned Spend"]]) {
     requests.push({
       repeatCell: {
         range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
@@ -1164,37 +1226,18 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     });
   }
 
-  for (const index of [6, 8, 9, 10, 11]) {
-    requests.push({
-      repeatCell: {
-        range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
-        cell: { userEnteredFormat: { numberFormat: { type: "NUMBER", pattern: "#,##0" } } },
-        fields: "userEnteredFormat.numberFormat",
-      },
-    });
-  }
-
-  for (const index of [21, 22]) {
-    requests.push({
-      repeatCell: {
-        range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
-        cell: { userEnteredFormat: { numberFormat: { type: "DATE", pattern: "yyyy-mm-dd" } } },
-        fields: "userEnteredFormat.numberFormat",
-      },
-    });
-  }
-
-  for (const index of [23, 25]) {
-    requests.push({
-      repeatCell: {
-        range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
-        cell: { userEnteredFormat: { numberFormat: { type: "NUMBER", pattern: "$#,##0.00" } } },
-        fields: "userEnteredFormat.numberFormat",
-      },
-    });
-  }
-
-  for (const index of [24, 26, 27, 28, 29]) {
+  for (const index of [
+    colIndex["Impressions"],
+    colIndex["Planned Impressions"],
+    colIndex["Clicks"],
+    colIndex["Video Plays"],
+    colIndex["Video Completions"],
+    colIndex["Baseline Impressions"],
+    colIndex["Baseline Planned Impressions"],
+    colIndex["Baseline Clicks"],
+    colIndex["Baseline Video Plays"],
+    colIndex["Baseline Video Completions"],
+  ]) {
     requests.push({
       repeatCell: {
         range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
@@ -1208,16 +1251,16 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     requests.push(
       {
         repeatCell: {
-          range: gridRange(sheetId, firstBlankRow, rowCount, 0, 21),
+          range: gridRange(sheetId, firstBlankRow, rowCount, 0, visibleColumnCount),
           cell: {
-            note: "Add new manual-only rows in this blank area. Required fields: Package ID, Site, Package Friendly Name, Start Date, End Date, at least one metric, Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. Red means the row is started but missing required fields or has invalid dates.",
+            note: "Add new manual-only rows in this blank area. Required fields: Package ID, Site, Package Friendly Name, Flight Start/End, Delivery Override Start/End, at least one metric, Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. Package metadata changes apply to all dates for that Package ID; delivery metrics apply only to the delivery override dates.",
           },
           fields: "note",
         },
       },
       {
         updateBorders: {
-          range: gridRange(sheetId, firstBlankRow, firstBlankRow + 1, 0, 21),
+          range: gridRange(sheetId, firstBlankRow, firstBlankRow + 1, 0, visibleColumnCount),
           top: { style: "SOLID_THICK", width: 3, color: color(0.43, 0.06, 0.04) },
           bottom: { style: "SOLID", width: 1, color: color(0.86, 0.90, 0.94) },
           left: { style: "SOLID", width: 1, color: color(0.86, 0.90, 0.94) },
@@ -1277,7 +1320,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     {
       addProtectedRange: {
         protectedRange: {
-          range: gridRange(sheetId, dataStartRowIndex, rowCount, 21, colCount),
+          range: gridRange(sheetId, dataStartRowIndex, rowCount, visibleColumnCount, colCount),
           description: "Manual editor UX: lock hidden baseline columns",
           warningOnly: false,
         },
@@ -1290,17 +1333,8 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       {
         addProtectedRange: {
           protectedRange: {
-            range: gridRange(sheetId, dataStartRowIndex, existingDataEndRowIndex, 0, 3),
+            range: gridRange(sheetId, dataStartRowIndex, existingDataEndRowIndex, 0, 2),
             description: "Manual editor UX: lock existing package identity columns",
-            warningOnly: false,
-          },
-        },
-      },
-      {
-        addProtectedRange: {
-          protectedRange: {
-            range: gridRange(sheetId, dataStartRowIndex, existingDataEndRowIndex, 12, 21),
-            description: "Manual editor UX: lock existing PRISMA metadata columns",
             warningOnly: false,
           },
         },
@@ -1678,15 +1712,15 @@ async function writeInstructionsTab() {
     ["", "", "", "", "", "", "", ""],
     ["Quick workflow", "", "", "", "", "", "", ""],
     ["1. Open the editor", "", "Go to the Package Editor tab and use the slicers at the top to narrow by Advertiser, Channel, Campaign, and Site. You are filtering the real editable rows, not a copy.", "", "", "", "", ""],
-    ["2. Find the package", "", "Use Package ID, Site, and Package Friendly Name first. Campaign and metadata fields are visible at the far right if you need more context. Existing package identity and source metadata fields are locked so they do not get changed by accident.", "", "", "", "", ""],
-    ["3. Edit the value", "", "Edit only the date and metric value columns when a dashboard value needs to change: Start Date, End Date, Spend, Impressions, Planned Spend, Planned Impressions, Clicks, Video Plays, and Video Completions.", "", "", "", "", ""],
+    ["2. Find the package", "", "Use Package ID, Site, and Package Friendly Name first. Campaign and metadata fields are visible at the far right if you need more context. Package ID and hidden internal fields are locked so row identity and loader helpers do not get changed by accident.", "", "", "", "", ""],
+    ["3. Edit the value", "", "Edit the visible field that needs to change. Flight Start/End and metadata corrections apply to the whole package. Delivered metric edits use Delivery Override Start/End. Planned Spend and Planned Impressions are full-flight only.", "", "", "", "", ""],
     ["4. Check markers", "", "Orange means the value is different from the current dashboard value. Purple means the value is already coming from a validated manual update. Red means the row needs fixing before it can load.", "", "", "", "", ""],
     ["5. Request refresh", "", "Check Request refresh on the Package Editor tab when edits are ready. This only notifies Gene to review or run the loader; it does not publish or write to the warehouse by itself.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["Adding a new package row", "", "", "", "", "", "", ""],
     ["When to add a row", "", "Add a row when the package does not already exist in the editor, or when you need a separate date range for delivered actuals, such as one specific week.", "", "", "", "", ""],
     ["1. Add or duplicate", "", "Insert a new row below the existing package list, or duplicate a similar fee/package row into the blank area below the current package list and replace the values. Do not type into hidden internal columns.", "", "", "", "", ""],
-    ["2. Fill visible required fields", "", "Enter Package ID, Site, Package Friendly Name, Start Date, End Date, and at least one metric value. Dates define the override window.", "", "", "", "", ""],
+    ["2. Fill visible required fields", "", "Enter Package ID, Site, Package Friendly Name, Flight Start/End, Delivery Override Start/End, and at least one metric value. Flight dates describe the package; delivery override dates define the metric window.", "", "", "", "", ""],
     ["3. Fill metadata at the far right", "", "Complete Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. These fields tell dashboards how to group and filter the new package.", "", "", "", "", ""],
     ["4. Respect planned-vs-delivered rules", "", "Planned Spend and Planned Impressions must use the full flight date range. Delivered actuals can use a partial date range.", "", "", "", "", ""],
     ["5. Request refresh", "", "Check Request refresh when the row is complete. If required fields are missing, the row turns red in the sheet and the loader blocks it instead of sending it into reporting.", "", "", "", "", ""],
@@ -1694,7 +1728,7 @@ async function writeInstructionsTab() {
     ["Do not guess", "", "If you are not sure which metadata value belongs on a new package, pause and ask before requesting the update.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["Date range rules", "", "", "", "", "", "", ""],
-    ["Delivered actuals", "", "Spend, Impressions, Clicks, Video Plays, and Video Completions can be edited for any date range. To correct one week only, add or duplicate a row, set Start Date and End Date to that week, and enter that week's replacement totals.", "", "", "", "", ""],
+    ["Delivered actuals", "", "Spend, Impressions, Clicks, Video Plays, and Video Completions can be edited for any date range. To correct one week only, add or duplicate a row, set Delivery Override Start/End to that week, and enter that week's replacement totals.", "", "", "", "", ""],
     ["Planned metrics", "", "Planned Spend and Planned Impressions are full-flight totals only. Do not use weekly or daily date ranges for planned values. Partial planned edits are blocked by the loader.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["Where the displayed data comes from", "", "", "", "", "", "", ""],
@@ -1706,20 +1740,20 @@ async function writeInstructionsTab() {
     ["How the data model works", "", "", "", "", "", "", ""],
     ["One combined reporting layer", "", "The data model combines PRISMA planning and metadata with delivered reporting into one package/date reporting layer so dashboards can use consistent fields.", "", "", "", "", ""],
     ["Manual edits are compared", "", "When the loader runs, it compares the edited sheet values to the current dashboard snapshot and records only values that changed.", "", "", "", "", ""],
-    ["Date ranges become daily rows", "", "For delivered metrics, a replacement total is spread evenly across the selected Start Date through End Date so daily dashboards still add up correctly.", "", "", "", "", ""],
+    ["Metadata vs metric edits", "", "Metadata edits apply to the whole package. Delivered metric edits become daily rows only across the selected Delivery Override Start/End dates, so other dates keep their normal delivery values.", "", "", "", "", ""],
     ["Manual values take priority", "", "Validated manual values are used first for the final reporting fields. Normal source data fills in wherever there is no manual edit.", "", "", "", "", ""],
     ["Where edits appear", "", "Approved edits flow into client dashboards and external partner reporting after the loader and downstream reporting refresh finish.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["What the colors mean", "", "", "", "", "", "", ""],
-    ["White / blue cells", "", "Package identity and lookup context. Existing rows are locked; blank new rows below the current package list can be filled when adding a manual-only package.", "", "", "", "", ""],
+    ["White / blue cells", "", "Package identity and lookup context. Existing package IDs are locked; blank new rows below the current package list can be filled when adding a manual-only package.", "", "", "", "", ""],
     ["Yellow cells", "", "Actual delivery values and dates. These can be edited for the date range you are correcting.", "", "", "", "", ""],
     ["Green cells", "", "Planned flight totals. Edit only for full-flight planned corrections.", "", "", "", "", ""],
-    ["Gray cells", "", "Required package metadata. Existing source metadata rows are locked; fill these cells only on blank new rows below the current package list.", "", "", "", "", ""],
+    ["Gray cells", "", "Package metadata. Edit these when a package-level metadata correction is needed, or fill them on new manual-only rows.", "", "", "", "", ""],
     ["Orange / purple / red cells", "", "Orange means an edited value differs from the current dashboard value. Purple means a value is already using a validated manual update. Red means a started new row is missing required fields, has invalid dates, or needs fixing before it can load.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["What not to edit", "", "", "", "", "", "", ""],
     ["Internal columns", "", "Baseline comparison columns are hidden because they are only used by the loader to detect changed cells.", "", "", "", "", ""],
-    ["Existing metadata", "", "Existing package identity and PRISMA metadata fields are locked. If the source metadata itself is wrong, fix the source or ask for help before adding a manual row.", "", "", "", "", ""],
+    ["Existing metadata", "", "Metadata edits are allowed, but they apply to the full package. If you only mean to correct one week of delivery, change the delivery dates and metric cells instead.", "", "", "", "", ""],
     ["Filtered-out rows", "", "If a row disappears after using slicers, clear or adjust the slicer selections. The row has not been deleted.", "", "", "", "", ""],
   ];
 

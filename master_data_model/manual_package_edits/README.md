@@ -8,12 +8,12 @@ Use the `Package Editor` tab in the Google Sheet.
 
 1. Use the native slicers at the top of the sheet to narrow by Advertiser, Channel, Campaign, and Site.
 2. Find the package row by `Package ID`, `Site`, and `Package Friendly Name`.
-3. Edit only the date and metric value columns when a dashboard value needs to change.
+3. Edit the visible value that needs to change.
    - Orange means the value differs from the current dashboard snapshot.
    - Purple means the value is already using a validated manual update.
    - Red means a started new row needs to be fixed before it can load.
-   - `Start Date`
-   - `End Date`
+   - Package-level fields: `Flight Start Date`, `Flight End Date`, and visible metadata such as `GS Channel`, `Campaign`, `Package Name`, and `Package Type`.
+   - Metric date window: `Delivery Override Start Date` and `Delivery Override End Date`.
    - Delivered actual metrics: `Spend`, `Impressions`, `Clicks`, `Video Plays`, `Video Completions`
    - Planned flight totals: `Planned Spend`, `Planned Impressions`
 4. Run the loader.
@@ -28,7 +28,7 @@ The top filter controls are native Google Sheets slicers. They are intentionally
 
 The `Instructions` tab is the user-facing quick guide. It explains the normal edit flow, date-range rules, new-row requirements, color meanings, and what not to edit.
 
-Existing package identity fields, existing PRISMA metadata fields, table headers, request-helper text, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible date and metric value columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
+Existing package identity fields, table headers, request-helper text, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible flight dates, delivery override dates, metric values, and metadata correction columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
 
 The request checkbox requires the bound Apps Script's installable edit trigger. If the checkbox does not send, use `Manual Editor` -> `Authorize request button` once from the sheet menu, then try again.
 
@@ -55,12 +55,23 @@ When the loader runs, it compares edited Sheet values to the current dashboard s
 
 ## Date-Range Rules
 
-Date ranges define the override window.
+Flight dates and delivery override dates do different jobs.
 
-- To correct the full package flight, keep `Start Date` and `End Date` on the full package flight and enter the replacement total.
-- To correct one week of delivered data, add or duplicate a row, set `Start Date` and `End Date` to that week, and enter the replacement delivered totals for that week only.
-- Dates outside the edited range keep the normal dashboard values.
+- `Flight Start Date` and `Flight End Date` are package-level fields. A manual correction to those fields applies to the whole package.
+- `Delivery Override Start Date` and `Delivery Override End Date` are the metric override window.
+- To correct the full package flight, keep the delivery override dates on the full package flight and enter the replacement total.
+- To correct one week of delivered data, add or duplicate a row, set the delivery override dates to that week, and enter the replacement delivered totals for that week only.
+- Dates outside the edited delivery override range keep the normal dashboard metric values.
 - Duplicate active edits for the same package, date, and metric are blocked.
+
+## Metadata Rules
+
+Metadata corrections are package-level.
+
+- Editing `Advertiser`, `Package Type`, `Channel`, `Campaign`, `Initiative`, `Supplier Code`, `Supplier Name`, `Package Name`, `Package Friendly Name`, or `GS Channel` creates backend `man_*` metadata evidence.
+- Metadata overrides do not need a metric edit to become active.
+- Metadata overrides apply to all rows for the package, including delivery dates outside a metric override window.
+- Metric overrides stay date-bound to the delivery override dates.
 
 ## Planned Metric Rules
 
@@ -76,7 +87,7 @@ Planned metrics are flight-level only.
 
 Delivered actual metrics can be edited for any valid date range.
 
-- For one-day edits, set `Start Date` and `End Date` to the same date.
+- For one-day edits, set `Delivery Override Start Date` and `Delivery Override End Date` to the same date.
 - For one-week edits, set the dates to that week and enter weekly replacement totals.
 - The loader spreads replacement totals across the selected dates while preserving the exact total after upload. Count metrics allocate whole units across days; spend metrics allocate by cents.
 - The daily proof step blocks the upload if daily rows do not sum back to the replacement total.
@@ -92,8 +103,10 @@ Visible required fields:
 - `Package ID`
 - `Site`
 - `Package Friendly Name`
-- `Start Date`
-- `End Date`
+- `Flight Start Date`
+- `Flight End Date`
+- `Delivery Override Start Date`
+- `Delivery Override End Date`
 - At least one metric value
 
 Required metadata fields at the far right of the editor:
@@ -105,12 +118,12 @@ Required metadata fields at the far right of the editor:
 - `Package Name`
 - `GS Channel`
 
-Those metadata fields are visible because brand-new packages need them for grouping, filtering, and reporting. The backend still fills redundant internal fields from these visible values where needed. Existing source metadata rows are protected so they do not get changed accidentally. If existing metadata is wrong, fix the source or ask for help before adding a manual row.
+Those metadata fields are visible because brand-new packages need them for grouping, filtering, and reporting. They are also editable for package-level metadata corrections on existing packages. The backend still fills redundant internal fields from these visible values where needed.
 
 New-row steps:
 
 1. Insert a new row below the existing package list, or duplicate a similar fee/package row and replace the values.
-2. Fill `Package ID`, `Site`, `Package Friendly Name`, `Start Date`, `End Date`, and at least one metric value.
+2. Fill `Package ID`, `Site`, `Package Friendly Name`, flight dates, delivery override dates, and at least one metric value.
 3. Fill the required metadata fields at the far right.
 4. Keep planned metrics on the full-flight date range; use partial ranges only for delivered actuals.
 5. Check `Request refresh` when the row is complete.

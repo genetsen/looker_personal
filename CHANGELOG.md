@@ -4,6 +4,24 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-05-19
 
+### Changed
+
+- **Manual Package Editor Package-Level Metadata Overrides**
+  What: Split package flight dates from delivery override dates, made visible package metadata edits write backend `man_*` metadata fields, and updated the master model so package metadata overrides apply across every row for the package while delivered metric overrides remain limited to their selected delivery dates.
+  Why: Lets users correct package grouping fields such as GS Channel, Campaign, Package Name, Package Type, supplier, and initiative without creating date-limited metric side effects, while preserving the ability to make one-day or one-week delivered metric corrections.
+
+  <details><summary>Paths - Manual Package Editor Package-Level Metadata Overrides</summary>
+
+  [master_data_model/create_manual_package_edit_tables.sql](master_data_model/create_manual_package_edit_tables.sql)
+  [master_data_model/create_master_stg_data_model.sql](master_data_model/create_master_stg_data_model.sql)
+  [master_data_model/manual_package_edits/load_manual_package_edits.R](master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs](master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs)
+  [master_data_model/manual_package_edits/README.md](master_data_model/manual_package_edits/README.md)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ### Fixed
 
 - **Manual Package Editor Formatting And Exact Totals**

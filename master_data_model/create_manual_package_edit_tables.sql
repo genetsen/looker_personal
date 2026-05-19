@@ -10,9 +10,15 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
   package_id STRING,
   man_start_date DATE,
   man_end_date DATE,
+  man_flight_start_date DATE,
+  man_flight_end_date DATE,
   current_row_count INT64,
   current_first_date DATE,
   current_last_date DATE,
+  current_flight_start_date DATE,
+  current_flight_end_date DATE,
+  replacement_flight_start_date DATE,
+  replacement_flight_end_date DATE,
   current_spend FLOAT64,
   replacement_spend FLOAT64,
   delta_spend FLOAT64,
@@ -34,6 +40,26 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
   current_video_comps FLOAT64,
   replacement_video_comps FLOAT64,
   delta_video_comps FLOAT64,
+  current_advertiser_name STRING,
+  man_advertiser_name STRING,
+  current_package_type STRING,
+  man_package_type STRING,
+  current_channel STRING,
+  man_channel STRING,
+  current_campaign_name STRING,
+  man_campaign_name STRING,
+  current_initiative STRING,
+  man_initiative STRING,
+  current_supplier_code STRING,
+  man_supplier_code STRING,
+  current_supplier_name STRING,
+  man_supplier_name STRING,
+  current_package_name STRING,
+  man_package_name STRING,
+  current_package_name_friendly STRING,
+  man_package_name_friendly STRING,
+  current_ADIF_channel STRING,
+  man_ADIF_channel STRING,
   advertiser_name STRING,
   advertiser_short_name STRING,
   campaign_name STRING,
@@ -81,6 +107,84 @@ ADD COLUMN IF NOT EXISTS current_first_date DATE;
 
 ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
 ADD COLUMN IF NOT EXISTS current_last_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_flight_start_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_flight_end_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_flight_start_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_flight_end_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS replacement_flight_start_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS replacement_flight_end_date DATE;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_advertiser_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_advertiser_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_package_type STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_package_type STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_channel STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_channel STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_campaign_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_campaign_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_initiative STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_initiative STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_supplier_code STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_supplier_code STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_supplier_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_supplier_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_package_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_package_name STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_package_name_friendly STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_package_name_friendly STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS current_ADIF_channel STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS man_ADIF_channel STRING;
 
 CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_manual_package_daily` (
   is_active BOOL,
