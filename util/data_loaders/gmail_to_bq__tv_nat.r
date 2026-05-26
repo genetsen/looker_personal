@@ -5,7 +5,7 @@
 
 # National impressions rule:
 # 1. Use planned impressions for a row when the planned value is present and > 0.
-# 2. If the planned value is missing or 0, fall back to objective impressions
+# 2. If the planned value is missing or not positive, fall back to objective impressions
 #    for that same row.
 # 3. The chosen value is later multiplied by 1000 before upload so the table
 #    stores raw impressions instead of thousands.
@@ -28,6 +28,7 @@
     library(httpuv)
     library(stringr)
     library(xfun)
+    source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tv_impressions_contract.R")
   # ---------------------------------------------------------------------------- #
   #                              Configuration                                   #
   # ---------------------------------------------------------------------------- #
@@ -162,28 +163,7 @@
       NULL
     }
     
-    # National impressions behavior:
-    # - planned_impressions_col is the primary source
-    # - objective_impressions_col is only a row-level fallback when the planned
-    #   value is blank or 0 for that same row
-    planned_impressions_col <- if("total_impressions_buyers_estimate" %in% names(raw_df)) {
-      "total_impressions_buyers_estimate"
-    } else if("total_planned_impressions_all_demos" %in% names(raw_df)) {
-      "total_planned_impressions_all_demos"
-    } else if("total_planned_impressions_000" %in% names(raw_df)) {
-      "total_planned_impressions_000"
-    } else if("total_planned_impressions" %in% names(raw_df)) {
-      "total_planned_impressions"
-    } else {
-      NULL
-    }
-    objective_impressions_col <- if("total_objective_impressions" %in% names(raw_df)) {
-      "total_objective_impressions"
-    } else if("total_objective_impressions_000" %in% names(raw_df)) {
-      "total_objective_impressions_000"
-    } else {
-      NULL
-    }
+    impression_columns <- f_tv_national_impressions_columns(raw_df)
     
     # Check which units column exists
     units_col <- if("total_units" %in% names(raw_df)) {
@@ -193,7 +173,7 @@
     } else {
       NULL
     }
-    if(is.null(planned_impressions_col) && is.null(objective_impressions_col)) {
+    if(is.null(impression_columns$planned) && is.null(impression_columns$objective)) {
       cat("Warning: national planned/objective impressions columns not found. Available columns:", paste(names(raw_df), collapse = ", "), "\n")
     }
     
@@ -219,25 +199,10 @@
       } else {
         NA_real_
       },
-      planned_impressions_value = if(!is.null(planned_impressions_col)) {
-        .data[[planned_impressions_col]]
-      } else {
-        NA_real_
-      },
-      objective_impressions_value = if(!is.null(objective_impressions_col)) {
-        .data[[objective_impressions_col]]
-      } else {
-        NA_real_
-      },
       # National impressions rule:
       # Use planned impressions first. Only use objective impressions when the
-      # planned value for that same row is missing or 0.
-      net_impressions = dplyr::case_when(
-        !is.na(planned_impressions_value) & planned_impressions_value > 0 ~ planned_impressions_value,
-        !is.na(objective_impressions_value) & objective_impressions_value > 0 ~ objective_impressions_value,
-        !is.na(planned_impressions_value) ~ planned_impressions_value,
-        TRUE ~ objective_impressions_value
-      ),
+      # planned value for that same row is missing or not positive.
+      net_impressions = f_tv_national_impressions_values(raw_df),
       # Fix: Use the correct units column name
       total_units = if(!is.null(units_col)) {
         .data[[units_col]]

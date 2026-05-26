@@ -7,9 +7,17 @@ const SPREADSHEET_TITLE = process.env.MASTER_MANUAL_EDIT_SPREADSHEET_TITLE || "M
 const TAB_NAME = process.env.MASTER_MANUAL_EDIT_TAB || "Package Editor";
 const INSTRUCTIONS_TAB_NAME = process.env.MASTER_MANUAL_EDIT_INSTRUCTIONS_TAB || "Instructions";
 const AUTH_ACCOUNT = process.env.MASTER_MANUAL_EDIT_AUTH_EMAIL || "gene.tsenter@giantspoon.com";
+const ALLOW_FORMAT_REBUILD = process.env.MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD === "YES";
 
 if (!SHEET_ID) {
   throw new Error("Set MASTER_MANUAL_EDIT_SHEET_ID before running sheet setup.");
+}
+
+if (!ALLOW_FORMAT_REBUILD) {
+  throw new Error(
+    "Refusing to rebuild live Sheet formatting. User-made manual formatting edits may exist. " +
+    "Set MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD=YES only after explicit approval for a full formatting rebuild.",
+  );
 }
 
 const columns = [
@@ -18,15 +26,15 @@ const columns = [
   "Package Friendly Name",
   "Flight Start Date",
   "Flight End Date",
-  "Delivery Override Start Date",
-  "Delivery Override End Date",
-  "Spend",
-  "Impressions",
   "Planned Spend",
   "Planned Impressions",
+  "Spend",
+  "Impressions",
   "Clicks",
   "Video Plays",
   "Video Completions",
+  "Delivery Override Start Date",
+  "Delivery Override End Date",
   "Advertiser",
   "Package Type",
   "Channel",
@@ -38,15 +46,15 @@ const columns = [
   "GS Channel",
   "Baseline Flight Start Date",
   "Baseline Flight End Date",
-  "Baseline Delivery Start Date",
-  "Baseline Delivery End Date",
-  "Baseline Spend",
-  "Baseline Impressions",
   "Baseline Planned Spend",
   "Baseline Planned Impressions",
+  "Baseline Spend",
+  "Baseline Impressions",
   "Baseline Clicks",
   "Baseline Video Plays",
   "Baseline Video Completions",
+  "Baseline Delivery Start Date",
+  "Baseline Delivery End Date",
   "Baseline Advertiser",
   "Baseline Package Type",
   "Baseline Channel",
@@ -59,15 +67,15 @@ const columns = [
   "Baseline GS Channel",
   "Manual Marker Flight Start Date",
   "Manual Marker Flight End Date",
-  "Manual Marker Delivery Start Date",
-  "Manual Marker Delivery End Date",
-  "Manual Marker Spend",
-  "Manual Marker Impressions",
   "Manual Marker Planned Spend",
   "Manual Marker Planned Impressions",
+  "Manual Marker Spend",
+  "Manual Marker Impressions",
   "Manual Marker Clicks",
   "Manual Marker Video Plays",
   "Manual Marker Video Completions",
+  "Manual Marker Delivery Start Date",
+  "Manual Marker Delivery End Date",
   "Manual Marker Advertiser",
   "Manual Marker Package Type",
   "Manual Marker Channel",
@@ -88,17 +96,18 @@ const colIndex = Object.fromEntries(columns.map((name, index) => [name, index]))
 const visibleColumnCount = colIndex["Baseline Flight Start Date"];
 const markerStartIndex = colIndex["Manual Marker Flight Start Date"];
 const editableColumnIndexes = new Set([
-  "Flight Start Date", "Flight End Date", "Delivery Override Start Date", "Delivery Override End Date",
-  "Spend", "Impressions", "Planned Spend", "Planned Impressions", "Clicks", "Video Plays", "Video Completions",
+  "Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions",
+  "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Override Start Date", "Delivery Override End Date",
   "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel",
 ].map((name) => colIndex[name]));
 const deliveredMetricColumnIndexes = new Set(["Spend", "Impressions", "Clicks", "Video Plays", "Video Completions"].map((name) => colIndex[name]));
-const plannedMetricColumnIndexes = new Set(["Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
-const metadataColumnIndexes = new Set(["Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel"].map((name) => colIndex[name]));
+const plannedMetricColumnIndexes = new Set(["Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
+const packageFriendlyNameColumnIndexes = new Set(["Package Friendly Name"].map((name) => colIndex[name]));
+const metadataColumnIndexes = new Set(["Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel"].map((name) => colIndex[name]));
 const hiddenColumnIndexes = new Set(columns.map((_, index) => index).filter((index) => index >= visibleColumnCount));
 const markerNames = [
-  "Flight Start Date", "Flight End Date", "Delivery Start Date", "Delivery End Date",
-  "Spend", "Impressions", "Planned Spend", "Planned Impressions", "Clicks", "Video Plays", "Video Completions",
+  "Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions",
+  "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Start Date", "Delivery End Date",
   "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "Package Friendly Name", "GS Channel",
 ];
 const editMarkerPairs = [
@@ -133,13 +142,15 @@ const manualMarkerPairs = markerNames.map((name) => ({
 })).filter((pair) => pair.editedIndex !== undefined && pair.markerIndex !== undefined);
 const slicers = [
   { title: "Advertiser", columnIndex: colIndex["Advertiser"], offsetXPixels: 0, widthPixels: 210, heightPixels: 58 },
-  { title: "Channel", columnIndex: colIndex["Channel"], offsetXPixels: 220, widthPixels: 210, heightPixels: 58 },
-  { title: "Campaign", columnIndex: colIndex["Campaign"], offsetXPixels: 440, widthPixels: 210, heightPixels: 58 },
-  { title: "Site", columnIndex: 1, offsetXPixels: 660, widthPixels: 210, heightPixels: 58 },
+  { title: "Package ID", columnIndex: colIndex["Package ID"], offsetXPixels: 220, widthPixels: 210, heightPixels: 58 },
+  { title: "Initiative", columnIndex: colIndex["Initiative"], offsetXPixels: 440, widthPixels: 210, heightPixels: 58 },
+  { title: "Channel", columnIndex: colIndex["Channel"], offsetXPixels: 660, widthPixels: 210, heightPixels: 58 },
+  { title: "Campaign", columnIndex: colIndex["Campaign"], offsetXPixels: 880, widthPixels: 210, heightPixels: 58 },
+  { title: "Site", columnIndex: colIndex["Site"], offsetXPixels: 1100, widthPixels: 210, heightPixels: 58 },
 ];
 const widths = [
-  105, 135, 720, 112, 112, 132, 132, 105, 120, 125,
-  140, 90, 110, 130, 140, 110, 105, 150, 115, 90,
+  105, 135, 720, 112, 112, 125, 140, 105, 120, 90,
+  110, 130, 132, 132, 140, 110, 105, 150, 115, 90,
   140, 220, 120,
   ...Array(colCount - 23).fill(100),
 ];
@@ -251,20 +262,20 @@ async function ensureInstructionsSheet(spreadsheet) {
 }
 
 async function writeInstructions() {
-  const values = [
-    [
-      "", "", "", "", "", "", "", "", "", "",
-    ],
-    [
-      "Filter above. Find the package, then edit the visible value that needs correction. Metadata and flight dates apply to the whole package; delivered metrics apply only to Delivery Override Start/End. Orange means changed, purple means already manual, red means fix before load.", "", "", "", "", "", "", "", "", "",
-    ],
-    [
-      "Request refresh", false,
-      "Notification only. Check this when edits are ready; Gene still needs to review or run the loader before dashboards update.", "", "", "", "", "", "", "",
-    ],
-  ];
+  const values = Array.from({ length: 3 }, () => Array(visibleColumnCount).fill(""));
+  values[1][0] = "Use slicers above to find the package, then edit the visible value that needs correction.";
+  values[1][3] = "Request refresh";
+  values[1][4] = false;
+  values[1][5] = "Notification only. Check this when edits are ready; Gene still needs to review or run the loader before dashboards update.";
+  values[2][0] = "Locked IDs: Package ID + Site. Existing rows are locked; new rows can fill these.";
+  values[2][2] = "Editable name: Package Friendly Name.";
+  values[2][3] = "Editable planned values: Flight Start, Flight End, Planned Spend, Planned Impressions.";
+  values[2][7] = "Editable delivered metrics: Spend, Impressions, Clicks, Video Plays, Video Completions.";
+  values[2][12] = "Editable delivery window: Delivery Override Start/End controls metric edit dates.";
+  values[2][14] = "Editable metadata: Advertiser, Package Type, Channel, Campaign, Initiative, Supplier, Package Name, GS Channel.";
 
-  await sheetsFetch(`/values/${encodeURIComponent(`${TAB_NAME}!A1:J3`)}?valueInputOption=USER_ENTERED`, {
+  const lastVisibleColumn = columnLetter(visibleColumnCount - 1);
+  await sheetsFetch(`/values/${encodeURIComponent(`${TAB_NAME}!A1:${lastVisibleColumn}3`)}?valueInputOption=USER_ENTERED`, {
     method: "PUT",
     body: JSON.stringify({ values }),
   });
@@ -297,7 +308,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       merge.startRowIndex >= 0 &&
       merge.endRowIndex <= 3 &&
       merge.startColumnIndex >= 0 &&
-      merge.endColumnIndex <= 10
+      merge.endColumnIndex <= colCount
     ) {
       requests.push({ unmergeCells: { range: merge } });
     }
@@ -370,13 +381,43 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       mergeCells: {
-        range: gridRange(sheetId, 1, 2, 0, 10),
+        range: gridRange(sheetId, 1, 2, 0, 3),
         mergeType: "MERGE_ALL",
       },
     },
     {
       mergeCells: {
-        range: gridRange(sheetId, 2, 3, 2, 10),
+        range: gridRange(sheetId, 1, 2, 5, visibleColumnCount),
+        mergeType: "MERGE_ALL",
+      },
+    },
+    {
+      mergeCells: {
+        range: gridRange(sheetId, 2, 3, 0, 2),
+        mergeType: "MERGE_ALL",
+      },
+    },
+    {
+      mergeCells: {
+        range: gridRange(sheetId, 2, 3, 3, 7),
+        mergeType: "MERGE_ALL",
+      },
+    },
+    {
+      mergeCells: {
+        range: gridRange(sheetId, 2, 3, 7, 12),
+        mergeType: "MERGE_ALL",
+      },
+    },
+    {
+      mergeCells: {
+        range: gridRange(sheetId, 2, 3, 12, 14),
+        mergeType: "MERGE_ALL",
+      },
+    },
+    {
+      mergeCells: {
+        range: gridRange(sheetId, 2, 3, 14, visibleColumnCount),
         mergeType: "MERGE_ALL",
       },
     },
@@ -497,7 +538,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
   );
 
-  [64, 64, 48, 48].forEach((height, index) => {
+  [64, 52, 66, 48].forEach((height, index) => {
     requests.push({
       updateDimensionProperties: {
         range: { sheetId, dimension: "ROWS", startIndex: index, endIndex: index + 1 },
@@ -591,7 +632,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     });
   }
 
-  for (const index of metadataColumnIndexes) {
+  for (const index of packageFriendlyNameColumnIndexes) {
     requests.push(
       {
         repeatCell: {
@@ -614,6 +655,39 @@ function buildRequests(sheet, existingDataEndRowIndex) {
           cell: {
             userEnteredFormat: {
               backgroundColor: color(0.96, 0.97, 0.98),
+              textFormat: { fontSize: 9 },
+              wrapStrategy: "WRAP",
+            },
+          },
+          fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.fontSize,userEnteredFormat.wrapStrategy",
+        },
+      },
+    );
+  }
+
+  for (const index of metadataColumnIndexes) {
+    requests.push(
+      {
+        repeatCell: {
+          range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, index, index + 1),
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: color(0.11, 0.42, 0.48),
+              textFormat: { foregroundColor: color(1, 1, 1), bold: true },
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+              wrapStrategy: "WRAP",
+            },
+          },
+          fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
+        },
+      },
+      {
+        repeatCell: {
+          range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: color(0.90, 0.97, 0.98),
               wrapStrategy: "CLIP",
             },
           },
@@ -705,7 +779,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
             type: "CUSTOM_FORMULA",
             values: [
               {
-                userEnteredValue: `=AND($A${firstDataSheetRow}<>"",$X${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$F${firstDataSheetRow}="",$G${firstDataSheetRow}="",COUNTA($H${firstDataSheetRow}:$N${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$F${firstDataSheetRow}>$G${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow})))`,
+                userEnteredValue: `=AND($A${firstDataSheetRow}<>"",$X${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$M${firstDataSheetRow}>$N${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow})))`,
               },
             ],
           },
@@ -732,7 +806,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
                 type: "CUSTOM_FORMULA",
                 values: [
                   {
-                    userEnteredValue: `=AND(COUNTA($A${firstBlankSheetRow}:$W${firstBlankSheetRow})>0,OR($A${firstBlankSheetRow}="",$B${firstBlankSheetRow}="",$C${firstBlankSheetRow}="",$F${firstBlankSheetRow}="",$G${firstBlankSheetRow}="",COUNTA($H${firstBlankSheetRow}:$N${firstBlankSheetRow})=0,$O${firstBlankSheetRow}="",$P${firstBlankSheetRow}="",$Q${firstBlankSheetRow}="",$R${firstBlankSheetRow}="",$V${firstBlankSheetRow}="",$W${firstBlankSheetRow}=""))`,
+                    userEnteredValue: `=AND(COUNTA($A${firstBlankSheetRow}:$W${firstBlankSheetRow})>0,OR($A${firstBlankSheetRow}="",$B${firstBlankSheetRow}="",$C${firstBlankSheetRow}="",$M${firstBlankSheetRow}="",$N${firstBlankSheetRow}="",COUNTA($F${firstBlankSheetRow}:$L${firstBlankSheetRow})=0,$O${firstBlankSheetRow}="",$P${firstBlankSheetRow}="",$Q${firstBlankSheetRow}="",$R${firstBlankSheetRow}="",$V${firstBlankSheetRow}="",$W${firstBlankSheetRow}=""))`,
                   },
                 ],
               },
@@ -756,7 +830,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
               condition: {
                 type: "CUSTOM_FORMULA",
                 values: [
-                  { userEnteredValue: `=AND($F${firstBlankSheetRow}<>"",$G${firstBlankSheetRow}<>"",$F${firstBlankSheetRow}>$G${firstBlankSheetRow})` },
+                  { userEnteredValue: `=AND($M${firstBlankSheetRow}<>"",$N${firstBlankSheetRow}<>"",$M${firstBlankSheetRow}>$N${firstBlankSheetRow})` },
                 ],
               },
               format: {
@@ -785,7 +859,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
               type: "CUSTOM_FORMULA",
               values: [
                 {
-                  userEnteredValue: `=AND(OR($J${firstDataRow}<>$AD${firstDataRow},$K${firstDataRow}<>$AE${firstDataRow}),OR($F${firstDataRow}<>$Z${firstDataRow},$G${firstDataRow}<>$AA${firstDataRow}))`,
+                  userEnteredValue: `=AND(OR($F${firstDataRow}<>$Z${firstDataRow},$G${firstDataRow}<>$AA${firstDataRow}),OR($M${firstDataRow}<>$AG${firstDataRow},$N${firstDataRow}<>$AH${firstDataRow}))`,
                 },
               ],
             },
@@ -806,224 +880,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
   requests.push(
     {
       repeatCell: {
-        range: gridRange(sheetId, 0, 3, 0, 4),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.86, 0.93, 1.00),
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 0, 1, 4, 10),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.90, 0.95, 1.00),
-            textFormat: { foregroundColor: color(0.05, 0.13, 0.23), bold: true, fontSize: 10 },
-            horizontalAlignment: "LEFT",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 1, 3, 4, 5),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.07, 0.28, 0.19),
-            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 10 },
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 2, 3, 1, 2),
-        cell: {
-          dataValidation: {
-            condition: { type: "BOOLEAN" },
-            strict: true,
-            showCustomUi: true,
-          },
-          userEnteredFormat: {
-            backgroundColor: color(0.83, 0.95, 0.86),
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-          },
-        },
-        fields: "dataValidation,userEnteredFormat.backgroundColor,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 2, 3, 5, 10),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.92, 0.98, 0.94),
-            textFormat: { foregroundColor: color(0.06, 0.23, 0.16), fontSize: 10 },
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 1, 2, 6, 10),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.92, 0.98, 0.94),
-            textFormat: { foregroundColor: color(0.06, 0.23, 0.16), bold: true, fontSize: 10 },
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      updateBorders: {
-        range: gridRange(sheetId, 0, 3, 4, 10),
-        top: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        bottom: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        left: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        right: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        innerVertical: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        innerHorizontal: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-      },
-    },
-  );
-
-  requests.push(
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 0, 1, 0, 10),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.90, 0.95, 1.00),
-            verticalAlignment: "MIDDLE",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.verticalAlignment",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 1, 2, 0, 4),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.05, 0.13, 0.23),
-            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 10 },
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 1, 2, 4, 5),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.07, 0.28, 0.19),
-            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 10 },
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 1, 2, 6, 10),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.92, 0.98, 0.94),
-            textFormat: { foregroundColor: color(0.06, 0.23, 0.16), fontSize: 10 },
-            horizontalAlignment: "LEFT",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 2, 3, 0, 5),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.90, 0.95, 1.00),
-            textFormat: { foregroundColor: color(0.05, 0.13, 0.23), bold: true, fontSize: 10 },
-            horizontalAlignment: "LEFT",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 2, 3, 5, 7),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.92, 0.98, 0.94),
-            textFormat: { foregroundColor: color(0.06, 0.23, 0.16), fontSize: 10 },
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 2, 3, 7, 10),
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: color(0.92, 0.98, 0.94),
-            textFormat: { foregroundColor: color(0.06, 0.23, 0.16), fontSize: 10 },
-            horizontalAlignment: "LEFT",
-            verticalAlignment: "MIDDLE",
-            wrapStrategy: "WRAP",
-          },
-        },
-        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
-      },
-    },
-    {
-      updateBorders: {
-        range: gridRange(sheetId, 1, 3, 0, 10),
-        top: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        bottom: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        left: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        right: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        innerVertical: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-        innerHorizontal: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
-      },
-    },
-  );
-
-  requests.push(
-    {
-      repeatCell: {
-        range: gridRange(sheetId, 0, 1, 0, 10),
+        range: gridRange(sheetId, 0, 1, 0, visibleColumnCount),
         cell: {
           userEnteredFormat: {
             backgroundColor: color(0.90, 0.95, 1.00),
@@ -1036,7 +893,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, 1, 2, 0, 10),
+        range: gridRange(sheetId, 1, 2, 0, 3),
         cell: {
           userEnteredFormat: {
             backgroundColor: color(0.86, 0.93, 1.00),
@@ -1052,7 +909,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, 2, 3, 0, 1),
+        range: gridRange(sheetId, 1, 2, 3, 4),
         cell: {
           userEnteredFormat: {
             backgroundColor: color(0.07, 0.28, 0.19),
@@ -1068,7 +925,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, 2, 3, 1, 2),
+        range: gridRange(sheetId, 1, 2, 4, 5),
         cell: {
           dataValidation: {
             condition: { type: "BOOLEAN" },
@@ -1086,7 +943,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, 2, 3, 2, 10),
+        range: gridRange(sheetId, 1, 2, 5, visibleColumnCount),
         cell: {
           userEnteredFormat: {
             backgroundColor: color(0.92, 0.98, 0.94),
@@ -1101,8 +958,104 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       },
     },
     {
+      repeatCell: {
+        range: gridRange(sheetId, 2, 3, 0, 2),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(0.09, 0.20, 0.34),
+            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 9 },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+          },
+          dataValidation: null,
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,dataValidation",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, 2, 3, 2, 3),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(0.29, 0.36, 0.45),
+            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 9 },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+          },
+          dataValidation: null,
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,dataValidation",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, 2, 3, 3, 7),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(0.51, 0.74, 0.49),
+            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 9 },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+          },
+          dataValidation: null,
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,dataValidation",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, 2, 3, 7, 12),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(0.98, 0.74, 0.20),
+            textFormat: { foregroundColor: color(0.10, 0.08, 0.02), bold: true, fontSize: 9 },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+          },
+          dataValidation: null,
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,dataValidation",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, 2, 3, 12, 14),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(1.00, 0.86, 0.36),
+            textFormat: { foregroundColor: color(0.10, 0.08, 0.02), bold: true, fontSize: 9 },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+          },
+          dataValidation: null,
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,dataValidation",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, 2, 3, 14, visibleColumnCount),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(0.11, 0.42, 0.48),
+            textFormat: { foregroundColor: color(1, 1, 1), bold: true, fontSize: 9 },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+          },
+          dataValidation: null,
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,dataValidation",
+      },
+    },
+    {
       updateBorders: {
-        range: gridRange(sheetId, 1, 3, 0, 10),
+        range: gridRange(sheetId, 1, 3, 0, visibleColumnCount),
         top: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
         bottom: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
         left: { style: "SOLID_THICK", width: 2, color: color(1, 1, 1) },
@@ -1116,16 +1069,16 @@ function buildRequests(sheet, existingDataEndRowIndex) {
   requests.push(
     {
       repeatCell: {
-        range: gridRange(sheetId, 0, 3, 0, 10),
+        range: gridRange(sheetId, 0, 3, 0, visibleColumnCount),
         cell: {
-          note: "Use the slicers for Advertiser, Channel, Campaign, and Site to find the package row. Package metadata edits apply to all dates for that Package ID. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red rows must be fixed before load.",
+          note: "Use the slicers for Advertiser, Package ID, Initiative, Channel, Campaign, and Site to find the package row. Existing Package ID and Site values are locked; Package Friendly Name and metadata fields are editable. Planned values apply to the package. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red rows must be fixed before load.",
         },
         fields: "note",
       },
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, 1, 2, 4, 10),
+        range: gridRange(sheetId, 1, 2, 3, visibleColumnCount),
         cell: {
           note: "Check the box to send Gene a refresh request email. If a MANUAL_EDITOR_SLACK_WEBHOOK_URL script property exists, the same request also posts to Slack. The loader still runs from the scheduled/manual runner; this checkbox is a notification, not a direct warehouse write.",
         },
@@ -1275,7 +1228,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     {
       addProtectedRange: {
         protectedRange: {
-          range: gridRange(sheetId, 0, 1, 0, 10),
+          range: gridRange(sheetId, 0, 1, 0, visibleColumnCount),
           description: "Manual editor UX: lock slicer help row",
           warningOnly: false,
         },
@@ -1284,8 +1237,8 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     {
       addProtectedRange: {
         protectedRange: {
-          range: gridRange(sheetId, 1, 3, 0, 1),
-          description: "Manual editor UX: lock request labels",
+          range: gridRange(sheetId, 1, 2, 0, 3),
+          description: "Manual editor UX: lock slicer instructions",
           warningOnly: false,
         },
       },
@@ -1293,8 +1246,8 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     {
       addProtectedRange: {
         protectedRange: {
-          range: gridRange(sheetId, 1, 2, 0, 10),
-          description: "Manual editor UX: lock edit instructions",
+          range: gridRange(sheetId, 1, 2, 3, 4),
+          description: "Manual editor UX: lock request label",
           warningOnly: false,
         },
       },
@@ -1302,8 +1255,17 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     {
       addProtectedRange: {
         protectedRange: {
-          range: gridRange(sheetId, 2, 3, 2, 10),
-          description: "Manual editor UX: lock request instructions",
+          range: gridRange(sheetId, 1, 2, 5, visibleColumnCount),
+          description: "Manual editor UX: lock request status",
+          warningOnly: false,
+        },
+      },
+    },
+    {
+      addProtectedRange: {
+        protectedRange: {
+          range: gridRange(sheetId, 2, 3, 0, visibleColumnCount),
+          description: "Manual editor UX: lock color legend row",
           warningOnly: false,
         },
       },
@@ -1711,7 +1673,7 @@ async function writeInstructionsTab() {
     ["Manual Package Editor - How to Use", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["Quick workflow", "", "", "", "", "", "", ""],
-    ["1. Open the editor", "", "Go to the Package Editor tab and use the slicers at the top to narrow by Advertiser, Channel, Campaign, and Site. You are filtering the real editable rows, not a copy.", "", "", "", "", ""],
+    ["1. Open the editor", "", "Go to the Package Editor tab and use the slicers at the top to narrow by Advertiser, Package ID, Initiative, Channel, Campaign, and Site. You are filtering the real editable rows, not a copy.", "", "", "", "", ""],
     ["2. Find the package", "", "Use Package ID, Site, and Package Friendly Name first. Campaign and metadata fields are visible at the far right if you need more context. Package ID and hidden internal fields are locked so row identity and loader helpers do not get changed by accident.", "", "", "", "", ""],
     ["3. Edit the value", "", "Edit the visible field that needs to change. Flight Start/End and metadata corrections apply to the whole package. Delivered metric edits use Delivery Override Start/End. Planned Spend and Planned Impressions are full-flight only.", "", "", "", "", ""],
     ["4. Check markers", "", "Orange means the value is different from the current dashboard value. Purple means the value is already coming from a validated manual update. Red means the row needs fixing before it can load.", "", "", "", "", ""],

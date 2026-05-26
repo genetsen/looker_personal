@@ -23,14 +23,16 @@ DATASET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_DATASET", "landing")
 RAW_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_RAW_TABLE", "master_data_model_manual_package_edits_raw")
 DAILY_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_DAILY_TABLE", "master_data_model_manual_package_daily")
 MART_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_MART_TABLE", "looker-studio-pro-452620.master_stg.data_model_mart")
-SHEET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_SHEET_ID")
+PRISMA_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_PRISMA_TABLE", "looker-studio-pro-452620.20250327_data_model.prisma_expanded_full")
+DEFAULT_SHEET_ID <- "1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo"
+SHEET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_SHEET_ID", unset = DEFAULT_SHEET_ID)
 AUTH_EMAIL <- Sys.getenv("MASTER_MANUAL_EDIT_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
 
 TAB_EDITOR <- "Package Editor"
 EDITOR_HEADER_ROW <- 4
 EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
 EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
-REQUEST_STATUS_CELL <- "C3"
+REQUEST_STATUS_CELL <- "F2"
 EDITOR_VISIBLE_LAST_COLUMN <- "AR"
 MANUAL_MARKER_START_COLUMN <- "AS"
 EDITOR_LAST_COLUMN <- "BM"
@@ -40,7 +42,7 @@ LEGACY_TABS <- c(
 )
 
 if (SHEET_ID == "") {
-  stop("Set MASTER_MANUAL_EDIT_SHEET_ID to the Google Sheet ID before running.")
+  SHEET_ID <- DEFAULT_SHEET_ID
 }
 
 cat("\n========================================\n")
@@ -59,15 +61,15 @@ display_columns <- c(
   "Package Friendly Name",
   "Flight Start Date",
   "Flight End Date",
-  "Delivery Override Start Date",
-  "Delivery Override End Date",
-  "Spend",
-  "Impressions",
   "Planned Spend",
   "Planned Impressions",
+  "Spend",
+  "Impressions",
   "Clicks",
   "Video Plays",
   "Video Completions",
+  "Delivery Override Start Date",
+  "Delivery Override End Date",
   "Advertiser",
   "Package Type",
   "Channel",
@@ -79,15 +81,15 @@ display_columns <- c(
   "GS Channel",
   "Baseline Flight Start Date",
   "Baseline Flight End Date",
-  "Baseline Delivery Start Date",
-  "Baseline Delivery End Date",
-  "Baseline Spend",
-  "Baseline Impressions",
   "Baseline Planned Spend",
   "Baseline Planned Impressions",
+  "Baseline Spend",
+  "Baseline Impressions",
   "Baseline Clicks",
   "Baseline Video Plays",
   "Baseline Video Completions",
+  "Baseline Delivery Start Date",
+  "Baseline Delivery End Date",
   "Baseline Advertiser",
   "Baseline Package Type",
   "Baseline Channel",
@@ -103,15 +105,15 @@ display_columns <- c(
 manual_marker_columns <- c(
   "Manual Marker Flight Start Date",
   "Manual Marker Flight End Date",
-  "Manual Marker Delivery Start Date",
-  "Manual Marker Delivery End Date",
-  "Manual Marker Spend",
-  "Manual Marker Impressions",
   "Manual Marker Planned Spend",
   "Manual Marker Planned Impressions",
+  "Manual Marker Spend",
+  "Manual Marker Impressions",
   "Manual Marker Clicks",
   "Manual Marker Video Plays",
   "Manual Marker Video Completions",
+  "Manual Marker Delivery Start Date",
+  "Manual Marker Delivery End Date",
   "Manual Marker Advertiser",
   "Manual Marker Package Type",
   "Manual Marker Channel",
@@ -436,14 +438,14 @@ choose_metric_value <- function(sheet_value, live_value, prior_current, prior_re
   if (is.na(sheet_value)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (!is.na(prior_replacement) && same_num(sheet_value, prior_replacement)) {
-    return(list(value = sheet_value, edited = TRUE))
+  if (same_num(sheet_value, live_value)) {
+    return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_current) && same_num(sheet_value, prior_current)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (same_num(sheet_value, live_value)) {
-    return(list(value = live_value, edited = FALSE))
+  if (!is.na(prior_replacement) && same_num(sheet_value, prior_replacement)) {
+    return(list(value = sheet_value, edited = TRUE))
   }
   list(value = sheet_value, edited = TRUE)
 }
@@ -472,14 +474,14 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
   if (is.na(sheet_value)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (!is.na(prior_replacement) && !is.na(prior_current) && same_text(sheet_value, prior_replacement)) {
-    return(list(value = sheet_value, edited = TRUE))
+  if (same_text(sheet_value, live_value)) {
+    return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_current) && same_text(sheet_value, prior_current)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (same_text(sheet_value, live_value)) {
-    return(list(value = live_value, edited = FALSE))
+  if (!is.na(prior_replacement) && !is.na(prior_current) && same_text(sheet_value, prior_replacement)) {
+    return(list(value = sheet_value, edited = TRUE))
   }
   if (is.na(live_value) && is.na(prior_current) && is.na(prior_replacement)) {
     return(list(value = sheet_value, edited = FALSE))
@@ -491,14 +493,14 @@ choose_date_value <- function(sheet_value, live_value, prior_current, prior_manu
   if (is.na(sheet_value)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (prior_active && !same_date(prior_manual, prior_current) && same_date(sheet_value, prior_manual)) {
-    return(list(value = sheet_value, edited = TRUE))
+  if (same_date(sheet_value, live_value)) {
+    return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_current) && same_date(sheet_value, prior_current)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (same_date(sheet_value, live_value)) {
-    return(list(value = live_value, edited = FALSE))
+  if (prior_active && !same_date(prior_manual, prior_current) && same_date(sheet_value, prior_manual)) {
+    return(list(value = sheet_value, edited = TRUE))
   }
   list(value = sheet_value, edited = TRUE)
 }
@@ -606,52 +608,144 @@ allocate_daily_total <- function(total, day_count, metric_name) {
 }
 
 mart_lookup_query <- sprintf("
+WITH
+prisma_package_totals AS (
+  SELECT
+    package_id,
+    ARRAY_AGG(planned_amount IGNORE NULLS ORDER BY report_date DESC NULLS LAST LIMIT 1)[SAFE_OFFSET(0)] AS prisma_planned_amount,
+    ARRAY_AGG(planned_impressions IGNORE NULLS ORDER BY report_date DESC NULLS LAST LIMIT 1)[SAFE_OFFSET(0)] AS prisma_planned_impressions,
+    ARRAY_AGG(planned_units IGNORE NULLS ORDER BY report_date DESC NULLS LAST LIMIT 1)[SAFE_OFFSET(0)] AS prisma_planned_units,
+    ARRAY_AGG(unit_type IGNORE NULLS ORDER BY report_date DESC NULLS LAST LIMIT 1)[SAFE_OFFSET(0)] AS prisma_unit_type,
+    ARRAY_AGG(payable_rate IGNORE NULLS ORDER BY report_date DESC NULLS LAST LIMIT 1)[SAFE_OFFSET(0)] AS prisma_rate
+  FROM `%s`
+  WHERE package_type != 'Child'
+    AND start_date >= DATE '2025-01-01'
+    AND package_id IS NOT NULL
+  GROUP BY package_id
+),
+mart_packages AS (
+  SELECT
+    `_package_id` AS package_id,
+    ARRAY_AGG(`_advertiser` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS advertiser_name,
+    ARRAY_AGG(`_advertiser_short_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS advertiser_short_name,
+    ARRAY_AGG(`_campaign_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS campaign_name,
+    ARRAY_AGG(`_campaign_friendly` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS campaign_friendly,
+    ARRAY_AGG(`_product_code` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_code,
+    ARRAY_AGG(`_product_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_name,
+    ARRAY_AGG(`_package_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_type,
+    ARRAY_AGG(`_package_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name,
+    ARRAY_AGG(`_package_name_friendly` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name_friendly,
+    ARRAY_AGG(`initiative` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS initiative,
+    ARRAY_AGG(`ADIF_channel` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS ADIF_channel,
+    ARRAY_AGG(`_placement_id` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS placement_id,
+    ARRAY_AGG(`_placement_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS placement_name,
+    ARRAY_AGG(`_supplier_code` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_code,
+    ARRAY_AGG(`_supplier_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_name,
+    ARRAY_AGG(`_supplier_logo` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_logo,
+    ARRAY_AGG(`p_buy_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_buy_type,
+    ARRAY_AGG(`p_buy_category` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_buy_category,
+    ARRAY_AGG(`_channel` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel,
+    ARRAY_AGG(`qa_channel_raw` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel_raw,
+    ARRAY_AGG(`_channel_group` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel_group,
+    ARRAY_AGG(`_media_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS media_name,
+    ARRAY_AGG(`p_cost_method` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_cost_method,
+    ARRAY_AGG(`p_planned_amount_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_planned_amount_doNotSum,
+    ARRAY_AGG(`p_planned_impressions_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_planned_impressions_doNotSum,
+    ARRAY_AGG(`p_planned_units_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_planned_units_doNotSum,
+    ARRAY_AGG(`p_unit_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_unit_type,
+    ARRAY_AGG(`p_rate` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_rate,
+    COUNT(*) AS current_row_count,
+    MIN(`_date`) AS current_first_date,
+    MAX(`_date`) AS current_last_date,
+    ARRAY_AGG(`_start_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_start_date,
+    ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_end_date,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'tv' THEN `tv_net_cost`
+        WHEN `qa_row_type` = 'social' THEN `s_spend`
+        WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
+          COALESCE(NULLIF(COALESCE(`fpd_orig_spend`, 0) + COALESCE(`fpd_updated_spend`, 0), 0), `dcm_daily_recalculated_cost`)
+        ELSE NULL
+      END,
+      0
+    )) AS current_spend,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'tv' THEN CAST(`tv_net_impressions` AS FLOAT64)
+        WHEN `qa_row_type` = 'social' THEN `s_impressions`
+        WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
+          COALESCE(NULLIF(COALESCE(`fpd_orig_impressions`, 0) + COALESCE(`fpd_updated_impressions`, 0), 0), CAST(`dcm_impressions` AS FLOAT64))
+        ELSE NULL
+      END,
+      0
+    )) AS current_impressions,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'tv' THEN `tv_net_cost`
+        WHEN `qa_row_type` = 'social' THEN `s_pacing_planned_spend`
+        ELSE NULL
+      END,
+      0
+    )) AS current_planned_spend_fallback,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'tv' THEN CAST(`tv_net_impressions` AS FLOAT64)
+        ELSE NULL
+      END,
+      0
+    )) AS current_planned_impressions_fallback,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'social' THEN `s_clicks`
+        WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
+          COALESCE(`fpd_orig_clicks`, CAST(`dcm_clicks` AS FLOAT64))
+        ELSE NULL
+      END,
+      0
+    )) AS current_clicks,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'social' THEN `s_video_plays`
+        WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
+          CAST(`dcm_video_plays` AS FLOAT64)
+        ELSE NULL
+      END,
+      0
+    )) AS current_video_plays,
+    SUM(COALESCE(
+      CASE
+        WHEN `qa_row_type` = 'social' THEN `s_video_comps`
+        WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
+          CAST(`dcm_video_comps` AS FLOAT64)
+        ELSE NULL
+      END,
+      0
+    )) AS current_video_comps
+  FROM `%s`
+  GROUP BY package_id
+)
 SELECT
-  `_package_id` AS package_id,
-  ARRAY_AGG(`_advertiser` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS advertiser_name,
-  ARRAY_AGG(`_advertiser_short_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS advertiser_short_name,
-  ARRAY_AGG(`_campaign_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS campaign_name,
-  ARRAY_AGG(`_campaign_friendly` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS campaign_friendly,
-  ARRAY_AGG(`_product_code` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_code,
-  ARRAY_AGG(`_product_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_name,
-  ARRAY_AGG(`_package_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_type,
-  ARRAY_AGG(`_package_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name,
-  ARRAY_AGG(`_package_name_friendly` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name_friendly,
-  ARRAY_AGG(`initiative` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS initiative,
-  ARRAY_AGG(`ADIF_channel` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS ADIF_channel,
-  ARRAY_AGG(`_placement_id` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS placement_id,
-  ARRAY_AGG(`_placement_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS placement_name,
-  ARRAY_AGG(`_supplier_code` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_code,
-  ARRAY_AGG(`_supplier_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_name,
-  ARRAY_AGG(`_supplier_logo` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS supplier_logo,
-  ARRAY_AGG(`p_buy_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_buy_type,
-  ARRAY_AGG(`p_buy_category` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_buy_category,
-  ARRAY_AGG(`_channel` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel,
-  ARRAY_AGG(`qa_channel_raw` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel_raw,
-  ARRAY_AGG(`_channel_group` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel_group,
-  ARRAY_AGG(`_media_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS media_name,
-  ARRAY_AGG(`p_cost_method` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_cost_method,
-  ARRAY_AGG(`p_planned_amount_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_planned_amount_doNotSum,
-  ARRAY_AGG(`p_planned_impressions_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_planned_impressions_doNotSum,
-  ARRAY_AGG(`p_planned_units_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_planned_units_doNotSum,
-  ARRAY_AGG(`p_unit_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_unit_type,
-  ARRAY_AGG(`p_rate` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS p_rate,
-  COUNT(*) AS current_row_count,
-  MIN(`_date`) AS current_first_date,
-  MAX(`_date`) AS current_last_date,
-  ARRAY_AGG(`_start_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_start_date,
-  ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_end_date,
-  SUM(COALESCE(`_spend`, 0)) AS current_spend,
-  SUM(COALESCE(`_impressions`, 0)) AS current_impressions,
-  SUM(COALESCE(`_planned_spend`, 0)) AS current_planned_spend,
-  SUM(COALESCE(`_planned_impressions`, 0)) AS current_planned_impressions,
-  SUM(COALESCE(`_clicks`, 0)) AS current_clicks,
-  SUM(COALESCE(`_video_plays`, 0)) AS current_video_plays,
-  SUM(COALESCE(`_video_comps`, 0)) AS current_video_comps
-FROM `%s`
-GROUP BY package_id
+  m.* EXCEPT(
+    mart_p_planned_amount_doNotSum,
+    mart_p_planned_impressions_doNotSum,
+    mart_p_planned_units_doNotSum,
+    mart_p_unit_type,
+    mart_p_rate,
+    current_planned_spend_fallback,
+    current_planned_impressions_fallback
+  ),
+  COALESCE(p.prisma_planned_amount, m.mart_p_planned_amount_doNotSum) AS p_planned_amount_doNotSum,
+  COALESCE(p.prisma_planned_impressions, m.mart_p_planned_impressions_doNotSum) AS p_planned_impressions_doNotSum,
+  COALESCE(p.prisma_planned_units, m.mart_p_planned_units_doNotSum) AS p_planned_units_doNotSum,
+  COALESCE(p.prisma_unit_type, m.mart_p_unit_type) AS p_unit_type,
+  COALESCE(p.prisma_rate, m.mart_p_rate) AS p_rate,
+  COALESCE(p.prisma_planned_amount, NULLIF(m.current_planned_spend_fallback, 0), m.mart_p_planned_amount_doNotSum) AS current_planned_spend,
+  COALESCE(p.prisma_planned_impressions, NULLIF(m.current_planned_impressions_fallback, 0), m.mart_p_planned_impressions_doNotSum) AS current_planned_impressions
+FROM mart_packages AS m
+LEFT JOIN prisma_package_totals AS p
+  ON m.package_id = p.package_id
 ORDER BY advertiser_name, package_type, channel, campaign_name, initiative, supplier_code, supplier_name, package_name, package_id
-", MART_TABLE)
+", PRISMA_TABLE, MART_TABLE)
 
 cat("Refreshing package editor from ", MART_TABLE, "...\n", sep = "")
 live_packages <- bq_table_download(bq_project_query(PROJECT_ID, mart_lookup_query))
@@ -789,15 +883,15 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `Package Friendly Name` = metadata_choices$package_name_friendly$value %pick% metadata_choices$package_name$value,
       `Flight Start Date` = flight_start_choice$value,
       `Flight End Date` = flight_end_choice$value,
-      `Delivery Override Start Date` = delivery_start_choice$value,
-      `Delivery Override End Date` = delivery_end_choice$value,
-      Spend = metric_choices$spend$value,
-    Impressions = metric_choices$impressions$value,
-    `Planned Spend` = metric_choices$planned_spend$value,
+      `Planned Spend` = metric_choices$planned_spend$value,
       `Planned Impressions` = metric_choices$planned_impressions$value,
+      Spend = metric_choices$spend$value,
+      Impressions = metric_choices$impressions$value,
       Clicks = metric_choices$clicks$value,
       `Video Plays` = metric_choices$video_plays$value,
       `Video Completions` = metric_choices$video_comps$value,
+      `Delivery Override Start Date` = delivery_start_choice$value,
+      `Delivery Override End Date` = delivery_end_choice$value,
       Advertiser = metadata_choices$advertiser_name$value,
       `Package Type` = metadata_choices$package_type$value,
       Channel = metadata_choices$channel$value,
@@ -809,15 +903,15 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `GS Channel` = metadata_choices$ADIF_channel$value,
       `Baseline Flight Start Date` = live_value("current_flight_start_date"),
       `Baseline Flight End Date` = live_value("current_flight_end_date"),
-      `Baseline Delivery Start Date` = live_value("current_first_date"),
-      `Baseline Delivery End Date` = live_value("current_last_date"),
-      `Baseline Spend` = live_value("current_spend"),
-      `Baseline Impressions` = live_value("current_impressions"),
       `Baseline Planned Spend` = live_value("current_planned_spend"),
       `Baseline Planned Impressions` = live_value("current_planned_impressions"),
+      `Baseline Spend` = live_value("current_spend"),
+      `Baseline Impressions` = live_value("current_impressions"),
       `Baseline Clicks` = live_value("current_clicks"),
       `Baseline Video Plays` = live_value("current_video_plays"),
       `Baseline Video Completions` = live_value("current_video_comps"),
+      `Baseline Delivery Start Date` = live_value("current_first_date"),
+      `Baseline Delivery End Date` = live_value("current_last_date"),
       `Baseline Advertiser` = live_value("current_advertiser_name"),
       `Baseline Package Type` = live_value("current_package_type"),
       `Baseline Channel` = live_value("current_channel"),

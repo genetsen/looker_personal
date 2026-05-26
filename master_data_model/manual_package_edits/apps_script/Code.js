@@ -2,10 +2,10 @@ const EDITOR_SHEET_NAME = "Package Editor";
 const HEADER_ROW = 4;
 const DATA_START_ROW = 5;
 const TABLE_COL_COUNT = 30;
-const REQUEST_UPDATE_CELL = "B3";
-const REQUEST_STATUS_CELL = "C3";
+const REQUEST_UPDATE_CELL = "E2";
+const REQUEST_STATUS_CELL = "F2";
 const DEFAULT_NOTIFY_EMAIL = "gene.tsenter@giantspoon.com";
-const LOADER_COMMAND = "MASTER_MANUAL_EDIT_SHEET_ID=1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R";
+const LOADER_COMMAND = "Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R";
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -44,11 +44,17 @@ function handleManualEditorEdit_(event, canSendNotification) {
 function setupManualEditorControls() {
   const sheet = getEditorSheet_();
 
-  sheet.getRange("A1:J1").clearContent();
-  sheet.getRange("A2").setValue("Filter above. Find the package, then edit the visible value that needs correction. Metadata and flight dates apply to the whole package; delivered metrics apply only to Delivery Override Start/End. Orange means changed, purple means already manual, red means fix before load.");
-  sheet.getRange("A3").setValue("Request refresh");
+  sheet.getRange("A1:W3").clearContent();
+  sheet.getRange("A2").setValue("Use slicers above to find the package, then edit the visible value that needs correction.");
+  sheet.getRange("D2").setValue("Request refresh");
   sheet.getRange(REQUEST_UPDATE_CELL).setValue(false);
-  sheet.getRange("C3").setValue("Notification only. Check this when edits are ready; Gene still needs to review or run the loader before dashboards update.");
+  sheet.getRange(REQUEST_STATUS_CELL).setValue("Notification only. Check this when edits are ready; Gene still needs to review or run the loader before dashboards update.");
+  sheet.getRange("A3").setValue("Locked IDs: Package ID + Site. Existing rows are locked; new rows can fill these.");
+  sheet.getRange("C3").setValue("Editable name: Package Friendly Name.");
+  sheet.getRange("D3").setValue("Editable planned values: Flight Start, Flight End, Planned Spend, Planned Impressions.");
+  sheet.getRange("H3").setValue("Editable delivered metrics: Spend, Impressions, Clicks, Video Plays, Video Completions.");
+  sheet.getRange("M3").setValue("Editable delivery window: Delivery Override Start/End controls metric edit dates.");
+  sheet.getRange("O3").setValue("Editable metadata: Advertiser, Package Type, Channel, Campaign, Initiative, Supplier, Package Name, GS Channel.");
   sheet.getRange(REQUEST_UPDATE_CELL).insertCheckboxes();
 }
 
@@ -69,7 +75,7 @@ function requestManualEditorUpdate(event) {
     `Requested at: ${requestedAt}`,
     `Sheet: ${sheetUrl}`,
     "",
-    "Run this terminal command to update the data:",
+    "Run this one-line terminal command to update the data:",
     LOADER_COMMAND,
     "",
     "The sheet uses native slicers for browsing. Open the sheet link to review the current filtered view.",

@@ -40,3 +40,17 @@ If a read-only MCP path is blocked or misclassified by an approval layer, switch
 ## Documentation Hygiene
 
 For master model behavior changes, update the repo-level `../CHANGELOG.md` and any stable README field-semantics notes in the same work session. Do this for deployed SQL behavior changes even when row counts or source totals are deliberately left out of durable docs.
+
+In documentation, prefer short human-readable Markdown link labels over raw targets for any referenced files, scripts, folders, BigQuery tables/views, dashboards, sheets, docs, URLs, or other resources. Hide the full target behind the link whenever the reader only needs to navigate to it. Use absolute paths behind local file links and BigQuery console deep links behind warehouse objects. Show raw paths, raw URLs, or full `project.dataset.table` names only when the exact literal value is needed for a command, query, config, or copy/paste instruction.
+
+## Google Sheet Visual Verification
+
+When verifying Google Sheet UX or formatting, distinguish rendered visual order from API/accessibility-tree order. For user-facing layout claims such as slicer order, column visibility, spacing, or on-screen placement, rely on the rendered browser screenshot or explicit pixel/position evidence before reporting the result.
+
+## Manual Package Editor Formatting Preservation
+
+For the live Manual Data Editor Google Sheet, treat user-made formatting edits as the current source of truth. Do not run `manual_package_edits/setup_manual_package_editor_sheet.mjs` or any other formatting rebuild against the live sheet unless the user explicitly asks for a full formatting rebuild. Routine data refreshes should use the loader only. Before any future sheet-formatting change, take a read-only formatting snapshot of the live sheet and compare against the intended edit so user-made formatting is not silently overwritten.
+
+## Manual Package Editor Marker Debugging
+
+When diagnosing a Manual Data Editor marker/color bug, trace the cell through the full path before naming a cause: visible sheet value, hidden baseline, hidden manual marker, raw manual row, daily manual row, `master_stg.data_model`, `master_stg.data_model_mart`, and the loader's comparison source. For edit detection, distinguish source-derived baseline values from manual-affected final dashboard values; manual-affected final fields can re-mark stale values or clear real edits if used as the comparator.

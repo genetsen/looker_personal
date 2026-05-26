@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-05-19T20:42:36.949Z",
+  "drive": {
+    "id": "1Ra831EU7B1BISjX9PpJZrPYjVcX7Tc1IjDNcCllXZmk",
+    "name": "Manual Data Editor Team Intro",
+    "mimeType": "application/vnd.google-apps.presentation",
+    "webViewLink": "https://docs.google.com/presentation/d/1Ra831EU7B1BISjX9PpJZrPYjVcX7Tc1IjDNcCllXZmk/edit?usp=drivesdk",
+    "createdTime": "2026-05-19T20:42:33.503Z",
+    "modifiedTime": "2026-05-19T20:42:33.527Z"
+  },
+  "slideCount": 3,
+  "slideObjectIds": [
+    "p1",
+    "p2",
+    "p3"
+  ],
+  "textSnippets": [
+    {
+      "slide": 1,
+      "text": "Manual Data Editor A single Google Sheet for controlled dashboard corrections Instead of editing backend tables or juggling separate override columns, users find the package row and edit the value they want corrected. Who uses it Media buyers or operators correcting a specific package line Where edits go Backend manual fields, then final dashboard fields What updates Client dashboards and external partner reporting after the loader runs Meeting goal: make sure everyone knows when to use the shee"
+    },
+    {
+      "slide": 2,
+      "text": "How the team uses it The sheet is intentionally one main tab: find the package, edit the visible value, request refresh. 1 Filter Use slicers for Advertiser, Channel, Campaign, and Site. 2 Find Confirm the row by Package ID, Site, and Package Friendly Name. 3 Edit Change the visible value directly. There are no separate override columns. 4 Request refresh Check the request box when the edits are ready for review/load. Color cues Orange = changed Purple = already manual Red = fix before load"
+    },
+    {
+      "slide": 3,
+      "text": "What users need to remember Simple rules keep edits predictable and make the backend audit trail clean. Package-level edits Apply everywhere for the Package ID • Flight Start / End • Advertiser, campaign, supplier • Package name, initiative, GS Channel Delivered metric edits Apply only to the selected delivery dates • Spend and impressions • Clicks • Video plays and completions New manual rows Allowed when the package is missing • Package ID, site, friendly name • Flight and delivery dates • Req"
+    }
+  ],
+  "thumbnailUrls": [
+    {
+      "index": 1,
+      "objectId": "p1",
+      "contentUrl": "https://lh7-us.googleusercontent.com/docsdf/AFQj2d4P6TEbuk_X9K66QbjBtGtUk8XT2ST8ZPmaikgOT90_XlCGvceWzeg8_8YfzPb2BS_JV0_UYDqd9kku1Ta55uYD8U3mp-4eIEKHYISM71Oj8lnU44I2hIF-mclDqKTWHZ8Q4WiXWiOGDZTGJLWtyKQKUBtT6gTGT2xBe2Q7i9MV_4as=s1600"
+    },
+    {
+      "index": 2,
+      "objectId": "p2",
+      "contentUrl": "https://lh7-us.googleusercontent.com/docsdf/AFQj2d6EMyvoNQz0IcrUGSKsQEFltH15iTl7PSATz8TrfLNZfv0SJqy4HeyfkOr74xuRw9TYCUybsI--rHelrhNq-YHyUW5EQjhEVDdI3-G3rwYqgXsO9RhjlLIUj3P4Z-bc_4r9l1YM3zaXbGbwGuC9KCgsTlraYEEolO74FdJU0tjGaMwy=s1600"
+    },
+    {
+      "index": 3,
+      "objectId": "p3",
+      "contentUrl": "https://lh7-us.googleusercontent.com/docsdf/AFQj2d5Bivn5FVkYxYCp6EoLElDaPbjFui7vcuF-XYujtfxsNnEpXuuw08uLf5wCiLHsW7tMqkhqPyMyQz_NIaKMAOsF1aigr6paEeWppj_cXAfdk6buNvtqCKQZotf0qTS9ocDwz7pEneqBWZatI-AW-pwQ_daojzs_SQGNY_pyb8szvS_X=s1600"
+    }
+  ]
+}

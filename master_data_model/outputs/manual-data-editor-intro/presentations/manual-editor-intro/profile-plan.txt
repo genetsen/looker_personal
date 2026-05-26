@@ -1,0 +1,24 @@
+Task mode: create
+Primary deck profile: product-platform
+
+Claim spine:
+- Manual Data Editor gives the team one controlled place to correct dashboard package values.
+- The user experience is intentionally simple: filter, edit the visible value, request refresh.
+- The backend keeps the rigor: validated edits become man_* evidence and take priority in final reporting fields.
+
+Required proof objects:
+- Single clear workflow from Sheet to loader to dashboards/reporting.
+- Distinction between package-level metadata edits and date-bound delivery metric edits.
+- Guardrail summary: orange/purple/red visual feedback, required fields for new rows, loader validation.
+
+Design system:
+- Native editable slide objects after Google Slides import.
+- Google-safe typography: Montserrat for headline, Roboto for body.
+- Quiet operational palette: ink navy, pale blue, mint, amber, red accent.
+- One composition, not a UI-card dashboard.
+
+QA gates:
+- No clipped text or overlap.
+- One-line title at thumbnail size.
+- Editable text and diagram objects after import.
+- Native Google Slides deck, not a screenshot-only slide.

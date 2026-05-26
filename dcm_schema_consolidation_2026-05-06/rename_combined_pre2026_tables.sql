@@ -1,0 +1,29 @@
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_01_1ab9658d`
+RENAME TO combined_dcm_test1024_daily_delivery_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_02_7dc5a800`
+RENAME TO combined_dcm_planned_vs_actual_delivery_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_03_c274b821`
+RENAME TO combined_mmm_cm360_weekly_media_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_04_0b28fda7`
+RENAME TO combined_empty_test_placeholder_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_05_3e4e00af`
+RENAME TO combined_empty_funnel_dcm_legacy_activity_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_06_733dc2cd`
+RENAME TO combined_dcm_campaign_site_av_viewability_test_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_07_ca436f70`
+RENAME TO combined_dcm_campaign_start_conversion_test_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_08_6195bcce`
+RENAME TO combined_dcm_site_placement_delivery_nodate_test_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_09_0c61d262`
+RENAME TO combined_dcm_campaign_delivery_summary_test_pre2026;
+
+ALTER TABLE `giant-spoon-299605.ALL_DCM_adswerve.combined_pre2026_schema_10_afc0f73a`
+RENAME TO combined_dcm_joined_final_delivery_pre2026;

@@ -90,7 +90,7 @@ For APO sheets, the main loader now refreshes `creative_git_link` values during 
 
 The in-pipeline APO refresh does this only for live-read APO sheets:
 
-- reads `Final_img_path` and existing `creative_git_link` / tracking columns
+- reads `Final_img_path` or, when that is blank, the APO fallback column `Creative img PATH`, plus existing `creative_git_link` / tracking columns
 - normalizes the local file path to the current machine
 - uploads any missing creative files to `genetsen/apo-db-creat`
 - writes `creative_git_link`, `creative_git_last_final_img_path`, and `creative_git_last_box_link` back into the sheet

@@ -1,0 +1,10 @@
+{
+  "profile_id": "5245222",
+  "advertiser_id": "16645650",
+  "advertiser_name": "Ritual",
+  "owner_email": "gene.tsenter@giantspoon.com",
+  "metric_name": "uniqueReachImpressionReach",
+  "dimensions": ["date", "site", "siteId"],
+  "output_dir": "data/ritual_qtd_digital_reach/raw",
+  "bigquery_table": "looker-studio-pro-452620.repo_stg.ritual_qtd_digital_reach_by_site_date"
+}

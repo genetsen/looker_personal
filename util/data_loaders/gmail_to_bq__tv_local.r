@@ -17,6 +17,7 @@
   library(httpuv)
   library(stringr)
   library(xfun)
+  source("/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tv_impressions_contract.R")
 # ---------------------------------------------------------------------------- #
 #                              Configuration                                   #
 # ---------------------------------------------------------------------------- #
@@ -141,18 +142,7 @@ table <- "tv_local_estimates"
     NULL
   }
   
-  # Check which impressions column exists
-  impressions_col <- if("total_total_impressions_buyers_estimate" %in% names(raw_df)) {
-    "total_total_impressions_buyers_estimate"
-  } else if("total_planned_impressions_all_demos_000" %in% names(raw_df)) {
-    "total_planned_impressions_all_demos_000"
-  } else if("total_planned_impressions_all_demos" %in% names(raw_df)) {
-    "total_planned_impressions_all_demos"
-  } else if("total_planned_impressions" %in% names(raw_df)) {
-    "total_planned_impressions"
-  } else {
-    NULL
-  }
+  impressions_col <- f_tv_local_impressions_column(raw_df)
   
   # Check which units column exists
   units_col <- if("total_units" %in% names(raw_df)) {
@@ -187,12 +177,7 @@ table <- "tv_local_estimates"
     } else {
       NA_real_
     },
-    # Fix: Use the correct impressions column name
-    net_impressions = if(!is.null(impressions_col)) {
-      .data[[impressions_col]]
-    } else {
-      NA_real_
-    },
+    net_impressions = f_tv_local_impressions_values(raw_df),
     # Fix: Use the correct units column name
     total_units = if(!is.null(units_col)) {
       .data[[units_col]]

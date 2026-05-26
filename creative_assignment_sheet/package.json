@@ -1,0 +1,16 @@
+{
+  "name": "creative-assignment-sheet-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "export:fixture": "node scripts/export_apollo_fixture.mjs",
+    "compare:variants": "node scripts/compare_sheet_variants.mjs",
+    "create:sheet": "node scripts/create_new_sheet_version.mjs",
+    "create:sheet:v2": "node scripts/create_v2_sheet_version.mjs",
+    "validate:frontend": "node scripts/validate_frontend_imports.mjs",
+    "validate:sheet": "node scripts/validate_google_sheet_output.mjs",
+    "validate:webapp": "node scripts/validate_web_app_output.mjs"
+  }
+}

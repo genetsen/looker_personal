@@ -1,3 +1,11 @@
+## 2026-05-08
+
+### Fixed
+
+- **APO creative fallback source column -codexapp (threadID unavailable in local session)**
+  Issue: The in-pipeline APO creative refresh skipped WSJ rows where `Final_img_path` was blank even though `Creative img PATH` contained the local creative file path.
+  Resolution: Updated `util_collect_fpd_shortcutsFolder.r` so APO refresh detection and row processing use `Creative img PATH` when `Final_img_path` is blank, preserving the existing GitHub upload and sheet write-back flow.
+
 ## 2026-05-04
 
 ### Fixed

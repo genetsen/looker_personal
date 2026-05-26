@@ -2,6 +2,23 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-05-20
+
+### Added
+
+- **Manual Package Editor QA Runbook**
+  What: Added a scan-friendly QA runbook for the Manual Data Editor covering the end-to-end data flow, scripts, BigQuery objects, sheet controls, edit-detection baselines, validation rules, filters, run commands, QA queries, troubleshooting, and actions to avoid during live-sheet checks.
+  Why: Makes it easier to investigate manual editor behavior without relying on memory, especially for stale markers, blocked new rows, request-refresh confusion, low-signal mart filtering, and package-specific warehouse traces.
+
+  <details><summary>Paths - Manual Package Editor QA Runbook</summary>
+
+  [master_data_model/manual_package_edits/QA_RUNBOOK.md](master_data_model/manual_package_edits/QA_RUNBOOK.md)
+  [master_data_model/manual_package_edits/README.md](master_data_model/manual_package_edits/README.md)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
 ## 2026-05-19
 
 ### Changed
@@ -23,6 +40,35 @@ All notable changes to this repository are documented in this file.
   </details>
 
 ### Fixed
+
+- **Manual Package Editor Refresh Command**
+  What: Made the production Manual Data Editor sheet the default loader target and simplified the request-refresh notification command to a single copy/paste-safe `Rscript` command.
+  Why: The email previously showed an environment-variable prefix split across lines, which was easy to paste incorrectly even though routine production refreshes should target the one live editor sheet.
+
+  <details><summary>Paths - Manual Package Editor Refresh Command</summary>
+
+  [master_data_model/manual_package_edits/load_manual_package_edits.R](master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [master_data_model/manual_package_edits/apps_script/Code.js](master_data_model/manual_package_edits/apps_script/Code.js)
+  [master_data_model/manual_package_edits/README.md](master_data_model/manual_package_edits/README.md)
+  [master_data_model/manual_package_edits/QA_RUNBOOK.md](master_data_model/manual_package_edits/QA_RUNBOOK.md)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
+
+- **Manual Package Editor Stale Manual Marker Cleanup**
+  What: Changed the manual package editor loader so edit detection compares visible Sheet values to source-derived baselines instead of manual-affected final fields. Planned package totals now come directly from PRISMA package totals, delivered metric baselines are recalculated from raw delivery fields, and regression tests cover undo, correction-of-correction, blank-cell reversion, zero overrides, and stale manual cleanup.
+  Why: Prevents false purple manual markers when filtered mart row sums differ from full-flight planned totals, and clears stale backend `man_*` values when source data catches up to an old manual correction without changing the final dashboard value.
+
+  <details><summary>Paths - Manual Package Editor Stale Manual Marker Cleanup</summary>
+
+  [master_data_model/manual_package_edits/load_manual_package_edits.R](master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [master_data_model/manual_package_edits/tests/test_loader_choice_logic.R](master_data_model/manual_package_edits/tests/test_loader_choice_logic.R)
+  [master_data_model/manual_package_edits/README.md](master_data_model/manual_package_edits/README.md)
+  [master_data_model/README.md](master_data_model/README.md)
+  [CHANGELOG.md](CHANGELOG.md)
+
+  </details>
 
 - **Manual Package Editor Formatting And Exact Totals**
   What: Fixed the manual package editor setup so internal baseline/manual-marker columns stay hidden after formatting, added number/date formats to hidden baseline helper columns, and changed manual daily allocation so count metrics preserve exact replacement totals as whole daily units while spend metrics preserve exact totals by cents.

@@ -158,6 +158,7 @@ dataset_id <- "landing"
 prod_table <- "fpd_data_ranged_shortcutsFolder"
 staging_table <- paste0(prod_table, "__staging")
 creative_refresh_title_prefix <- "APO | Partner Data Collection"
+creative_source_fallback_header <- "Creative img PATH"
 creative_repo_owner <- "genetsen"
 creative_repo_name <- "apo-db-creat"
 creative_repo_asset_root <- "assets/apo"
@@ -262,7 +263,7 @@ apo_raw_github_url <- function(rel_path) {
 }
 
 apo_git_run <- function(args) {
-  out <- system2("git", args, stdout = TRUE, stderr = TRUE)
+  out <- system2("git", shQuote(args), stdout = TRUE, stderr = TRUE)
   status <- attr(out, "status")
   if (!is.null(status) && status != 0) {
     stop(paste(c(out), collapse = "\n"))
@@ -307,11 +308,17 @@ apo_normalize_local_path <- function(raw_path) {
 }
 
 apo_sheet_needs_refresh <- function(raw_df, sheet_name) {
-  if (!apo_is_target_sheet(sheet_name) || !"Final_img_path" %in% names(raw_df)) {
+  if (!apo_is_target_sheet(sheet_name) || !any(c("Final_img_path", creative_source_fallback_header) %in% names(raw_df))) {
     return(FALSE)
   }
 
-  source_vals <- trimws(as.character(raw_df[["Final_img_path"]]))
+  source_vals <- if ("Final_img_path" %in% names(raw_df)) trimws(as.character(raw_df[["Final_img_path"]])) else rep("", nrow(raw_df))
+  source_vals[is.na(source_vals)] <- ""
+  if (creative_source_fallback_header %in% names(raw_df)) {
+    fallback_vals <- trimws(as.character(raw_df[[creative_source_fallback_header]]))
+    fallback_vals[is.na(fallback_vals)] <- ""
+    source_vals[source_vals == "" & fallback_vals != ""] <- fallback_vals[source_vals == "" & fallback_vals != ""]
+  }
   source_present <- !is.na(source_vals) & source_vals != ""
   if (!any(source_present)) {
     return(FALSE)
@@ -354,11 +361,12 @@ apo_commit_repo_changes <- function(repo_dir, rel_paths) {
 }
 
 refresh_apo_creative_links <- function(sheet_id, sheet_name, header_row, raw_df) {
-  if (!apo_is_target_sheet(sheet_name) || !"Final_img_path" %in% names(raw_df)) {
+  if (!apo_is_target_sheet(sheet_name) || !any(c("Final_img_path", creative_source_fallback_header) %in% names(raw_df))) {
     return(list(data = raw_df, refreshed = FALSE))
   }
 
   source_idx <- match("Final_img_path", names(raw_df))
+  fallback_source_idx <- match(creative_source_fallback_header, names(raw_df))
   box_idx <- match("Creative box link", names(raw_df))
   link_idx <- match("creative_git_link", names(raw_df))
   track_path_idx <- match("creative_git_last_final_img_path", names(raw_df))
@@ -388,7 +396,10 @@ refresh_apo_creative_links <- function(sheet_id, sheet_name, header_row, raw_df)
   site_slug <- tolower(trimws(tail(strsplit(sheet_name, "\\|")[[1]], 1)))
 
   for (row_idx in seq_len(nrow(raw_df))) {
-    source_val <- apo_clean_text(raw_df[row_idx, source_idx, drop = TRUE])
+    source_val <- if (!is.na(source_idx)) apo_clean_text(raw_df[row_idx, source_idx, drop = TRUE]) else ""
+    if (source_val == "" && !is.na(fallback_source_idx)) {
+      source_val <- apo_clean_text(raw_df[row_idx, fallback_source_idx, drop = TRUE])
+    }
     if (source_val == "") next
 
     current_link <- if (link_idx <= ncol(raw_df)) apo_clean_text(raw_df[row_idx, link_idx, drop = TRUE]) else ""

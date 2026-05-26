@@ -1,0 +1,831 @@
+[
+  {
+    "title": "Package Editor",
+    "columns": [
+      {
+        "col": "A",
+        "pixelSize": 105,
+        "hiddenByUser": false
+      },
+      {
+        "col": "B",
+        "pixelSize": 135,
+        "hiddenByUser": false
+      },
+      {
+        "col": "C",
+        "pixelSize": 720,
+        "hiddenByUser": false
+      },
+      {
+        "col": "D",
+        "pixelSize": 112,
+        "hiddenByUser": false
+      },
+      {
+        "col": "E",
+        "pixelSize": 112,
+        "hiddenByUser": false
+      },
+      {
+        "col": "F",
+        "pixelSize": 125,
+        "hiddenByUser": false
+      },
+      {
+        "col": "G",
+        "pixelSize": 140,
+        "hiddenByUser": false
+      },
+      {
+        "col": "H",
+        "pixelSize": 105,
+        "hiddenByUser": false
+      },
+      {
+        "col": "I",
+        "pixelSize": 120,
+        "hiddenByUser": false
+      },
+      {
+        "col": "J",
+        "pixelSize": 90,
+        "hiddenByUser": false
+      },
+      {
+        "col": "K",
+        "pixelSize": 110,
+        "hiddenByUser": false
+      },
+      {
+        "col": "L",
+        "pixelSize": 130,
+        "hiddenByUser": false
+      },
+      {
+        "col": "M",
+        "pixelSize": 132,
+        "hiddenByUser": false
+      },
+      {
+        "col": "N",
+        "pixelSize": 132,
+        "hiddenByUser": false
+      },
+      {
+        "col": "O",
+        "pixelSize": 140,
+        "hiddenByUser": false
+      },
+      {
+        "col": "P",
+        "pixelSize": 110,
+        "hiddenByUser": false
+      },
+      {
+        "col": "Q",
+        "pixelSize": 105,
+        "hiddenByUser": false
+      },
+      {
+        "col": "R",
+        "pixelSize": 150,
+        "hiddenByUser": false
+      },
+      {
+        "col": "S",
+        "pixelSize": 115,
+        "hiddenByUser": false
+      },
+      {
+        "col": "T",
+        "pixelSize": 90,
+        "hiddenByUser": false
+      },
+      {
+        "col": "U",
+        "pixelSize": 140,
+        "hiddenByUser": false
+      },
+      {
+        "col": "V",
+        "pixelSize": 220,
+        "hiddenByUser": false
+      },
+      {
+        "col": "W",
+        "pixelSize": 120,
+        "hiddenByUser": false
+      },
+      {
+        "col": "X",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "Y",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "Z",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AA",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AB",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AC",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AD",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AE",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AF",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AG",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AH",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AI",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AJ",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AK",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AL",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AM",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AN",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AO",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AP",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AQ",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AR",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AS",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AT",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AU",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AV",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AW",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AX",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AY",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "AZ",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BA",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BB",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BC",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BD",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BE",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BF",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BG",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BH",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BI",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BJ",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BK",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BL",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      },
+      {
+        "col": "BM",
+        "pixelSize": 100,
+        "hiddenByUser": true
+      }
+    ],
+    "rows": [
+      {
+        "row": 1,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 2,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 3,
+        "pixelSize": 48,
+        "hiddenByUser": false
+      },
+      {
+        "row": 4,
+        "pixelSize": 48,
+        "hiddenByUser": false
+      },
+      {
+        "row": 5,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 6,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 7,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 8,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 9,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 10,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 11,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 12,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 13,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 14,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 15,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 16,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 17,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 18,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 19,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      },
+      {
+        "row": 20,
+        "pixelSize": 58,
+        "hiddenByUser": false
+      }
+    ]
+  },
+  {
+    "title": "Instructions",
+    "columns": [
+      {
+        "col": "A",
+        "pixelSize": 160,
+        "hiddenByUser": false
+      },
+      {
+        "col": "B",
+        "pixelSize": 160,
+        "hiddenByUser": false
+      },
+      {
+        "col": "C",
+        "pixelSize": 175,
+        "hiddenByUser": false
+      },
+      {
+        "col": "D",
+        "pixelSize": 175,
+        "hiddenByUser": false
+      },
+      {
+        "col": "E",
+        "pixelSize": 175,
+        "hiddenByUser": false
+      },
+      {
+        "col": "F",
+        "pixelSize": 175,
+        "hiddenByUser": false
+      },
+      {
+        "col": "G",
+        "pixelSize": 175,
+        "hiddenByUser": false
+      },
+      {
+        "col": "H",
+        "pixelSize": 175,
+        "hiddenByUser": false
+      }
+    ],
+    "rows": [
+      {
+        "row": 1,
+        "pixelSize": 38,
+        "hiddenByUser": false
+      },
+      {
+        "row": 2,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 3,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 4,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 5,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 6,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 7,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 8,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 9,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 10,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 11,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 12,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 13,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 14,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 15,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 16,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 17,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 18,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 19,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 20,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 21,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 22,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 23,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 24,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 25,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 26,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 27,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 28,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 29,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 30,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 31,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 32,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 33,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 34,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 35,
+        "pixelSize": 64,
+        "hiddenByUser": false
+      },
+      {
+        "row": 36,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 37,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 38,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 39,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 40,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 41,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 42,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 43,
+        "pixelSize": 14,
+        "hiddenByUser": false
+      },
+      {
+        "row": 44,
+        "pixelSize": 32,
+        "hiddenByUser": false
+      },
+      {
+        "row": 45,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 46,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 47,
+        "pixelSize": 52,
+        "hiddenByUser": false
+      },
+      {
+        "row": 48,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 49,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 50,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 51,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 52,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 53,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 54,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 55,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 56,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 57,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 58,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 59,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 60,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 61,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 62,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 63,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 64,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 65,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 66,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 67,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 68,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 69,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      },
+      {
+        "row": 70,
+        "pixelSize": 21,
+        "hiddenByUser": false
+      }
+    ]
+  }
+]

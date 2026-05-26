@@ -1,0 +1,8 @@
+{
+  "profile_id": "5245222",
+  "advertiser_id": "16645650",
+  "advertiser_name": "Ritual",
+  "metric_name": "uniqueReachImpressionReach",
+  "dimensions": ["date", "site", "siteId"],
+  "output_dir": "data/ritual_qtd_digital_reach/raw"
+}

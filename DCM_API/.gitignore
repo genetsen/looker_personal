@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local credentials and OAuth tokens
+secrets/
+.env
+
+# Report downloads
+downloads/

@@ -1,0 +1,16 @@
+Task mode: create
+Primary deck profile: product-platform
+Deliverable: one-slide native Google Slides deck for a team meeting.
+
+Source facts used:
+- The Manual Data Editor is a Google Sheet for package-level manual corrections.
+- Users filter to a package, edit the visible value directly, and request refresh.
+- Backend loader writes validated edits into man_* evidence fields.
+- Metadata and flight date corrections apply to the full package.
+- Delivered metric corrections apply only to Delivery Override Start/End dates.
+- Active valid edits are reflected in client dashboards and external partner reporting after the loader/reporting refresh.
+
+Source artifacts:
+- Local implementation and verification from master_data_model/manual_package_edits.
+- Live sheet title verified: Manual Data Editor | GS Internal.
+- Live sheet tabs verified: Package Editor and Instructions.
