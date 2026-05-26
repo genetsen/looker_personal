@@ -185,11 +185,12 @@ It uses the first matching column from this list:
 
 #### Impressions field
 
-It uses the first matching column from this list:
+The local loader uses the shared TV impressions contract in [`tv_impressions_contract.R`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tv_impressions_contract.R). It uses the first matching column from this list:
 
 1. `total_total_impressions_buyers_estimate`
 2. `total_planned_impressions_all_demos_000`
-3. `total_planned_impressions`
+3. `total_planned_impressions_all_demos`
+4. `total_planned_impressions`
 
 #### Units field
 
@@ -259,19 +260,19 @@ This means the national loader is not just renaming the incoming cost field. It 
 
 #### Impressions field
 
-The loader first checks planned-impression fields:
+The national loader uses the shared TV impressions contract in [`tv_impressions_contract.R`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tv_impressions_contract.R). It checks planned-impression fields first:
 
 1. `total_impressions_buyers_estimate`
 2. `total_planned_impressions_all_demos`
 3. `total_planned_impressions_000`
 4. `total_planned_impressions`
 
-If none of those produce a value, it falls back to objective-impression fields:
+For each row, it uses the planned value when that value is present and positive. If the planned value is missing, zero, or negative for that row, it falls back to objective-impression fields:
 
 1. `total_objective_impressions`
 2. `total_objective_impressions_000`
 
-This fallback behavior is especially important because the national CSV header has changed recently.
+This fallback behavior is especially important because the national CSV header has changed recently. The Universal Runner TV verifier calls the same contract helper so its source-file snapshot matches the loader logic instead of maintaining a separate column list.
 
 #### Units field
 
@@ -427,11 +428,10 @@ If that still fails:
 
 These are not required for the loaders to work today, but they would make the workflow safer:
 
-1. Use one shared helper function so local and national stay easier to maintain together.
-2. Save a copy of the chosen attachment into a dated debug folder before upload.
-3. Add a stricter attachment-selection rule for the local loader.
-4. Add explicit validation checks for required columns before the BigQuery write.
-5. Add a small dry-run mode that prints the chosen columns and row counts without writing to BigQuery.
+1. Save a copy of the chosen attachment into a dated debug folder before upload.
+2. Add a stricter attachment-selection rule for the local loader.
+3. Add explicit validation checks for required columns before the BigQuery write.
+4. Add a small dry-run mode that prints the chosen columns and row counts without writing to BigQuery.
 
 ## When To Edit These Scripts
 
@@ -449,6 +449,8 @@ If the issue is only documentation, update this file first so future debugging s
 
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r)
+- [`tv_impressions_contract.R`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tv_impressions_contract.R)
+- [`test_tv_impressions_contract.R`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tests/test_tv_impressions_contract.R)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/bq_write_with_email_alerts.r)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/R_functions/README.md)
 - [`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/README.md`](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/README.md)

@@ -2,6 +2,26 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-05-26
+
+### Fixed
+
+- **TV Loader And Verifier Impressions Contract -codexapp [thread unavailable](https://chatgpt.com/codex)**
+  Issue: The Universal Runner TV verifier could report impression mismatches even when the TV loaders wrote the intended table totals, because the verifier kept its own stale impression-column logic.
+  Cause: Local and national TV loader impression rules changed after the runner verifier was created, but the verifier was not updated with the same source-file contract.
+  Resolution: Added a shared TV impressions contract helper, updated both production TV loaders to use it, and added a focused contract test so loader and verifier logic stay aligned.
+
+  <details><summary>Paths - TV Loader And Verifier Impressions Contract</summary>
+
+  [TV loader README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md)
+  [TV impressions contract](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tv_impressions_contract.R)
+  [TV impressions contract test](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/tests/test_tv_impressions_contract.R)
+  [Local TV loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r)
+  [National TV loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_nat.r)
+  [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md)
+
+  </details>
+
 ## 2026-05-20
 
 ### Added
