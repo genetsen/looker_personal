@@ -4,6 +4,24 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-05-26
 
+### Added
+
+- **APO-First Shared Social QA Candidate -codexapp [thread unavailable](https://chatgpt.com/codex)**
+  What: Added a QA-only APO Search Data Template loader, APO-first shared-social merge candidate, reporting-shaped social review view, focused rule tests, and validation queries. Conflicting Apollo daily-ad keys are retained and held out for review rather than silently aggregated or selected.
+  Why: Makes Apollo Paid Search, Online Video, creative metadata, and historical LinkedIn precedence testable without replacing production shared staging or the production master model before approval.
+
+  <details><summary>Paths - APO-First Shared Social QA Candidate</summary>
+
+  [Apollo QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/README.md)
+  [APO normalization rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/apo_search_social_logic.R)
+  [APO Sheet loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/load_apo_search_data_template.R)
+  [APO rule tests](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/tests/test_apo_search_social_logic.R)
+  [QA SQL folder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql)
+  [Master model README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
+  [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md)
+
+  </details>
+
 ### Fixed
 
 - **TV Loader And Verifier Impressions Contract -codexapp [thread unavailable](https://chatgpt.com/codex)**
