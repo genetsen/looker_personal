@@ -701,8 +701,16 @@ social_final AS (
     COALESCE(apo_ADIF_channel, 'Social') AS gsMediaTeam_channel,
     ad_id AS placement_id,
     ad_name AS placement_name,
-    UPPER(social_platform) AS supplier_code,
-    social_platform AS supplier_name,
+    CASE
+      WHEN apo_classification_source = 'campaign_marker_youtube'
+        OR apo_media_name = 'Online Video' THEN 'YT'
+      ELSE UPPER(social_platform)
+    END AS supplier_code,
+    CASE
+      WHEN apo_classification_source = 'campaign_marker_youtube'
+        OR apo_media_name = 'Online Video' THEN 'Youtube'
+      ELSE social_platform
+    END AS supplier_name,
     CAST(NULL AS STRING) AS supplier_logo,
     'Social' AS buy_type,
     social_platform AS buy_category,

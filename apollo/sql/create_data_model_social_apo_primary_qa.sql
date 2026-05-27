@@ -37,8 +37,16 @@ SELECT
   ad_group_name AS `_package_name`,
   CAST(ad_id AS STRING) AS `_placement_id`,
   ad_name AS `_placement_name`,
-  UPPER(platform) AS `_supplier_code`,
-  platform AS `_supplier_name`,
+  CASE
+    WHEN apo_classification_source = 'campaign_marker_youtube'
+      OR apo_media_name = 'Online Video' THEN 'YT'
+    ELSE UPPER(platform)
+  END AS `_supplier_code`,
+  CASE
+    WHEN apo_classification_source = 'campaign_marker_youtube'
+      OR apo_media_name = 'Online Video' THEN 'Youtube'
+    ELSE platform
+  END AS `_supplier_name`,
   COALESCE(apo_channel, CONCAT('social_', LOWER(platform))) AS `_channel`,
   COALESCE(apo_channel_group, 'social') AS `_channel_group`,
   COALESCE(apo_media_name, 'Social') AS `_media_name`,
