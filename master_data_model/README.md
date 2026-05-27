@@ -83,10 +83,10 @@ Social inputs:
 Apollo social QA candidate, not production:
 
 - [APO Search Data Template](https://docs.google.com/spreadsheets/d/1fen46Ugxx12PYRzCDT88z8ENVcVl_MjlQhqkGDxZNbc/edit?gid=982708559#gid=982708559) supplies candidate Apollo delivery fields and creative metadata.
-- [APO normalized staging QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__apo__search_data_template_daily_qa&page=table) retains source rows and flags conflicting daily-ad keys for review.
-- [APO-primary cross-platform QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__crossplatform_apo_primary_qa&page=table) applies APO-first column precedence only to publishable unique Apollo keys, while retaining the current shared source as fallback.
+- [APO normalized staging QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__apo__search_data_template_daily_qa&page=table) retains source rows and flags cross-campaign ad-ID conflicts as pending source-owner review.
+- [APO-primary cross-platform QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__crossplatform_apo_primary_qa&page=table) applies APO-first column precedence at candidate campaign/ad-group/ad grain, while retaining the current shared source as fallback.
 - [APO-primary social reporting QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_social_apo_primary_qa&page=table) exposes candidate Apollo Paid Search and Online Video reporting labels plus creative and provenance fields.
-- Production social staging and the production master model are unchanged while duplicate-key resolution and historical overlap impacts remain under review.
+- Production social staging and the production master model are unchanged while source-owner clarification and historical overlap impacts remain under review.
 
 TV inputs:
 
@@ -140,7 +140,7 @@ Ritual delivery detail v2:
 - This view is separate from the ADIF scheduled refresh and does not replace `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`.
 - Digital rows keep package IDs from Prisma/DCM/FPD.
 - Social rows use a synthetic package key: `social:<platform>:<campaign_id>:<ad_group_id>`, because social data does not naturally share Prisma package IDs.
-- In the Apollo social QA candidate, `_Search_` campaign markers map to Paid Search and `_YT_` campaign markers map to Online Video; rows without either marker use the Sheet channel as fallback. Conflicting Apollo `date_day`/platform/ad-ID keys are kept in normalized QA input but held out of the merged reporting candidate until their representation is approved.
+- In the Apollo social QA candidate, `_Search_` campaign markers map to Paid Search and `_YT_` campaign markers map to Online Video; rows without either marker use the Sheet channel as fallback. Candidate identity includes campaign, ad group, and ad so cross-campaign ad-ID conflicts can be temporarily included as separately flagged `publish_pending_source_owner_review` rows pending source-owner clarification; exact duplicate records remain excluded.
 - TV rows use synthetic package and placement keys because the TV estimate view does not naturally share Prisma package IDs.
 - TV source fields are preserved in `tv_*` fields, including outlet, type, program, market, quarter, year, net impressions, net cost, total units, and data refresh date.
 - Updated FPD is layered before `final_spend`, `final_impressions`, and package actual rollups are calculated.

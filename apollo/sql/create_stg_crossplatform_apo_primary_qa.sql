@@ -1,16 +1,18 @@
 -- @description: Builds a QA shared-social candidate where the APO Search Data
---               Template is primary for Apollo daily-ad cells and the existing
+--               Template is primary for Apollo campaign/ad-group/ad cells and
+--               the existing
 --               production raw source fills absent rows or fields.
 -- @sources:     repo_stg.stg__olipop__crossplatform_raw_tbl,
 --               repo_stg.stg__apo__search_data_template_daily_qa
--- @output:      repo_stg.stg__crossplatform_apo_primary_qa at daily ad grain;
---               duplicate APO daily-ad keys are held out for QA resolution.
+-- @output:      repo_stg.stg__crossplatform_apo_primary_qa at
+--               date/platform/campaign/ad-group/ad grain; conflicting
+--               cross-campaign ad identities remain flagged pending review.
 -- @safety:      QA view only. It does not replace production shared staging.
 --               Safe to delete after APO source-precedence review.
 
 CREATE OR REPLACE VIEW `looker-studio-pro-452620.repo_stg.stg__crossplatform_apo_primary_qa`
 OPTIONS (
-  description = "QA-only APO-first shared social candidate built by apollo/sql/create_stg_crossplatform_apo_primary_qa.sql. Uses publishable unique APO daily-ad cells first and production raw fallback; conflicting APO daily-ad keys are held out for review. Production is unchanged; safe to delete after review by the model owner."
+  description = "QA-only APO-first shared social candidate built by apollo/sql/create_stg_crossplatform_apo_primary_qa.sql. Uses campaign-grain APO records first with production raw fallback; cross-campaign ad-ID conflicts are included and flagged pending source-owner review. Production is unchanged; safe to delete after review by the model owner."
 ) AS
 WITH
 standard_extended AS (
@@ -45,7 +47,7 @@ standard_non_apollo AS (
 apo_publishable AS (
   SELECT *
   FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
-  WHERE apo_publication_status = 'publish'
+  WHERE apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
 ),
 merged_apollo AS (
   SELECT
@@ -85,6 +87,10 @@ merged_apollo AS (
     a.apo_loaded_at,
     a.apo_row_key,
     CASE
+      WHEN a.apo_publication_status = 'publish_pending_source_owner_review'
+        AND s.ad_id IS NOT NULL THEN 'apo_primary_pending_source_owner_review'
+      WHEN a.apo_publication_status = 'publish_pending_source_owner_review'
+        THEN 'apo_only_pending_source_owner_review'
       WHEN a.ad_id IS NOT NULL AND s.ad_id IS NOT NULL THEN 'apo_primary_with_standard_fallback'
       WHEN a.ad_id IS NOT NULL THEN 'apo_only'
       ELSE 'standard_only'
@@ -110,12 +116,13 @@ merged_apollo AS (
     ON s.date_day = a.date_day
    AND LOWER(s.platform) = LOWER(a.platform)
    AND CAST(s.ad_id AS STRING) = CAST(a.ad_id AS STRING)
+   AND LOWER(TRIM(COALESCE(s.campaign_name, ''))) = LOWER(TRIM(COALESCE(a.campaign_name, '')))
 )
 SELECT
-  -- QA PURPOSE: APO-first merged daily-ad source with standard fallback.
+  -- QA PURPOSE: APO-first campaign/ad-group/ad source with standard fallback.
   -- CHANGE: This file adds APO Search/YouTube coverage and provenance; the
-  --         existing production raw source remains unchanged and conflicting
-  --         APO duplicate daily-ad keys are held out pending resolution.
+  --         existing production raw source remains unchanged; cross-campaign
+  --         ad-ID conflicts are included with a pending-review status.
   -- CLEANUP: Safe to delete after review by the master data model owner.
   *
 FROM standard_non_apollo

@@ -135,7 +135,7 @@ source("apollo/apo_search_social_logic.R")
       "report rows normalize with shared-source types and without placeholder flight dates"
     )
 
-  # ? Conflicting duplicate daily-ad keys are visible but held out of publishing
+  # ? Cross-campaign ad-ID conflicts remain distinct but visibly pending review
     duplicate_report <- rbind(report_fixture[1, ], report_fixture[1, ])
     duplicate_report$campaign <- c(
       "G_Search_NOB_Apollo_Private_Credit",
@@ -150,8 +150,21 @@ source("apollo/apo_search_social_logic.R")
       as.POSIXct("2026-05-26 12:00:00", tz = "UTC")
     )
     expect_true(
-      all(duplicate_normalized$apo_publication_status == "exclude_duplicate_daily_ad_key"),
-      "conflicting duplicate daily-ad keys are held out for QA review"
+      all(duplicate_normalized$apo_publication_status == "publish_pending_source_owner_review") &&
+        length(unique(duplicate_normalized$apo_row_key)) == 2,
+      "cross-campaign ad-ID conflicts publish as distinct pending-review records"
+    )
+
+  # ? Exact repeated copies remain excluded even under campaign-grain identity
+    repeated_record <- normalize_apo_report_rows(
+      rbind(report_fixture[1, ], report_fixture[1, ]),
+      rbind(import_fixture[1, ], import_fixture[1, ]),
+      "https://docs.google.com/spreadsheets/d/test",
+      as.POSIXct("2026-05-26 12:00:00", tz = "UTC")
+    )
+    expect_true(
+      all(repeated_record$apo_publication_status == "exclude_duplicate_record_key"),
+      "exact duplicate campaign-grain records remain excluded"
     )
 
 cat("All APO search social logic tests passed.\n")

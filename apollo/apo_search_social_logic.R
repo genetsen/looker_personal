@@ -212,18 +212,38 @@
         apo_creative_box_link = as_apo_text(apo_column(report_rows, "creative_box_link")),
         apo_source_sheet_url = source_sheet_url,
         apo_loaded_at = as.POSIXct(loaded_at, tz = "UTC"),
-        apo_row_key = paste("Apollo", platform, date_day, ad_id, sep = "|"),
+        apo_row_key = paste(
+          "Apollo",
+          platform,
+          date_day,
+          campaign_id,
+          ad_group_id,
+          ad_id,
+          sep = "|"
+        ),
         stringsAsFactors = FALSE
       )
       result <- result[!is.na(result$date_day) & !is.na(result$ad_id), , drop = FALSE]
 
-      # Hold out conflicting source keys rather than choosing or summing rows
-      # whose campaign text or delivery values may represent different facts.
+      # Keep cross-campaign rows visible as separate records while a source
+      # owner reviews the reused ad identity; exact record copies stay out.
       publishable <- result$apo_publication_status == "publish"
-      duplicate_key <- publishable & (
+      duplicate_record_key <- publishable & (
         duplicated(result$apo_row_key) |
           duplicated(result$apo_row_key, fromLast = TRUE)
       )
-      result$apo_publication_status[duplicate_key] <- "exclude_duplicate_daily_ad_key"
+      ad_identity_key <- paste(
+        result$account_name,
+        result$platform,
+        result$date_day,
+        result$ad_id,
+        sep = "|"
+      )
+      cross_campaign_ad_identity <- publishable & !duplicate_record_key & (
+        duplicated(ad_identity_key) |
+          duplicated(ad_identity_key, fromLast = TRUE)
+      )
+      result$apo_publication_status[cross_campaign_ad_identity] <- "publish_pending_source_owner_review"
+      result$apo_publication_status[duplicate_record_key] <- "exclude_duplicate_record_key"
       result
     }

@@ -7,9 +7,10 @@ This workflow loads the [APO Search Data Template](https://docs.google.com/sprea
 | Area | QA behavior | Production impact |
 | --- | --- | --- |
 | Sheet input | Reads `Report` for reporting values and hidden `Import` for supporting IDs. | None. |
-| Apollo precedence | Publishable APO values win for Apollo daily-ad matches; the current shared social source fills absent rows or fields. | Not promoted. |
+| Apollo precedence | Publishable APO values win for Apollo matching campaign/ad-group/ad records; the current shared social source fills absent rows or fields. | Not promoted. |
 | Channel rules | `_Search_` maps to Paid Search; `_YT_` maps to Online Video; otherwise the sheet channel is retained as fallback. | QA view only. |
-| Conflicting daily-ad keys | Source rows sharing the same Apollo `date_day`, `platform`, and `ad_id` are retained with `exclude_duplicate_daily_ad_key` and held out of the merged candidate until a resolution is approved. | Prevents unresolved conflicts from affecting QA candidate totals. |
+| Record identity | Candidate rows use `date_day`, platform, synthetic campaign ID, ad-group ID, and ad ID so differently named campaign records are preserved separately. | QA representation only. |
+| Pending source-owner clarification | Records that share date/platform/ad ID but have different campaigns are included with `publish_pending_source_owner_review`; exact duplicate campaign-grain records remain excluded. | Included temporarily and visibly flagged in QA totals. |
 | Dates | Uses `Report Start Date`; does not model placeholder `Flight Start Date` or `Flight End Date` values. | None. |
 
 ## Objects And Files
@@ -39,4 +40,4 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < apollo/sql/validate_apo_primary_social_qa.sql
 ```
 
-Do not replace the production shared social staging build or the production master model until the duplicate-key resolution and historical Apollo impact have been reviewed and approved.
+Do not replace the production shared social staging build or the production master model until the pending source-owner clarification and historical Apollo impact have been reviewed and approved.

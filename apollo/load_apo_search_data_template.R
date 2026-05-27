@@ -141,8 +141,8 @@ suppressPackageStartupMessages({
         paste(
           "ALTER TABLE `%s.%s.%s` SET OPTIONS (description =",
           "'QA-only normalized source-row input loaded from the APO Search Data Template",
-          "by apollo/load_apo_search_data_template.R. Rows with conflicting daily-ad",
-          "keys are retained with an exclusion status for shared-social review;",
+          "by apollo/load_apo_search_data_template.R. Campaign-grain records with",
+          "cross-campaign ad-ID conflicts are marked pending source-owner review;",
           "production shared staging is unchanged.",
           "Safe to delete after approval or rejection of the APO promotion candidate",
           "by the master data model owner.')"

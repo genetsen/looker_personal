@@ -7,7 +7,7 @@ All notable changes to this repository are documented in this file.
 ### Added
 
 - **APO-First Shared Social QA Candidate -codexapp [thread unavailable](https://chatgpt.com/codex)**
-  What: Added a QA-only APO Search Data Template loader, APO-first shared-social merge candidate, reporting-shaped social review view, focused rule tests, and validation queries. Conflicting Apollo daily-ad keys are retained and held out for review rather than silently aggregated or selected.
+  What: Added a QA-only APO Search Data Template loader, APO-first shared-social merge candidate, reporting-shaped social review view, focused rule tests, and validation queries. Candidate identity includes campaign, ad group, and ad; cross-campaign ad-ID conflicts are temporarily included as visibly flagged pending-review records rather than silently aggregated or selected.
   Why: Makes Apollo Paid Search, Online Video, creative metadata, and historical LinkedIn precedence testable without replacing production shared staging or the production master model before approval.
 
   <details><summary>Paths - APO-First Shared Social QA Candidate</summary>

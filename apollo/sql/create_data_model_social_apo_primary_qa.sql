@@ -7,13 +7,13 @@
 
 CREATE OR REPLACE VIEW `looker-studio-pro-452620.master_stg.data_model_social_apo_primary_qa`
 OPTIONS (
-  description = "QA-only reporting-shaped social candidate built by apollo/sql/create_data_model_social_apo_primary_qa.sql. Shows unique publishable Apollo rows using Paid Search/Online Video classifications and APO precedence; conflicting daily-ad keys are held out. Production is unchanged; safe to delete after review by the model owner."
+  description = "QA-only reporting-shaped social candidate built by apollo/sql/create_data_model_social_apo_primary_qa.sql. Shows campaign-grain Apollo rows using Paid Search/Online Video classification and APO precedence; cross-campaign ad-ID conflicts are included and flagged pending source-owner review. Production is unchanged; safe to delete after review by the model owner."
 ) AS
 SELECT
   -- QA PURPOSE: Review the social branch delta before production model edits.
   -- CHANGE: This file applies APO campaign-marker classifications and
-  --         APO-first values to publishable unique keys; the production
-  --         master model remains unchanged.
+  --         APO-first values to campaign-grain records, including flagged
+  --         pending-review conflicts; production remains unchanged.
   -- CLEANUP: Safe to delete after review by the master data model owner.
   'social' AS qa_row_type,
   IF(apo_record_source LIKE 'apo%', 'apo_search_data_template', 'social') AS qa_row_data_source_primary,

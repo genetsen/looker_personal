@@ -24,32 +24,53 @@ FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
 GROUP BY 1,2,3,4
 ORDER BY 1,2,3,4;
 
--- * CHECK [2]: NO DUPLICATE PUBLISHABLE APO DAILY-AD KEYS
+-- * CHECK [2]: NO DUPLICATE INCLUDED APO CAMPAIGN-GRAIN RECORD KEYS
 SELECT
   platform,
   date_day,
-  ad_id,
+  apo_row_key,
   COUNT(*) AS duplicate_rows
 FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
-WHERE apo_publication_status = 'publish'
+WHERE apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
 GROUP BY 1,2,3
 HAVING COUNT(*) > 1
 ORDER BY duplicate_rows DESC, date_day DESC
 LIMIT 20;
 
--- * CHECK [3]: HELD-OUT CONFLICTING SOURCE KEYS REMAIN VISIBLE FOR DECISION
+-- * CHECK [3]: PENDING SOURCE-OWNER ROWS ARE INCLUDED AND REMAIN VISIBLE
+WITH pending_input AS (
+  SELECT
+    COUNT(*) AS row_count,
+    SUM(spend) AS spend,
+    SUM(impressions) AS impressions,
+    SUM(clicks) AS clicks
+  FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
+  WHERE apo_publication_status = 'publish_pending_source_owner_review'
+),
+pending_candidate AS (
+  SELECT
+    COUNT(*) AS row_count,
+    SUM(spend) AS spend,
+    SUM(impressions) AS impressions,
+    SUM(clicks) AS clicks
+  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_apo_primary_qa`
+  WHERE apo_publication_status = 'publish_pending_source_owner_review'
+)
 SELECT
-  platform,
-  media_name,
-  COUNT(*) AS held_out_row_count,
-  COUNT(DISTINCT apo_row_key) AS held_out_key_count,
-  SUM(spend) AS held_out_spend,
-  SUM(impressions) AS held_out_impressions,
-  SUM(clicks) AS held_out_clicks
-FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
-WHERE apo_publication_status = 'exclude_duplicate_daily_ad_key'
-GROUP BY 1,2
-ORDER BY 1,2;
+  'staging_pending_input' AS check_name,
+  row_count,
+  spend,
+  impressions,
+  clicks
+FROM pending_input
+UNION ALL
+SELECT
+  'merged_candidate_pending_included',
+  row_count,
+  spend,
+  impressions,
+  clicks
+FROM pending_candidate;
 
 -- * CHECK [4]: RECORD-SOURCE AND CHANNEL IMPACT IN THE MERGED CANDIDATE
 SELECT
@@ -82,7 +103,8 @@ JOIN `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
   ON a.date_day = s.date_day
  AND LOWER(a.platform) = LOWER(s.platform)
  AND CAST(a.ad_id AS STRING) = CAST(s.ad_id AS STRING)
-WHERE a.apo_publication_status = 'publish'
+ AND LOWER(TRIM(COALESCE(a.campaign_name, ''))) = LOWER(TRIM(COALESCE(s.campaign_name, '')))
+WHERE a.apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
   AND (
     a.spend IS DISTINCT FROM s.spend
     OR a.impressions IS DISTINCT FROM s.impressions
@@ -104,7 +126,8 @@ LEFT JOIN `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
   ON a.date_day = s.date_day
  AND LOWER(a.platform) = LOWER(s.platform)
  AND CAST(a.ad_id AS STRING) = CAST(s.ad_id AS STRING)
-WHERE a.apo_publication_status = 'publish'
+ AND LOWER(TRIM(COALESCE(a.campaign_name, ''))) = LOWER(TRIM(COALESCE(s.campaign_name, '')))
+WHERE a.apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
   AND s.ad_id IS NULL
 GROUP BY 1,2
 ORDER BY 1,2;
