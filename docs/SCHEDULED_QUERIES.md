@@ -457,7 +457,7 @@ WHEN NOT MATCHED THEN INSERT (all_columns)
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: Feb 23, 2026
+**Last Updated**: May 27, 2026
 
 #### Purpose
 Builds `repo_stg.stg__olipop__crossplatform_raw_tbl`, which is the raw social fact table that eventually feeds the Olipop social branch of `Olipop.MMM_crossplatform`.
@@ -467,6 +467,8 @@ More specifically, the live scheduled query:
 - picks one of two candidate ad-delivery tables at runtime
 - uses the most recently updated candidate as the delivery source for that run
 - left joins cross-platform video metrics from `repo_stg.stg__olipop_videoviews_crossplatform`
+- merges Apollo rows from [APO normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__apo__search_data_template_daily&page=table), with APO nonblank values primary and standard rows/fields as fallback
+- retains cross-campaign Apollo ad-ID rows with visible `publish_pending_source_owner_review` provenance pending source-owner clarification
 - writes the finished result into `repo_stg.stg__olipop__crossplatform_raw_tbl`
 
 The two delivery-source options are:
@@ -498,6 +500,22 @@ looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl
 - `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report` (delivery candidate)
 - `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report` (delivery candidate)
 - `repo_stg.stg__olipop_videoviews_crossplatform` (video metrics)
+- `repo_stg.stg__apo__search_data_template_daily` (controlled APO production Sheet snapshot)
+
+#### APO Production Rule
+
+| Rule | Production behavior |
+| --- | --- |
+| Record grain | Date, normalized platform, campaign, ad group, and ad. |
+| Overlap handling | APO values win cell by cell for matching Apollo rows; numeric zero is a supplied value. |
+| Google classification | `_Search_` becomes Paid Search and `_YT_` becomes Online Video; Sheet channel is the fallback. |
+| Pending identity question | Cross-campaign rows sharing date/platform/ad ID are included and flagged until the source owner clarifies the rule. |
+| Sheet refresh | The staging loader remains a controlled manual refresh while clarification is pending; this scheduled SQL rebuild consumes the current staged snapshot. |
+
+Production and rollback SQL:
+
+- [APO production scheduled builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql/create_stg_crossplatform_apo_primary_production.sql)
+- [Pre-APO shared-social rollback builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql/rollback_stg_crossplatform_pre_apo_production.sql)
 
 #### Runtime Source Selection
 ```sql

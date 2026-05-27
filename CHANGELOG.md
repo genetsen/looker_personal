@@ -2,6 +2,26 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-05-27
+
+### Changed
+
+- **APO Search Data Template Promoted To Shared Social Production -codexapp [thread](https://chatgpt.com/codex)**
+  What: Promoted the APO Search Data Template to the primary Apollo input in shared-social staging and the master model. Apollo Search and YouTube rows now report as Paid Search and Online Video, and social creative/source-provenance fields remain available in the master output.
+  Decision: Campaign-separated Apollo records that share an ad ID are included for now and retain visible pending-source-owner provenance; exact duplicate campaign-grain records remain excluded.
+  Control: The shared-social SQL builder is updated in its existing daily schedule. The APO Sheet loader remains a controlled manual production refresh until the source-owner identity question is resolved.
+  Rollback: Preserved the pre-APO shared-social builder in SQL and saved a pre-APO master-model rollback checkpoint view before the production replacement.
+
+  <details><summary>Paths - APO Production Promotion</summary>
+
+  [Apollo workflow runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/README.md)
+  [APO production shared-social builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql/create_stg_crossplatform_apo_primary_production.sql)
+  [Pre-APO shared-social rollback builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql/rollback_stg_crossplatform_pre_apo_production.sql)
+  [Master model SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql)
+  [Scheduled-query documentation](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/SCHEDULED_QUERIES.md)
+
+  </details>
+
 ## 2026-05-26
 
 ### Added
