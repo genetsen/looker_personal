@@ -1,15 +1,15 @@
 ################################################################################
-#### LOAD APO SEARCH DATA TEMPLATE FOR SOCIAL QA
+#### LOAD APO SEARCH DATA TEMPLATE FOR SHARED SOCIAL DELIVERY
 ################################################################################
 # Purpose:
 #   Read the APO Search Data Template, normalize daily ad records, and stage
-#   them for APO-first shared-social merge validation.
+#   them for APO-first shared-social delivery and validation.
 # Inputs:
 #   Google Sheet tabs `Report` and `Import` from the configured workbook.
 # Output and safe usage:
-#   Defaults to a read/preview run. Set APO_SEARCH_UPLOAD=TRUE to replace only
-#   the configured QA staging table. Production writes require the additional
-#   APO_SEARCH_ALLOW_PRODUCTION=TRUE opt-in after QA review.
+#   Defaults to a read/preview run and a QA staging table. Set
+#   APO_SEARCH_UPLOAD=TRUE to replace the configured output. Production writes
+#   require APO_SEARCH_ALLOW_PRODUCTION=TRUE after approval.
 ################################################################################
 
 suppressPackageStartupMessages({
@@ -23,7 +23,7 @@ suppressPackageStartupMessages({
 
 # * SECTION [1]: CONFIGURATION
 
-  # Description: Keep the production boundary explicit while QA is underway.
+  # Description: Keep the production boundary explicit for controlled refreshes.
 
   # ? Resolve this script's sibling normalization helper safely
     file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
@@ -39,9 +39,10 @@ suppressPackageStartupMessages({
     AUTH_EMAIL <- Sys.getenv("APO_SEARCH_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
     UPLOAD_ENABLED <- tolower(Sys.getenv("APO_SEARCH_UPLOAD", "FALSE")) == "true"
     ALLOW_PRODUCTION <- tolower(Sys.getenv("APO_SEARCH_ALLOW_PRODUCTION", "FALSE")) == "true"
+    IS_QA_TABLE <- grepl("_qa$", TABLE_ID)
 
   # ? Refuse accidental writes outside a QA table during the evidence phase
-    if (UPLOAD_ENABLED && !grepl("_qa$", TABLE_ID) && !ALLOW_PRODUCTION) {
+    if (UPLOAD_ENABLED && !IS_QA_TABLE && !ALLOW_PRODUCTION) {
       stop("Production upload blocked. Use a _qa table or explicitly set APO_SEARCH_ALLOW_PRODUCTION=TRUE after QA approval.")
     }
 
@@ -123,9 +124,9 @@ suppressPackageStartupMessages({
     print(quality_summary)
 
 
-# * SECTION [3]: OPTIONAL QA UPLOAD
+# * SECTION [3]: OPTIONAL CONTROLLED UPLOAD
 
-  # Description: Publish only when explicitly requested for QA evidence.
+  # Description: Publish only when explicitly requested for QA or production.
 
   # ? Upload the normalized rows to the selected BigQuery table when enabled
     if (UPLOAD_ENABLED) {
@@ -137,22 +138,32 @@ suppressPackageStartupMessages({
         fields = upload_fields,
         write_disposition = "WRITE_TRUNCATE"
       )
-      description_sql <- sprintf(
+      table_description <- if (IS_QA_TABLE) {
         paste(
-          "ALTER TABLE `%s.%s.%s` SET OPTIONS (description =",
-          "'QA-only normalized source-row input loaded from the APO Search Data Template",
+          "QA-only normalized source-row input loaded from the APO Search Data Template",
           "by apollo/load_apo_search_data_template.R. Campaign-grain records with",
           "cross-campaign ad-ID conflicts are marked pending source-owner review;",
-          "production shared staging is unchanged.",
-          "Safe to delete after approval or rejection of the APO promotion candidate",
-          "by the master data model owner.')"
-        ),
+          "production shared staging is unchanged. Safe to delete after review",
+          "by the master data model owner."
+        )
+      } else {
+        paste(
+          "Production normalized source-row input loaded from the APO Search Data",
+          "Template by apollo/load_apo_search_data_template.R. Campaign-grain records",
+          "with cross-campaign ad-ID conflicts are included pending source-owner",
+          "review and retain their publication-status provenance. Refresh is",
+          "controlled manually until the source-owner rule is confirmed."
+        )
+      }
+      description_sql <- sprintf(
+        "ALTER TABLE `%s.%s.%s` SET OPTIONS (description = '%s')",
         PROJECT_ID,
         DATASET_ID,
-        TABLE_ID
+        TABLE_ID,
+        table_description
       )
       bq_project_query(PROJECT_ID, description_sql, quiet = TRUE)
       cat("\nUploaded normalized APO rows to ", PROJECT_ID, ".", DATASET_ID, ".", TABLE_ID, "\n", sep = "")
     } else {
-      cat("\nPreview only: set APO_SEARCH_UPLOAD=TRUE to write the QA staging table.\n")
+      cat("\nPreview only: set APO_SEARCH_UPLOAD=TRUE to write the configured staging table.\n")
     }
