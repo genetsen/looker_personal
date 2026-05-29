@@ -80,7 +80,7 @@
         return(apo_channel_result("paid_search", "search", "Paid Search", "campaign_marker_search"))
       }
       if (has_youtube) {
-        return(apo_channel_result("video_online", "video", "Online Video", "campaign_marker_youtube"))
+        return(apo_channel_result("video_yt", "video", "Online Video", "campaign_marker_youtube"))
       }
 
       displayed <- as_apo_text(sheet_channel)
@@ -111,6 +111,33 @@
   # ? Prefer any present APO metric, including zero; otherwise use the fallback
     apo_first_numeric <- function(apo_value, standard_value) {
       if (!is.na(apo_value)) apo_value else standard_value
+    }
+
+  # ? Convert supported YouTube Box links to thumbnail image URLs
+    transform_apo_creative_box_link <- function(link) {
+      link <- as_apo_text(link)
+      link[link == "-"] <- NA_character_
+
+      match_source <- ifelse(is.na(link), "", link)
+      match_result <- regmatches(
+        match_source,
+        regexec(
+          "(?:youtu\\.be/|youtube\\.com/(?:.*[?&]v=|embed/|shorts/|live/))([A-Za-z0-9_-]{11})",
+          match_source,
+          ignore.case = TRUE
+        )
+      )
+      video_id <- vapply(
+        match_result,
+        function(x) if (length(x) >= 2) x[[2]] else NA_character_,
+        character(1)
+      )
+
+      ifelse(
+        !is.na(video_id),
+        paste0("https://img.youtube.com/vi/", video_id, "/0.jpg"),
+        NA_character_
+      )
     }
 
 
@@ -209,7 +236,7 @@
         apo_classification_source = class_value("classification_source"),
         apo_publication_status = class_value("publication_status"),
         apo_creative_name = as_apo_text(apo_column(report_rows, "creative_name")),
-        apo_creative_box_link = as_apo_text(apo_column(report_rows, "creative_box_link")),
+        apo_creative_img = transform_apo_creative_box_link(apo_column(report_rows, "creative_box_link")),
         apo_source_sheet_url = source_sheet_url,
         apo_loaded_at = as.POSIXct(loaded_at, tz = "UTC"),
         apo_row_key = paste(

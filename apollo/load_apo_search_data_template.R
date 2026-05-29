@@ -79,7 +79,7 @@ suppressPackageStartupMessages({
       apo_classification_source = "STRING",
       apo_publication_status = "STRING",
       apo_creative_name = "STRING",
-      apo_creative_box_link = "STRING",
+      apo_creative_img = "STRING",
       apo_source_sheet_url = "STRING",
       apo_loaded_at = "TIMESTAMP",
       apo_row_key = "STRING"
@@ -104,8 +104,14 @@ suppressPackageStartupMessages({
   # ? Read source tabs and normalize header names for the contract helper
     report_rows <- read_sheet(SHEET_ID, sheet = "Report", col_names = TRUE, .name_repair = "unique") %>%
       clean_names()
-    import_rows <- read_sheet(SHEET_ID, sheet = "Import", col_names = TRUE, .name_repair = "unique") %>%
-      clean_names()
+    import_rows <- tryCatch(
+      read_sheet(SHEET_ID, sheet = "Import", col_names = TRUE, .name_repair = "unique") %>%
+        clean_names(),
+      error = function(e) {
+        message("Import tab unavailable; using deterministic ad-group ID fallback. Detail: ", conditionMessage(e))
+        data.frame()
+      }
+    )
     normalized_rows <- normalize_apo_report_rows(report_rows, import_rows, sheet_url, loaded_at)
 
   # ? Print compact source quality evidence before any optional write
@@ -116,7 +122,7 @@ suppressPackageStartupMessages({
         spend = sum(spend, na.rm = TRUE),
         impressions = sum(impressions, na.rm = TRUE),
         clicks = sum(clicks, na.rm = TRUE),
-        creative_links = sum(!is.na(apo_creative_box_link) & apo_creative_box_link != "-", na.rm = TRUE),
+        creative_images = sum(!is.na(apo_creative_img), na.rm = TRUE),
         .groups = "drop"
       )
     cat("\nAPO SEARCH DATA TEMPLATE NORMALIZATION\n")

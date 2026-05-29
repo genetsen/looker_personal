@@ -49,7 +49,7 @@ source("apollo/apo_search_social_logic.R")
     youtube_channel <- classify_apo_channel("G_YT_Video_Apollo", "Paid Search")
     expect_true(
       youtube_channel$publication_status == "publish" &&
-        youtube_channel$channel == "video_online" &&
+        youtube_channel$channel == "video_yt" &&
         youtube_channel$channel_group == "video" &&
         youtube_channel$media_name == "Online Video",
       "_YT_ campaign rows are classified as Online Video"
@@ -86,6 +86,22 @@ source("apollo/apo_search_social_logic.R")
       "APO nonblank values including zero win at column level"
     )
 
+  # ? YouTube Box links become stable thumbnail URLs for creative reporting
+    expected_youtube_thumb <- "https://img.youtube.com/vi/VIDEOID1234/0.jpg"
+    expect_true(
+      identical(
+        transform_apo_creative_box_link(c(
+          "https://www.youtube.com/watch?v=VIDEOID1234",
+          "https://youtu.be/VIDEOID1234",
+          "https://www.youtube.com/shorts/VIDEOID1234",
+          "https://www.youtube.com/embed/VIDEOID1234"
+        )),
+        rep(expected_youtube_thumb, 4)
+      ) &&
+        all(is.na(transform_apo_creative_box_link(c("", "-", "https://example.com/youtube")))),
+      "YouTube creative Box links transform to thumbnail URLs and invalid links stay missing"
+    )
+
 
 # * SECTION [4]: REPORT NORMALIZATION
 
@@ -107,7 +123,7 @@ source("apollo/apo_search_social_logic.R")
       clicks = c("0", "3"),
       creative_name = c("Search Creative", "YT Creative"),
       ad_id = c("791206330446", "807281496954"),
-      creative_box_link = c("-", "https://example.com/youtube"),
+      creative_box_link = c("-", "https://www.youtube.com/watch?v=VIDEOID1234"),
       stringsAsFactors = FALSE
     )
     import_fixture <- data.frame(
@@ -126,7 +142,8 @@ source("apollo/apo_search_social_logic.R")
       nrow(normalized) == 2 &&
         normalized$ad_group_id[[1]] == "991" &&
         normalized$channel[[1]] == "paid_search" &&
-        normalized$channel[[2]] == "video_online" &&
+        normalized$channel[[2]] == "video_yt" &&
+        normalized$apo_creative_img[[2]] == expected_youtube_thumb &&
         normalized$spend[[1]] == 0 &&
         is.character(normalized$ad_id) &&
         is.character(normalized$ad_group_id) &&

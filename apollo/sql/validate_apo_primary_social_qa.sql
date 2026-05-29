@@ -19,7 +19,7 @@ SELECT
   SUM(clicks) AS clicks,
   COUNTIF(spend = 0) AS zero_spend_rows,
   COUNTIF(spend IS NULL) AS blank_spend_rows,
-  COUNTIF(NULLIF(apo_creative_box_link, '-') IS NOT NULL) AS rows_with_creative_link
+  COUNTIF(apo_creative_img IS NOT NULL) AS rows_with_creative_img
 FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
 GROUP BY 1,2,3,4
 ORDER BY 1,2,3,4;
@@ -81,7 +81,8 @@ SELECT
   SUM(`_spend`) AS spend,
   SUM(`_impressions`) AS impressions,
   SUM(`_clicks`) AS clicks,
-  COUNTIF(s_creative_box_link IS NOT NULL) AS rows_with_creative_link
+  COUNTIF(man_creative_img IS NOT NULL) AS rows_with_man_creative_img,
+  COUNTIF(`_creative_img` IS NOT NULL) AS rows_with_canonical_creative_img
 FROM `looker-studio-pro-452620.master_stg.data_model_social_apo_primary_qa`
 WHERE `_advertiser` = 'Apollo'
 GROUP BY 1,2,3

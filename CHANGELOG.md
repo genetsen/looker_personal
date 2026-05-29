@@ -2,6 +2,14 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-05-29
+
+### Changed
+
+- **APO Creative Image Canonicalization -codexapp [thread](https://chatgpt.com/codex)**
+  What: APO YouTube Creative Box links now normalize to thumbnail URLs, APO YouTube channel codes use `video_yt`, social creative names come from ad names, and the master model exposes transformed APO images as `man_creative_img`.
+  Reporting: Added canonical `_creative_img` as `COALESCE(fpd_creative_img, man_creative_img)` and removed the old `s_creative_box_link` output from the APO social path.
+
 ## 2026-05-27
 
 ### Changed

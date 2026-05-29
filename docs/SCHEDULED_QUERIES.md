@@ -457,7 +457,7 @@ WHEN NOT MATCHED THEN INSERT (all_columns)
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: May 27, 2026
+**Last Updated**: May 29, 2026
 
 #### Purpose
 Builds `repo_stg.stg__olipop__crossplatform_raw_tbl`, which is the raw social fact table that eventually feeds the Olipop social branch of `Olipop.MMM_crossplatform`.
@@ -468,6 +468,7 @@ More specifically, the live scheduled query:
 - uses the most recently updated candidate as the delivery source for that run
 - left joins cross-platform video metrics from `repo_stg.stg__olipop_videoviews_crossplatform`
 - merges Apollo rows from [APO normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__apo__search_data_template_daily&page=table), with APO nonblank values primary and standard rows/fields as fallback
+- carries transformed APO creative image URLs in `apo_creative_img`
 - retains cross-campaign Apollo ad-ID rows with visible `publish_pending_source_owner_review` provenance pending source-owner clarification
 - writes the finished result into `repo_stg.stg__olipop__crossplatform_raw_tbl`
 
