@@ -198,7 +198,10 @@ coerce_checkpoint_numeric_fields <- function(df) {
 drop_blank_generated_columns <- function(df) {
   if (ncol(df) == 0) return(df)
 
-  generated_cols <- names(df)[grepl("^x\\d+$", names(df), ignore.case = TRUE)]
+  generated_cols <- names(df)[
+    grepl("^x\\d+$", names(df), ignore.case = TRUE) |
+      grepl("^\\.\\.\\.\\d+$", names(df))
+  ]
   if (length(generated_cols) == 0) return(df)
 
   keep_cols <- vapply(
@@ -1616,6 +1619,7 @@ if (length(combined_list) == 0) {
   cat("\nNo data ingested. Phase 5 ends with no output.\n")
 } else {
   master_df <- bind_rows(combined_list)
+  master_df <- drop_blank_generated_columns(master_df)
   phase5_cache_df <- bind_rows(phase5_cache_status) %>% distinct(sheet_id, .keep_all = TRUE)
 
   # Filter rows upstream (before output + before validation) to remove rows with no KPI signal.
