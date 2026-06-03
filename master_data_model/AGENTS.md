@@ -29,6 +29,10 @@ Recommend the approach that is most analytically useful and correct, not the che
 
 When preserving existing row counts, schema shape, or downstream compatibility conflicts with adding a requested field correctly, do not hide that conflict with a lossy workaround. State the conflict plainly and offer options such as keeping the current grain with an explicitly approved summary field, creating a separate detail view, creating a nested or array field, building a new expanded-grain model, or deferring the field until the correct source and grain are agreed.
 
+## Source Column Preservation Rule
+
+When building downstream tables, views, extracts, reports, or derived datasets from source data, never silently remove source columns from the downstream output. If a source column would be dropped, excluded, renamed away, aggregated away, or made unavailable to preserve grain, schema shape, performance, or dashboard compatibility, state the proposed column change and get explicit user approval before implementing it.
+
 ## Read-Only BigQuery Permission Classification Rule
 
 Classify BigQuery work by the actual operation, not by generic platform approval wording. Schema inspection, table metadata reads, row counts, fill-rate checks, `SELECT` queries, `INFORMATION_SCHEMA` queries, dry runs, and MCP table/query inspection methods are read-only. Do not ask the user for permission for those operations, and do not describe them as modifications.
