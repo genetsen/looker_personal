@@ -1,9 +1,9 @@
 -- @description: Rollback definition for the shared-social scheduled builder
---               captured before APO Search Data Template production promotion.
+--               captured before WP delivery workbook production promotion.
 -- @captured:    2026-05-27 from the live scheduled-query definition.
 -- @output:      repo_stg.stg__olipop__crossplatform_raw_tbl and its existing
 --               cross-platform video companion table.
--- @usage:       Use only to remove APO precedence after a rollback decision.
+-- @usage:       Use only to remove WP precedence after a rollback decision.
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS
 WITH

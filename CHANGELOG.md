@@ -2,29 +2,37 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-06-04
+
+### Changed
+
+- **WP Video Views Ingestion -codexapp [thread](https://chatgpt.com/codex)**
+  What: Mapped the WP workbook `Report` tab `Video Views` metric into staging `video_view`, carried it through shared social, and added canonical master-model `_video_views` using source video views where available and video starts/plays as fallback.
+  Control: The WP loader now forces Sheet columns to text before typed normalization so blank leading rows no longer cause zero-row loads.
+
 ## 2026-05-29
 
 ### Changed
 
-- **APO Creative Image Canonicalization -codexapp [thread](https://chatgpt.com/codex)**
-  What: APO YouTube Creative Box links now normalize to thumbnail URLs, APO YouTube channel codes use `video_yt`, social creative names come from ad names, and the master model exposes transformed APO images as `man_creative_img`.
-  Reporting: Added canonical `_creative_img` as `COALESCE(fpd_creative_img, man_creative_img)` and removed the old `s_creative_box_link` output from the APO social path.
+- **WP Creative Image Canonicalization -codexapp [thread](https://chatgpt.com/codex)**
+  What: WP YouTube Creative Box links now normalize to thumbnail URLs, WP YouTube channel codes use `video_yt`, social creative names come from ad names, and the master model exposes transformed WP images as `man_creative_img`.
+  Reporting: Added canonical `_creative_img` as `COALESCE(fpd_creative_img, man_creative_img)` and removed the old `s_creative_box_link` output from the WP social path.
 
 ## 2026-05-27
 
 ### Changed
 
-- **APO Search Data Template Promoted To Shared Social Production -codexapp [thread](https://chatgpt.com/codex)**
-  What: Promoted the APO Search Data Template to the primary Apollo input in shared-social staging and the master model. Apollo Search and YouTube rows now report as Paid Search and Online Video, and social creative/source-provenance fields remain available in the master output.
+- **WP Delivery Workbook Promoted To Shared Social Production -codexapp [thread](https://chatgpt.com/codex)**
+  What: Promoted the WP delivery workbook to the primary Apollo input in shared-social staging and the master model. Apollo Search and YouTube rows now report as Paid Search and Online Video, and social creative/source-provenance fields remain available in the master output.
   Decision: Campaign-separated Apollo records that share an ad ID are included for now and retain visible pending-source-owner provenance; exact duplicate campaign-grain records remain excluded.
-  Control: The shared-social SQL builder is updated in its existing daily schedule. The APO Sheet loader remains a controlled manual production refresh until the source-owner identity question is resolved.
-  Rollback: Preserved the pre-APO shared-social builder in SQL and saved a pre-APO master-model rollback checkpoint view before the production replacement.
+  Control: The shared-social SQL builder is updated in its existing daily schedule. The WP Sheet loader remains a controlled manual production refresh until the source-owner identity question is resolved.
+  Rollback: Preserved the pre-WP shared-social builder in SQL and saved a pre-WP master-model rollback checkpoint view before the production replacement.
 
-  <details><summary>Paths - APO Production Promotion</summary>
+  <details><summary>Paths - WP Production Promotion</summary>
 
-  [Apollo workflow runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/README.md)
-  [APO production shared-social builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql/create_stg_crossplatform_apo_primary_production.sql)
-  [Pre-APO shared-social rollback builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql/rollback_stg_crossplatform_pre_apo_production.sql)
+  [WP workflow runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md)
+  [WP production shared-social builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_production.sql)
+  [Pre-WP shared-social rollback builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/rollback_stg_crossplatform_pre_wp_production.sql)
   [Master model SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql)
   [Scheduled-query documentation](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/SCHEDULED_QUERIES.md)
 
@@ -34,17 +42,17 @@ All notable changes to this repository are documented in this file.
 
 ### Added
 
-- **APO-First Shared Social QA Candidate -codexapp [thread unavailable](https://chatgpt.com/codex)**
-  What: Added a QA-only APO Search Data Template loader, APO-first shared-social merge candidate, reporting-shaped social review view, focused rule tests, and validation queries. Candidate identity includes campaign, ad group, and ad; cross-campaign ad-ID conflicts are temporarily included as visibly flagged pending-review records rather than silently aggregated or selected.
+- **WP-First Shared Social QA Candidate -codexapp [thread unavailable](https://chatgpt.com/codex)**
+  What: Added a QA-only WP delivery workbook loader, WP-first shared-social merge candidate, reporting-shaped social review view, focused rule tests, and validation queries. Candidate identity includes campaign, ad group, and ad; cross-campaign ad-ID conflicts are temporarily included as visibly flagged pending-review records rather than silently aggregated or selected.
   Why: Makes Apollo Paid Search, Online Video, creative metadata, and historical LinkedIn precedence testable without replacing production shared staging or the production master model before approval.
 
-  <details><summary>Paths - APO-First Shared Social QA Candidate</summary>
+  <details><summary>Paths - WP-First Shared Social QA Candidate</summary>
 
-  [Apollo QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/README.md)
-  [APO normalization rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/apo_search_social_logic.R)
-  [APO Sheet loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/load_apo_search_data_template.R)
-  [APO rule tests](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/tests/test_apo_search_social_logic.R)
-  [QA SQL folder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/apollo/sql)
+  [WP QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md)
+  [WP normalization rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/wp_search_social_logic.R)
+  [WP Sheet loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/load_wp_search_data_template.R)
+  [WP rule tests](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/tests/test_wp_search_social_logic.R)
+  [QA SQL folder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql)
   [Master model README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
   [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md)
 

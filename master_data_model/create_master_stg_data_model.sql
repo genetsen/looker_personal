@@ -593,19 +593,19 @@ social_daily AS (
     SUM(s.video_play) AS video_play,
     SUM(s.video_view) AS video_view,
     SUM(s.video_views_p_100) AS video_complete_proxy,
-    ANY_VALUE(s.apo_channel) AS apo_channel,
-    ANY_VALUE(s.apo_channel_group) AS apo_channel_group,
-    ANY_VALUE(s.apo_media_name) AS apo_media_name,
-    ANY_VALUE(s.apo_ADIF_channel) AS apo_ADIF_channel,
-    ANY_VALUE(s.apo_classification_source) AS apo_classification_source,
-    ANY_VALUE(s.apo_publication_status) AS apo_publication_status,
-    ANY_VALUE(s.apo_creative_name) AS apo_creative_name,
-    ANY_VALUE(s.apo_creative_img) AS apo_creative_img,
-    ANY_VALUE(s.apo_source_sheet_url) AS apo_source_sheet_url,
-    ANY_VALUE(s.apo_loaded_at) AS apo_loaded_at,
-    ANY_VALUE(s.apo_row_key) AS apo_row_key,
-    ANY_VALUE(s.apo_record_source) AS apo_record_source,
-    ANY_VALUE(s.apo_fallback_fields) AS apo_fallback_fields
+    ANY_VALUE(s.wp_channel) AS wp_channel,
+    ANY_VALUE(s.wp_channel_group) AS wp_channel_group,
+    ANY_VALUE(s.wp_media_name) AS wp_media_name,
+    ANY_VALUE(s.wp_ADIF_channel) AS wp_ADIF_channel,
+    ANY_VALUE(s.wp_classification_source) AS wp_classification_source,
+    ANY_VALUE(s.wp_publication_status) AS wp_publication_status,
+    ANY_VALUE(s.wp_creative_name) AS wp_creative_name,
+    ANY_VALUE(s.wp_creative_img) AS wp_creative_img,
+    ANY_VALUE(s.wp_source_sheet_url) AS wp_source_sheet_url,
+    ANY_VALUE(s.wp_loaded_at) AS wp_loaded_at,
+    ANY_VALUE(s.wp_row_key) AS wp_row_key,
+    ANY_VALUE(s.wp_record_source) AS wp_record_source,
+    ANY_VALUE(s.wp_fallback_fields) AS wp_fallback_fields
   FROM `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
   WHERE s.date_day >= DATE '2025-01-01'
   GROUP BY 1,2,3,4,5,6,7,8,9
@@ -627,7 +627,7 @@ social_pacing_dedup AS (
     MAX(end_date) AS end_date,
     MAX(final_budget) AS final_budget
   -- LIVE RECONCILIATION 2026-05-27: Preserve the production scheduled-source
-  -- change observed before the APO addition; do not redeploy the older view.
+  -- change observed before the WP workbook addition; do not redeploy the older view.
   FROM looker-studio-pro-452620.repo_int.crossplatform_pacing_tbl
   WHERE start_date >= DATE '2025-01-01'
     AND final_budget > 0
@@ -671,15 +671,15 @@ social_with_pacing AS (
 social_final AS (
   SELECT
     'social' AS row_type,
-    IF(STARTS_WITH(COALESCE(apo_record_source, ''), 'apo_'), 'apo_search_data_template', 'social') AS row_data_source_primary,
+    IF(STARTS_WITH(COALESCE(wp_record_source, ''), 'wp_'), 'wp_search_data_template', 'social') AS row_data_source_primary,
     ARRAY_TO_STRING(ARRAY_CONCAT(
-      IF(STARTS_WITH(COALESCE(apo_record_source, ''), 'apo_'), ['apo_search_data_template'], ['social']),
-      IF(REGEXP_CONTAINS(COALESCE(apo_record_source, ''), r'apo_primary'), ['social'], []),
+      IF(STARTS_WITH(COALESCE(wp_record_source, ''), 'wp_'), ['wp_search_data_template'], ['social']),
+      IF(REGEXP_CONTAINS(COALESCE(wp_record_source, ''), r'wp_primary'), ['social'], []),
       IF(planned_daily_spend IS NOT NULL, ['social_pacing'], [])
     ), ' | ') AS row_data_sources_available,
     COALESCE(
       NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
-        IF(apo_publication_status = 'publish_pending_source_owner_review', ['pending_apo_source_owner_review'], []),
+        IF(wp_publication_status = 'publish_pending_source_owner_review', ['pending_wp_source_owner_review'], []),
         IF(planned_daily_spend IS NULL, ['missing_social_pacing'], []),
         IF(spend IS NULL AND impressions IS NULL AND clicks IS NULL, ['missing_final_metrics'], [])
       ), ' | '), ''),
@@ -698,26 +698,26 @@ social_final AS (
     'SocialAdGroup' AS package_type,
     ad_group_name AS package_name,
     CAST(NULL AS STRING) AS p_package_friendly,
-    COALESCE(apo_ADIF_channel, 'Social') AS gsMediaTeam_channel,
+    COALESCE(wp_ADIF_channel, 'Social') AS gsMediaTeam_channel,
     ad_id AS placement_id,
     ad_name AS placement_name,
     CASE
-      WHEN apo_classification_source = 'campaign_marker_youtube'
-        OR apo_media_name = 'Online Video' THEN 'YT'
+      WHEN wp_classification_source = 'campaign_marker_youtube'
+        OR wp_media_name = 'Online Video' THEN 'YT'
       ELSE UPPER(social_platform)
     END AS supplier_code,
     CASE
-      WHEN apo_classification_source = 'campaign_marker_youtube'
-        OR apo_media_name = 'Online Video' THEN 'Youtube'
+      WHEN wp_classification_source = 'campaign_marker_youtube'
+        OR wp_media_name = 'Online Video' THEN 'Youtube'
       ELSE social_platform
     END AS supplier_name,
     CAST(NULL AS STRING) AS supplier_logo,
     'Social' AS buy_type,
     social_platform AS buy_category,
-    COALESCE(apo_channel, CONCAT('social_', social_platform)) AS channel,
-    COALESCE(apo_channel, CONCAT('Social_', social_platform)) AS channel_raw,
-    COALESCE(apo_channel_group, 'social') AS channel_group,
-    COALESCE(apo_media_name, 'Social') AS media_name,
+    COALESCE(wp_channel, CONCAT('social_', social_platform)) AS channel,
+    COALESCE(wp_channel, CONCAT('Social_', social_platform)) AS channel_raw,
+    COALESCE(wp_channel_group, 'social') AS channel_group,
+    COALESCE(wp_media_name, 'Social') AS media_name,
     CAST(NULL AS STRING) AS cost_method,
     CAST(NULL AS FLOAT64) AS planned_amount,
     CAST(NULL AS INT64) AS planned_impressions,
@@ -793,14 +793,14 @@ social_final AS (
     video_view AS social_video_views,
     video_complete_proxy AS social_video_comps,
     ad_name AS social_creative_name,
-    apo_creative_img AS man_creative_img,
-    apo_classification_source AS social_classification_source,
-    apo_publication_status AS social_publication_status,
-    apo_source_sheet_url AS social_source_sheet_url,
-    apo_loaded_at AS social_loaded_at,
-    apo_row_key AS social_row_key,
-    apo_record_source AS social_record_source,
-    apo_fallback_fields AS social_fallback_fields
+    wp_creative_img AS man_creative_img,
+    wp_classification_source AS social_classification_source,
+    wp_publication_status AS social_publication_status,
+    wp_source_sheet_url AS social_source_sheet_url,
+    wp_loaded_at AS social_loaded_at,
+    wp_row_key AS social_row_key,
+    wp_record_source AS social_record_source,
+    wp_fallback_fields AS social_fallback_fields
   FROM social_with_pacing
 ),
 
@@ -1307,7 +1307,7 @@ row_callouts AS (
           IF('actual_source_conflict' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['actual_source_conflict'], []),
           IF('low_signal_dcm' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['low_signal_dcm'], []),
           IF('missing_final_metrics' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['missing_final_metrics'], []),
-          IF('pending_apo_source_owner_review' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['pending_apo_source_owner_review'], []),
+          IF('pending_wp_source_owner_review' IN UNNEST(SPLIT(COALESCE(row_data_issue_category, ''), ' | ')), ['pending_wp_source_owner_review'], []),
           IF(
             COALESCE(planned_daily_impressions_pk, 0) = 0
               AND COALESCE(final_impressions, 0) = 0
@@ -1499,6 +1499,7 @@ SELECT
   final_impressions AS `_impressions`,
   final_clicks AS `_clicks`,
   final_video_plays AS `_video_plays`,
+  COALESCE(social_video_views, final_video_plays) AS `_video_views`,
   final_video_comps AS `_video_comps`,
   tv_data_refresh_date AS `tv_data_refresh_date`,
   tv_media_outlet AS `tv_media_outlet`,
@@ -1527,7 +1528,7 @@ SELECT
   social_publication_status AS `s_publication_status`,
   social_source_sheet_url AS `s_source_sheet_url`,
   social_loaded_at AS `s_loaded_at`,
-  social_row_key AS `s_apo_row_key`,
+  social_row_key AS `s_wp_row_key`,
   social_record_source AS `s_record_source`,
   social_fallback_fields AS `s_fallback_fields`,
   man_edit_id AS `man_edit_id`,

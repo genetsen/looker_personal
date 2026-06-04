@@ -1,15 +1,16 @@
 ################################################################################
-#### LOAD APO SEARCH DATA TEMPLATE FOR SHARED SOCIAL DELIVERY
+#### LOAD WP SEARCH DATA TEMPLATE FOR SHARED SOCIAL DELIVERY
 ################################################################################
 # Purpose:
-#   Read the APO Search Data Template, normalize daily ad records, and stage
-#   them for APO-first shared-social delivery and validation.
+#   Read the WP delivery workbook, normalize daily ad records, and stage them
+#   for WP-first shared-social delivery and validation. The source workbook
+#   title is still APO Search Data Template.
 # Inputs:
 #   Google Sheet tabs `Report` and `Import` from the configured workbook.
 # Output and safe usage:
 #   Defaults to a read/preview run and a QA staging table. Set
-#   APO_SEARCH_UPLOAD=TRUE to replace the configured output. Production writes
-#   require APO_SEARCH_ALLOW_PRODUCTION=TRUE after approval.
+#   WP_SEARCH_UPLOAD=TRUE to replace the configured output. Production writes
+#   require WP_SEARCH_ALLOW_PRODUCTION=TRUE after approval.
 ################################################################################
 
 suppressPackageStartupMessages({
@@ -27,23 +28,23 @@ suppressPackageStartupMessages({
 
   # ? Resolve this script's sibling normalization helper safely
     file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-    script_path <- if (length(file_arg) > 0) sub("^--file=", "", file_arg[[1]]) else "apollo/load_apo_search_data_template.R"
+    script_path <- if (length(file_arg) > 0) sub("^--file=", "", file_arg[[1]]) else "wp/load_wp_search_data_template.R"
     script_dir <- dirname(normalizePath(script_path, mustWork = FALSE))
-    source(file.path(script_dir, "apo_search_social_logic.R"))
+    source(file.path(script_dir, "wp_search_social_logic.R"))
 
   # ? Define source workbook and QA output controls
-    PROJECT_ID <- Sys.getenv("APO_SEARCH_PROJECT", "looker-studio-pro-452620")
-    DATASET_ID <- Sys.getenv("APO_SEARCH_DATASET", "repo_stg")
-    TABLE_ID <- Sys.getenv("APO_SEARCH_TABLE", "stg__apo__search_data_template_daily_qa")
-    SHEET_ID <- Sys.getenv("APO_SEARCH_SHEET_ID", "1fen46Ugxx12PYRzCDT88z8ENVcVl_MjlQhqkGDxZNbc")
-    AUTH_EMAIL <- Sys.getenv("APO_SEARCH_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
-    UPLOAD_ENABLED <- tolower(Sys.getenv("APO_SEARCH_UPLOAD", "FALSE")) == "true"
-    ALLOW_PRODUCTION <- tolower(Sys.getenv("APO_SEARCH_ALLOW_PRODUCTION", "FALSE")) == "true"
+    PROJECT_ID <- Sys.getenv("WP_SEARCH_PROJECT", "looker-studio-pro-452620")
+    DATASET_ID <- Sys.getenv("WP_SEARCH_DATASET", "repo_stg")
+    TABLE_ID <- Sys.getenv("WP_SEARCH_TABLE", "stg__wp__search_data_template_daily_qa")
+    SHEET_ID <- Sys.getenv("WP_SEARCH_SHEET_ID", "1fen46Ugxx12PYRzCDT88z8ENVcVl_MjlQhqkGDxZNbc")
+    AUTH_EMAIL <- Sys.getenv("WP_SEARCH_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
+    UPLOAD_ENABLED <- tolower(Sys.getenv("WP_SEARCH_UPLOAD", "FALSE")) == "true"
+    ALLOW_PRODUCTION <- tolower(Sys.getenv("WP_SEARCH_ALLOW_PRODUCTION", "FALSE")) == "true"
     IS_QA_TABLE <- grepl("_qa$", TABLE_ID)
 
   # ? Refuse accidental writes outside a QA table during the evidence phase
     if (UPLOAD_ENABLED && !IS_QA_TABLE && !ALLOW_PRODUCTION) {
-      stop("Production upload blocked. Use a _qa table or explicitly set APO_SEARCH_ALLOW_PRODUCTION=TRUE after QA approval.")
+      stop("Production upload blocked. Use a _qa table or explicitly set WP_SEARCH_ALLOW_PRODUCTION=TRUE after QA approval.")
     }
 
   # ? Declare the shared daily-ad contract instead of inferring IDs as numbers
@@ -76,13 +77,13 @@ suppressPackageStartupMessages({
       channel_group = "STRING",
       media_name = "STRING",
       ADIF_channel = "STRING",
-      apo_classification_source = "STRING",
-      apo_publication_status = "STRING",
-      apo_creative_name = "STRING",
-      apo_creative_img = "STRING",
-      apo_source_sheet_url = "STRING",
-      apo_loaded_at = "TIMESTAMP",
-      apo_row_key = "STRING"
+      wp_classification_source = "STRING",
+      wp_publication_status = "STRING",
+      wp_creative_name = "STRING",
+      wp_creative_img = "STRING",
+      wp_source_sheet_url = "STRING",
+      wp_loaded_at = "TIMESTAMP",
+      wp_row_key = "STRING"
     )
     upload_fields <- bq_fields(unname(Map(
       function(field_name, field_type) bq_field(field_name, field_type),
@@ -102,30 +103,31 @@ suppressPackageStartupMessages({
     loaded_at <- Sys.time()
 
   # ? Read source tabs and normalize header names for the contract helper
-    report_rows <- read_sheet(SHEET_ID, sheet = "Report", col_names = TRUE, .name_repair = "unique") %>%
+    report_rows <- read_sheet(SHEET_ID, sheet = "Report", col_names = TRUE, col_types = "c", .name_repair = "unique") %>%
       clean_names()
     import_rows <- tryCatch(
-      read_sheet(SHEET_ID, sheet = "Import", col_names = TRUE, .name_repair = "unique") %>%
+      read_sheet(SHEET_ID, sheet = "Import", col_names = TRUE, col_types = "c", .name_repair = "unique") %>%
         clean_names(),
       error = function(e) {
         message("Import tab unavailable; using deterministic ad-group ID fallback. Detail: ", conditionMessage(e))
         data.frame()
       }
     )
-    normalized_rows <- normalize_apo_report_rows(report_rows, import_rows, sheet_url, loaded_at)
+    normalized_rows <- normalize_wp_report_rows(report_rows, import_rows, sheet_url, loaded_at)
 
   # ? Print compact source quality evidence before any optional write
     quality_summary <- normalized_rows %>%
-      group_by(platform, media_name, apo_publication_status) %>%
+      group_by(platform, media_name, wp_publication_status) %>%
       summarise(
         row_count = n(),
         spend = sum(spend, na.rm = TRUE),
         impressions = sum(impressions, na.rm = TRUE),
         clicks = sum(clicks, na.rm = TRUE),
-        creative_images = sum(!is.na(apo_creative_img), na.rm = TRUE),
+        video_views = sum(video_view, na.rm = TRUE),
+        creative_images = sum(!is.na(wp_creative_img), na.rm = TRUE),
         .groups = "drop"
       )
-    cat("\nAPO SEARCH DATA TEMPLATE NORMALIZATION\n")
+    cat("\nWP SEARCH DATA TEMPLATE NORMALIZATION\n")
     cat("Rows prepared:", nrow(normalized_rows), "\n")
     print(quality_summary)
 
@@ -146,16 +148,16 @@ suppressPackageStartupMessages({
       )
       table_description <- if (IS_QA_TABLE) {
         paste(
-          "QA-only normalized source-row input loaded from the APO Search Data Template",
-          "by apollo/load_apo_search_data_template.R. Campaign-grain records with",
+          "QA-only normalized source-row input loaded from the WP delivery workbook",
+          "by wp/load_wp_search_data_template.R. Campaign-grain records with",
           "cross-campaign ad-ID conflicts are marked pending source-owner review;",
           "production shared staging is unchanged. Safe to delete after review",
           "by the master data model owner."
         )
       } else {
         paste(
-          "Production normalized source-row input loaded from the APO Search Data",
-          "Template by apollo/load_apo_search_data_template.R. Campaign-grain records",
+          "Production normalized source-row input loaded from the WP delivery workbook",
+          "by wp/load_wp_search_data_template.R. Campaign-grain records",
           "with cross-campaign ad-ID conflicts are included pending source-owner",
           "review and retain their publication-status provenance. Refresh is",
           "controlled manually until the source-owner rule is confirmed."
@@ -169,7 +171,7 @@ suppressPackageStartupMessages({
         table_description
       )
       bq_project_query(PROJECT_ID, description_sql, quiet = TRUE)
-      cat("\nUploaded normalized APO rows to ", PROJECT_ID, ".", DATASET_ID, ".", TABLE_ID, "\n", sep = "")
+      cat("\nUploaded normalized WP rows to ", PROJECT_ID, ".", DATASET_ID, ".", TABLE_ID, "\n", sep = "")
     } else {
-      cat("\nPreview only: set APO_SEARCH_UPLOAD=TRUE to write the configured staging table.\n")
+      cat("\nPreview only: set WP_SEARCH_UPLOAD=TRUE to write the configured staging table.\n")
     }

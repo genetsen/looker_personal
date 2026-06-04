@@ -1,15 +1,15 @@
 ################################################################################
-#### TEST APO SEARCH DATA TEMPLATE SOCIAL LOGIC
+#### TEST WP SEARCH DATA TEMPLATE SOCIAL LOGIC
 ################################################################################
 # Purpose:
-#   Lock the business rules for normalizing APO Search Data Template records
+#   Lock the business rules for normalizing WP delivery workbook records
 #   before they are merged into shared social staging.
 # Safe usage:
 #   This file is read-only with respect to Sheets and BigQuery. Run with
-#   Rscript apollo/tests/test_apo_search_social_logic.R from the repo root.
+#   Rscript wp/tests/test_wp_search_social_logic.R from the repo root.
 ################################################################################
 
-source("apollo/apo_search_social_logic.R")
+source("wp/wp_search_social_logic.R")
 
 
 # * SECTION [1]: TEST HELPERS
@@ -31,13 +31,13 @@ source("apollo/apo_search_social_logic.R")
 
   # ? Platform display names normalize to shared staging vocabulary
     expect_true(
-      normalize_apo_platform("LinkedIn") == "linkedin_ads" &&
-        normalize_apo_platform("Google") == "google_ads",
+      normalize_wp_platform("LinkedIn") == "linkedin_ads" &&
+        normalize_wp_platform("Google") == "google_ads",
       "LinkedIn and Google normalize to existing shared platform values"
     )
 
   # ? Campaign markers override the displayed sheet channel
-    search_channel <- classify_apo_channel("G_Search_Brand_Apollo", "Paid Social")
+    search_channel <- classify_wp_channel("G_Search_Brand_Apollo", "Paid Social")
     expect_true(
       search_channel$publication_status == "publish" &&
         search_channel$channel == "paid_search" &&
@@ -46,7 +46,7 @@ source("apollo/apo_search_social_logic.R")
       "_Search_ campaign rows are classified as Paid Search"
     )
 
-    youtube_channel <- classify_apo_channel("G_YT_Video_Apollo", "Paid Search")
+    youtube_channel <- classify_wp_channel("G_YT_Video_Apollo", "Paid Search")
     expect_true(
       youtube_channel$publication_status == "publish" &&
         youtube_channel$channel == "video_yt" &&
@@ -56,8 +56,8 @@ source("apollo/apo_search_social_logic.R")
     )
 
   # ? The sheet channel is fallback-only and ambiguous markers do not publish
-    fallback_channel <- classify_apo_channel("Apollo_Brand_Awareness", "Paid Social")
-    ambiguous_channel <- classify_apo_channel("G_Search_YT_Apollo", "Paid Search")
+    fallback_channel <- classify_wp_channel("Apollo_Brand_Awareness", "Paid Social")
+    ambiguous_channel <- classify_wp_channel("G_Search_YT_Apollo", "Paid Search")
     expect_true(
       fallback_channel$classification_source == "sheet_channel_fallback" &&
         fallback_channel$media_name == "Paid Social" &&
@@ -68,29 +68,29 @@ source("apollo/apo_search_social_logic.R")
 
 # * SECTION [3]: IDENTIFIERS AND SOURCE PRECEDENCE
 
-  # Description: Verify deterministic APO-only keys and column-level fallback.
+  # Description: Verify deterministic WP-only keys and column-level fallback.
 
-  # ? New APO rows can be keyed when the sheet has no platform campaign ID
+  # ? New WP rows can be keyed when the sheet has no platform campaign ID
     expect_true(
-      synthetic_apo_id("campaign", "google_ads", "G Search Brand Apollo") ==
-        "apo:campaign:google_ads:g_search_brand_apollo",
+      synthetic_wp_id("campaign", "google_ads", "G Search Brand Apollo") ==
+        "wp:campaign:google_ads:g_search_brand_apollo",
       "name-based synthetic IDs are stable and readable"
     )
 
-  # ? APO zero metrics win; only blank or missing APO values fall back
+  # ? WP zero metrics win; only blank or missing WP values fall back
     expect_true(
-      apo_first_numeric(0, 27) == 0 &&
-        apo_first_numeric(NA_real_, 27) == 27 &&
-        apo_first_text("", "standard") == "standard" &&
-        apo_first_text("APO value", "standard") == "APO value",
-      "APO nonblank values including zero win at column level"
+      wp_first_numeric(0, 27) == 0 &&
+        wp_first_numeric(NA_real_, 27) == 27 &&
+        wp_first_text("", "standard") == "standard" &&
+        wp_first_text("WP value", "standard") == "WP value",
+      "WP nonblank values including zero win at column level"
     )
 
   # ? YouTube Box links become stable thumbnail URLs for creative reporting
     expected_youtube_thumb <- "https://img.youtube.com/vi/VIDEOID1234/0.jpg"
     expect_true(
       identical(
-        transform_apo_creative_box_link(c(
+        transform_wp_creative_box_link(c(
           "https://www.youtube.com/watch?v=VIDEOID1234",
           "https://youtu.be/VIDEOID1234",
           "https://www.youtube.com/shorts/VIDEOID1234",
@@ -98,7 +98,7 @@ source("apollo/apo_search_social_logic.R")
         )),
         rep(expected_youtube_thumb, 4)
       ) &&
-        all(is.na(transform_apo_creative_box_link(c("", "-", "https://example.com/youtube")))),
+        all(is.na(transform_wp_creative_box_link(c("", "-", "https://example.com/youtube")))),
       "YouTube creative Box links transform to thumbnail URLs and invalid links stay missing"
     )
 
@@ -121,6 +121,7 @@ source("apollo/apo_search_social_logic.R")
       spend = c("$0.00", "$8.50"),
       impressions = c("0", "100"),
       clicks = c("0", "3"),
+      video_views = c("0", "27"),
       creative_name = c("Search Creative", "YT Creative"),
       ad_id = c("791206330446", "807281496954"),
       creative_box_link = c("-", "https://www.youtube.com/watch?v=VIDEOID1234"),
@@ -132,7 +133,7 @@ source("apollo/apo_search_social_logic.R")
       ad_group_id_polaris = c("991", "992"),
       stringsAsFactors = FALSE
     )
-    normalized <- normalize_apo_report_rows(
+    normalized <- normalize_wp_report_rows(
       report_fixture,
       import_fixture,
       "https://docs.google.com/spreadsheets/d/test",
@@ -143,8 +144,10 @@ source("apollo/apo_search_social_logic.R")
         normalized$ad_group_id[[1]] == "991" &&
         normalized$channel[[1]] == "paid_search" &&
         normalized$channel[[2]] == "video_yt" &&
-        normalized$apo_creative_img[[2]] == expected_youtube_thumb &&
+        normalized$wp_creative_img[[2]] == expected_youtube_thumb &&
         normalized$spend[[1]] == 0 &&
+        normalized$video_view[[1]] == 0 &&
+        normalized$video_view[[2]] == 27 &&
         is.character(normalized$ad_id) &&
         is.character(normalized$ad_group_id) &&
         is.numeric(normalized$conversions) &&
@@ -160,28 +163,28 @@ source("apollo/apo_search_social_logic.R")
     )
     duplicate_report$spend <- c("$64.61", "$78.85")
     duplicate_import <- rbind(import_fixture[1, ], import_fixture[1, ])
-    duplicate_normalized <- normalize_apo_report_rows(
+    duplicate_normalized <- normalize_wp_report_rows(
       duplicate_report,
       duplicate_import,
       "https://docs.google.com/spreadsheets/d/test",
       as.POSIXct("2026-05-26 12:00:00", tz = "UTC")
     )
     expect_true(
-      all(duplicate_normalized$apo_publication_status == "publish_pending_source_owner_review") &&
-        length(unique(duplicate_normalized$apo_row_key)) == 2,
+      all(duplicate_normalized$wp_publication_status == "publish_pending_source_owner_review") &&
+        length(unique(duplicate_normalized$wp_row_key)) == 2,
       "cross-campaign ad-ID conflicts publish as distinct pending-review records"
     )
 
   # ? Exact repeated copies remain excluded even under campaign-grain identity
-    repeated_record <- normalize_apo_report_rows(
+    repeated_record <- normalize_wp_report_rows(
       rbind(report_fixture[1, ], report_fixture[1, ]),
       rbind(import_fixture[1, ], import_fixture[1, ]),
       "https://docs.google.com/spreadsheets/d/test",
       as.POSIXct("2026-05-26 12:00:00", tz = "UTC")
     )
     expect_true(
-      all(repeated_record$apo_publication_status == "exclude_duplicate_record_key"),
+      all(repeated_record$wp_publication_status == "exclude_duplicate_record_key"),
       "exact duplicate campaign-grain records remain excluded"
     )
 
-cat("All APO search social logic tests passed.\n")
+cat("All WP search social logic tests passed.\n")

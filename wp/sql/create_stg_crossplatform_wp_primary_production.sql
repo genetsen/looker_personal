@@ -1,17 +1,17 @@
--- @description: Production shared-social daily-ad builder with APO Search Data
+-- @description: Production shared-social daily-ad builder with WP Search Data
 --               Template precedence for Apollo records and the established
 --               cross-platform delivery source as fallback.
 -- @sources:     Freshest live ad-report relation selected at runtime,
 --               repo_stg.stg__olipop_videoviews_crossplatform,
---               repo_stg.stg__apo__search_data_template_daily
+--               repo_stg.stg__wp__search_data_template_daily
 -- @output:      repo_stg.stg__olipop__crossplatform_raw_tbl at daily-ad grain.
 -- @safety:      Production replacement. Deploy only after QA candidate review.
--- @decision:    Campaign-separated APO ad IDs are included for now and remain
+-- @decision:    Campaign-separated WP ad IDs are included for now and remain
 --               flagged publish_pending_source_owner_review until clarified.
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
 OPTIONS (
-  description = "Production shared-social daily-ad staging. APO Search Data Template is primary for Apollo matching campaign/ad rows, with standard shared-social delivery filling absent rows or fields. APO campaign-separated ad-ID records are included pending source-owner review and remain flagged in provenance. Built by apollo/sql/create_stg_crossplatform_apo_primary_production.sql."
+  description = "Production shared-social daily-ad staging. WP delivery workbook is primary for Apollo matching campaign/ad rows, with standard shared-social delivery filling absent rows or fields. WP campaign-separated ad-ID records are included pending source-owner review and remain flagged in provenance. Built by wp/sql/create_stg_crossplatform_wp_primary_production.sql."
 ) AS
 WITH
 source_choice AS (
@@ -63,20 +63,20 @@ standard_extended AS (
       WHEN COALESCE(b.video_play, 0) + COALESCE(b.video_view, 0) > 0 THEN 'video'
       ELSE NULL
     END AS video_flag,
-    CAST(NULL AS STRING) AS apo_channel,
-    CAST(NULL AS STRING) AS apo_channel_group,
-    CAST(NULL AS STRING) AS apo_media_name,
-    CAST(NULL AS STRING) AS apo_ADIF_channel,
-    CAST(NULL AS STRING) AS apo_classification_source,
-    CAST(NULL AS STRING) AS apo_publication_status,
-    CAST(NULL AS STRING) AS apo_creative_name,
-    CAST(NULL AS STRING) AS apo_creative_img,
-    CAST(NULL AS STRING) AS apo_source_sheet_url,
-    CAST(NULL AS TIMESTAMP) AS apo_loaded_at,
-    CAST(NULL AS STRING) AS apo_row_key,
-    'standard_only' AS apo_record_source,
-    FALSE AS apo_has_standard_fallback,
-    CAST(NULL AS STRING) AS apo_fallback_fields
+    CAST(NULL AS STRING) AS wp_channel,
+    CAST(NULL AS STRING) AS wp_channel_group,
+    CAST(NULL AS STRING) AS wp_media_name,
+    CAST(NULL AS STRING) AS wp_ADIF_channel,
+    CAST(NULL AS STRING) AS wp_classification_source,
+    CAST(NULL AS STRING) AS wp_publication_status,
+    CAST(NULL AS STRING) AS wp_creative_name,
+    CAST(NULL AS STRING) AS wp_creative_img,
+    CAST(NULL AS STRING) AS wp_source_sheet_url,
+    CAST(NULL AS TIMESTAMP) AS wp_loaded_at,
+    CAST(NULL AS STRING) AS wp_row_key,
+    'standard_only' AS wp_record_source,
+    FALSE AS wp_has_standard_fallback,
+    CAST(NULL AS STRING) AS wp_fallback_fields
   FROM delivery_source AS a
   LEFT JOIN video_metrics AS b
     ON a.source_relation = b.source_relation
@@ -95,10 +95,10 @@ standard_non_apollo AS (
   FROM standard_extended
   WHERE NOT REGEXP_CONTAINS(UPPER(COALESCE(account_name, '')), r'APOLLO')
 ),
-apo_publishable AS (
+wp_publishable AS (
   SELECT *
-  FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily`
-  WHERE apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
+  FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
+  WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
 ),
 merged_apollo AS (
   SELECT
@@ -126,27 +126,27 @@ merged_apollo AS (
     COALESCE(a.video_views_p_100, s.video_views_p_100) AS video_views_p_100,
     COALESCE(a.hookrate_num, s.hookrate_num) AS hookrate_num,
     COALESCE(NULLIF(a.video_flag, ''), s.video_flag) AS video_flag,
-    a.channel AS apo_channel,
-    a.channel_group AS apo_channel_group,
-    a.media_name AS apo_media_name,
-    a.ADIF_channel AS apo_ADIF_channel,
-    a.apo_classification_source,
-    a.apo_publication_status,
-    a.apo_creative_name,
-    a.apo_creative_img,
-    a.apo_source_sheet_url,
-    a.apo_loaded_at,
-    a.apo_row_key,
+    a.channel AS wp_channel,
+    a.channel_group AS wp_channel_group,
+    a.media_name AS wp_media_name,
+    a.ADIF_channel AS wp_ADIF_channel,
+    a.wp_classification_source,
+    a.wp_publication_status,
+    a.wp_creative_name,
+    a.wp_creative_img,
+    a.wp_source_sheet_url,
+    a.wp_loaded_at,
+    a.wp_row_key,
     CASE
-      WHEN a.apo_publication_status = 'publish_pending_source_owner_review'
-        AND s.ad_id IS NOT NULL THEN 'apo_primary_pending_source_owner_review'
-      WHEN a.apo_publication_status = 'publish_pending_source_owner_review'
-        THEN 'apo_only_pending_source_owner_review'
-      WHEN a.ad_id IS NOT NULL AND s.ad_id IS NOT NULL THEN 'apo_primary_with_standard_fallback'
-      WHEN a.ad_id IS NOT NULL THEN 'apo_only'
+      WHEN a.wp_publication_status = 'publish_pending_source_owner_review'
+        AND s.ad_id IS NOT NULL THEN 'wp_primary_pending_source_owner_review'
+      WHEN a.wp_publication_status = 'publish_pending_source_owner_review'
+        THEN 'wp_only_pending_source_owner_review'
+      WHEN a.ad_id IS NOT NULL AND s.ad_id IS NOT NULL THEN 'wp_primary_with_standard_fallback'
+      WHEN a.ad_id IS NOT NULL THEN 'wp_only'
       ELSE 'standard_only'
-    END AS apo_record_source,
-    a.ad_id IS NOT NULL AND s.ad_id IS NOT NULL AS apo_has_standard_fallback,
+    END AS wp_record_source,
+    a.ad_id IS NOT NULL AND s.ad_id IS NOT NULL AS wp_has_standard_fallback,
     NULLIF(ARRAY_TO_STRING(ARRAY(
       SELECT field_name
       FROM UNNEST([
@@ -161,9 +161,9 @@ merged_apollo AS (
         IF(a.hookrate_num IS NULL AND s.hookrate_num IS NOT NULL, 'hookrate_num', NULL)
       ]) AS field_name
       WHERE field_name IS NOT NULL
-    ), ' | '), '') AS apo_fallback_fields
+    ), ' | '), '') AS wp_fallback_fields
   FROM standard_apollo AS s
-  FULL OUTER JOIN apo_publishable AS a
+  FULL OUTER JOIN wp_publishable AS a
     ON s.date_day = a.date_day
    AND LOWER(s.platform) = LOWER(a.platform)
    AND CAST(s.ad_id AS STRING) = CAST(a.ad_id AS STRING)

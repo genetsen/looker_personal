@@ -1,37 +1,38 @@
--- @description: Runs read-only QA checks for the APO-first shared-social
+-- @description: Runs read-only QA checks for the WP-first shared-social
 --               candidate and its reporting-shaped social impact view.
--- @sources:     repo_stg.stg__apo__search_data_template_daily_qa,
---               repo_stg.stg__crossplatform_apo_primary_qa,
---               master_stg.data_model_social_apo_primary_qa,
+-- @sources:     repo_stg.stg__wp__search_data_template_daily_qa,
+--               repo_stg.stg__crossplatform_wp_primary_qa,
+--               master_stg.data_model_social_wp_primary_qa,
 --               repo_stg.stg__olipop__crossplatform_raw_tbl.
 -- @usage:       Run after creating both QA views. Review all result sets before
 --               any production source or master-model replacement.
 
--- * CHECK [1]: APO INPUT CLASSIFICATION AND CREATIVE COVERAGE
+-- * CHECK [1]: WP INPUT CLASSIFICATION AND CREATIVE COVERAGE
 SELECT
   platform,
   media_name,
-  apo_classification_source,
-  apo_publication_status,
+  wp_classification_source,
+  wp_publication_status,
   COUNT(*) AS row_count,
   SUM(spend) AS spend,
   SUM(impressions) AS impressions,
   SUM(clicks) AS clicks,
+  SUM(video_view) AS video_views,
   COUNTIF(spend = 0) AS zero_spend_rows,
   COUNTIF(spend IS NULL) AS blank_spend_rows,
-  COUNTIF(apo_creative_img IS NOT NULL) AS rows_with_creative_img
-FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
+  COUNTIF(wp_creative_img IS NOT NULL) AS rows_with_creative_img
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
 GROUP BY 1,2,3,4
 ORDER BY 1,2,3,4;
 
--- * CHECK [2]: NO DUPLICATE INCLUDED APO CAMPAIGN-GRAIN RECORD KEYS
+-- * CHECK [2]: NO DUPLICATE INCLUDED WP CAMPAIGN-GRAIN RECORD KEYS
 SELECT
   platform,
   date_day,
-  apo_row_key,
+  wp_row_key,
   COUNT(*) AS duplicate_rows
-FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
-WHERE apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
+WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
 GROUP BY 1,2,3
 HAVING COUNT(*) > 1
 ORDER BY duplicate_rows DESC, date_day DESC
@@ -44,8 +45,8 @@ WITH pending_input AS (
     SUM(spend) AS spend,
     SUM(impressions) AS impressions,
     SUM(clicks) AS clicks
-  FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa`
-  WHERE apo_publication_status = 'publish_pending_source_owner_review'
+  FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
+  WHERE wp_publication_status = 'publish_pending_source_owner_review'
 ),
 pending_candidate AS (
   SELECT
@@ -53,8 +54,8 @@ pending_candidate AS (
     SUM(spend) AS spend,
     SUM(impressions) AS impressions,
     SUM(clicks) AS clicks
-  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_apo_primary_qa`
-  WHERE apo_publication_status = 'publish_pending_source_owner_review'
+  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_wp_primary_qa`
+  WHERE wp_publication_status = 'publish_pending_source_owner_review'
 )
 SELECT
   'staging_pending_input' AS check_name,
@@ -81,31 +82,32 @@ SELECT
   SUM(`_spend`) AS spend,
   SUM(`_impressions`) AS impressions,
   SUM(`_clicks`) AS clicks,
+  SUM(`_video_views`) AS video_views,
   COUNTIF(man_creative_img IS NOT NULL) AS rows_with_man_creative_img,
   COUNTIF(`_creative_img` IS NOT NULL) AS rows_with_canonical_creative_img
-FROM `looker-studio-pro-452620.master_stg.data_model_social_apo_primary_qa`
+FROM `looker-studio-pro-452620.master_stg.data_model_social_wp_primary_qa`
 WHERE `_advertiser` = 'Apollo'
 GROUP BY 1,2,3
 ORDER BY 2,3;
 
--- * CHECK [5]: HISTORICAL OVERLAP DIFFERENCES WHERE APO WINS
+-- * CHECK [5]: HISTORICAL OVERLAP DIFFERENCES WHERE WP WINS
 SELECT
   a.platform,
   a.date_day,
   a.ad_id,
   s.spend AS standard_spend,
-  a.spend AS apo_spend,
+  a.spend AS wp_spend,
   s.impressions AS standard_impressions,
-  a.impressions AS apo_impressions,
+  a.impressions AS wp_impressions,
   s.clicks AS standard_clicks,
-  a.clicks AS apo_clicks
-FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa` AS a
+  a.clicks AS wp_clicks
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa` AS a
 JOIN `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
   ON a.date_day = s.date_day
  AND LOWER(a.platform) = LOWER(s.platform)
  AND CAST(a.ad_id AS STRING) = CAST(s.ad_id AS STRING)
  AND LOWER(TRIM(COALESCE(a.campaign_name, ''))) = LOWER(TRIM(COALESCE(s.campaign_name, '')))
-WHERE a.apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
+WHERE a.wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
   AND (
     a.spend IS DISTINCT FROM s.spend
     OR a.impressions IS DISTINCT FROM s.impressions
@@ -114,7 +116,7 @@ WHERE a.apo_publication_status IN ('publish', 'publish_pending_source_owner_revi
 ORDER BY a.date_day DESC, a.ad_id
 LIMIT 100;
 
--- * CHECK [6]: NEW APO ROWS ABSENT FROM THE STANDARD SOURCE
+-- * CHECK [6]: NEW WP ROWS ABSENT FROM THE STANDARD SOURCE
 SELECT
   a.platform,
   a.media_name,
@@ -122,13 +124,13 @@ SELECT
   SUM(a.spend) AS new_spend,
   SUM(a.impressions) AS new_impressions,
   SUM(a.clicks) AS new_clicks
-FROM `looker-studio-pro-452620.repo_stg.stg__apo__search_data_template_daily_qa` AS a
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa` AS a
 LEFT JOIN `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
   ON a.date_day = s.date_day
  AND LOWER(a.platform) = LOWER(s.platform)
  AND CAST(a.ad_id AS STRING) = CAST(s.ad_id AS STRING)
  AND LOWER(TRIM(COALESCE(a.campaign_name, ''))) = LOWER(TRIM(COALESCE(s.campaign_name, '')))
-WHERE a.apo_publication_status IN ('publish', 'publish_pending_source_owner_review')
+WHERE a.wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
   AND s.ad_id IS NULL
 GROUP BY 1,2
 ORDER BY 1,2;
@@ -152,7 +154,7 @@ WITH scoped_rows AS (
     spend,
     impressions,
     clicks
-  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_apo_primary_qa`
+  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_wp_primary_qa`
   WHERE LOWER(account_name) LIKE '%olipop%'
 
   UNION ALL
@@ -180,7 +182,7 @@ WITH scoped_rows AS (
     spend,
     impressions,
     clicks
-  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_apo_primary_qa`
+  FROM `looker-studio-pro-452620.repo_stg.stg__crossplatform_wp_primary_qa`
   WHERE TRIM(account_name) IN (
     'ADIF USA',
     'A Diamond is Forever - US',
