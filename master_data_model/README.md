@@ -61,10 +61,11 @@ The view:
 5. Recalculates package rollups after final spend, impressions, and clicks are assigned.
 6. Adds TV rows from the combined local/national TV estimate view with synthetic package and placement IDs.
 7. Adds social rows from the cross-platform raw social table when compatible daily social grain is available, with WP workbook rows primary for Apollo.
-8. Candidate logic also exposes all available row sources in `row_data_sources_available`, short issue labels in `row_data_issue_category`, and dashboard-friendly row callouts in `row_data_callouts`.
-9. Adds `_advertiser` as the canonical advertiser grouping field while preserving raw `_advertiser_name` and `_advertiser_short_name`.
-10. Applies valid active manual package edits from `landing.master_data_model_manual_package_daily` and package-level metadata edits from `landing.master_data_model_manual_package_edits_raw` before package rollups are calculated.
-11. Adds `initiative` from Prisma's source column `initative` at the package/date model grain.
+8. Adds Ritual Amazon Ads rows from the runner-maintained landing table, mapping supply cost, impressions, clicks, video starts, and video completions into generic delivery metrics while preserving all Amazon report fields in `amzn_*` columns.
+9. Candidate logic also exposes all available row sources in `row_data_sources_available`, short issue labels in `row_data_issue_category`, and dashboard-friendly row callouts in `row_data_callouts`.
+10. Adds `_advertiser` as the canonical advertiser grouping field while preserving raw `_advertiser_name` and `_advertiser_short_name`.
+11. Applies valid active manual package edits from `landing.master_data_model_manual_package_daily` and package-level metadata edits from `landing.master_data_model_manual_package_edits_raw` before package rollups are calculated.
+12. Adds `initiative` from Prisma's source column `initative` at the package/date model grain.
 
 ## Source Tables And Views
 
@@ -80,6 +81,10 @@ Social inputs:
 - [Shared cross-platform raw staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_raw_tbl&page=table)
 - [Social pacing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_int&t=crossplatform_pacing_tbl&page=table)
 
+Amazon Ads input:
+
+- [Ritual Amazon Ads landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rit_amzn_report_daily&page=table)
+
 Apollo production source and review controls:
 
 - [APO Search Data Template](https://docs.google.com/spreadsheets/d/1fen46Ugxx12PYRzCDT88z8ENVcVl_MjlQhqkGDxZNbc/edit?gid=982708559#gid=982708559) supplies production Apollo delivery fields and creative metadata.
@@ -94,7 +99,8 @@ Apollo production source and review controls:
 
 TV inputs:
 
-- `looker-studio-pro-452620.landing.tv_combined`
+- [TV combined table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined_tbl&page=table)
+- [TV combined view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined&page=table) remains available for source-lineage comparison.
 
 Manual package edit inputs:
 
@@ -148,6 +154,9 @@ Ritual delivery detail v2:
 - WP social creative and lineage are visible in `s_creative_name`, `man_creative_img`, `_creative_img`, `s_channel_classification_source`, `s_publication_status`, `s_source_sheet_url`, `s_loaded_at`, `s_wp_row_key`, `s_record_source`, and `s_fallback_fields`.
 - TV rows use synthetic package and placement keys because the TV estimate view does not naturally share Prisma package IDs.
 - TV source fields are preserved in `tv_*` fields, including outlet, type, program, market, quarter, year, net impressions, net cost, total units, and data refresh date.
+- Amazon Ads rows use synthetic package keys because the Amazon report does not naturally share Prisma package IDs.
+- Amazon Ads source fields are preserved in `amzn_*` fields. The model maps Amazon supply cost into `_spend`, and maps impressions, clicks, video starts, and complete video views into the generic delivery metric fields. Amazon sales, purchases, units sold, branded searches, source email metadata, and source file metadata stay visible in the Amazon-specific columns.
+- Amazon Ads rows use `qa_row_type = 'amazon_ads'` and `qa_row_data_source_primary = 'amazon_ads'`. Amazon `sales` is not mapped into `_spend` because it is outcome revenue, not media spend; Amazon `supply_cost` is preserved as `amzn_supply_cost` and mapped into `_spend`.
 - Updated FPD is layered before `final_spend`, `final_impressions`, and package actual rollups are calculated.
 - Original FPD and updated FPD are both preserved in separate `fpd_orig_*` and `fpd_updated_*` fields, then combined into `fpd_*` fields.
 - Manual package edits are layered after the normal digital/social/TV rows and before planned backfills, row callouts, and package rollups. Non-null `man_daily_*` metric values win for their matching final `_` fields on the edited delivery dates, while package-level `man_*` metadata values override Prisma metadata for the whole package.
@@ -224,6 +233,11 @@ Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model
 The production Manual Data Editor sheet is the loader default. Set `MASTER_MANUAL_EDIT_SHEET_ID` only when intentionally running against a different sheet copy.
 
 Refresh the master view:
+
+```bash
+bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
+  < master_data_model/create_master_data_model_upstream_tables_sched.sql
+```
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
