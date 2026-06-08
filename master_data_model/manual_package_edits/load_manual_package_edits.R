@@ -27,15 +27,53 @@ PRISMA_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_PRISMA_TABLE", "looker-studio-pro
 DEFAULT_SHEET_ID <- "1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo"
 SHEET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_SHEET_ID", unset = DEFAULT_SHEET_ID)
 AUTH_EMAIL <- Sys.getenv("MASTER_MANUAL_EDIT_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
+LOADER_FILENAME <- "load_manual_package_edits.R"
+DEFAULT_SCRIPT_DIR <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits"
+
+find_loader_script_dir <- function() {
+  script_args <- commandArgs(trailingOnly = FALSE)
+  file_matches <- sub("^--file=", "", script_args[startsWith(script_args, "--file=")])
+  frame_files <- vapply(sys.frames(), function(frame) {
+    ofile <- frame$ofile
+    if (is.null(ofile) || length(ofile) == 0) {
+      NA_character_
+    } else {
+      as.character(ofile[[1]])
+    }
+  }, character(1))
+
+  candidates <- c(file_matches, frame_files)
+  candidates <- candidates[!is.na(candidates) & candidates != ""]
+  loader_candidates <- candidates[basename(candidates) == LOADER_FILENAME]
+  if (length(loader_candidates) > 0) {
+    return(dirname(normalizePath(loader_candidates[[length(loader_candidates)]], mustWork = FALSE)))
+  }
+
+  if (file.exists(file.path(getwd(), "repair_manual_package_editor_filters.mjs"))) {
+    return(getwd())
+  }
+
+  if (file.exists(file.path(DEFAULT_SCRIPT_DIR, "repair_manual_package_editor_filters.mjs"))) {
+    return(DEFAULT_SCRIPT_DIR)
+  }
+
+  if (length(candidates) > 0) {
+    return(dirname(normalizePath(candidates[[1]], mustWork = FALSE)))
+  }
+
+  getwd()
+}
+SCRIPT_DIR <- find_loader_script_dir()
 
 TAB_EDITOR <- "Package Editor"
 EDITOR_HEADER_ROW <- 4
 EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
 EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
 REQUEST_STATUS_CELL <- "F2"
-EDITOR_VISIBLE_LAST_COLUMN <- "AR"
-MANUAL_MARKER_START_COLUMN <- "AS"
-EDITOR_LAST_COLUMN <- "BM"
+EDITOR_VISIBLE_LAST_COLUMN <- "AU"
+MANUAL_MARKER_START_COLUMN <- "AV"
+FILTER_HELPER_START_COLUMN <- "BQ"
+EDITOR_LAST_COLUMN <- "BQ"
 LEGACY_TABS <- c(
   "Sheet1", "Package Lookup", "Start Here", "Manual Package Edits",
   "Validation Preview", "Daily Proof", "Publish Status", "Change History"
@@ -79,6 +117,9 @@ display_columns <- c(
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Primary Row Data Source",
+  "Validation Status",
+  "Validation Reason",
   "Baseline Flight Start Date",
   "Baseline Flight End Date",
   "Baseline Planned Spend",
@@ -126,6 +167,10 @@ manual_marker_columns <- c(
   "Manual Marker GS Channel"
 )
 
+filter_helper_columns <- c(
+  "Edited Row Filter"
+)
+
 metric_specs <- tibble::tribble(
   ~display_col, ~value_key, ~current_col, ~replacement_col, ~delta_col, ~daily_col, ~total_col, ~metric_name,
   "Spend", "spend", "current_spend", "replacement_spend", "delta_spend", "man_daily_spend", "man_total_spend_doNotSum", "spend",
@@ -138,8 +183,8 @@ metric_specs <- tibble::tribble(
 )
 
 planned_metric_names <- c("planned_spend", "planned_impressions")
-currency_metric_names <- c("spend", "planned_spend")
 whole_number_metric_names <- c("impressions", "planned_impressions", "clicks", "video_plays", "video_comps")
+daily_total_proof_tolerance <- 0.01
 
 metadata_specs <- tibble::tribble(
   ~display_col, ~value_key, ~current_col, ~manual_col,
@@ -301,6 +346,13 @@ write_manual_marker_columns <- function(sheet_id, tab_name, data) {
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0(MANUAL_MARKER_START_COLUMN, EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
 }
 
+write_filter_helper_columns <- function(sheet_id, tab_name, data) {
+  ensure_tab(sheet_id, tab_name)
+  sheet_resize(sheet_id, sheet = tab_name, ncol = 69)
+  range_clear(sheet_id, range = paste0("'", tab_name, "'!", FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
+  range_write(sheet_id, data = data, sheet = tab_name, range = paste0(FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
+}
+
 write_refresh_status <- function(sheet_id, tab_name, loaded_at) {
   loaded_at_local <- with_tz(loaded_at, tzone = "America/New_York")
   status_message <- paste0(
@@ -316,6 +368,74 @@ write_refresh_status <- function(sheet_id, tab_name, loaded_at) {
     col_names = FALSE,
     reformat = FALSE
   )
+}
+
+find_node_binary <- function() {
+  candidates <- c(
+    Sys.getenv("MASTER_MANUAL_EDIT_NODE", unset = ""),
+    Sys.which("node"),
+    "/usr/local/bin/node",
+    "/opt/homebrew/bin/node",
+    "/usr/bin/node"
+  )
+  candidates <- unique(candidates[candidates != ""])
+
+  for (candidate in candidates) {
+    if (file.exists(candidate) && file.access(candidate, 1) == 0) {
+      return(candidate)
+    }
+  }
+
+  ""
+}
+
+repair_filter_ranges <- function(sheet_id, tab_name) {
+  repair_script <- file.path(SCRIPT_DIR, "repair_manual_package_editor_filters.mjs")
+  node_path <- find_node_binary()
+  missing_requirements <- character()
+  if (!file.exists(repair_script)) {
+    missing_requirements <- c(missing_requirements, paste0("repair script not found at ", repair_script))
+  }
+  if (node_path == "") {
+    missing_requirements <- c(
+      missing_requirements,
+      "node not found; checked MASTER_MANUAL_EDIT_NODE, PATH, /usr/local/bin/node, /opt/homebrew/bin/node, and /usr/bin/node"
+    )
+  }
+  if (length(missing_requirements) > 0) {
+    stop("Cannot repair sheet filters:\n", paste(missing_requirements, collapse = "\n"))
+  }
+
+  cat("Repairing filter ranges with ", node_path, " and ", repair_script, "\n", sep = "")
+
+  old_env <- Sys.getenv(
+    c("MASTER_MANUAL_EDIT_SHEET_ID", "MASTER_MANUAL_EDIT_TAB", "MASTER_MANUAL_EDIT_AUTH_EMAIL"),
+    unset = NA_character_
+  )
+  on.exit({
+    restore_names <- names(old_env)
+    for (name in restore_names) {
+      if (is.na(old_env[[name]])) {
+        Sys.unsetenv(name)
+      } else {
+        restore_value <- old_env[[name]]
+        names(restore_value) <- name
+        do.call(Sys.setenv, as.list(restore_value))
+      }
+    }
+  }, add = TRUE)
+  Sys.setenv(
+    MASTER_MANUAL_EDIT_SHEET_ID = sheet_id,
+    MASTER_MANUAL_EDIT_TAB = tab_name,
+    MASTER_MANUAL_EDIT_AUTH_EMAIL = AUTH_EMAIL
+  )
+
+  output <- system2(node_path, repair_script, stdout = TRUE, stderr = TRUE)
+  status <- attr(output, "status") %pick% 0
+  if (!identical(as.integer(status), 0L)) {
+    stop("Filter range repair failed:\n", paste(output, collapse = "\n"))
+  }
+  cat(paste(output, collapse = "\n"), "\n")
 }
 
 read_first_existing_tab <- function(sheet_id, candidates) {
@@ -546,7 +666,7 @@ build_daily_total_proof <- function(daily_data) {
       mutate(
         metric_name = metric_name,
         delta = daily_total - replacement_total,
-        proof_status = if_else(abs(delta) <= 0.000001, "passed", "blocked"),
+        proof_status = if_else(abs(delta) <= daily_total_proof_tolerance, "passed", "blocked"),
         proof_message = if_else(
           proof_status == "passed",
           "Daily total matches replacement total.",
@@ -586,17 +706,6 @@ allocate_daily_total <- function(total, day_count, metric_name) {
       daily_units[seq_len(remainder_units)] <- daily_units[seq_len(remainder_units)] + 1
     }
     return(as.numeric(daily_units))
-  }
-
-  if (metric_name %in% currency_metric_names) {
-    total_cents <- as.integer(round(total * 100))
-    base_cents <- floor(total_cents / day_count)
-    remainder_cents <- total_cents - (base_cents * day_count)
-    daily_cents <- rep(base_cents, day_count)
-    if (remainder_cents > 0) {
-      daily_cents[seq_len(remainder_cents)] <- daily_cents[seq_len(remainder_cents)] + 1
-    }
-    return(as.numeric(daily_cents) / 100)
   }
 
   base_value <- total / day_count
@@ -654,6 +763,7 @@ mart_packages AS (
     ARRAY_AGG(`p_planned_units_doNotSum` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_planned_units_doNotSum,
     ARRAY_AGG(`p_unit_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_unit_type,
     ARRAY_AGG(`p_rate` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS mart_p_rate,
+    STRING_AGG(DISTINCT `qa_row_data_source_primary`, ' | ' ORDER BY `qa_row_data_source_primary`) AS qa_row_data_source_primary,
     COUNT(*) AS current_row_count,
     MIN(`_date`) AS current_first_date,
     MAX(`_date`) AS current_last_date,
@@ -901,6 +1011,9 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `Supplier Name` = metadata_choices$supplier_name$value,
       `Package Name` = metadata_choices$package_name$value,
       `GS Channel` = metadata_choices$ADIF_channel$value,
+      `Primary Row Data Source` = live_value("qa_row_data_source_primary"),
+      `Validation Status` = "",
+      `Validation Reason` = "",
       `Baseline Flight Start Date` = live_value("current_flight_start_date"),
       `Baseline Flight End Date` = live_value("current_flight_end_date"),
       `Baseline Planned Spend` = live_value("current_planned_spend"),
@@ -1136,6 +1249,9 @@ raw_upload$validation_status <- dplyr::case_when(
 )
 raw_upload$validation_messages <- unlist(validation_messages)
 
+display_data$`Validation Status` <- raw_upload$validation_status
+display_data$`Validation Reason` <- raw_upload$validation_messages
+
 for (metric_idx in seq_len(nrow(metric_specs))) {
   spec <- metric_specs[metric_idx, ]
   raw_upload[[spec$delta_col]] <- ifelse(
@@ -1315,7 +1431,11 @@ for (metadata_idx in seq_len(nrow(metadata_specs))) {
 }
 manual_marker_data <- manual_marker_data[, manual_marker_columns, drop = FALSE]
 write_manual_marker_columns(SHEET_ID, TAB_EDITOR, manual_marker_data)
+filter_helper_data <- tibble::tibble(`Edited Row Filter` = raw_upload$is_active)
+filter_helper_data <- filter_helper_data[, filter_helper_columns, drop = FALSE]
+write_filter_helper_columns(SHEET_ID, TAB_EDITOR, filter_helper_data)
 write_refresh_status(SHEET_ID, TAB_EDITOR, loaded_at)
+repair_filter_ranges(SHEET_ID, TAB_EDITOR)
 
 for (tab_name in LEGACY_TABS) {
   if (tab_name %in% sheet_names(SHEET_ID) && tab_name != TAB_EDITOR) {
