@@ -30,7 +30,7 @@ The top filter controls are native Google Sheets slicers. They are intentionally
 
 The `Instructions` tab is the user-facing quick guide. It explains the normal edit flow, date-range rules, new-row requirements, color meanings, and what not to edit.
 
-Existing package identity fields, table headers, request-helper text, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible flight dates, delivery override dates, metric values, and metadata correction columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
+Existing package identity fields, table headers, request-helper text, visible status/context fields, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible flight dates, delivery override dates, metric values, and metadata correction columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
 
 The request checkbox requires the bound Apps Script's installable edit trigger. If the checkbox does not send, use `Manual Editor` -> `Authorize request button` once from the sheet menu, then try again.
 
@@ -72,6 +72,7 @@ Flight dates and delivery override dates do different jobs.
 Metadata corrections are package-level.
 
 - Editing `Advertiser`, `Package Type`, `Channel`, `Campaign`, `Initiative`, `Supplier Code`, `Supplier Name`, `Package Name`, `Package Friendly Name`, or `GS Channel` creates backend `man_*` metadata evidence.
+- `Primary Row Data Source`, `Validation Status`, and `Validation Reason` are read-only context fields. They explain where the package row is coming from and whether the loader will publish or block the row.
 - Metadata overrides do not need a metric edit to become active.
 - Metadata overrides apply to all rows for the package, including delivery dates outside a metric override window.
 - Metric overrides stay date-bound to the delivery override dates.
@@ -100,8 +101,8 @@ Delivered actual metrics can be edited for any valid date range.
 
 - For one-day edits, set `Delivery Override Start Date` and `Delivery Override End Date` to the same date.
 - For one-week edits, set the dates to that week and enter weekly replacement totals.
-- The loader spreads replacement totals across the selected dates while preserving the exact total after upload. Count metrics allocate whole units across days; spend metrics allocate by cents.
-- The daily proof step blocks the upload if daily rows do not sum back to the replacement total.
+- The loader spreads replacement totals across the selected dates while preserving the exact total after upload. Count metrics allocate whole units across days; spend metrics preserve decimal precision from the source/editor value.
+- The daily proof step blocks the upload if daily rows do not sum back to the replacement total beyond a one-cent tolerance.
 
 ## New Manual-Only Packages
 
@@ -143,9 +144,10 @@ Common blockers: missing `Package ID`, invalid dates, no changed metric/date val
 
 ## Scripts
 
-- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, and rewrites the editor data values without reformatting the sheet.
+- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges to the full sheet grid. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
 - The production Manual Data Editor sheet is the loader default. Use `MASTER_MANUAL_EDIT_SHEET_ID=...` only when intentionally testing another sheet copy.
 - `setup_manual_package_editor_sheet.mjs` is a rebuild tool for Google Sheet formatting, the `Instructions` tab, visible metadata columns, hidden internal baseline/manual-marker columns, native slicers, notes, warnings, widths, and colors. Do not run it against the live sheet after user-made manual formatting edits unless the user explicitly asks for a full formatting rebuild. The script is guarded and now requires `MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD=YES` to run.
+- `repair_manual_package_editor_filters.mjs` is a narrow filter/slicer repair tool. It preserves existing slicer titles, positions, and filter choices while expanding ranges to the full current sheet grid so newly added rows stay filterable. The `Edited Rows` slicer must point to the hidden `Edited Row Filter` helper, not to an individual manual-marker column.
 - `apps_script/Code.js` is the bound Apps Script for the update-request notification control only. Filtering should stay native through Google Sheets slicers.
 - The universal script runner entrypoint is `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`.
 

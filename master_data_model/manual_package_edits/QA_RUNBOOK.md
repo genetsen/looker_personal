@@ -11,8 +11,10 @@ This runbook is for checking the Manual Data Editor when a dashboard value, shee
 | Did a metric edit turn into daily rows? | `landing.master_data_model_manual_package_daily` | Daily rows exist for the edited package/date range and totals match the replacement | `master_stg.data_model` |
 | Did a metadata edit apply package-wide? | `master_stg.data_model` | Rows for the package use the manual metadata even outside metric override dates | Reporting mart |
 | Did the dashboard-ready output change? | `master_stg.data_model_mart` | Final `_` fields reflect manual values and `man_*` evidence is visible | Dashboard refresh |
-| Did a row get blocked? | Raw landing table `validation_messages` | Message explains what must be fixed | Sheet row and instructions |
+| Did a row get blocked? | Google Sheet `Validation Status` / `Validation Reason` and raw landing table `validation_messages` | Message explains what must be fixed | Sheet row and instructions |
 | Did a purple marker appear unexpectedly? | Sheet value, hidden baseline, hidden manual marker, raw table, daily table, model, mart | Marker is TRUE only when a valid backend manual value is still needed | Loader baseline logic |
+| Did filters miss newly added rows? | Google Sheet basic filter and slicer ranges | Ranges cover the full current grid, not only the last populated row | Filter range repair script |
+| Did `Edited Rows` filter miss edited rows? | Hidden `Edited Row Filter` helper and `Edited Rows` slicer column | Helper is TRUE for every active edited row; slicer points to that helper column | Loader filter-helper write |
 
 ## End-To-End Data Flow
 
@@ -36,6 +38,7 @@ This runbook is for checking the Manual Data Editor when a dashboard value, shee
 | [Request notification Apps Script](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Sends the request-refresh email and optional Slack message from the Google Sheet | Sends notification only | Installed in the Google Sheet | Does not run the loader or write BigQuery |
 | [Choice-logic tests](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/tests/test_loader_choice_logic.R) | Tests edit detection rules for undo, corrections, stale source catch-up, blanks, zero overrides, text, and dates | No live writes | Before claiming loader choice logic is safe | Local regression test only |
 | [Sheet UX rebuild](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs) | Rebuilds sheet formatting, slicers, instructions, protections, hidden helpers, notes, widths, and colors | Rewrites sheet formatting | Only with explicit full-formatting-rebuild approval | Do not run during routine QA; live user formatting is source of truth |
+| [Filter range repair](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs) | Expands native filter and slicer ranges to the full current sheet grid and points `Edited Rows` to `Edited Row Filter` | Filter/slicer ranges only | After loader row-count or column-count changes | Loader resolves this helper from its own folder when sourced by the universal runner; if Node is installed outside common Mac paths, set `MASTER_MANUAL_EDIT_NODE` |
 | [Manual table schema deploy](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_manual_package_edit_tables.sql) | Creates or replaces the manual raw and daily landing table schemas | Writes BigQuery schemas | Schema deployment only | Not part of routine refresh |
 | [Master model deploy](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql) | Applies manual rows into the master package/date model | Replaces BigQuery view if deployed | Model deployment only | Compare local SQL to live before deploy |
 | [Reporting mart deploy](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) | Builds the dashboard-ready mart over the master model | Replaces BigQuery view if deployed | Mart deployment only | Filters `low_signal_dcm` rows and recalculates rollups |
@@ -60,6 +63,7 @@ This runbook is for checking the Manual Data Editor when a dashboard value, shee
 | `Spend`, `Impressions`, `Clicks`, `Video Plays`, `Video Completions` | Yes | Yes | Delivered metric corrections for the selected delivery override dates |
 | `Delivery Override Start Date`, `Delivery Override End Date` | Yes | Yes | Date window for metric overrides only |
 | `Advertiser`, `Package Type`, `Channel`, `Campaign`, `Initiative`, `Supplier Code`, `Supplier Name`, `Package Name`, `GS Channel` | Yes | Yes | Package-wide metadata corrections and required metadata for new rows |
+| `Primary Row Data Source`, `Validation Status`, `Validation Reason` | Yes | No | Read-only row context and loader validation feedback |
 | Baseline columns | Hidden | No | Source-derived comparison values used by formatting and loader |
 | Manual marker columns | Hidden | No | TRUE/FALSE evidence for purple manual-marker formatting |
 | `Request refresh` | Yes | Yes | Sends notification only; does not run loader |

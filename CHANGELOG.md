@@ -2,6 +2,74 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-06-05
+
+### Changed
+
+- **Manual Package Editor Daily Spend Allocation -codexapp [thread](https://chatgpt.com/codex)**
+  What: Updated the manual package edit loader so spend overrides preserve source/editor decimal precision during daily allocation and daily proof allows sub-cent reconciliation noise.
+  Why: The live mart can contain fractional-cent spend values, and the loader should block material daily-total mismatches instead of tiny float/rounding differences.
+
+  <details><summary>Paths - Manual Package Editor Daily Spend Allocation</summary>
+
+  [Manual package edit loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [Daily proof test](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/tests/test_daily_total_proof.R)
+  [Manual package edit README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/README.md)
+
+  </details>
+
+- **Manual Package Editor Visible Row Diagnostics -codexapp [thread](https://chatgpt.com/codex)**
+  What: Added visible `Primary Row Data Source`, `Validation Status`, and `Validation Reason` columns to the package editor sheet.
+  Why: Blocked rows should explain themselves directly in the editor instead of requiring a separate warehouse lookup.
+  Control: Repaired conditional formatting, changed filter/slicer maintenance so ranges cover the full sheet grid instead of only the currently populated rows, added a hidden `Edited Row Filter` helper so the `Edited Rows` slicer no longer points to a single manual-marker column, and made the loader resolve the filter-repair helper and Node binary correctly when sourced by the universal runner.
+
+  <details><summary>Paths - Manual Package Editor Visible Row Diagnostics</summary>
+
+  [Manual package edit loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R)
+  [Manual package edit README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/README.md)
+  [Manual package edit QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md)
+  [Filter range repair](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs)
+  [Conditional formatting repair](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_conditional_formatting.mjs)
+
+  </details>
+
+- **Master Model Upstream Table Refresh -codexapp [thread](https://chatgpt.com/codex)**
+  What: Added a master upstream scheduled-query SQL script that refreshes the stored social pacing and TV combined sibling tables, switched the master model TV branch to read the TV table sibling, and documented the table-refresh lineage.
+  Why: Keeps expensive upstream dependencies materialized before the master model reads them while preserving the existing same-name views for lineage/debugging.
+
+  <details><summary>Paths - Master Model Upstream Table Refresh</summary>
+
+  [Upstream table refresh SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql)
+  [Master model SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql)
+  [Master model README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
+  [Master model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html)
+  [Scheduled-query documentation](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/SCHEDULED_QUERIES.md)
+
+  </details>
+
+- **Master Data Model Map Current-State Refresh -codexapp [thread](https://chatgpt.com/codex)**
+  What: Updated the interactive master model map for the current WP-first social path, canonical video views, manual package edit layer, reporting mart, and v2/detail sibling outputs. Added clickable dot-definition highlights, clarified stable-table versus view/logic indicators, added a visible `master_stg.data_model` view boundary, and made the master-script column show that separate manual edit tables are joined into the main rows before package rollups recalculate.
+  Control: Added a project agent rule requiring `docs/master-data-model-map.html` to be updated in the same work session whenever durable master-model, mart, sibling-view, or stable upstream source semantics change.
+
+  <details><summary>Paths - Master Data Model Map Current-State Refresh</summary>
+
+  [Master model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html)
+  [Project agent rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/AGENTS.md)
+  [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md)
+
+  </details>
+
+- **Master Data Model Map v2 Documentation Upgrade -codexapp [thread](https://chatgpt.com/codex)**
+  What: Created an advanced, dark-mode, glassmorphic interactive map (`docs/master-data-model-map-v2.html`) to complement the legacy map. Introduced versioned pipeline toggles for v1 Canonical, v2 Compatibility, and v3 Sibling sample views. Added a dynamic schema search engine mapping key column lineages directly to contributing nodes, with clickable deep absolute paths to local SQL codes and clickable BigQuery console URLs.
+  Why: Gives developers an immersive, premium, and error-free tracing utility to audit schemas and model modifications in line with project repository rules.
+
+  <details><summary>Paths - Master Data Model Map v2 Upgrade</summary>
+
+  [Master model map v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map-v2.html)
+  [CHANGELOG.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/CHANGELOG.md)
+
+  </details>
+
 ## 2026-06-04
 
 ### Changed

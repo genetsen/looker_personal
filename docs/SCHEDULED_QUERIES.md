@@ -30,6 +30,9 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 │         ──► mart__pacing_table ──► ext_mm_mft_scheadule                             │
 │             (Basis merge, Olipop video, Pacing, MFT export)                         │
 │                                                                                     │
+│  10:15  ──► master_data_model_upstream_tables_sched                                 │
+│             (Master-model social pacing + TV combined table snapshots)              │
+│                                                                                     │
 │  EVERY   ──► mm_dcm_costmodel (4 hours)                                             │
 │  N HRS   ──► prisma__stg__digital_plus_linear (8 hours)                             │
 │                                                                                     │
@@ -54,8 +57,9 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 | 10 | `basis_update` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.basis_master2` |
 | 11 | `stg__olipop__crossplatform_raw_tbl_sched` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.stg__olipop__crossplatform_raw_tbl` |
 | 12 | `mart__pacing_table` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_mart.fct_crossplatform_pacing_daily` |
-| 13 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
-| 14 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
+| 13 | `master_data_model_upstream_tables_sched` | Daily 10:15 UTC | ✅ SUCCEEDED | `repo_int.crossplatform_pacing_tbl`, `landing.tv_combined_tbl` |
+| 14 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
+| 15 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
 
 ---
 
@@ -611,7 +615,52 @@ INSERT INTO fct_crossplatform_pacing_daily SELECT * FROM recent;
 
 ---
 
-### 13. `ext_mm_mft_scheadule`
+### 13. `master_data_model_upstream_tables_sched`
+
+**Schedule**: Daily 10:15 UTC
+**Status**: ✅ SUCCEEDED
+**Verified Against Live Config**: Jun 5, 2026
+**SQL**: [Master upstream table refresh SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql)
+
+#### Purpose
+Refreshes stored upstream table siblings used by the master data model while preserving the same-name views for lineage and debugging.
+
+#### Live Transfer Config
+```text
+projects/671028410185/locations/us/transferConfigs/6a3602d3-0000-207b-88a3-089e082d3c8c
+```
+
+#### Live Metadata
+- Display name: `master_data_model_upstream_tables_sched`
+- Data source: `scheduled_query`
+- Owner: `gene.tsenter@giantspoon.com`
+- First verified run: `2026-06-05T15:56:08Z`
+- Next observed run time: `2026-06-06T10:15:00Z`
+
+#### Target
+```text
+looker-studio-pro-452620.repo_int.crossplatform_pacing_tbl
+looker-studio-pro-452620.landing.tv_combined_tbl
+```
+
+#### Source Tables
+- `looker-studio-pro-452620.repo_tables.int__tiktok__combined_history_dedupe_view`
+- `looker-studio-pro-452620.repo_facebook.stg__fb_combined_history`
+- `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
+- `looker-studio-pro-452620.landing.tv_local_estimates`
+- `looker-studio-pro-452620.landing.tv_national_estimates`
+
+#### Preservation Rule
+| Object | Role | Preserved behavior |
+|---|---|---|
+| `repo_int.crossplatform_pacing` | Same-name social pacing view | Left untouched for lineage comparison. |
+| `repo_int.crossplatform_pacing_tbl` | Social pacing table sibling | Rebuilt by this schedule before master-model refresh work. |
+| `landing.tv_combined` | Same-name TV combined view | Left untouched for lineage comparison. |
+| `landing.tv_combined_tbl` | TV combined table sibling | Rebuilt by this schedule and read by the master TV branch. |
+
+---
+
+### 14. `ext_mm_mft_scheadule`
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
@@ -624,7 +673,7 @@ External system / Google Sheets
 
 ---
 
-### 14. `mart__dcm__joined_0519` ❌ FAILED
+### 15. `mart__dcm__joined_0519` ❌ FAILED
 
 **Schedule**: Daily 03:00 UTC
 **Status**: ❌ FAILED

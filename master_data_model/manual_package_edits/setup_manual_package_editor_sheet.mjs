@@ -44,6 +44,9 @@ const columns = [
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Primary Row Data Source",
+  "Validation Status",
+  "Validation Reason",
   "Baseline Flight Start Date",
   "Baseline Flight End Date",
   "Baseline Planned Spend",
@@ -86,6 +89,7 @@ const columns = [
   "Manual Marker Package Name",
   "Manual Marker Package Friendly Name",
   "Manual Marker GS Channel",
+  "Edited Row Filter",
 ];
 
 const headerRowIndex = 3;
@@ -100,6 +104,7 @@ const editableColumnIndexes = new Set([
   "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Override Start Date", "Delivery Override End Date",
   "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel",
 ].map((name) => colIndex[name]));
+const diagnosticColumnIndexes = new Set(["Primary Row Data Source", "Validation Status", "Validation Reason"].map((name) => colIndex[name]));
 const deliveredMetricColumnIndexes = new Set(["Spend", "Impressions", "Clicks", "Video Plays", "Video Completions"].map((name) => colIndex[name]));
 const plannedMetricColumnIndexes = new Set(["Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
 const packageFriendlyNameColumnIndexes = new Set(["Package Friendly Name"].map((name) => colIndex[name]));
@@ -147,12 +152,13 @@ const slicers = [
   { title: "Channel", columnIndex: colIndex["Channel"], offsetXPixels: 660, widthPixels: 210, heightPixels: 58 },
   { title: "Campaign", columnIndex: colIndex["Campaign"], offsetXPixels: 880, widthPixels: 210, heightPixels: 58 },
   { title: "Site", columnIndex: colIndex["Site"], offsetXPixels: 1100, widthPixels: 210, heightPixels: 58 },
+  { title: "Edited Rows", columnIndex: colIndex["Edited Row Filter"], offsetXPixels: 1320, widthPixels: 210, heightPixels: 58 },
 ];
 const widths = [
   105, 135, 720, 112, 112, 125, 140, 105, 120, 90,
   110, 130, 132, 132, 140, 110, 105, 150, 115, 90,
-  140, 220, 120,
-  ...Array(colCount - 23).fill(100),
+  140, 220, 120, 150, 120, 240,
+  ...Array(colCount - 26).fill(100),
 ];
 
 function color(red, green, blue) {
@@ -273,6 +279,7 @@ async function writeInstructions() {
   values[2][7] = "Editable delivered metrics: Spend, Impressions, Clicks, Video Plays, Video Completions.";
   values[2][12] = "Editable delivery window: Delivery Override Start/End controls metric edit dates.";
   values[2][14] = "Editable metadata: Advertiser, Package Type, Channel, Campaign, Initiative, Supplier, Package Name, GS Channel.";
+  values[2][23] = "Read-only diagnostics: source, validation status, reason.";
 
   const lastVisibleColumn = columnLetter(visibleColumnCount - 1);
   await sheetsFetch(`/values/${encodeURIComponent(`${TAB_NAME}!A1:${lastVisibleColumn}3`)}?valueInputOption=USER_ENTERED`, {
@@ -607,6 +614,39 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     });
   }
 
+  for (const index of diagnosticColumnIndexes) {
+    requests.push(
+      {
+        repeatCell: {
+          range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, index, index + 1),
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: color(0.29, 0.36, 0.45),
+              textFormat: { foregroundColor: color(1, 1, 1), bold: true },
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+              wrapStrategy: "WRAP",
+            },
+          },
+          fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy",
+        },
+      },
+      {
+        repeatCell: {
+          range: gridRange(sheetId, dataStartRowIndex, rowCount, index, index + 1),
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: color(0.94, 0.95, 0.97),
+              textFormat: { foregroundColor: color(0.18, 0.23, 0.31) },
+              wrapStrategy: "CLIP",
+            },
+          },
+          fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.wrapStrategy",
+        },
+      },
+    );
+  }
+
   for (const index of plannedMetricColumnIndexes) {
     requests.push({
       repeatCell: {
@@ -779,7 +819,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
             type: "CUSTOM_FORMULA",
             values: [
               {
-                userEnteredValue: `=AND($A${firstDataSheetRow}<>"",$X${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$M${firstDataSheetRow}>$N${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow})))`,
+                userEnteredValue: `=OR($Y${firstDataSheetRow}="blocked",AND($A${firstDataSheetRow}<>"",$AA${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$M${firstDataSheetRow}>$N${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow}))))`,
               },
             ],
           },
@@ -1141,9 +1181,18 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Advertiser"], visibleColumnCount),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Advertiser"], colIndex["Primary Row Data Source"]),
         cell: {
           note: "Metadata fields. Keep existing values unless you are adding a new package or correcting package metadata. New manual packages need Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel completed. Hidden columns to the right are internal comparison and manual-marker fields used only for formatting.",
+        },
+        fields: "note",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Primary Row Data Source"], visibleColumnCount),
+        cell: {
+          note: "Read-only diagnostics. Primary Row Data Source comes from the reporting mart. Validation Status and Validation Reason are written by the loader after it checks whether the row can publish.",
         },
         fields: "note",
       },

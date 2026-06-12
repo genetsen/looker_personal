@@ -45,6 +45,8 @@ If a read-only MCP path is blocked or misclassified by an approval layer, switch
 
 For master model behavior changes, update the repo-level `../CHANGELOG.md` and any stable README field-semantics notes in the same work session. Do this for deployed SQL behavior changes even when row counts or source totals are deliberately left out of durable docs.
 
+When the master model, reporting mart, sibling v2/detail views, or stable upstream source semantics change, update `docs/master-data-model-map.html` in the same work session. Keep the map focused on durable model shape, source lineage, refresh dependencies, precedence rules, and modeling risks; do not update it just to chase fluctuating row counts, source mix counts, package-key counts, or media totals.
+
 In documentation, prefer short human-readable Markdown link labels over raw targets for any referenced files, scripts, folders, BigQuery tables/views, dashboards, sheets, docs, URLs, or other resources. Hide the full target behind the link whenever the reader only needs to navigate to it. Use absolute paths behind local file links and BigQuery console deep links behind warehouse objects. Show raw paths, raw URLs, or full `project.dataset.table` names only when the exact literal value is needed for a command, query, config, or copy/paste instruction.
 
 ## Google Sheet Visual Verification

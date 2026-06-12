@@ -67,13 +67,13 @@
     }
 
     .legend {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
       gap: 8px;
-      margin: 12px 0 16px;
+      margin: 0;
     }
 
-    .legend-item {
+    .legend-item,
+    .definition-item {
       display: inline-flex;
       align-items: center;
       gap: 7px;
@@ -104,12 +104,20 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .map-area {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
       gap: 12px;
       align-items: start;
     }
 
     .map-panel,
+    .definition-sidebar,
     .inspector {
       background: var(--paper);
       border: 1px solid var(--line);
@@ -120,6 +128,95 @@
     .map-panel {
       padding: 14px;
       overflow: hidden;
+    }
+
+    .view-context-banner {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(53, 99, 168, 0.28);
+      border-radius: 8px;
+      background: rgba(53, 99, 168, 0.07);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .view-context-banner strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .view-context-banner code {
+      color: var(--blue);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    .definition-sidebar {
+      padding: 14px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .definition-sidebar h2 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .definition-sidebar p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .definition-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .definition-item {
+      align-items: flex-start;
+      white-space: normal;
+      width: 100%;
+      color: var(--muted);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .definition-item:hover,
+    .definition-item:focus-visible,
+    .definition-item.active {
+      background: #fffdf8;
+      border-color: rgba(27, 39, 51, 0.36);
+      box-shadow: 0 8px 18px rgba(28, 37, 46, 0.1);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .definition-item span:last-child {
+      min-width: 0;
+    }
+
+    .definition-item strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .definition-item small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      margin-top: 2px;
     }
 
     .flow-map {
@@ -141,7 +238,7 @@
       border: 1px solid rgba(27, 39, 51, 0.16);
       border-radius: 8px;
       padding: 10px;
-      min-height: 116px;
+      min-height: 104px;
       background: rgba(255, 253, 248, 0.86);
       transition: background 160ms ease, border-color 160ms ease;
     }
@@ -205,14 +302,14 @@
 
     .node-list {
       display: grid;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 8px;
     }
 
     .node {
       width: 100%;
-      min-height: 64px;
-      padding: 10px;
+      min-height: 50px;
+      padding: 8px 9px;
       border: 1px solid rgba(27, 39, 51, 0.18);
       border-left: 5px solid var(--teal);
       border-radius: 8px;
@@ -233,6 +330,18 @@
       outline: none;
     }
 
+    .flow-map.has-highlight .node {
+      opacity: 0.38;
+      box-shadow: none;
+    }
+
+    .flow-map.has-highlight .node.highlight-match {
+      opacity: 1;
+      border-color: rgba(27, 39, 51, 0.5);
+      box-shadow: 0 14px 30px rgba(28, 37, 46, 0.17);
+      transform: translateY(-2px);
+    }
+
     .node h3 {
       margin: 0;
       font-size: 13px;
@@ -240,8 +349,44 @@
       letter-spacing: 0;
     }
 
+    .node-title-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+    }
+
+    .node-title-row h3 {
+      min-width: 0;
+    }
+
+    .step-badge {
+      min-width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      margin-right: 5px;
+      background: rgba(27, 39, 51, 0.1);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .step-badge.side-input {
+      width: auto;
+      border-radius: 999px;
+      padding: 0 6px;
+      background: var(--amber);
+      color: #fffdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     .node p {
-      margin: 5px 0 0;
+      margin: 4px 0 0;
       color: var(--muted);
       font-size: 11px;
       line-height: 1.32;
@@ -249,16 +394,78 @@
 
     .node .callouts {
       display: flex;
-      gap: 5px;
-      margin-top: 8px;
+      gap: 4px;
       align-items: center;
       flex-wrap: wrap;
+      justify-content: flex-end;
+      flex: 0 0 auto;
     }
 
     .node[data-risk="medium"] { border-left-color: var(--amber); }
     .node[data-risk="high"] { border-left-color: var(--red); }
     .node[data-risk="low"] { border-left-color: var(--green); }
     .node[data-kind="output"] { border-left-color: var(--plum); }
+
+    .node[data-node-id="manual-edits"] {
+      background: linear-gradient(180deg, rgba(183, 121, 31, 0.13), rgba(255, 253, 248, 0.96));
+      border-color: rgba(183, 121, 31, 0.5);
+      border-style: dashed;
+    }
+
+    .node[data-node-id="manual-edits"] .step-badge {
+      background: var(--amber);
+      color: #fffdf8;
+    }
+
+    .node[data-node-id="rollup"] .step-badge {
+      background: var(--red);
+      color: #fffdf8;
+    }
+
+    .flow-note {
+      display: grid;
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .flow-note::before {
+      content: "↓";
+      color: rgba(27, 39, 51, 0.45);
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .view-pill {
+      display: inline-block;
+      margin-right: 5px;
+      padding: 1px 5px;
+      border: 1px solid rgba(53, 99, 168, 0.35);
+      border-radius: 999px;
+      color: var(--blue);
+      background: rgba(53, 99, 168, 0.08);
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      vertical-align: 1px;
+    }
+
+    .flow-note span {
+      display: inline-block;
+      padding: 2px 6px;
+      border: 1px solid rgba(183, 121, 31, 0.35);
+      border-radius: 999px;
+      background: rgba(183, 121, 31, 0.09);
+      color: #755018;
+      font-weight: 700;
+    }
 
     .arrow {
       display: flex;
@@ -267,7 +474,7 @@
       color: rgba(27, 39, 51, 0.5);
       font-weight: 800;
       font-size: 22px;
-      min-height: 100px;
+      min-height: 88px;
     }
 
     .arrow.down {
@@ -295,9 +502,7 @@
 
     .inspector {
       padding: 18px;
-      min-height: 420px;
-      position: sticky;
-      top: 14px;
+      min-height: 0;
     }
 
     .inspector-eyebrow {
@@ -323,7 +528,7 @@
 
     .detail-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
       margin: 14px 0;
     }
@@ -333,6 +538,7 @@
       border-radius: 8px;
       padding: 10px;
       background: #fbf7ef;
+      min-width: 0;
     }
 
     .detail-box strong {
@@ -345,8 +551,10 @@
     }
 
     .detail-box span {
+      display: block;
       font-size: 13px;
       line-height: 1.35;
+      overflow-wrap: anywhere;
     }
 
     .section-title {
@@ -385,13 +593,21 @@
       line-height: 1.45;
     }
 
-    @media (max-width: 900px) {
-      .workspace {
+    @media (max-width: 1100px) {
+      .map-area {
         grid-template-columns: 1fr;
       }
 
-      .inspector {
+      .definition-sidebar {
         position: static;
+      }
+
+      .definition-list {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr 1fr;
       }
     }
 
@@ -403,6 +619,10 @@
       .legend {
         display: grid;
         grid-template-columns: 1fr 1fr;
+      }
+
+      .definition-list {
+        grid-template-columns: 1fr;
       }
 
       .flow-map {
@@ -436,124 +656,134 @@
       </div>
     </header>
 
-    <section class="legend" aria-label="Callout legend">
-      <span class="legend-item"><span class="pip live"></span>Live object</span>
-      <span class="legend-item"><span class="pip docs"></span>View logic</span>
-      <span class="legend-item"><span class="pip write"></span>Updater</span>
-      <span class="legend-item"><span class="pip risk-low"></span>Lower risk</span>
-      <span class="legend-item"><span class="pip risk-med"></span>Mapping</span>
-      <span class="legend-item"><span class="pip risk-high"></span>Production caveat</span>
-    </section>
-
     <section class="workspace">
-      <section class="map-panel" aria-label="Clickable master data model flow">
-        <div class="flow-map" id="flowMap">
-          <details class="map-stage capture" data-group-id="digital-capture" style="grid-column: 1; grid-row: 1;" open>
-            <summary class="stage-head">
-              <span>
-                <h2>Digital Capture</h2>
-                <p>Prisma, DCM, and FPD inputs.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" style="grid-column: 2; grid-row: 1;" aria-hidden="true">→</div>
-          <details class="map-stage shape" data-group-id="digital-shape" style="grid-column: 3; grid-row: 1;" open>
-            <summary class="stage-head">
-              <span>
-                <h2>Digital Stitch</h2>
-                <p>Digital package/date alignment.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" style="grid-column: 4; grid-row: 1;" aria-hidden="true">→</div>
-
-          <details class="map-stage capture" data-group-id="social-capture" style="grid-column: 1; grid-row: 2;" open>
-            <summary class="stage-head">
-              <span>
-                <h2>Social Capture</h2>
-                <p>Social actuals and pacing.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" style="grid-column: 2; grid-row: 2;" aria-hidden="true">→</div>
-          <details class="map-stage shape" data-group-id="social-shape" style="grid-column: 3; grid-row: 2;" open>
-            <summary class="stage-head">
-              <span>
-                <h2>Social Branch</h2>
-                <p>Social output shaping.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" style="grid-column: 4; grid-row: 2;" aria-hidden="true">→</div>
-
-          <details class="map-stage capture" data-group-id="tv-capture" style="grid-column: 1; grid-row: 3;" open>
-            <summary class="stage-head">
-              <span>
-                <h2>TV Capture</h2>
-                <p>Local and national TV estimates.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" style="grid-column: 2; grid-row: 3;" aria-hidden="true">→</div>
-          <details class="map-stage shape" data-group-id="tv-shape" style="grid-column: 3; grid-row: 3;" open>
-            <summary class="stage-head">
-              <span>
-                <h2>TV Branch</h2>
-                <p>TV output shaping.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" style="grid-column: 4; grid-row: 3;" aria-hidden="true">→</div>
-
-          <details class="map-stage merge union-stage" data-group-id="union-rollups" open>
-            <summary class="stage-head">
-              <span>
-                <h2>Union &amp; Rollups</h2>
-                <p>Three lanes meet here.</p>
-              </span>
-              <span class="collapse-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="node-list"></div>
-          </details>
-          <div class="arrow" aria-hidden="true" style="grid-column: 6; grid-row: 1 / span 3;">→</div>
-
-          <div class="output-stack">
-            <details class="map-stage output" data-group-id="master-output" open>
-              <summary class="stage-head">
-                <span>
-                  <h2>Master View</h2>
-                  <p>Production output.</p>
-                </span>
-                <span class="collapse-mark" aria-hidden="true"></span>
-              </summary>
-              <div class="node-list"></div>
-            </details>
-            <div class="arrow down" aria-hidden="true">↓</div>
-            <details class="map-stage slice" data-group-id="ritual-slice" open>
-              <summary class="stage-head">
-                <span>
-                  <h2>Ritual Slice</h2>
-                  <p>Filtered from Master.</p>
-                </span>
-                <span class="collapse-mark" aria-hidden="true"></span>
-              </summary>
-              <div class="node-list"></div>
-            </details>
+      <div class="map-area">
+        <section class="map-panel" aria-label="Clickable master data model flow">
+          <div class="view-context-banner">
+            <strong>Most transformation logic happens inside the <code>master_stg.data_model</code> view.</strong>
+            <span>Blue <code>view</code> pills mark CTE-style sections in the same view script: joins, source precedence, manual table joins, final fields, QA labels, and package rollups.</span>
           </div>
-        </div>
-      </section>
+          <div class="flow-map" id="flowMap">
+            <details class="map-stage capture" data-group-id="digital-capture" style="grid-column: 1; grid-row: 1;" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Digital Capture</h2>
+                  <p>Prisma, DCM, and FPD inputs.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" style="grid-column: 2; grid-row: 1;" aria-hidden="true">→</div>
+            <details class="map-stage shape" data-group-id="digital-shape" style="grid-column: 3; grid-row: 1;" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Digital Stitch</h2>
+                  <p>Digital package/date alignment.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" style="grid-column: 4; grid-row: 1;" aria-hidden="true">→</div>
+
+            <details class="map-stage capture" data-group-id="social-capture" style="grid-column: 1; grid-row: 2;" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Social Capture</h2>
+                  <p>Social actuals and pacing.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" style="grid-column: 2; grid-row: 2;" aria-hidden="true">→</div>
+            <details class="map-stage shape" data-group-id="social-shape" style="grid-column: 3; grid-row: 2;" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Social Branch</h2>
+                  <p>Social output shaping.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" style="grid-column: 4; grid-row: 2;" aria-hidden="true">→</div>
+
+            <details class="map-stage capture" data-group-id="tv-capture" style="grid-column: 1; grid-row: 3;" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>TV Capture</h2>
+                  <p>Local and national TV estimates.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" style="grid-column: 2; grid-row: 3;" aria-hidden="true">→</div>
+            <details class="map-stage shape" data-group-id="tv-shape" style="grid-column: 3; grid-row: 3;" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>TV Branch</h2>
+                  <p>TV output shaping.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" style="grid-column: 4; grid-row: 3;" aria-hidden="true">→</div>
+
+            <details class="map-stage merge union-stage" data-group-id="union-rollups" open>
+              <summary class="stage-head">
+                <span>
+                  <h2>Master Script</h2>
+                  <p>Union, manual joins, then rollups.</p>
+                </span>
+                <span class="collapse-mark" aria-hidden="true"></span>
+              </summary>
+              <div class="node-list"></div>
+            </details>
+            <div class="arrow" aria-hidden="true" style="grid-column: 6; grid-row: 1 / span 3;">→</div>
+
+            <div class="output-stack">
+              <details class="map-stage output" data-group-id="master-output" open>
+                <summary class="stage-head">
+                  <span>
+                    <h2>Master View</h2>
+                    <p>Production output.</p>
+                  </span>
+                  <span class="collapse-mark" aria-hidden="true"></span>
+                </summary>
+                <div class="node-list"></div>
+              </details>
+              <div class="arrow down" aria-hidden="true">↓</div>
+              <details class="map-stage slice" data-group-id="ritual-slice" open>
+                <summary class="stage-head">
+                  <span>
+                    <h2>Ritual Slice</h2>
+                    <p>Filtered from Master.</p>
+                  </span>
+                  <span class="collapse-mark" aria-hidden="true"></span>
+                </summary>
+                <div class="node-list"></div>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <aside class="definition-sidebar" aria-label="Dot definitions">
+          <h2>Dot Definitions</h2>
+          <p>Each card shows where the object lives and how carefully to read it.</p>
+          <div class="definition-list">
+            <button class="definition-item" type="button" data-highlight="stable-table"><span class="pip live"></span><span><strong>Stable table</strong><small>Stored data refreshed by a loader or scheduled query.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="view-logic"><span class="pip docs"></span><span><strong>View or logic</strong><small>Calculated from upstream data when the model is queried.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="updater"><span class="pip write"></span><span><strong>Updater</strong><small>Has a named refresh path, loader, or scheduled query.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="risk-low"><span class="pip risk-low"></span><span><strong>Lower risk</strong><small>Simple pass-through or filter with fewer moving parts.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="risk-med"><span class="pip risk-med"></span><span><strong>Mapping caveat</strong><small>IDs, dates, package names, or source fields are being matched.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="risk-high"><span class="pip risk-high"></span><span><strong>Production caveat</strong><small>Metric precedence or rollup logic can change final reporting.</small></span></button>
+          </div>
+        </aside>
+      </div>
 
       <aside class="inspector" aria-live="polite" aria-label="Selected map detail">
         <p class="inspector-eyebrow" id="detailGroup">Select a node</p>
@@ -706,17 +936,18 @@
       {
         id: "social-raw",
         groupId: "social-capture",
-        title: "Social Raw",
-        summary: "Daily social actuals.",
+        title: "Shared Social",
+        summary: "Daily social actuals with WP-first Apollo rows.",
         truth: "Table: repo_stg.stg__olipop__crossplatform_raw_tbl.",
-        writes: "Refresh: stg__olipop__crossplatform_raw_tbl_sched scheduled query.",
-        freshness: "Current after the social raw table refreshes.",
+        writes: "Refresh: shared-social scheduled query after standard and WP social inputs are current.",
+        freshness: "Current after shared social refreshes.",
         risk: "medium",
-        reviewReason: "Mapping: social IDs become social_* fields and a synthetic package key.",
+        reviewReason: "Mapping: WP rows are primary for Apollo matches; standard social fills absent rows or fields.",
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
-          "This branch does not depend on the digital stitch."
+          "Feeds social metrics, creative names, video views, and WP provenance into the master model.",
+          "WP campaign-separated ad-ID records stay visible with pending source-owner provenance."
         ],
         sources: [
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
@@ -724,43 +955,70 @@
         ]
       },
       {
+        id: "wp-workbook",
+        groupId: "social-capture",
+        title: "WP Workbook",
+        summary: "Controlled Apollo workbook snapshot.",
+        truth: "Table: repo_stg.stg__wp__search_data_template_daily.",
+        writes: "Refresh: WP Sheet loader, then shared-social scheduled query.",
+        freshness: "Current after the controlled WP loader runs.",
+        risk: "medium",
+        reviewReason: "Mapping: WP Search and YouTube rows become Paid Search and Online Video reporting rows.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Supplies Apollo delivery, channel classification, creative names, source Sheet lineage, and video_view.",
+          "Manual refresh remains controlled while the source-owner identity rule is open."
+        ],
+        sources: [
+          ["BigQuery: WP normalized staging", bq("repo_stg", "stg__wp__search_data_template_daily")],
+          ["WP workflow runbook", "../../wp/README.md"],
+          ["WP loader", "../../wp/load_wp_search_data_template.R"]
+        ]
+      },
+      {
         id: "social-pacing",
         groupId: "social-capture",
         title: "Social Pacing",
         summary: "Pacing budgets spread to daily planned spend.",
-        truth: "View: repo_int.crossplatform_pacing.",
-        writes: "View only. Refresh platform history models.",
-        freshness: "Current when platform history models are current.",
+        truth: "Table: repo_int.crossplatform_pacing_tbl.",
+        writes: "Refresh: master upstream scheduled query.",
+        freshness: "Current after the master upstream table refresh runs.",
         risk: "medium",
         reviewReason: "Mapping: pacing becomes planned daily spend; coverage affects plan-vs-actual reads.",
         kind: "source",
-        callouts: { truth: "live", writes: false },
+        callouts: { truth: "live", writes: true },
         notes: [
-          "Feeds social_pacing_planned_spend and planned_daily_spend_pk."
+          "Feeds social_pacing_planned_spend and planned_daily_spend_pk.",
+          "The sibling view repo_int.crossplatform_pacing remains available for lineage comparison."
         ],
         sources: [
-          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")],
-          ["View definition: crossplatform pacing", "../sql/crossplatform/int__crossplatform_pacing.sql"]
+          ["BigQuery: Social pacing table", bq("repo_int", "crossplatform_pacing_tbl")],
+          ["BigQuery: Social pacing view", bq("repo_int", "crossplatform_pacing")],
+          ["Scheduled refresh SQL", "../create_master_data_model_upstream_tables_sched.sql"]
         ]
       },
       {
         id: "social-final",
         groupId: "social-shape",
         title: "Social Final",
-        summary: "Shapes social rows for the shared schema.",
+        summary: "Shapes social and WP rows for the shared schema.",
         truth: "View logic: master_stg.data_model.",
         writes: "View only. Refresh social raw and pacing.",
         freshness: "Current when social raw and pacing are current.",
         risk: "medium",
-        reviewReason: "Mapping: social rows use synthetic package IDs, not Prisma package IDs.",
+        reviewReason: "Mapping: social rows use synthetic package IDs, WP classification, and video-view precedence.",
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
-          "Flows directly into the shared union, not into digital."
+          "Flows directly into the shared union, not into digital.",
+          "Exposes s_creative_name, s_video_views, s_record_source, s_wp_row_key, and related WP provenance fields.",
+          "Sets canonical _video_views from source video views where available, with video starts/plays as fallback."
         ],
         sources: [
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
-          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")]
+          ["BigQuery: WP normalized staging", bq("repo_stg", "stg__wp__search_data_template_daily")],
+          ["BigQuery: Social pacing table", bq("repo_int", "crossplatform_pacing_tbl")]
         ]
       },
       {
@@ -768,18 +1026,21 @@
         groupId: "tv-capture",
         title: "TV Combined",
         summary: "Local and national TV estimates.",
-        truth: "View: landing.tv_combined.",
-        writes: "Refresh: TV Gmail loaders for local and national tables.",
-        freshness: "Current when local and national TV tables are current.",
+        truth: "Table: landing.tv_combined_tbl.",
+        writes: "Refresh: master upstream scheduled query after TV Gmail loaders are current.",
+        freshness: "Current after the master upstream table refresh runs.",
         risk: "low",
         reviewReason: "Lower risk: TV already has its own lane; freshness is the main check.",
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
-          "Does not depend on digital package IDs."
+          "Does not depend on digital package IDs.",
+          "The sibling view landing.tv_combined remains available for lineage comparison."
         ],
         sources: [
-          ["BigQuery: TV combined", bq("landing", "tv_combined")],
+          ["BigQuery: TV combined table", bq("landing", "tv_combined_tbl")],
+          ["BigQuery: TV combined view", bq("landing", "tv_combined")],
+          ["Scheduled refresh SQL", "../create_master_data_model_upstream_tables_sched.sql"],
           ["TV loader docs", "../util/data_loaders/README.md"],
           ["Local TV loader", "../util/data_loaders/gmail_to_bq__tv_local.r"],
           ["National TV loader", "../util/data_loaders/gmail_to_bq__tv_nat.r"]
@@ -792,7 +1053,7 @@
         summary: "Adds TV package and placement keys.",
         truth: "View logic: master_stg.data_model.",
         writes: "View only. Refresh local and national TV tables.",
-        freshness: "Current when landing.tv_combined is current.",
+        freshness: "Current when landing.tv_combined_tbl is current.",
         risk: "low",
         reviewReason: "Lower risk: TV fields map directly to tv_* columns.",
         kind: "transform",
@@ -801,7 +1062,7 @@
           "Synthetic keys keep TV rows usable in the shared model."
         ],
         sources: [
-          ["BigQuery: TV combined", bq("landing", "tv_combined")]
+          ["BigQuery: TV combined table", bq("landing", "tv_combined_tbl")]
         ]
       },
       {
@@ -825,24 +1086,51 @@
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
           ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
-          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")],
-          ["BigQuery: TV combined", bq("landing", "tv_combined")]
+          ["BigQuery: Social pacing table", bq("repo_int", "crossplatform_pacing_tbl")],
+          ["BigQuery: TV combined table", bq("landing", "tv_combined_tbl")]
+        ]
+      },
+      {
+        id: "manual-edits",
+        groupId: "union-rollups",
+        title: "Manual Edits",
+        summary: "Separate tables joined into main rows.",
+        truth: "Tables: landing.master_data_model_manual_package_edits_raw and landing.master_data_model_manual_package_daily.",
+        writes: "Refresh: manual package edit loader, then rebuild master view and mart.",
+        freshness: "Current after the manual loader writes valid active rows.",
+        risk: "high",
+        reviewReason: "Caveat: the master SQL reads these separate tables and uses their values before rollups run.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "These are separate landing tables, not rows produced by the media-lane union.",
+          "In create_master_stg_data_model.sql, manual_package_daily and manual_package_metadata are read before with_rollups.",
+          "manual_existing_rows left-joins those tables onto the unioned rows, while manual_only_rows can add valid manual-only packages.",
+          "Then with_rollups sums the manual-prioritized final fields."
+        ],
+        sources: [
+          ["BigQuery: Manual raw edits", bq("landing", "master_data_model_manual_package_edits_raw")],
+          ["BigQuery: Manual daily rows", bq("landing", "master_data_model_manual_package_daily")],
+          ["Manual package QA runbook", "../manual_package_edits/QA_RUNBOOK.md"],
+          ["Manual package loader", "../manual_package_edits/load_manual_package_edits.R"]
         ]
       },
       {
         id: "rollup",
         groupId: "union-rollups",
         title: "Rollups",
-        summary: "Recalculates package totals and over-delivery.",
+        summary: "Window totals after manual table joins.",
         truth: "View logic: master_stg.data_model.",
-        writes: "View only. Refresh upstream lane data.",
-        freshness: "Current when final lane metrics are current.",
+        writes: "View only. Refresh upstream lane data and manual edit tables first.",
+        freshness: "Current when final lane metrics and manual edits are current.",
         risk: "high",
-        reviewReason: "Caveat: upstream metric choices change package totals.",
+        reviewReason: "Caveat: upstream metric choices and manual overrides change package totals.",
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
-          "Calculates pkg_est_*, pkg_act_*, pkg_fpd_*, pkg_over_bool, and pkg_over_flag."
+          "Calculates pkg_est_*, pkg_act_*, pkg_fpd_*, pkg_over_bool, and pkg_over_flag.",
+          "Runs in the same master SQL script after manual_existing_rows and manual_only_rows.",
+          "Uses final fields after normal source precedence and valid manual replacements are applied."
         ],
         sources: [
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
@@ -850,8 +1138,8 @@
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
           ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
-          ["BigQuery: Social pacing", bq("repo_int", "crossplatform_pacing")],
-          ["BigQuery: TV combined", bq("landing", "tv_combined")]
+          ["BigQuery: Social pacing table", bq("repo_int", "crossplatform_pacing_tbl")],
+          ["BigQuery: TV combined table", bq("landing", "tv_combined_tbl")]
         ]
       },
       {
@@ -867,10 +1155,54 @@
         kind: "output",
         callouts: { truth: "live", writes: false },
         notes: [
-          "Contains digital, social, and TV rows in one shared schema."
+          "Contains digital, social, TV, WP, and manual-edit evidence in one shared schema.",
+          "Includes initiative, _video_views, _creative_img, man_* evidence, source issue labels, and row callouts."
         ],
         sources: [
           ["BigQuery: master_stg.data_model", bq("master_stg", "data_model")]
+        ]
+      },
+      {
+        id: "reporting-mart",
+        groupId: "master-output",
+        title: "Reporting Mart",
+        summary: "Dashboard-ready filtered package/date output.",
+        truth: "View: master_stg.data_model_mart.",
+        writes: "View only. Refresh after master_stg.data_model is current.",
+        freshness: "Current when the master view and mart definition are current.",
+        risk: "high",
+        reviewReason: "Caveat: mart filters reporting-only rows and recalculates package rollups after filtering.",
+        kind: "output",
+        callouts: { truth: "live", writes: false },
+        notes: [
+          "Use this for reporting-ready totals when low-signal DCM rows should be excluded.",
+          "Manual editor visible values use this mart as the dashboard snapshot."
+        ],
+        sources: [
+          ["BigQuery: master_stg.data_model_mart", bq("master_stg", "data_model_mart")],
+          ["Mart builder SQL", "../create_master_stg_data_model_mart.sql"]
+        ]
+      },
+      {
+        id: "v2-detail-outputs",
+        groupId: "master-output",
+        title: "V2 & Detail",
+        summary: "Compatibility and lower-grain sibling outputs.",
+        truth: "Views: master_stg.data_model_v2 and master_stg.data_model_delivery_detail_v2.",
+        writes: "View only. Refresh after the master package/date model is current.",
+        freshness: "Current when sibling view definitions are current.",
+        risk: "medium",
+        reviewReason: "Mapping: detail views preserve creative/ad/placement grain that package/date rows cannot safely collapse.",
+        kind: "output",
+        callouts: { truth: "live", writes: false },
+        notes: [
+          "data_model_v2 is a compatibility wrapper over the main package/date model.",
+          "delivery_detail_v2 keeps DCM and original FPD detail at lower grain with doNotSum package context fields."
+        ],
+        sources: [
+          ["BigQuery: master_stg.data_model_v2", bq("master_stg", "data_model_v2")],
+          ["BigQuery: master_stg.data_model_delivery_detail_v2", bq("master_stg", "data_model_delivery_detail_v2")],
+          ["Delivery detail builder SQL", "../create_data_model_delivery_detail_v2.sql"]
         ]
       },
       {
@@ -906,14 +1238,52 @@
       sources: document.getElementById("detailSources")
     };
 
+    const flowMap = document.getElementById("flowMap");
+    let activeHighlight = "";
+
+    function nodeCategories(node) {
+      const categories = [];
+      if (node.truth.startsWith("Table:") || node.truth.startsWith("Tables:")) {
+        categories.push("stable-table");
+      } else {
+        categories.push("view-logic");
+      }
+      if (node.callouts.writes) categories.push("updater");
+      categories.push(`risk-${node.risk}`);
+      return categories;
+    }
+
     function calloutPips(node) {
       const pips = [];
-      if (node.callouts.truth === "live") pips.push(["live", "Live warehouse truth"]);
-      if (node.callouts.truth === "logic") pips.push(["docs", "Production view logic"]);
+      if (nodeCategories(node).includes("stable-table")) {
+        pips.push(["live", "Stable table"]);
+      } else {
+        pips.push(["docs", "View or logic"]);
+      }
       if (node.callouts.writes) pips.push(["write", "Updater documented"]);
       const riskLabels = { low: "Lower risk", medium: "Mapping caveat", high: "Production caveat" };
       pips.push([`risk-${node.risk}`, riskLabels[node.risk]]);
       return pips.map(([klass, label]) => `<span class="pip ${klass}" title="${label}" aria-label="${label}"></span>`).join("");
+    }
+
+    function nodeTitle(node, groupNodes) {
+      let stepBadge = "";
+      if (node.id === "manual-edits") {
+        stepBadge = `<span class="step-badge side-input" aria-label="Side input tables">input</span>`;
+      } else if (node.id === "union") {
+        stepBadge = `<span class="step-badge" aria-label="Step 1">1</span>`;
+      } else if (node.id === "rollup") {
+        stepBadge = `<span class="step-badge" aria-label="Step 2">2</span>`;
+      }
+      const viewPill = node.truth.includes("master_stg.data_model") ? `<span class="view-pill" aria-label="Inside master_stg.data_model view">view</span>` : "";
+      return `${stepBadge}${viewPill}${node.title}`;
+    }
+
+    function flowNoteAfter(node) {
+      if (node.id === "manual-edits") {
+        return `<div class="flow-note" aria-hidden="true"><span>same script joins these tables, then rollups run</span></div>`;
+      }
+      return "";
     }
 
     function renderNodes() {
@@ -921,16 +1291,34 @@
         const list = groupEl.querySelector(".node-list");
         const groupNodes = nodes.filter((node) => node.groupId === groupEl.dataset.groupId);
         list.innerHTML = groupNodes.map((node) => `
-          <button class="node" type="button" data-node-id="${node.id}" data-risk="${node.risk}" data-kind="${node.kind}">
-            <h3>${node.title}</h3>
+          <button class="node" type="button" data-node-id="${node.id}" data-categories="${nodeCategories(node).join(" ")}" data-risk="${node.risk}" data-kind="${node.kind}">
+            <span class="node-title-row">
+              <h3>${nodeTitle(node, groupNodes)}</h3>
+              <span class="callouts">${calloutPips(node)}</span>
+            </span>
             <p>${node.summary}</p>
-            <div class="callouts">${calloutPips(node)}</div>
           </button>
+          ${flowNoteAfter(node)}
         `).join("");
       });
 
       document.querySelectorAll(".node").forEach((button) => {
         button.addEventListener("click", () => selectNode(button.dataset.nodeId));
+      });
+    }
+
+    function setDefinitionHighlight(category) {
+      activeHighlight = activeHighlight === category ? "" : category;
+      flowMap.classList.toggle("has-highlight", Boolean(activeHighlight));
+
+      document.querySelectorAll(".definition-item").forEach((button) => {
+        button.classList.toggle("active", button.dataset.highlight === activeHighlight);
+        button.setAttribute("aria-pressed", button.dataset.highlight === activeHighlight ? "true" : "false");
+      });
+
+      document.querySelectorAll(".node").forEach((button) => {
+        const categories = button.dataset.categories.split(" ");
+        button.classList.toggle("highlight-match", Boolean(activeHighlight) && categories.includes(activeHighlight));
       });
     }
 
@@ -951,6 +1339,10 @@
     }
 
     renderNodes();
+    document.querySelectorAll(".definition-item").forEach((button) => {
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => setDefinitionHighlight(button.dataset.highlight));
+    });
     selectNode("master-output-node");
   </script>
 </body>
