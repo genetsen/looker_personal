@@ -13,6 +13,7 @@ Use these scripts when the latest TV estimate file arrives by email and needs to
 
 - The local loader writes to `looker-studio-pro-452620.landing.tv_local_estimates`
 - The national loader writes to `looker-studio-pro-452620.landing.tv_national_estimates`
+- The RTL conversion loader writes the Ritual reporting sheet's `raw sales` tab to [RTL conversion report landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
 
 Both loaders follow the same broad pattern:
 
@@ -32,6 +33,7 @@ Both loaders follow the same broad pattern:
 util/data_loaders/
 ├── gmail_to_bq__tv_local.r
 ├── gmail_to_bq__tv_nat.r
+├── load_rtl_conv_report.R
 └── README.md
 ```
 
@@ -47,6 +49,7 @@ Run these commands from:
 ```bash
 Rscript gmail_to_bq__tv_local.r
 Rscript gmail_to_bq__tv_nat.r
+Rscript load_rtl_conv_report.R
 ```
 
 Expected result if a run succeeds:
@@ -75,6 +78,40 @@ Loaded packages:
 - `stringr`
 - `janitor`
 - `bigrquery` during the write step
+
+## RTL Conversion Report Loader
+
+**Script:** `load_rtl_conv_report.R`  
+**Source sheet:** [Ritual reporting raw sales tab](https://docs.google.com/spreadsheets/d/1tFxj3IZ_oBxUO9VwoDpd42CXGPWMJL5M1QKO_WIhOxI/edit?gid=2031245039#gid=2031245039)  
+**Target table:** [RTL conversion report landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
+
+This loader mirrors the Google Sheet's `raw sales` tab into BigQuery for daily reporting refreshes.
+
+| Step | What happens | Why it matters |
+| --- | --- | --- |
+| Read sheet | Pulls all rows from the `raw sales` tab as text | Keeps the Google Sheet as the source of truth |
+| Clean headers | Converts sheet headers into BigQuery-safe snake-case names | BigQuery fields cannot use spaces, slashes, or blank names |
+| Preserve blank header | Renames the blank second column to `unnamed_column_2` | Avoids guessing a business meaning that is not stated in the sheet |
+| Type common fields | Parses `date`, `impressions`, `clicks`, `click_rate`, and `total_conversions` | Makes common report fields easier to query |
+| Add metadata | Adds refresh date, load timestamp, sheet ID, tab, and gid | Makes daily runner loads traceable |
+| Replace table | Recreates the landing table with an explicit schema, then appends the fresh sheet rows | Keeps BigQuery aligned to the current sheet instead of appending duplicates |
+
+### Run just this loader
+
+```bash
+cd /Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders
+Rscript load_rtl_conv_report.R
+```
+
+### Common run checks
+
+After a run, check:
+
+1. Did the console print `RTL Conversion Report loader finished successfully`?
+2. Did the verification output show a non-zero `row_count`?
+3. Does the BigQuery table link above open and show the newest `data_refresh_date`?
+
+When run by the universal runner, this script is included as `RTL Conversion Report`.
 
 ## Shared Loader Flow
 
