@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-06-16
+
+### Added
+
+- **DCM Cost Model Interactive Map -codexapp [thread](https://chatgpt.com/codex)**
+  What: Added a standalone clickable DCM cost-model map, linked it from the Master Model maps, docs index, and README, and clarified old caution labels as warnings.
+  Why: Makes the scheduled query, package rollups, pricing logic, creative-safe join key, and Master Model handoff easier to inspect without reading the full SQL first.
+
+  <details><summary>Paths - DCM Cost Model Interactive Map</summary>
+
+  [DCM cost model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html)
+  [Master model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html)
+  [Master model map v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map-v2.html)
+  [Documentation index](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/index.md)
+  [README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
+
+  </details>
+
 ## 2026-06-08
 
 ### Changed

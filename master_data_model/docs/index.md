@@ -17,6 +17,7 @@
 | Reporting mart definition | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) |
 | Manual editor folder | [manual_package_edits](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits) |
 | Interactive model map | [master-data-model-map.html](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) |
+| DCM cost model map | [dcm-cost-model-map.html](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html) |
 | Project rules | [AGENTS.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/AGENTS.md) |
 
 ## Generated Documentation
@@ -24,7 +25,7 @@
 | Document | Description |
 |---|---|
 | [Project Overview](./project-overview.md) | Executive summary and high-level architecture. |
-| [Architecture](./architecture.md) | System layers, data flow, responsibilities, and risks. |
+| [Architecture](./architecture.md) | System layers, data flow, responsibilities, and warnings. |
 | [Data Models](./data-models.md) | Warehouse objects, grains, source families, and merge contracts. |
 | [Source Tree Analysis](./source-tree-analysis.md) | Annotated folder and file structure. |
 | [Development Guide](./development-guide.md) | Commands, validation approach, deploy order, and guardrails. |
@@ -42,8 +43,9 @@
 | [Full source field audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/FULL_SOURCE_FIELD_AUDIT.md) | Source-field preservation audit. |
 | [Schema audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/SCHEMA_AUDIT.md) | Missing schema field audit. |
 | [ADIF comparison audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/ADIF_MASTER_MISSING_INFORMATION_AUDIT_2026-05-07.md) | ADIF versus master exact-name and concept comparison. |
-| [Interactive model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) | Clickable model lineage and risk map. |
+| [Interactive model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) | Clickable model lineage and warning map. |
 | [Interactive model map v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map-v2.html) | Versioned model lineage map. |
+| [DCM cost model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html) | Clickable DCM scheduled-query and cost-allocation map. |
 
 ## Getting Started
 

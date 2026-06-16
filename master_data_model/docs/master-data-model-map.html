@@ -773,14 +773,14 @@
 
         <aside class="definition-sidebar" aria-label="Dot definitions">
           <h2>Dot Definitions</h2>
-          <p>Each card shows where the object lives and how carefully to read it.</p>
+          <p>Warnings mean what to watch out for: what can go wrong if this node is misunderstood, mismatched, summed, or assumed fresh.</p>
           <div class="definition-list">
             <button class="definition-item" type="button" data-highlight="stable-table"><span class="pip live"></span><span><strong>Stable table</strong><small>Stored data refreshed by a loader or scheduled query.</small></span></button>
             <button class="definition-item" type="button" data-highlight="view-logic"><span class="pip docs"></span><span><strong>View or logic</strong><small>Calculated from upstream data when the model is queried.</small></span></button>
             <button class="definition-item" type="button" data-highlight="updater"><span class="pip write"></span><span><strong>Updater</strong><small>Has a named refresh path, loader, or scheduled query.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="risk-low"><span class="pip risk-low"></span><span><strong>Lower risk</strong><small>Simple pass-through or filter with fewer moving parts.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="risk-med"><span class="pip risk-med"></span><span><strong>Mapping caveat</strong><small>IDs, dates, package names, or source fields are being matched.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="risk-high"><span class="pip risk-high"></span><span><strong>Production caveat</strong><small>Metric precedence or rollup logic can change final reporting.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="risk-low"><span class="pip risk-low"></span><span><strong>Light warning</strong><small>Mostly pass-through or filtering; fewer places to misread the data.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="risk-med"><span class="pip risk-med"></span><span><strong>Mapping warning</strong><small>IDs, dates, package names, or source fields are being matched.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="risk-high"><span class="pip risk-high"></span><span><strong>Reporting warning</strong><small>Metric precedence, manual values, or rollups can change final reporting.</small></span></button>
           </div>
         </aside>
       </div>
@@ -788,12 +788,12 @@
       <aside class="inspector" aria-live="polite" aria-label="Selected map detail">
         <p class="inspector-eyebrow" id="detailGroup">Select a node</p>
         <h2 id="detailTitle">Start with the live master view</h2>
-        <p class="inspector-summary" id="detailSummary">Click a node for source, update, and caveat.</p>
+        <p class="inspector-summary" id="detailSummary">Click a node for source, update, and warning.</p>
         <div class="detail-grid">
           <div class="detail-box"><strong>Object</strong><span id="detailTruth">Live BigQuery decides production state.</span></div>
           <div class="detail-box"><strong>Update</strong><span id="detailWrites">Click a node for its refresh path.</span></div>
           <div class="detail-box"><strong>Freshness</strong><span id="detailFreshness">Click a node for upstream dependencies.</span></div>
-          <div class="detail-box"><strong>Caveat</strong><span id="detailRisk">Click a node for the production caveat.</span></div>
+          <div class="detail-box"><strong>Warning</strong><span id="detailRisk">Click a node for the production warning.</span></div>
         </div>
         <p class="section-title">Notes</p>
         <ul class="note-list" id="detailNotes"></ul>
@@ -864,7 +864,8 @@
         sources: [
           ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
           ["Refresh doc: mm_dcm_costmodel scheduled query", "../docs/SCHEDULED_QUERIES.md#1-mm_dcm_costmodel"],
-          ["Builder SQL: 20250505_costModel_v5.sql", "../sql/base/dcm/20250505_costModel_v5.sql"]
+          ["Builder SQL: 20250505_costModel_v5.sql", "../sql/base/dcm/20250505_costModel_v5.sql"],
+          ["Interactive DCM Cost Model Map", "./dcm-cost-model-map.html"]
         ]
       },
       {
@@ -1030,7 +1031,7 @@
         writes: "Refresh: master upstream scheduled query after TV Gmail loaders are current.",
         freshness: "Current after the master upstream table refresh runs.",
         risk: "low",
-        reviewReason: "Lower risk: TV already has its own lane; freshness is the main check.",
+        reviewReason: "Simple read: TV already has its own lane; freshness is the main check.",
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
@@ -1055,7 +1056,7 @@
         writes: "View only. Refresh local and national TV tables.",
         freshness: "Current when landing.tv_combined_tbl is current.",
         risk: "low",
-        reviewReason: "Lower risk: TV fields map directly to tv_* columns.",
+        reviewReason: "Simple read: TV fields map directly to tv_* columns.",
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
@@ -1214,7 +1215,7 @@
         writes: "View only. Refresh Master View upstreams.",
         freshness: "Current when master_stg.data_model is current.",
         risk: "low",
-        reviewReason: "Lower risk: simple filter, but it inherits Master logic.",
+        reviewReason: "Simple read: simple filter, but it inherits Master logic.",
         kind: "output",
         callouts: { truth: "live", writes: false },
         notes: [
@@ -1261,7 +1262,7 @@
         pips.push(["docs", "View or logic"]);
       }
       if (node.callouts.writes) pips.push(["write", "Updater documented"]);
-      const riskLabels = { low: "Lower risk", medium: "Mapping caveat", high: "Production caveat" };
+      const riskLabels = { low: "Light warning", medium: "Mapping warning", high: "Reporting warning" };
       pips.push([`risk-${node.risk}`, riskLabels[node.risk]]);
       return pips.map(([klass, label]) => `<span class="pip ${klass}" title="${label}" aria-label="${label}"></span>`).join("");
     }
@@ -1322,6 +1323,13 @@
       });
     }
 
+    function warningText(text) {
+      return text
+        .replace(/^Mapping:/, "Mapping warning:")
+        .replace(/^Caveat:/, "Warning:")
+        .replace(/^Simple read:/, "Light warning:");
+    }
+
     function selectNode(id) {
       const node = nodes.find((item) => item.id === id) || nodes[0];
       document.querySelectorAll(".node").forEach((el) => {
@@ -1333,7 +1341,7 @@
       detail.truth.textContent = node.truth;
       detail.writes.textContent = node.writes;
       detail.freshness.textContent = node.freshness;
-      detail.risk.textContent = node.reviewReason;
+      detail.risk.textContent = warningText(node.reviewReason);
       detail.notes.innerHTML = node.notes.map((note) => `<li>${note}</li>`).join("");
       detail.sources.innerHTML = node.sources.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join("");
     }

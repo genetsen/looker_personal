@@ -425,7 +425,7 @@
     .badge.b-cte { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); }
     .badge.b-manual { background: rgba(245, 158, 11, 0.15); color: #fde047; border: 1px solid rgba(245, 158, 11, 0.3); }
 
-    /* Node Risk left-borders */
+    /* Node warning left-borders */
     .node-card[data-risk="low"] { border-left-color: var(--green); }
     .node-card[data-risk="medium"] { border-left-color: var(--amber); }
     .node-card[data-risk="high"] { border-left-color: var(--red); }
@@ -784,9 +784,9 @@
         </div>
         <div class="filter-group" id="riskFilters">
           <!-- Legend quick-filters -->
-          <button class="pill-btn" type="button" id="r-high" onclick="filterByRisk('high')"><span class="pip risk-high"></span> Production Caveats</button>
-          <button class="pill-btn" type="button" id="r-medium" onclick="filterByRisk('medium')"><span class="pip risk-med"></span> Mapping Caveats</button>
-          <button class="pill-btn" type="button" id="r-low" onclick="filterByRisk('low')"><span class="pip risk-low"></span> Lower Risk</button>
+          <button class="pill-btn" type="button" id="r-high" onclick="filterByRisk('high')"><span class="pip risk-high"></span> Reporting Warnings</button>
+          <button class="pill-btn" type="button" id="r-medium" onclick="filterByRisk('medium')"><span class="pip risk-med"></span> Mapping Warnings</button>
+          <button class="pill-btn" type="button" id="r-low" onclick="filterByRisk('low')"><span class="pip risk-low"></span> Light Warnings</button>
           <button class="pill-btn" type="button" id="resetAllBtn" onclick="resetAllFilters()" style="display:none; background:rgba(239, 68, 68, 0.15); color:#ef4444; border-color:rgba(239, 68, 68, 0.3);">Reset Filters</button>
         </div>
       </div>
@@ -912,13 +912,13 @@
           </div>
         </div>
         
-        <p class="sidebar-summary" id="inspSummary">Click any card on the map to audit its pipeline role, target outputs, upstream updaters, and production caveats.</p>
+        <p class="sidebar-summary" id="inspSummary">Click any card on the map to audit its pipeline role, target outputs, upstream updaters, and production warnings.</p>
 
         <!-- Sidebar Tab Navigation -->
         <nav class="inspector-tabs" role="tablist">
           <button class="inspector-tab-btn active" id="itab-overview" onclick="switchInspectorTab('overview')" role="tab" aria-selected="true" aria-controls="icontent-overview">Overview</button>
           <button class="inspector-tab-btn" id="itab-fields" onclick="switchInspectorTab('fields')" role="tab" aria-selected="false" aria-controls="icontent-fields">Schema Fields</button>
-          <button class="inspector-tab-btn" id="itab-caveats" onclick="switchInspectorTab('caveats')" role="tab" aria-selected="false" aria-controls="icontent-caveats">Caveats &amp; QA</button>
+          <button class="inspector-tab-btn" id="itab-caveats" onclick="switchInspectorTab('caveats')" role="tab" aria-selected="false" aria-controls="icontent-caveats">Warnings &amp; QA</button>
         </nav>
 
         <!-- Overview Content -->
@@ -929,7 +929,7 @@
               <div class="meta-box-value" id="inspObjType">-</div>
             </div>
             <div class="meta-box">
-              <div class="meta-box-label">Risk Level</div>
+              <div class="meta-box-label">Warning Level</div>
               <div class="meta-box-value" id="inspRiskLevel">-</div>
             </div>
             <div class="meta-box" style="grid-column: span 2;">
@@ -960,10 +960,10 @@
           </div>
         </div>
 
-        <!-- Caveats & QA Content -->
+        <!-- Warnings & QA Content -->
         <div class="tab-content" id="icontent-caveats">
           <div class="meta-box" style="border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05);">
-            <div class="meta-box-label" style="color:#ef4444;">Primary Mapping &amp; Reporting Caveat</div>
+            <div class="meta-box-label" style="color:#ef4444;">Primary Warning</div>
             <div class="meta-box-value" id="inspCaveatVal" style="font-size: 12px; line-height: 1.5;">-</div>
           </div>
 
@@ -1066,7 +1066,8 @@
         sources: [
           ["DCM Cost Table", bq("DCM", "20250505_costModel_v5"), "bq"],
           ["DCM scheduled runbook", localFile("docs/SCHEDULED_QUERIES.md#1-mm_dcm_costmodel"), "file"],
-          ["Costmodel SQL logic", localFile("sql/base/dcm/20250505_costModel_v5.sql"), "file"]
+          ["Costmodel SQL logic", localFile("sql/base/dcm/20250505_costModel_v5.sql"), "file"],
+          ["Interactive DCM Cost Model Map", "./dcm-cost-model-map.html", "file"]
         ]
       },
       {
@@ -1813,11 +1814,18 @@
       return false;
     }
 
-    // Render risk pips
+    // Render warning pips
     function calloutPips(node) {
       const riskMap = { low: "risk-low", medium: "risk-med", high: "risk-high" };
-      const labelMap = { low: "Lower Risk", medium: "Mapping Caveat", high: "Production Caveat" };
+      const labelMap = { low: "Light Warning", medium: "Mapping Warning", high: "Reporting Warning" };
       return `<span class="pip ${riskMap[node.risk]}" title="${labelMap[node.risk]}"></span>`;
+    }
+
+    function warningText(text) {
+      return text
+        .replace(/^Mapping:/, "Mapping warning:")
+        .replace(/^Production:/, "Reporting warning:")
+        .replace(/^Lower Risk:/, "Light warning:");
     }
 
     // Render type badges
@@ -1947,11 +1955,11 @@
       renderOutputPanel();
     }
 
-    // Legend risk filters
+    // Legend warning filters
     function filterByRisk(risk) {
       currentRiskFilter = currentRiskFilter === risk ? null : risk;
       
-      // Update risk buttons active state
+      // Update warning buttons active state
       const buttons = document.querySelectorAll("#riskFilters .pill-btn");
       buttons.forEach(btn => {
         btn.classList.remove("active");
@@ -2052,7 +2060,7 @@
       // Bind overview tab
       document.getElementById("inspObjType").textContent = node.objType;
       
-      const riskLabels = { low: "Lower Risk", medium: "Mapping Caveat", high: "Production Caveat" };
+      const riskLabels = { low: "Light Warning", medium: "Mapping Warning", high: "Reporting Warning" };
       document.getElementById("inspRiskLevel").textContent = riskLabels[node.risk];
       document.getElementById("inspRiskLevel").style.color = node.risk === "high" ? "#ef4444" : (node.risk === "medium" ? "#f59e0b" : "#10b981");
 
@@ -2074,8 +2082,8 @@
         fieldsUl.innerHTML = "<li>No fields specified for this node. Integrates general pipeline properties.</li>";
       }
 
-      // Bind Caveats and SQL sources tab
-      document.getElementById("inspCaveatVal").textContent = node.caveat;
+      // Bind Warnings and SQL sources tab
+      document.getElementById("inspCaveatVal").textContent = warningText(node.caveat);
       
       const sourcesUl = document.getElementById("inspSources");
       if (node.sources && node.sources.length > 0) {

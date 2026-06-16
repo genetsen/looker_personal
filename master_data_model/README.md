@@ -8,7 +8,8 @@ It was split out of the ADIF workspace because the model intentionally removes A
 
 Interactive orientation:
 
-- [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-risk callouts.
+- [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
+- [`docs/dcm-cost-model-map.html`](docs/dcm-cost-model-map.html) - clickable DCM scheduled-query map for package rollups, pricing logic, the creative-safe join key, and Master Model handoff.
 
 ## Manual Package Edit Quick Reference
 
@@ -203,7 +204,7 @@ When validating a candidate or production view, run live QA and summarize the re
 - Compare production and QA candidates live when reviewing a change.
 - Confirm rows labeled `missing_prisma_package` have null `final_*` metrics and do not inflate `pkg_act_*` rollups.
 - Confirm mart package rollups are recalculated after reporting-only filters such as `low_signal_dcm`.
-- Keep durable findings in docs, such as field semantics, source lineage, filters, deployment commands, and known modeling risks.
+- Keep durable findings in docs, such as field semantics, source lineage, filters, deployment commands, and known modeling warnings.
 - Keep fluctuating counts in the query result or handoff note for that run, not as permanent README values.
 
 Recent stable QA context:
