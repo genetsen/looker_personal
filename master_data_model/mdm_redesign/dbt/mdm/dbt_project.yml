@@ -1,0 +1,41 @@
+name: master_data_model_redesign
+version: "1.0"
+config-version: 2
+
+profile: master_data_model_redesign
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["models/tests"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  master_data_model_redesign:
+    sources:
+      +schema: mdm_raw
+      +materialized: view
+    staging:
+      +schema: mdm_stg
+      +materialized: view
+    mapping_config:
+      +schema: mdm_config
+      +materialized: table
+    intermediate:
+      +schema: mdm_int
+      +materialized: view
+    final_fact:
+      +schema: mdm_publish
+      +materialized: table
+    marts:
+      +schema: mdm_mart
+      +materialized: view
+    tests:
+      +schema: mdm_qa
+      +materialized: view
