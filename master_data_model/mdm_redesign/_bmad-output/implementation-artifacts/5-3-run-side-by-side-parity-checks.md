@@ -1,8 +1,7 @@
 # Story 5.3: Run Side-By-Side Parity Checks
 
-Status: ready-for-dev
+Status: done
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 

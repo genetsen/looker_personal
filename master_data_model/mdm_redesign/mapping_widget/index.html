@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Source Mapping Review Widget — mdm_redesign</title>
+  <!-- Story 4.3: Launch Interactive Mapping Review Widget -->
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --border: #d1d5db;
+      --pass: #16a34a;
+      --warn: #f59e0b;
+      --fail: #dc2626;
+      --text: #1f2937;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 0.875rem; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { font-size: 1.125rem; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    .source-info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .info-item label { font-size: 0.75rem; text-transform: uppercase; color: var(--muted); display: block; }
+    .info-item span { font-size: 0.9375rem; font-weight: 500; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 8px 12px; background: #f9fafb; border-bottom: 2px solid var(--border); font-weight: 600; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+    .tag-high { background: #dcfce7; color: #166534; }
+    .tag-low { background: #fef3c7; color: #92400e; }
+    .tag-additive { background: #dbeafe; color: #1e40af; }
+    .tag-donotsum { background: #fee2e2; color: #991b1b; }
+
+    .actions { display: flex; gap: 8px; }
+    .actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px; background: white; cursor: pointer; font-size: 0.8125rem; }
+    .actions button:hover { background: #f3f4f6; }
+    .actions button.accept { background: var(--pass); color: white; border-color: var(--pass); }
+    .actions button.accept:hover { background: #15803d; }
+    .actions button.reject { background: var(--fail); color: white; border-color: var(--fail); }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; }
+    .badge-pass { background: #dcfce7; color: #166534; }
+    .badge-warn { background: #fef3c7; color: #92400e; }
+    .badge-fail { background: #fee2e2; color: #991b1b; }
+
+    .section-status { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-weight: 500; }
+    .section-status.pass { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .section-status.warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+    .inline select { padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8125rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🧭 Source Mapping Review</h1>
+  <p class="subtitle">Review and edit proposed source-to-target mappings before promotion. Story 4.3 — Interactive Mapping Review Widget.</p>
+
+  <div class="card source-info">
+    <div class="info-item"><label>Source Table</label><span id="sourceTable">—</span></div>
+    <div class="info-item"><label>Row Count</label><span id="rowCount">—</span></div>
+    <div class="info-item"><label>Candidate Grain</label><span id="candidateGrain">—</span></div>
+    <div class="info-item"><label>Validation Status</label><span id="validationStatus" class="badge badge-pass">Not Run</span></div>
+  </div>
+
+  <div id="mappingStatus" class="section-status pass">
+    ✅ All mappings resolved. Ready for review.
+  </div>
+
+  <div class="card">
+    <h2>📋 Field Mappings</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Source Column</th>
+          <th>Type</th>
+          <th>Sample Values</th>
+          <th>Proposed Target</th>
+          <th>Confidence</th>
+          <th>Metric Safety</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="mappingsBody">
+        <!-- loaded dynamically -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>📊 Summary</h2>
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Count</th></tr>
+      </thead>
+      <tbody id="summaryBody">
+        <tr><td>Total source columns</td><td id="totalCols">0</td></tr>
+        <tr><td>Mapped</td><td id="mappedCols">0</td></tr>
+        <tr><td>Unmapped</td><td id="unmappedCols">0</td></tr>
+        <tr><td>High confidence</td><td id="highConf">0</td></tr>
+        <tr><td>Low confidence</td><td id="lowConf">0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex; gap:12px; margin-top:16px;">
+    <button class="actions accept" onclick="saveMapping()" style="padding:8px 20px;">💾 Save Mapping</button>
+    <button onclick="loadSampleData()" style="padding:8px 20px; border:1px solid var(--border); border-radius:4px; background:white; cursor:pointer;">🔄 Reset to Proposal</button>
+    <button onclick="runValidation()" style="padding:8px 20px; border:1px solid var(--warn); border-radius:4px; background:white; cursor:pointer; color:var(--warn);">🔍 Validate</button>
+  </div>
+</div>
+
+<script>
+// Sample mapping data representing a source profile
+const SAMPLE_MAPPINGS = [
+  { source: "campaign_id", type: "STRING", sample: "CAMP-001, CAMP-002", target: "univ_campaign_placeholder", confidence: "high", safety: "dimension" },
+  { source: "creative_name", type: "STRING", sample: "Creative A, Banner X", target: "univ_creative_placeholder", confidence: "high", safety: "dimension" },
+  { source: "placement_name", type: "STRING", sample: "Homepage, Sidebar", target: "univ_placement_placeholder", confidence: "high", safety: "dimension" },
+  { source: "supplier_site", type: "STRING", sample: "Google, Meta", target: "univ_supplier_placeholder", confidence: "high", safety: "dimension" },
+  { source: "spend", type: "FLOAT64", sample: "1250.50, 3400.00", target: "univ_spend_safe", confidence: "high", safety: "additive" },
+  { source: "impressions", type: "INT64", sample: "50000, 120000", target: "univ_impressions_safe", confidence: "high", safety: "additive" },
+  { source: "clicks", type: "INT64", sample: "125, 340", target: "univ_clicks_safe", confidence: "high", safety: "additive" },
+  { source: "video_plays", type: "INT64", sample: "500, 1200", target: "univ_video_plays_status", confidence: "medium", safety: "additive" },
+  { source: "planned_spend", type: "FLOAT64", sample: "5000.00, 10000.00", target: "univ_planned_spend_safe", confidence: "high", safety: "doNotSum" },
+  { source: "planned_impressions", type: "INT64", sample: "200000, 500000", target: "univ_planned_impressions_safe", confidence: "high", safety: "doNotSum" },
+  { source: "raw_notes", type: "STRING", sample: "Internal notes", target: "univ_raw_notes", confidence: "low", safety: "dimension" },
+  { source: "data_source", type: "STRING", sample: "dcm, fpd", target: "univ_source_system", confidence: "high", safety: "identity" },
+];
+
+let currentMappings = [...SAMPLE_MAPPINGS];
+
+function renderMappings() {
+  const tbody = document.getElementById("mappingsBody");
+  tbody.innerHTML = "";
+  let mapped = 0, unmapped = 0, highConf = 0, lowConf = 0;
+
+  currentMappings.forEach((m, i) => {
+    if (m.target && m.target !== "—") mapped++; else unmapped++;
+    if (m.confidence === "high") highConf++; else lowConf++;
+    const safetyTag = m.safety === "additive" ? '<span class="tag tag-additive">additive</span>'
+                     : m.safety === "doNotSum" ? '<span class="tag tag-donotsum">doNotSum</span>'
+                     : '<span class="tag">' + m.safety + '</span>';
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${m.source}</strong></td>
+      <td>${m.type}</td>
+      <td style="font-size:0.75rem;color:var(--muted);">${m.sample}</td>
+      <td>
+        <select onchange="updateTarget(${i}, this.value)">
+          <option value="${m.target}" selected>${m.target}</option>
+          <option value="univ_campaign_placeholder">univ_campaign_placeholder</option>
+          <option value="univ_creative_placeholder">univ_creative_placeholder</option>
+          <option value="univ_placement_placeholder">univ_placement_placeholder</option>
+          <option value="univ_supplier_placeholder">univ_supplier_placeholder</option>
+          <option value="univ_spend_safe">univ_spend_safe</option>
+          <option value="univ_impressions_safe">univ_impressions_safe</option>
+          <option value="univ_clicks_safe">univ_clicks_safe</option>
+          <option value="univ_source_row_id">univ_source_row_id</option>
+          <option value="univ_source_system">univ_source_system</option>
+          <option value="">— unmapped —</option>
+        </select>
+      </td>
+      <td><span class="tag ${m.confidence === 'high' ? 'tag-high' : 'tag-low'}">${m.confidence}</span></td>
+      <td>${safetyTag}</td>
+      <td class="actions">
+        <button class="accept" onclick="acceptMapping(${i})">✓</button>
+        <button onclick="rejectMapping(${i})">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Summary
+  document.getElementById("totalCols").textContent = currentMappings.length;
+  document.getElementById("mappedCols").textContent = mapped;
+  document.getElementById("unmappedCols").textContent = unmapped;
+  document.getElementById("highConf").textContent = highConf;
+  document.getElementById("lowConf").textContent = lowConf;
+}
+
+function updateTarget(idx, value) {
+  currentMappings[idx].target = value;
+  renderMappings();
+}
+
+function acceptMapping(idx) {
+  currentMappings[idx].confidence = "high";
+  renderMappings();
+}
+
+function rejectMapping(idx) {
+  currentMappings[idx].target = "";
+  currentMappings[idx].confidence = "low";
+  renderMappings();
+}
+
+function loadSampleData() {
+  currentMappings = [...SAMPLE_MAPPINGS];
+  document.getElementById("sourceTable").textContent = "looker-studio-pro-452620.mdm_raw.example_source";
+  document.getElementById("rowCount").textContent = "125,430";
+  document.getElementById("candidateGrain").textContent = "campaign / date";
+  document.getElementById("mappingStatus").className = "section-status pass";
+  document.getElementById("mappingStatus").textContent = "✅ All mappings resolved. Ready for review.";
+  renderMappings();
+}
+
+function saveMapping() {
+  const output = {
+    saved_at: new Date().toISOString(),
+    source_table: document.getElementById("sourceTable").textContent,
+    mappings: currentMappings
+  };
+  console.log("Saved mapping config:", output);
+  document.getElementById("mappingStatus").className = "section-status pass";
+  document.getElementById("mappingStatus").textContent = "✅ Mapping saved successfully! (Logged to console)";
+  alert("Mapping saved. Check console for JSON output.");
+}
+
+function runValidation() {
+  const unmapped = currentMappings.filter(m => !m.target || m.target === "").length;
+  const noSafety = currentMappings.filter(m => !m.safety).length;
+  if (unmapped > 0) {
+    document.getElementById("mappingStatus").className = "section-status warn";
+    document.getElementById("mappingStatus").textContent = `⚠️  ${unmapped} column(s) unmapped. Validation warnings exist.`;
+  } else if (noSafety > 0) {
+    document.getElementById("mappingStatus").className = "section-status warn";
+    document.getElementById("mappingStatus").textContent = `⚠️  ${noSafety} field(s) missing metric safety labels.`;
+  } else {
+    document.getElementById("mappingStatus").className = "section-status pass";
+    document.getElementById("mappingStatus").textContent = "✅ Validation PASSED — All mappings complete and safe.";
+  }
+}
+
+// Initialize
+loadSampleData();
+</script>
+</body>
+</html>

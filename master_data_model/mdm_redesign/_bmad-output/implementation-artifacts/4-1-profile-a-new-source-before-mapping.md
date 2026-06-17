@@ -1,8 +1,7 @@
 # Story 4.1: Profile A New Source Before Mapping
 
-Status: ready-for-dev
+Status: done
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 

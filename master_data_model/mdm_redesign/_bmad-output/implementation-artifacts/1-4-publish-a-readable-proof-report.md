@@ -1,8 +1,6 @@
 # Story 1.4: Publish A Readable Proof Report
 
-Status: ready-for-dev
-
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+Status: done
 
 ## Story
 

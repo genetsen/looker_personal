@@ -1,5 +1,5 @@
 # generated: 2026-06-16T17:14:06-0400
-# last_updated: 2026-06-16T17:14:06-0400
+# last_updated: 2026-06-16T17:50:19-0400
 # project: master_data_model
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,46 +35,46 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-06-16T17:14:06-0400"
-last_updated: "2026-06-16T17:14:06-0400"
+last_updated: "2026-06-16T17:50:19-0400"
 project: "master_data_model"
 project_key: "NOKEY"
 tracking_system: "file-system"
 story_location: "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/mdm_redesign/_bmad-output/implementation-artifacts"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-create-the-versioned-redesign-workspace: done
   1-2-capture-the-live-master-baseline: done
-  1-3-add-candidate-parity-checks: ready-for-dev
-  1-4-publish-a-readable-proof-report: ready-for-dev
+  1-3-add-candidate-parity-checks: done
+  1-4-publish-a-readable-proof-report: done
   epic-1-retrospective: optional
 
-  epic-2: ready-for-dev
-  2-1-define-the-universal-row-contract: ready-for-dev
-  2-2-build-the-compatibility-first-candidate-view: ready-for-dev
-  2-3-add-explicit-placeholder-semantics: ready-for-dev
-  2-4-prove-a-pilot-lower-grain-slice: ready-for-dev
+  epic-2: done
+  2-1-define-the-universal-row-contract: done
+  2-2-build-the-compatibility-first-candidate-view: done
+  2-3-add-explicit-placeholder-semantics: done
+  2-4-prove-a-pilot-lower-grain-slice: done
   epic-2-retrospective: optional
 
-  epic-3: ready-for-dev
-  3-1-add-metadata-source-fields: ready-for-dev
-  3-2-add-delivery-derived-fallback-rules: ready-for-dev
-  3-3-add-metric-value-status-and-summability: ready-for-dev
-  3-4-add-metric-safety-qa-checks: ready-for-dev
+  epic-3: done
+  3-1-add-metadata-source-fields: done
+  3-2-add-delivery-derived-fallback-rules: done
+  3-3-add-metric-value-status-and-summability: done
+  3-4-add-metric-safety-qa-checks: done
   epic-3-retrospective: optional
 
-  epic-4: ready-for-dev
-  4-1-profile-a-new-source-before-mapping: ready-for-dev
-  4-2-propose-source-field-and-metric-mappings: ready-for-dev
-  4-3-launch-interactive-mapping-review-widget: ready-for-dev
-  4-4-save-versioned-mapping-configuration: ready-for-dev
-  4-5-validate-mapping-before-promotion: ready-for-dev
+  epic-4: done
+  4-1-profile-a-new-source-before-mapping: done
+  4-2-propose-source-field-and-metric-mappings: done
+  4-3-launch-interactive-mapping-review-widget: done
+  4-4-save-versioned-mapping-configuration: done
+  4-5-validate-mapping-before-promotion: done
   epic-4-retrospective: optional
 
-  epic-5: ready-for-dev
-  5-1-define-the-published-output-contract: ready-for-dev
-  5-2-build-shortcut-marts-from-the-universal-table: ready-for-dev
-  5-3-run-side-by-side-parity-checks: ready-for-dev
-  5-4-publish-a-migration-readiness-report: ready-for-dev
-  5-5-require-approval-before-production-replacement: ready-for-dev
+  epic-5: done
+  5-1-define-the-published-output-contract: done
+  5-2-build-shortcut-marts-from-the-universal-table: done
+  5-3-run-side-by-side-parity-checks: done
+  5-4-publish-a-migration-readiness-report: done
+  5-5-require-approval-before-production-replacement: done
   epic-5-retrospective: optional

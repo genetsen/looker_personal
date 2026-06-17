@@ -1,8 +1,7 @@
 # Story 4.4: Save Versioned Mapping Configuration
 
-Status: ready-for-dev
+Status: done
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 

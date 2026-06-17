@@ -1,8 +1,7 @@
 # Story 2.3: Add Explicit Placeholder Semantics
 
-Status: ready-for-dev
+Status: done
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 

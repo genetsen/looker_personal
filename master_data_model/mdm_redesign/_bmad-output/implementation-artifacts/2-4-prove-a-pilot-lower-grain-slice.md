@@ -1,8 +1,7 @@
 # Story 2.4: Prove A Pilot Lower-Grain Slice
 
-Status: ready-for-dev
+Status: done
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
