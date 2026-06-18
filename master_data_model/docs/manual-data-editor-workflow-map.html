@@ -378,6 +378,47 @@
       margin-top: 14px;
     }
 
+    .technical-notes {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .technical-notes h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .technical-notes p {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .technical-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .technical-card {
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+      border: 1px solid rgba(24, 33, 43, 0.14);
+      border-radius: 8px;
+      background: rgba(244, 247, 246, 0.68);
+    }
+
     .definition {
       padding: 10px;
       border: 1px solid var(--line);
@@ -391,11 +432,26 @@
       font-size: 13px;
     }
 
+    .technical-card strong {
+      display: block;
+      font-size: 13px;
+    }
+
     .definition span {
       display: block;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+    }
+
+    .technical-card ul {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.36;
     }
 
     code {
@@ -420,13 +476,18 @@
       .definitions {
         grid-template-columns: repeat(2, minmax(190px, 1fr));
       }
+
+      .technical-grid {
+        grid-template-columns: repeat(2, minmax(210px, 1fr));
+      }
     }
 
     @media (max-width: 680px) {
       .shell { padding: 14px; }
       .map-panel { padding: 10px; }
       .map-grid,
-      .definitions {
+      .definitions,
+      .technical-grid {
         grid-template-columns: 1fr;
       }
 
@@ -481,6 +542,69 @@
       <div class="definition">
         <strong>Mart</strong>
         <span>The dashboard-ready view built from the evidence model after reporting-only filtering and rollup recalculation.</span>
+      </div>
+    </section>
+
+    <section class="technical-notes" aria-label="Technical implementation notes">
+      <div>
+        <h2>Technical Notes</h2>
+        <p>These notes are for engineers debugging the path or changing the implementation. They describe the contract behind the clickable map, not a separate workflow.</p>
+      </div>
+
+      <div class="technical-grid">
+        <article class="technical-card">
+          <strong>Write Boundary</strong>
+          <ul>
+            <li>The Apps Script request control sends notification only; it does not call the loader or write warehouse tables.</li>
+            <li>The R loader is the normal write boundary for Sheet values plus the raw and daily manual BigQuery tables.</li>
+            <li>The sheet formatting rebuild script is outside routine refresh and should not be run against the live sheet without explicit rebuild approval.</li>
+          </ul>
+        </article>
+
+        <article class="technical-card">
+          <strong>Comparison Inputs</strong>
+          <ul>
+            <li>Planned spend and planned impressions compare against PRISMA package totals so filtered mart rows do not create false planned edits.</li>
+            <li>Delivered metric baselines are recalculated from source delivery fields instead of manual-affected final fields.</li>
+            <li>Prior raw manual rows help the loader distinguish a kept override, a corrected override, an undo, and source catch-up.</li>
+          </ul>
+        </article>
+
+        <article class="technical-card">
+          <strong>Warehouse Grain</strong>
+          <ul>
+            <li>The raw manual table is one row per editor row and carries validation, replacement, current, and metadata fields.</li>
+            <li>The daily manual table is package/date grain and carries only active valid metric rows for model joins.</li>
+            <li>Repeated total fields ending in <code>doNotSum</code> are context fields, not additive daily measures.</li>
+          </ul>
+        </article>
+
+        <article class="technical-card">
+          <strong>Model Merge Rules</strong>
+          <ul>
+            <li>Manual metric rows join to existing model rows by package ID and date.</li>
+            <li>Manual metadata joins by package ID and can apply outside a metric override date range.</li>
+            <li>Manual-only packages enter through the manual branch only when required identity, date, metric, and metadata fields are valid.</li>
+          </ul>
+        </article>
+
+        <article class="technical-card">
+          <strong>Validation And Proof</strong>
+          <ul>
+            <li>Partial-range planned metric edits are blocked; delivered metrics can use day, week, or full-flight windows.</li>
+            <li>Daily allocation proof must show spread rows add back to the replacement total before the upload is trusted.</li>
+            <li>End-to-end proof means tracing Sheet value, raw row, daily rows, model fields, mart fields, and dashboard refresh/filter behavior.</li>
+          </ul>
+        </article>
+
+        <article class="technical-card">
+          <strong>Common Debug Trap</strong>
+          <ul>
+            <li>A valid manual edit changes the row source classification to manual package edits.</li>
+            <li>A downstream dashboard filter that keeps only DCM-classified rows can hide correct manual-backed values.</li>
+            <li>For marker bugs, compare visible value, hidden baseline, hidden marker, raw row, daily row, model, mart, and loader comparator source.</li>
+          </ul>
+        </article>
       </div>
     </section>
   </main>
