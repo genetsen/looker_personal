@@ -2,13 +2,15 @@
 
 **Project:** master_data_model redesign
 **Date:** 2026-06-16
-**Status:** Ready for review and approval
+**Status:** Ready for review - isolated `mdm_*` candidate corrected and revalidated
 
 ---
 
-## ✅ Handoff Summary
+## Handoff Summary
 
 The master data model redesign candidate has been built in sibling/versioned `mdm_*` BigQuery datasets. All artifacts are production-isolated and non-disruptive to the existing `master_stg.data_model` and `master_stg.data_model_mart`.
+
+This handoff is ready for review of the isolated `mdm_*` candidate. It does **not** replace any production `master_stg` object without separate written approval.
 
 ### Deployed Objects
 
@@ -23,7 +25,7 @@ The master data model redesign candidate has been built in sibling/versioned `md
 | `v_master_evidence` | `mdm_publish` | multi-grain | Stable BI-facing source-of-truth view |
 | `mart_package_daily` | `mdm_mart` | package/date | Package shortcut mart |
 | `mart_creative_daily` | `mdm_mart` | creative/date | Creative shortcut mart |
-| `master_baseline_snapshot` | `mdm_qa` | snapshot | Live baseline (165,394 rows, 2,340 packages) |
+| `master_baseline_snapshot` | `mdm_qa` | snapshot | Historical baseline snapshot for QA context; not a row-count validation gate |
 | `proof_report` | `mdm_qa` | report | Pass/fail proof summary |
 | `metric_safety_checks` | `mdm_qa` | validation | Metric duplication and safety QA |
 | `migration_readiness_report` | `mdm_qa` | report | Full readiness summary |
@@ -31,11 +33,12 @@ The master data model redesign candidate has been built in sibling/versioned `md
 
 ### Validation Evidence
 
-- **Row Count:** 165,394 (matches baseline)
-- **Schema:** All 104 baseline columns preserved in compatibility view
-- **Totals:** Spend, impressions, clicks, and planned values reconcile within tolerance
-- **doNotSum:** Package-level planned values are doNotSum on lower-grain rows
-- **Production Isolation:** Zero `master_stg` objects modified
+- **Compatibility layer:** `mdm_int.int_universal_compat_view` preserved all 197 current `master_stg.data_model` columns and matched overall spend, impressions, and clicks in live inspection.
+- **Published final view:** `mdm_publish.v_master_evidence` now preserves all 197 current `master_stg.data_model` columns and adds 20 curated, BI-facing `univ_*` fields. Internal helper/status fields stay outside the published final view.
+- **Metric proof:** Validation uses overall and package-level spend/impressions/clicks reconciliation, after accounting for intended transformations or filters. Row count is shown as diagnostic only.
+- **Resolved blocker:** The published view no longer joins non-unique package/date intermediate views together. It now uses one row stream to avoid row multiplication.
+- **Production Isolation:** Zero `master_stg` objects modified.
+- **Proof result:** `mdm_qa.migration_readiness_report` and `mdm_qa.proof_report` show schema coverage, overall metric reconciliation, package metric reconciliation, and production isolation as PASS. Row count is INFO only.
 
 ---
 
@@ -52,12 +55,13 @@ If the candidate view replacement causes issues:
 
 Before the candidate is promoted to replace any production object, the following must occur:
 
-- [ ] **Step 1:** Review the migration readiness report in `mdm_qa.migration_readiness_report`
-- [ ] **Step 2:** Confirm production isolation is maintained
-- [ ] **Step 3:** Verify side-by-side parity comparison passes
-- [ ] **Step 4:** Explicit written approval from model owner
-- [ ] **Step 5:** Inform dashboard owners of migration timeline
-- [ ] **Step 6:** Update CHANGELOG.md and docs with new model shape
+- [x] **Step 1:** Deploy the corrected `mdm_publish.v_master_evidence` definition in the isolated `mdm_publish` dataset.
+- [x] **Step 2:** Regenerate `mdm_qa.migration_readiness_report` and `mdm_qa.proof_report`.
+- [x] **Step 3:** Verify schema coverage and overall/package-level spend, impressions, and clicks reconciliation pass.
+- [x] **Step 4:** Confirm production isolation is maintained.
+- [ ] **Step 5:** Explicit written approval from model owner
+- [ ] **Step 6:** Inform dashboard owners of migration timeline
+- [ ] **Step 7:** Update CHANGELOG.md and docs with new model shape
 
 ---
 

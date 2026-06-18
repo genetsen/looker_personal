@@ -1,47 +1,64 @@
 # Changelog
 
+## 2026-06-18
+
+- **ADDED** - Created a clickable Manual Data Editor workflow map showing the Sheet edit surface, request notification path, loader write path, manual evidence tables, model merge, reporting mart, and troubleshooting loop.
+
+### Next
+
+- Publish the updated interactive maps to the shared location - PENDING
+
+## 2026-06-17
+
+- **FIXED** - Rebuilt the redesign's separate test version so it preserves every current master field and matches spend, impressions, and clicks both overall and by package.
+- **IMPROVED** - Reduced the final test table from 258 columns to 217 by removing internal troubleshooting fields and keeping only 20 useful new fields.
+- **FIXED** - Corrected project status so the verified test version is clearly separated from unfinished work to match source fields and safely replace the production model.
+
+Related sessions:
+
+- [Redesign test and proof][session-redesign-test-proof]
+
+### Next
+
+- Define who must sign off and what proof they need before replacing the production model - PENDING
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan - RECOMMENDED
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
 ## 2026-06-16
 
-### Added
+- **PLANNED** - Turned the redesign idea into a build-ready plan for one flexible master table that supports package, creative, market, and other detail levels without hiding missing information.
+- **ADDED** - Created a clickable DCM cost-model map and replaced confusing risk language with plain warnings and `join key` wording—the shared value used to connect matching records.
+- **ADDED** - Created a four-page redesign report showing the proposed master table, how new data sources would be added, what still needs to be built, and how production could be replaced safely.
 
-- **DCM Cost Model Interactive Map -codexapp [thread](https://chatgpt.com/codex)**
-  What: Added a standalone clickable DCM cost-model map, linked it from the Master Model maps, docs index, and README, and clarified old caution labels as warnings.
-  Why: Makes the scheduled query, package rollups, pricing logic, creative-safe join key, and Master Model handoff easier to inspect without reading the full SQL first.
+Related sessions:
 
-  <details><summary>Paths - DCM Cost Model Interactive Map</summary>
+- [Flexible master-table design][session-flexible-master-table]
+- [DCM cost-model map][session-dcm-cost-model-map]
+- [Redesign report][session-redesign-report]
 
-  [DCM cost model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html)
-  [Master model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html)
-  [Master model map v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map-v2.html)
-  [Documentation index](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/index.md)
-  [README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
+### Next
 
-  </details>
+- Complete a verified test version alongside production - DONE
+- Reduce the final table to only useful new fields - DONE
+- Finish the interactive workflow for matching each source's fields to the master table - PENDING
+- Build the redesigned reporting tables described by the plan - PENDING
+- Publish the updated interactive maps to the shared location - PENDING
 
 ## 2026-06-08
 
-### Changed
+- **ADDED** - Amazon Ads is now included in master reporting, with Amazon's media cost counted as spend while sales remain revenue.
 
-- **Amazon Ads supply cost spend mapping**
-  What: Mapped Amazon Ads `supply_cost` into the generic `_spend` field and preserved the raw source value as `amzn_supply_cost`.
-  Why: Uses the Amazon media-cost field for spend reporting while keeping Amazon `sales` as outcome revenue instead of media spend.
+Related sessions:
 
-  <details><summary>Paths - Amazon Ads supply cost spend mapping</summary>
+- [Amazon Ads reporting][session-amazon-ads-reporting]
 
-  [Master data model SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql)
-  [README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
-
-  </details>
-
-### Added
-
-- **Amazon Ads source in master data model**
-  What: Added Ritual Amazon Ads rows from the runner-maintained landing table to `master_stg.data_model`, mapped compatible delivery metrics into the generic model fields, and preserved Amazon report fields as `amzn_*` columns.
-  Why: Makes the daily Amazon Ads report available in the downstream master model without treating Amazon sales as media spend or losing source-level report detail.
-
-  <details><summary>Paths - Amazon Ads source in master data model</summary>
-
-  [Master data model SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql)
-  [README.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
-
-  </details>
+[session-redesign-test-proof]: /Users/eugenetsenter/.codex/sessions/2026/06/16/rollout-2026-06-16T13-22-25-019ed174-adb3-7001-93cb-3fb1add59980.jsonl
+[session-flexible-master-table]: /Users/eugenetsenter/.codex/sessions/2026/06/16/rollout-2026-06-16T13-22-25-019ed174-adb3-7001-93cb-3fb1add59980.jsonl
+[session-dcm-cost-model-map]: /Users/eugenetsenter/.codex/sessions/2026/06/16/rollout-2026-06-16T13-58-30-019ed195-b67a-7d42-8fdb-50738d95734f.jsonl
+[session-redesign-report]: /Users/eugenetsenter/.codex/sessions/2026/06/16/rollout-2026-06-16T14-26-49-019ed1af-a24f-7992-8b7c-c4272fef4124.jsonl
+[session-amazon-ads-reporting]: /Users/eugenetsenter/.codex/sessions/2026/06/08/rollout-2026-06-08T15-51-10-019ea8c9-fb8a-7a60-aa11-28c4eca53a6f.jsonl

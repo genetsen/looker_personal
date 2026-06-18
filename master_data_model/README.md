@@ -10,6 +10,7 @@ Interactive orientation:
 
 - [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
 - [`docs/dcm-cost-model-map.html`](docs/dcm-cost-model-map.html) - clickable DCM scheduled-query map for package rollups, pricing logic, the creative-safe join key, and Master Model handoff.
+- [`docs/manual-data-editor-workflow-map.html`](docs/manual-data-editor-workflow-map.html) - clickable map of the Manual Data Editor loop from Sheet edit, request notification, loader writes, manual evidence tables, model merge, mart output, and troubleshooting path.
 
 ## Manual Package Edit Quick Reference
 
@@ -149,6 +150,7 @@ Ritual delivery detail v2:
 ## Important Modeling Notes
 
 - This view is separate from the ADIF scheduled refresh and does not replace `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`.
+- For redesign and QA validation, row count is a diagnostic only when grain can change. Approval proof should use overall and package-level spend, impressions, and clicks reconciliation, with any intended filters, transformations, exclusions, allocations, or source-scope changes applied consistently to both baseline and candidate.
 - Digital rows keep package IDs from Prisma/DCM/FPD.
 - Social rows use a synthetic package key: `social:<platform>:<campaign_id>:<ad_group_id>`, because social data does not naturally share Prisma package IDs.
 - In Apollo production social rows, `_Search_` campaign markers map to Paid Search and `_YT_` campaign markers map to Online Video; rows without either marker use the Sheet channel as fallback. Identity includes campaign, ad group, and ad, so cross-campaign ad-ID conflicts are included as separately flagged `publish_pending_source_owner_review` rows pending source-owner clarification; exact duplicate records remain excluded.

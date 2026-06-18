@@ -28,66 +28,94 @@ SELECT
 FROM `looker-studio-pro-452620.mdm_int.int_pilot_dcm_creative_detail`;
 
 -- ============================================================
--- mart_bi_stable.sql
+-- v_master_evidence
 --
--- Story 5.1/5.2: Stable BI-facing view — published output
+-- Story 5.1/5.2: Stable BI-facing view - published output.
+--
+-- Important correction:
+-- The published final view must remain one row stream. Do not join
+-- sibling package/date views back together on _package_id + _date,
+-- because that key is not unique in the current master model and can
+-- multiply rows.
+--
+-- BI-facing correction:
+-- Publish from the compatibility view, not the internal metric-status
+-- view. The final table should be readable: all master columns plus
+-- a small curated set of univ_* fields. Internal helper/status fields
+-- stay in mdm_int views.
 -- ============================================================
 CREATE OR REPLACE VIEW `looker-studio-pro-452620.mdm_publish.v_master_evidence`
 OPTIONS(
-  description='Stable BI-facing view for the master data model redesign. Published output contract object — source-of-truth view for dashboards. Story 5.1/5.2. Does not replace production master_stg objects.'
+  description='Stable BI-facing view for the master data model redesign. Preserves all current master columns and adds a compact curated set of univ_* fields. Internal audit/status helpers stay outside the published final view. Story 5.1/5.2. Does not replace production master_stg objects.'
 )
 AS
-SELECT
-  univ_row_grain,
-  univ_source_system,
-  univ_source_row_id,
-  univ_source_lineage,
-  univ_record_date,
+WITH
+base AS (
+  SELECT
+    compat.*,
 
-  -- Legacy identity columns
-  _package_id,
-  _date,
-  _campaign_name,
-  _package_name_friendly,
-  _advertiser,
-  _channel,
-  _channel_group,
-  _media_name,
+    -- Delivery facts used only as fill-blanks fallback evidence.
+    MIN(IF(compat._spend IS NOT NULL OR compat._impressions IS NOT NULL, compat._date, NULL))
+      OVER (PARTITION BY compat._package_id) AS univ_delivery_start,
+    MAX(IF(compat._spend IS NOT NULL OR compat._impressions IS NOT NULL, compat._date, NULL))
+      OVER (PARTITION BY compat._package_id) AS univ_delivery_end,
+    SUM(COALESCE(compat._spend, 0))
+      OVER (PARTITION BY compat._package_id) AS univ_delivery_total_spend,
+    SUM(COALESCE(compat._impressions, 0))
+      OVER (PARTITION BY compat._package_id) AS univ_delivery_total_impressions
+  FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view` compat
+)
+SELECT
+  base.* EXCEPT (
+    uni_placement_id_placeholder,
+    uni_placement_available,
+    univ_delivery_start,
+    univ_delivery_end,
+    univ_delivery_total_spend,
+    univ_delivery_total_impressions
+  ),
 
   -- Placeholder dimensions
-  univ_creative_placeholder,
-  univ_dma_placeholder,
-  univ_placement_placeholder,
-  univ_campaign_placeholder,
-  univ_advertiser_placeholder,
-  univ_supplier_placeholder,
-  univ_date_placeholder,
+  CASE
+    WHEN base._creative_img IS NULL AND base.fpd_orig_creative IS NULL
+    THEN 'not_available_at_source'
+    ELSE COALESCE(base._creative_img, base.fpd_orig_creative, 'not_available_at_source')
+  END AS univ_creative_placeholder,
+  'not_available_at_source' AS univ_dma_placeholder,
+  COALESCE(base._placement_id, 'not_available_at_source') AS univ_placement_placeholder,
+  COALESCE(base._campaign_name, 'not_available_at_source') AS univ_campaign_placeholder,
+  COALESCE(base._advertiser, 'not_available_at_source') AS univ_advertiser_placeholder,
+  COALESCE(base._supplier_code, 'not_available_at_source') AS univ_supplier_placeholder,
+  COALESCE(SAFE_CAST(base._date AS STRING), 'unknown_from_source') AS univ_date_placeholder,
 
-  -- Safely addable metrics
-  univ_spend_safe,
-  univ_impressions_safe,
-  univ_clicks_safe,
+  -- Fill-blanks-only inferred metadata
+  COALESCE(base._start_date, base.man_start_date, base.univ_delivery_start) AS univ_flight_start,
+  CASE
+    WHEN base._start_date IS NOT NULL THEN 'actual'
+    WHEN base.man_start_date IS NOT NULL THEN 'manual'
+    WHEN base.univ_delivery_start IS NOT NULL THEN 'inferred_from_delivery'
+    ELSE 'not_available'
+  END AS univ_flight_start_source,
+  COALESCE(base._end_date, base.man_end_date, base.univ_delivery_end) AS univ_flight_end,
+  CASE
+    WHEN base._end_date IS NOT NULL THEN 'actual'
+    WHEN base.man_end_date IS NOT NULL THEN 'manual'
+    WHEN base.univ_delivery_end IS NOT NULL THEN 'inferred_from_delivery'
+    ELSE 'not_available'
+  END AS univ_flight_end_source,
+  COALESCE(base._planned_spend, base.man_daily_planned_spend, base.univ_delivery_total_spend) AS univ_planned_spend_filled,
+  CASE
+    WHEN base._planned_spend IS NOT NULL THEN 'actual'
+    WHEN base.man_daily_planned_spend IS NOT NULL THEN 'manual'
+    WHEN base.univ_delivery_total_spend IS NOT NULL THEN 'inferred_from_delivery'
+    ELSE 'not_available'
+  END AS univ_planned_spend_source,
+  COALESCE(base._planned_impressions, base.man_daily_planned_impressions, base.univ_delivery_total_impressions) AS univ_planned_impressions_filled,
+  CASE
+    WHEN base._planned_impressions IS NOT NULL THEN 'actual'
+    WHEN base.man_daily_planned_impressions IS NOT NULL THEN 'manual'
+    WHEN base.univ_delivery_total_impressions IS NOT NULL THEN 'inferred_from_delivery'
+    ELSE 'not_available'
+  END AS univ_planned_impressions_source
 
-  -- doNotSum metrics
-  univ_planned_spend_safe,
-  univ_planned_impressions_safe,
-
-  -- Metric status / summability
-  univ_spend_value_status,
-  univ_spend_summability,
-  univ_impressions_value_status,
-  univ_impressions_summability,
-  univ_clicks_value_status,
-  univ_clicks_summability,
-  univ_planned_spend_value_status,
-  univ_planned_spend_summability,
-  univ_planned_impressions_value_status,
-  univ_planned_impressions_summability,
-
-  -- Source lineage & audit
-  univ_flight_dates_source,
-  univ_flight_dates_reason,
-  univ_planned_spend_source,
-  univ_planned_impressions_source
-
-FROM `looker-studio-pro-452620.mdm_int.int_metric_status`;
+FROM base;

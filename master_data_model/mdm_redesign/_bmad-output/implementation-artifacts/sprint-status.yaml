@@ -1,5 +1,5 @@
 # generated: 2026-06-16T17:14:06-0400
-# last_updated: 2026-06-16T17:50:19-0400
+# last_updated: 2026-06-17T16:50:46-0400
 # project: master_data_model
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-06-16T17:14:06-0400"
-last_updated: "2026-06-16T17:50:19-0400"
+last_updated: "2026-06-17T16:50:46-0400"
 project: "master_data_model"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -63,18 +63,18 @@ development_status:
   3-4-add-metric-safety-qa-checks: done
   epic-3-retrospective: optional
 
-  epic-4: done
+  epic-4: in-progress
   4-1-profile-a-new-source-before-mapping: done
-  4-2-propose-source-field-and-metric-mappings: done
-  4-3-launch-interactive-mapping-review-widget: done
-  4-4-save-versioned-mapping-configuration: done
-  4-5-validate-mapping-before-promotion: done
+  4-2-propose-source-field-and-metric-mappings: in-progress
+  4-3-launch-interactive-mapping-review-widget: in-progress
+  4-4-save-versioned-mapping-configuration: in-progress
+  4-5-validate-mapping-before-promotion: in-progress
   epic-4-retrospective: optional
 
-  epic-5: done
+  epic-5: in-progress
   5-1-define-the-published-output-contract: done
   5-2-build-shortcut-marts-from-the-universal-table: done
   5-3-run-side-by-side-parity-checks: done
   5-4-publish-a-migration-readiness-report: done
-  5-5-require-approval-before-production-replacement: done
+  5-5-require-approval-before-production-replacement: in-progress
   epic-5-retrospective: optional

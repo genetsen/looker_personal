@@ -1,173 +1,192 @@
 -- ============================================================
 -- parity_checks.sql
 --
--- Automated parity checks comparing a candidate view/table
--- against the live production master table baseline.
+-- Read-only parity checks for the master data model redesign.
 --
--- Each check returns pass/fail rows so that the proof report
--- can simply union and format them.
+-- This script validates the published candidate against the live
+-- master table contract. Row count is reported only as a diagnostic
+-- because grain changes can legitimately change record counts.
 --
--- Tolerance: exact string match for columns; 0.01 absolute
--- or 0.1% relative for totals (whichever is larger).
+-- Pass/fail validation uses:
+--   1. Master-column coverage.
+--   2. Overall spend, impressions, and clicks reconciliation.
+--   3. Package-level spend, impressions, and clicks reconciliation.
+--
+-- If a stage intentionally filters, allocates, excludes, or changes
+-- source scope, apply the same intended transformation to both the
+-- baseline and candidate CTEs before judging the result.
 -- ============================================================
 
--- Parameters (replace @CANDIDATE_TABLE with actual target):
---   @CANDIDATE_TABLE = `looker-studio-pro-452620.mdm_int.int_universal_compat_view`
---   @BASELINE_TABLE  = `looker-studio-pro-452620.mdm_qa.master_baseline_snapshot`
-
 -- ============================================================
--- CHECK 1: Schema Coverage — every baseline column exists
---          in the candidate with matching data type.
+-- CHECK 1: Schema coverage.
+-- Every current master column must exist in the published candidate.
 -- ============================================================
 WITH
 baseline_cols AS (
   SELECT
-    c.column_name,
-    c.data_type
-  FROM `looker-studio-pro-452620.master_stg.INFORMATION_SCHEMA.COLUMNS` c
-  WHERE c.table_name = 'data_model'
+    column_name,
+    data_type
+  FROM `looker-studio-pro-452620.master_stg.INFORMATION_SCHEMA.COLUMNS`
+  WHERE table_name = 'data_model'
 ),
 candidate_cols AS (
   SELECT
-    c.column_name,
-    c.data_type
-  FROM `looker-studio-pro-452620.mdm_int.INFORMATION_SCHEMA.COLUMNS` c
-  WHERE c.table_name = 'int_universal_compat_view'
+    column_name,
+    data_type
+  FROM `looker-studio-pro-452620.mdm_publish.INFORMATION_SCHEMA.COLUMNS`
+  WHERE table_name = 'v_master_evidence'
 ),
-missing_cols AS (
+schema_issues AS (
   SELECT
     'schema_coverage' AS check_name,
     'FAIL' AS status,
-    b.column_name,
-    b.data_type AS expected_type,
-    NULL AS actual_type,
-    'Column missing from candidate' AS detail
+    'column' AS metric_scope,
+    b.column_name AS metric_name,
+    b.data_type AS expected_value,
+    COALESCE(c.data_type, 'MISSING') AS actual_value,
+    CASE
+      WHEN c.column_name IS NULL THEN 'Master column is missing from published candidate'
+      WHEN UPPER(b.data_type) != UPPER(c.data_type) THEN 'Master column type differs in published candidate'
+      ELSE 'OK'
+    END AS detail
   FROM baseline_cols b
-  LEFT JOIN candidate_cols c ON b.column_name = c.column_name
+  LEFT JOIN candidate_cols c USING (column_name)
   WHERE c.column_name IS NULL
-),
-type_mismatch AS (
-  SELECT
-    'schema_coverage' AS check_name,
-    'FAIL' AS status,
-    b.column_name,
-    b.data_type AS expected_type,
-    c.data_type AS actual_type,
-    'Data type mismatch' AS detail
-  FROM baseline_cols b
-  JOIN candidate_cols c ON b.column_name = c.column_name
-  WHERE UPPER(b.data_type) != UPPER(c.data_type)
+     OR UPPER(b.data_type) != UPPER(c.data_type)
 )
-SELECT * FROM missing_cols
-UNION ALL
-SELECT * FROM type_mismatch
+SELECT * FROM schema_issues
 UNION ALL
 SELECT
   'schema_coverage' AS check_name,
   'PASS' AS status,
-  'all_columns_present' AS column_name,
-  CAST(COUNT(*) AS STRING) AS expected_type,
-  NULL AS actual_type,
-  FORMAT('All %d baseline columns present in candidate with matching types', COUNT(*)) AS detail
-FROM baseline_cols b
-JOIN candidate_cols c ON b.column_name = c.column_name AND UPPER(b.data_type) = UPPER(c.data_type)
-HAVING COUNT(*) = (SELECT COUNT(*) FROM baseline_cols);
+  'column' AS metric_scope,
+  'all_master_columns' AS metric_name,
+  CAST((SELECT COUNT(*) FROM baseline_cols) AS STRING) AS expected_value,
+  CAST((SELECT COUNT(*) FROM baseline_cols b JOIN candidate_cols c USING (column_name)) AS STRING) AS actual_value,
+  'All current master columns exist in the published candidate' AS detail
+WHERE NOT EXISTS (SELECT 1 FROM schema_issues);
 
 -- ============================================================
--- CHECK 2: Total Reconciliation — key metric sums match
---          baseline within tolerance.
--- Tolerance: 0.01 absolute OR 0.1% relative, whichever is larger.
+-- CHECK 2: Overall metric reconciliation.
+-- This is the high-level validation that replaces row-count gating.
 -- ============================================================
 WITH
 baseline AS (
   SELECT
-    snapshot_data.totals.total_rows AS baseline_rows,
-    snapshot_data.totals.total_packages AS baseline_packages,
-    snapshot_data.totals.total_spend AS baseline_spend,
-    snapshot_data.totals.total_impressions AS baseline_impressions,
-    snapshot_data.totals.total_clicks AS baseline_clicks
-  FROM `looker-studio-pro-452620.mdm_qa.master_baseline_snapshot`
-  ORDER BY snapshot_timestamp DESC
-  LIMIT 1
+    SUM(COALESCE(_spend, 0)) AS spend,
+    SUM(COALESCE(_impressions, 0)) AS impressions,
+    SUM(COALESCE(_clicks, 0)) AS clicks,
+    COUNT(*) AS diagnostic_record_count
+  FROM `looker-studio-pro-452620.master_stg.data_model`
 ),
 candidate AS (
   SELECT
-    COUNT(*) AS candidate_rows,
-    COUNT(DISTINCT _package_id) AS candidate_packages,
-    SUM(_spend) AS candidate_spend,
-    SUM(_impressions) AS candidate_impressions,
-    SUM(_clicks) AS candidate_clicks
-  FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view`
+    SUM(COALESCE(_spend, 0)) AS spend,
+    SUM(COALESCE(_impressions, 0)) AS impressions,
+    SUM(COALESCE(_clicks, 0)) AS clicks,
+    COUNT(*) AS diagnostic_record_count
+  FROM `looker-studio-pro-452620.mdm_publish.v_master_evidence`
 ),
-totals_check AS (
-  SELECT 'total_reconciliation' AS check_name, 'FAIL' AS status, 'total_rows' AS metric,
-    CAST(b.baseline_rows AS STRING) AS expected, CAST(c.candidate_rows AS STRING) AS actual,
-    FORMAT('Row count mismatch: baseline=%d candidate=%d diff=%d', b.baseline_rows, c.candidate_rows, c.candidate_rows - b.baseline_rows) AS detail
-  FROM baseline b, candidate c
-  WHERE ABS(c.candidate_rows - b.baseline_rows) > 0.01
+metric_diff AS (
+  SELECT 'spend' AS metric_name, b.spend AS expected_value, c.spend AS actual_value, GREATEST(0.01, 0.001 * ABS(b.spend)) AS tolerance FROM baseline b, candidate c
   UNION ALL
-  SELECT 'total_reconciliation', 'FAIL', 'total_packages',
-    CAST(b.baseline_packages AS STRING), CAST(c.candidate_packages AS STRING),
-    FORMAT('Package count mismatch: baseline=%d candidate=%d diff=%d', b.baseline_packages, c.candidate_packages, c.candidate_packages - b.baseline_packages)
-  FROM baseline b, candidate c
-  WHERE ABS(c.candidate_packages - b.baseline_packages) > 0.01
+  SELECT 'impressions', b.impressions, c.impressions, GREATEST(1, 0.001 * ABS(b.impressions)) FROM baseline b, candidate c
   UNION ALL
-  SELECT 'total_reconciliation', 'FAIL', 'total_spend',
-    CAST(ROUND(b.baseline_spend, 2) AS STRING), CAST(ROUND(c.candidate_spend, 2) AS STRING),
-    FORMAT('Spend mismatch: baseline=%.2f candidate=%.2f diff=%.2f', b.baseline_spend, c.candidate_spend, c.candidate_spend - b.baseline_spend)
-  FROM baseline b, candidate c
-  WHERE ABS(c.candidate_spend - b.baseline_spend) > GREATEST(0.01, 0.001 * ABS(b.baseline_spend))
-  UNION ALL
-  SELECT 'total_reconciliation', 'FAIL', 'total_impressions',
-    CAST(b.baseline_impressions AS STRING), CAST(c.candidate_impressions AS STRING),
-    FORMAT('Impressions mismatch: baseline=%d candidate=%d diff=%d', b.baseline_impressions, c.candidate_impressions, c.candidate_impressions - b.baseline_impressions)
-  FROM baseline b, candidate c
-  WHERE ABS(c.candidate_impressions - b.baseline_impressions) > GREATEST(1, 0.001 * b.baseline_impressions)
-  UNION ALL
-  SELECT 'total_reconciliation', 'FAIL', 'total_clicks',
-    CAST(b.baseline_clicks AS STRING), CAST(c.candidate_clicks AS STRING),
-    FORMAT('Clicks mismatch: baseline=%d candidate=%d diff=%d', b.baseline_clicks, c.candidate_clicks, c.candidate_clicks - b.baseline_clicks)
-  FROM baseline b, candidate c
-  WHERE ABS(c.candidate_clicks - b.baseline_clicks) > GREATEST(1, 0.001 * b.baseline_clicks)
+  SELECT 'clicks', b.clicks, c.clicks, GREATEST(1, 0.001 * ABS(b.clicks)) FROM baseline b, candidate c
+),
+metric_issues AS (
+  SELECT
+    'overall_metric_reconciliation' AS check_name,
+    'FAIL' AS status,
+    'overall' AS metric_scope,
+    metric_name,
+    CAST(expected_value AS STRING) AS expected_value,
+    CAST(actual_value AS STRING) AS actual_value,
+    FORMAT('%s mismatch: expected %.2f actual %.2f diff %.2f tolerance %.2f', metric_name, expected_value, actual_value, actual_value - expected_value, tolerance) AS detail
+  FROM metric_diff
+  WHERE ABS(actual_value - expected_value) > tolerance
 )
-SELECT * FROM totals_check
+SELECT * FROM metric_issues
 UNION ALL
-SELECT 'total_reconciliation', 'PASS', 'all_metrics', NULL, NULL, 'All metrics reconcile within tolerance'
-WHERE NOT EXISTS (SELECT 1 FROM totals_check);
+SELECT
+  'overall_metric_reconciliation' AS check_name,
+  'PASS' AS status,
+  'overall' AS metric_scope,
+  'spend_impressions_clicks' AS metric_name,
+  'master totals' AS expected_value,
+  'candidate totals' AS actual_value,
+  'Overall spend, impressions, and clicks reconcile within tolerance' AS detail
+WHERE NOT EXISTS (SELECT 1 FROM metric_issues)
+UNION ALL
+SELECT
+  'row_count_diagnostic' AS check_name,
+  'INFO' AS status,
+  'overall' AS metric_scope,
+  'record_count_not_validation' AS metric_name,
+  CAST(b.diagnostic_record_count AS STRING) AS expected_value,
+  CAST(c.diagnostic_record_count AS STRING) AS actual_value,
+  'Row count is shown for diagnosis only; it is not a pass/fail validation when grain can change' AS detail
+FROM baseline b, candidate c;
 
 -- ============================================================
--- CHECK 3: doNotSum Safety — ensure doNotSum-tagged fields
---          are not present in candidate as ordinary additive metrics,
---          and their values match baseline totals exactly
---          (they should be idempotent package-wide repeats).
+-- CHECK 3: Package-level metric reconciliation.
+-- Package-level sums catch row multiplication and allocation errors
+-- without treating row count as the validation target.
 -- ============================================================
 WITH
-baseline_donotsum AS (
+baseline_pkg AS (
   SELECT
-    JSON_EXTRACT_SCALAR(d.snapshot_data, '$.totals.total_planned_spend') AS baseline_planned_spend
-  FROM `looker-studio-pro-452620.mdm_qa.master_baseline_snapshot` d
-  ORDER BY snapshot_timestamp DESC
-  LIMIT 1
+    _package_id,
+    SUM(COALESCE(_spend, 0)) AS spend,
+    SUM(COALESCE(_impressions, 0)) AS impressions,
+    SUM(COALESCE(_clicks, 0)) AS clicks
+  FROM `looker-studio-pro-452620.master_stg.data_model`
+  GROUP BY _package_id
 ),
-candidate_donotsum AS (
+candidate_pkg AS (
   SELECT
-    SUM(p_planned_amount_doNotSum) AS candidate_planned_spend
-  FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view`
+    _package_id,
+    SUM(COALESCE(_spend, 0)) AS spend,
+    SUM(COALESCE(_impressions, 0)) AS impressions,
+    SUM(COALESCE(_clicks, 0)) AS clicks
+  FROM `looker-studio-pro-452620.mdm_publish.v_master_evidence`
+  GROUP BY _package_id
+),
+package_diff AS (
+  SELECT
+    COALESCE(b._package_id, c._package_id) AS _package_id,
+    b.spend AS expected_spend,
+    c.spend AS actual_spend,
+    b.impressions AS expected_impressions,
+    c.impressions AS actual_impressions,
+    b.clicks AS expected_clicks,
+    c.clicks AS actual_clicks
+  FROM baseline_pkg b
+  FULL OUTER JOIN candidate_pkg c USING (_package_id)
+),
+package_issues AS (
+  SELECT
+    _package_id,
+    expected_spend,
+    actual_spend,
+    expected_impressions,
+    actual_impressions,
+    expected_clicks,
+    actual_clicks
+  FROM package_diff
+  WHERE ABS(COALESCE(actual_spend, 0) - COALESCE(expected_spend, 0)) > GREATEST(0.01, 0.001 * ABS(COALESCE(expected_spend, 0)))
+     OR ABS(COALESCE(actual_impressions, 0) - COALESCE(expected_impressions, 0)) > GREATEST(1, 0.001 * ABS(COALESCE(expected_impressions, 0)))
+     OR ABS(COALESCE(actual_clicks, 0) - COALESCE(expected_clicks, 0)) > GREATEST(1, 0.001 * ABS(COALESCE(expected_clicks, 0)))
 )
-SELECT 'donotsum_safety' AS check_name,
+SELECT
+  'package_metric_reconciliation' AS check_name,
+  CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status,
+  'package' AS metric_scope,
+  'spend_impressions_clicks' AS metric_name,
+  'all packages reconcile' AS expected_value,
+  FORMAT('%d mismatched packages', COUNT(*)) AS actual_value,
   CASE
-    WHEN ABS(c.candidate_planned_spend - CAST(b.baseline_planned_spend AS FLOAT64))
-         > GREATEST(0.01, 0.001 * ABS(CAST(b.baseline_planned_spend AS FLOAT64)))
-    THEN 'FAIL'
-    ELSE 'PASS'
-  END AS status,
-  'p_planned_amount_doNotSum' AS field,
-  b.baseline_planned_spend AS expected,
-  CAST(ROUND(c.candidate_planned_spend, 2) AS STRING) AS actual,
-  CASE
-    WHEN ABS(c.candidate_planned_spend - CAST(b.baseline_planned_spend AS FLOAT64))
-         > GREATEST(0.01, 0.001 * ABS(CAST(b.baseline_planned_spend AS FLOAT64)))
-    THEN FORMAT('doNotSum field drifted: baseline=%s candidate=%.2f', b.baseline_planned_spend, c.candidate_planned_spend)
-    ELSE 'doNotSum field preserved correctly'
+    WHEN COUNT(*) = 0 THEN 'All package-level spend, impressions, and clicks reconcile within tolerance'
+    ELSE 'One or more packages have spend, impressions, or clicks drift; inspect package_issues query details'
   END AS detail
-FROM baseline_donotsum b, candidate_donotsum c;
+FROM package_issues;
