@@ -2,8 +2,13 @@
 
 ## 2026-06-18
 
+- **IMPROVED** - Expanded the Manual Data Editor product brief into slide-ready presentation notes and added the problems and bottlenecks the workflow resolves.
+- **IMPROVED** - Replaced the duplicated Manual Data Editor workflow flowchart with a decision flow showing request boundaries, edit detection, validation, grain handling, and dashboard debugging.
+- **ADDED** - Created a BMAD product brief for presenting the Manual Data Editor to a technical team, including an operator workflow diagram and main data model integration diagram.
 - **ADDED** - Created a clickable Manual Data Editor workflow map showing the Sheet edit surface, request notification path, loader write path, manual evidence tables, model merge, reporting mart, and troubleshooting loop.
 - **IMPROVED** - Added technical-audience notes to the Manual Data Editor workflow map covering write boundaries, comparison inputs, warehouse grain, model merge rules, validation proof, and common dashboard filter traps.
+- **IMPROVED** - Simplified the Manual Data Editor workflow map into a presentation-ready five-step flow with technical details moved into expandable notes.
+- **IMPROVED** - Added a workflow flowchart and main data model integration map to the Manual Data Editor workflow artifact.
 
 ### Next
 

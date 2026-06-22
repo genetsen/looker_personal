@@ -6,23 +6,22 @@
   <title>Manual Data Editor Workflow Map</title>
   <style>
     :root {
-      --bg: #f4f7f6;
-      --paper: #fffefa;
-      --ink: #18212b;
-      --muted: #5f6f78;
-      --line: #cfd9d5;
-      --mint: #0f8b75;
-      --blue: #315aa8;
-      --coral: #c84f3d;
-      --gold: #b06c13;
-      --violet: #6f4aa8;
-      --green: #3f7d52;
-      --soft-mint: rgba(15, 139, 117, 0.1);
-      --soft-blue: rgba(49, 90, 168, 0.09);
-      --soft-coral: rgba(200, 79, 61, 0.1);
-      --soft-gold: rgba(176, 108, 19, 0.11);
-      --soft-violet: rgba(111, 74, 168, 0.1);
-      --shadow: 0 16px 42px rgba(24, 33, 43, 0.12);
+      --bg: #eef4f1;
+      --paper: #fffdf8;
+      --ink: #1b242c;
+      --muted: #5d6c74;
+      --line: #cbd8d2;
+      --green: #0f7c68;
+      --blue: #315fa8;
+      --gold: #a86611;
+      --red: #b94737;
+      --slate: #2f4656;
+      --soft-green: #e4f1ed;
+      --soft-blue: #e8eef8;
+      --soft-gold: #f8efdf;
+      --soft-red: #f9e9e6;
+      --soft-slate: #e8eef0;
+      --shadow: 0 14px 34px rgba(27, 36, 44, 0.12);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -38,48 +37,61 @@
     a { color: inherit; }
 
     .shell {
-      max-width: 1480px;
+      max-width: 1380px;
       margin: 0 auto;
-      padding: 22px;
+      padding: 24px;
     }
 
-    header {
+    .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 390px);
+      grid-template-columns: minmax(0, 1fr) minmax(290px, 380px);
       gap: 16px;
       align-items: end;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
     h1 {
       margin: 0 0 8px;
-      font-size: clamp(29px, 4vw, 46px);
-      line-height: 1.02;
+      font-size: clamp(32px, 4vw, 50px);
+      line-height: 1.03;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
       letter-spacing: 0;
     }
 
     .subtitle {
-      max-width: 850px;
       margin: 0;
+      max-width: 820px;
       color: var(--muted);
       font-size: 15px;
-      line-height: 1.5;
+      line-height: 1.48;
     }
 
-    .status-card {
-      display: grid;
-      gap: 8px;
-      padding: 12px;
+    .headline-card,
+    .panel,
+    .inspector,
+    .notes-panel {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--paper);
       box-shadow: var(--shadow);
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.35;
     }
 
-    .status-card strong { color: var(--ink); }
+    .headline-card {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.38;
+    }
+
+    .headline-card strong { color: var(--ink); }
 
     .legend {
       display: flex;
@@ -89,7 +101,7 @@
     }
 
     .legend-item,
-    .mini-pill {
+    .tag {
       display: inline-flex;
       align-items: center;
       gap: 7px;
@@ -97,13 +109,14 @@
       padding: 5px 9px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: rgba(255, 254, 250, 0.9);
+      background: rgba(255, 253, 248, 0.9);
       color: var(--muted);
       font-size: 12px;
+      line-height: 1.2;
       white-space: nowrap;
     }
 
-    .pip {
+    .dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
@@ -111,183 +124,133 @@
       flex: 0 0 auto;
     }
 
-    .pip.truth { background: var(--blue); }
-    .pip.write { background: var(--gold); }
-    .pip.human { background: var(--violet); }
-    .pip.risk-low { background: var(--green); }
-    .pip.risk-med { background: var(--gold); }
-    .pip.risk-high { background: var(--coral); }
+    .dot.green { background: var(--green); }
+    .dot.blue { background: var(--blue); }
+    .dot.gold { background: var(--gold); }
+    .dot.red { background: var(--red); }
+    .dot.slate { background: var(--slate); }
 
-    .workspace {
+    .overview {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(310px, 390px);
       gap: 14px;
       align-items: start;
+      margin-bottom: 14px;
     }
 
-    .map-panel,
-    .inspector {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--paper);
-      box-shadow: var(--shadow);
+    .panel {
+      padding: 16px;
     }
 
-    .map-panel { padding: 14px; }
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 12px;
+    }
 
-    .map-grid {
+    .section-heading p {
+      margin: 4px 0 0;
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .steps {
       display: grid;
-      grid-template-columns: repeat(5, minmax(170px, 1fr));
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
       gap: 10px;
-      min-height: 575px;
     }
 
-    .phase {
+    .step {
       display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 9px;
-      min-width: 0;
-      padding: 10px;
-      border: 1px solid rgba(24, 33, 43, 0.14);
-      border-radius: 8px;
-      background: #fbfdfb;
-    }
-
-    .phase[data-tone="mint"] { background: var(--soft-mint); }
-    .phase[data-tone="blue"] { background: var(--soft-blue); }
-    .phase[data-tone="gold"] { background: var(--soft-gold); }
-    .phase[data-tone="violet"] { background: var(--soft-violet); }
-    .phase[data-tone="coral"] { background: var(--soft-coral); }
-
-    .phase-button {
-      display: grid;
-      gap: 3px;
-      width: 100%;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      text-align: left;
-      cursor: pointer;
-    }
-
-    .phase-button:focus-visible {
-      outline: 3px solid rgba(49, 90, 168, 0.35);
-      outline-offset: 4px;
-      border-radius: 6px;
-    }
-
-    .phase-kicker {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .phase-title {
-      margin: 0;
-      font-size: 16px;
-      line-height: 1.15;
-    }
-
-    .phase-summary {
-      margin: 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .node-stack {
-      display: grid;
+      grid-template-rows: auto auto minmax(54px, 1fr) auto;
       gap: 8px;
-      align-content: start;
-    }
-
-    .node {
-      display: grid;
-      gap: 7px;
-      width: 100%;
-      min-height: 118px;
-      padding: 10px;
-      border: 1px solid rgba(24, 33, 43, 0.15);
+      min-height: 200px;
+      padding: 13px;
+      border: 1px solid rgba(27, 36, 44, 0.15);
       border-radius: 8px;
-      background: rgba(255, 254, 250, 0.88);
+      background: #ffffff;
       color: var(--ink);
       text-align: left;
       cursor: pointer;
-      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+      transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
     }
 
-    .node:hover,
-    .node:focus-visible,
-    .node.active {
-      border-color: rgba(24, 33, 43, 0.42);
-      box-shadow: 0 10px 24px rgba(24, 33, 43, 0.12);
+    .step:hover,
+    .step:focus-visible,
+    .step.active {
+      border-color: rgba(27, 36, 44, 0.42);
+      box-shadow: 0 10px 24px rgba(27, 36, 44, 0.13);
       outline: none;
       transform: translateY(-1px);
     }
 
-    .node-title {
-      font-size: 14px;
+    .step[data-tone="green"],
+    .box.green,
+    .decision-card.green { background: var(--soft-green); }
+    .step[data-tone="blue"],
+    .box.blue,
+    .decision-card.blue { background: var(--soft-blue); }
+    .step[data-tone="gold"],
+    .box.gold,
+    .decision-card.gold { background: var(--soft-gold); }
+    .step[data-tone="red"],
+    .box.red,
+    .decision-card.red { background: var(--soft-red); }
+    .box.slate,
+    .decision-card.slate { background: var(--soft-slate); }
+
+    .number {
+      display: inline-grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 780;
+    }
+
+    .step-title,
+    .box-title {
+      margin: 0;
+      font-size: 16px;
       font-weight: 760;
-      line-height: 1.2;
+      line-height: 1.16;
+      letter-spacing: 0;
     }
 
-    .node-summary {
+    .step-summary,
+    .box-text {
+      margin: 0;
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
+      font-size: 12.5px;
+      line-height: 1.38;
     }
 
-    .node-callouts {
+    .step-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 5px;
-      margin-top: auto;
+      gap: 6px;
+      align-items: end;
     }
-
-    .callout {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      min-height: 22px;
-      padding: 3px 6px;
-      border: 1px solid rgba(24, 33, 43, 0.12);
-      border-radius: 7px;
-      background: rgba(255, 254, 250, 0.76);
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1;
-    }
-
-    .callout-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      flex: 0 0 auto;
-    }
-
-    .callout.truth .callout-dot { background: var(--blue); }
-    .callout.write .callout-dot { background: var(--gold); }
-    .callout.human .callout-dot { background: var(--violet); }
-    .callout.risk-low .callout-dot { background: var(--green); }
-    .callout.risk-med .callout-dot { background: var(--gold); }
-    .callout.risk-high .callout-dot { background: var(--coral); }
 
     .inspector {
       position: sticky;
       top: 14px;
       display: grid;
-      gap: 12px;
-      padding: 15px;
+      gap: 10px;
+      padding: 14px;
     }
 
     .inspector h2 {
       margin: 0;
-      font-size: 21px;
-      line-height: 1.15;
+      font-size: 22px;
+      line-height: 1.16;
       letter-spacing: 0;
     }
 
@@ -300,158 +263,266 @@
 
     .detail-section {
       display: grid;
-      gap: 7px;
-      padding-top: 11px;
+      gap: 6px;
+      padding-top: 9px;
       border-top: 1px solid var(--line);
     }
 
     .detail-section h3 {
       margin: 0;
+      color: var(--muted);
       font-size: 12px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--muted);
     }
 
-    .detail-list {
+    .detail-list,
+    .source-list {
       display: grid;
-      gap: 6px;
+      gap: 5px;
       margin: 0;
       padding: 0;
       list-style: none;
+    }
+
+    .detail-list {
       color: var(--muted);
       font-size: 13px;
       line-height: 1.38;
     }
 
     .detail-list li {
-      padding-left: 14px;
       position: relative;
+      padding-left: 14px;
     }
 
     .detail-list li::before {
       content: "";
       position: absolute;
       left: 0;
-      top: 0.58em;
+      top: 0.57em;
       width: 5px;
       height: 5px;
       border-radius: 50%;
-      background: var(--mint);
-    }
-
-    .source-list {
-      display: grid;
-      gap: 7px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      font-size: 12px;
-      line-height: 1.35;
+      background: var(--green);
     }
 
     .source-list a {
       display: inline-flex;
       max-width: 100%;
-      min-height: 26px;
+      min-height: 28px;
       align-items: center;
-      padding: 4px 7px;
+      padding: 4px 8px;
       border: 1px solid var(--line);
       border-radius: 7px;
       background: #ffffff;
       color: var(--blue);
+      font-size: 12px;
+      line-height: 1.35;
       text-decoration: none;
       overflow-wrap: anywhere;
     }
 
     .source-list a:hover,
     .source-list a:focus-visible {
-      border-color: rgba(49, 90, 168, 0.52);
+      border-color: rgba(49, 95, 168, 0.55);
       outline: none;
       text-decoration: underline;
     }
 
-    .definitions {
+    .diagram-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(170px, 1fr));
-      gap: 10px;
-      margin-top: 14px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
     }
 
-    .technical-notes {
+    .bottleneck-grid,
+    .decision-map {
       display: grid;
-      gap: 12px;
+      gap: 10px;
+    }
+
+    .bottleneck-grid {
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+    }
+
+    .bottleneck-panel {
+      margin-bottom: 14px;
+    }
+
+    .bottleneck {
+      display: grid;
+      gap: 7px;
+      min-height: 160px;
+      padding: 12px;
+      border: 1px solid rgba(27, 36, 44, 0.14);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .bottleneck h3,
+    .decision-label {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 780;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .bottleneck p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.38;
+    }
+
+    .bottleneck strong { color: var(--ink); }
+
+    .decision-map {
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+    }
+
+    .decision-card {
+      position: relative;
+      display: grid;
+      gap: 7px;
+      min-height: 190px;
+      padding: 12px;
+      border: 1px solid rgba(27, 36, 44, 0.14);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .decision-card:not(:last-child)::after {
+      content: "->";
+      position: absolute;
+      z-index: 2;
+      right: -17px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--slate);
+      font-size: 18px;
+      font-weight: 760;
+    }
+
+    .decision-card .box-text strong {
+      color: var(--ink);
+    }
+
+    .flowchart {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .model-map {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.1fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .lane {
+      position: relative;
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid rgba(27, 36, 44, 0.14);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .lane h3 {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 780;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .box {
+      position: relative;
+      display: grid;
+      gap: 5px;
+      min-height: 110px;
+      padding: 11px;
+      border: 1px solid rgba(27, 36, 44, 0.14);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .box.compact {
+      min-height: 74px;
+    }
+
+    .flowchart .box:not(:last-child)::after,
+    .model-map .lane:not(:last-child)::after {
+      content: "->";
+      position: absolute;
+      z-index: 2;
+      right: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--slate);
+      font-size: 18px;
+      font-weight: 760;
+    }
+
+    .join-note {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 24px;
+      padding: 3px 7px;
+      border: 1px solid rgba(49, 95, 168, 0.25);
+      border-radius: 7px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .notes-panel {
       margin-top: 14px;
       padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--paper);
-      box-shadow: var(--shadow);
     }
 
-    .technical-notes h2 {
-      margin: 0;
+    .notes-panel h2 {
+      margin: 0 0 10px;
       font-size: 18px;
       line-height: 1.2;
       letter-spacing: 0;
     }
 
-    .technical-notes p {
-      margin: 0;
-      max-width: 900px;
+    details {
+      border-top: 1px solid var(--line);
+      padding: 10px 0;
+    }
+
+    details:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    details:last-of-type { padding-bottom: 0; }
+
+    summary {
+      cursor: pointer;
+      font-weight: 720;
+      font-size: 14px;
+    }
+
+    details ul {
+      display: grid;
+      gap: 6px;
+      margin: 9px 0 0;
+      padding-left: 20px;
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .technical-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(210px, 1fr));
-      gap: 10px;
-    }
-
-    .technical-card {
-      display: grid;
-      gap: 7px;
-      padding: 10px;
-      border: 1px solid rgba(24, 33, 43, 0.14);
-      border-radius: 8px;
-      background: rgba(244, 247, 246, 0.68);
-    }
-
-    .definition {
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 254, 250, 0.72);
-    }
-
-    .definition strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 13px;
-    }
-
-    .technical-card strong {
-      display: block;
-      font-size: 13px;
-    }
-
-    .definition span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .technical-card ul {
-      display: grid;
-      gap: 5px;
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.36;
+      line-height: 1.42;
     }
 
     code {
@@ -459,153 +530,249 @@
       font-size: 0.93em;
     }
 
-    @media (max-width: 1180px) {
-      header,
-      .workspace {
+    @media (max-width: 1160px) {
+      .hero,
+      .overview {
         grid-template-columns: 1fr;
       }
 
-      .inspector {
-        position: static;
-      }
-
-      .map-grid {
+      .steps,
+      .flowchart,
+      .bottleneck-grid,
+      .decision-map {
         grid-template-columns: repeat(2, minmax(230px, 1fr));
       }
 
-      .definitions {
-        grid-template-columns: repeat(2, minmax(190px, 1fr));
+      .model-map {
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
       }
 
-      .technical-grid {
-        grid-template-columns: repeat(2, minmax(210px, 1fr));
+      .inspector { position: static; }
+
+      .flowchart .box::after,
+      .model-map .lane::after,
+      .decision-card::after {
+        display: none;
       }
     }
 
     @media (max-width: 680px) {
       .shell { padding: 14px; }
-      .map-panel { padding: 10px; }
-      .map-grid,
-      .definitions,
-      .technical-grid {
+      .panel { padding: 10px; }
+      .steps,
+      .flowchart,
+      .bottleneck-grid,
+      .decision-map,
+      .model-map {
         grid-template-columns: 1fr;
       }
 
-      .node { min-height: 0; }
+      .step,
+      .box {
+        min-height: 0;
+      }
+
       .legend-item { white-space: normal; }
     }
   </style>
 </head>
 <body>
   <main class="shell">
-    <header>
+    <header class="hero">
       <div>
-        <h1>Manual Data Editor Workflow Map</h1>
-        <p class="subtitle">A clickable field guide to the package correction loop: where a buyer edits a dashboard-like value, what only sends a refresh request, what writes warehouse evidence, and how valid manual values flow back into reporting.</p>
+        <h1>Manual Data Editor Workflow</h1>
+        <p class="subtitle">A presentation-ready map of the correction loop: people edit a Sheet, the loader validates the edits, BigQuery stores manual evidence, and the master model applies that evidence before reporting.</p>
       </div>
-      <aside class="status-card" aria-label="Live verification summary">
-        <strong>Live check used for this map</strong>
-        <span>BigQuery MCP confirmed the raw and daily manual tables exist, are described, and were modified on 2026-06-18. The model and mart views expose the current <code>man_*</code> evidence fields.</span>
+      <aside class="headline-card" aria-label="Main takeaway">
+        <strong>Main takeaway</strong>
+        <span>The refresh checkbox is only a notification. The R loader is the system boundary that validates edits and writes manual evidence.</span>
       </aside>
     </header>
 
-    <section class="legend" aria-label="Callout legend">
-      <span class="legend-item"><span class="pip truth"></span>Source of truth</span>
-      <span class="legend-item"><span class="pip write"></span>Writes data or sends a notification</span>
-      <span class="legend-item"><span class="pip human"></span>Manual touchpoint</span>
-      <span class="legend-item"><span class="pip risk-low"></span>Low failure risk</span>
-      <span class="legend-item"><span class="pip risk-med"></span>Medium failure risk</span>
-      <span class="legend-item"><span class="pip risk-high"></span>High failure risk</span>
+    <section class="legend" aria-label="Legend">
+      <span class="legend-item"><span class="dot green"></span>Human surface</span>
+      <span class="legend-item"><span class="dot gold"></span>Write or notification</span>
+      <span class="legend-item"><span class="dot blue"></span>Warehouse/model layer</span>
+      <span class="legend-item"><span class="dot red"></span>Validation or dashboard trap</span>
+      <span class="legend-item"><span class="dot slate"></span>Main model source</span>
     </section>
 
-    <section class="workspace">
-      <div class="map-panel">
-        <div class="map-grid" id="mapGrid" aria-label="Manual Data Editor workflow map"></div>
+    <section class="overview">
+      <div class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>At A Glance</h2>
+            <p>Click a step for detail. The five cards are the plain-English story to use when presenting the workflow.</p>
+          </div>
+        </div>
+        <div class="steps" id="steps" aria-label="Five-step workflow"></div>
       </div>
 
       <aside class="inspector" id="inspector" aria-live="polite"></aside>
     </section>
 
-    <section class="definitions" aria-label="Plain English definitions">
-      <div class="definition">
-        <strong>Baseline</strong>
-        <span>The current source value the loader compares against. If the sheet value matches the baseline, there is no manual override to keep.</span>
+    <section class="panel bottleneck-panel" aria-label="Problems and bottlenecks resolved">
+      <div class="section-heading">
+        <div>
+          <h2>Problems And Bottlenecks Resolved</h2>
+          <p>The editor is useful because it removes specific operating pain: slow correction loops, hidden dashboard patches, stale overrides, date-grain mistakes, and hard-to-debug mismatches.</p>
+        </div>
       </div>
-      <div class="definition">
-        <strong><code>man_*</code> evidence</strong>
-        <span>Backend fields that prove a value came from the Manual Data Editor, such as <code>man_daily_spend</code>.</span>
-      </div>
-      <div class="definition">
-        <strong>Daily spread</strong>
-        <span>A total entered for a date range is divided into package/date rows, then checked so the rows add back to the edited total.</span>
-      </div>
-      <div class="definition">
-        <strong>Mart</strong>
-        <span>The dashboard-ready view built from the evidence model after reporting-only filtering and rollup recalculation.</span>
+      <div class="bottleneck-grid">
+        <div class="bottleneck">
+          <h3>Speed</h3>
+          <p><strong>Before:</strong> every small correction needs an engineer.</p>
+          <p><strong>After:</strong> operators edit controlled fields; the loader handles publishing.</p>
+        </div>
+        <div class="bottleneck">
+          <h3>Trust</h3>
+          <p><strong>Before:</strong> dashboard-only fixes can drift from the model.</p>
+          <p><strong>After:</strong> manual values flow through warehouse evidence and final fields.</p>
+        </div>
+        <div class="bottleneck">
+          <h3>Boundaries</h3>
+          <p><strong>Before:</strong> a request checkbox can look like a data publish.</p>
+          <p><strong>After:</strong> notification, validation, and writes are separated.</p>
+        </div>
+        <div class="bottleneck">
+          <h3>Correct Grain</h3>
+          <p><strong>Before:</strong> weekly delivery, full-flight planned totals, and metadata corrections are easy to mix.</p>
+          <p><strong>After:</strong> metric edits are date-bound; metadata is package-wide.</p>
+        </div>
+        <div class="bottleneck">
+          <h3>Debugging</h3>
+          <p><strong>Before:</strong> teams hunt across Sheet, SQL, and dashboards.</p>
+          <p><strong>After:</strong> each row has a fixed trace path through manual evidence.</p>
+        </div>
       </div>
     </section>
 
-    <section class="technical-notes" aria-label="Technical implementation notes">
-      <div>
-        <h2>Technical Notes</h2>
-        <p>These notes are for engineers debugging the path or changing the implementation. They describe the contract behind the clickable map, not a separate workflow.</p>
-      </div>
+    <section class="diagram-grid" aria-label="Workflow and integration diagrams">
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Decision Flow: What The Loader Solves</h2>
+            <p>This is the useful flowchart for the tech team: it shows the decisions that prevent bad manual data from becoming reporting data.</p>
+          </div>
+        </div>
+        <div class="decision-map">
+          <div class="decision-card green">
+            <p class="decision-label">Boundary</p>
+            <p class="box-title">Is this only a request?</p>
+            <p class="box-text"><strong>Yes:</strong> send email or Slack only. No validation, no warehouse write, no dashboard proof.</p>
+          </div>
+          <div class="decision-card gold">
+            <p class="decision-label">Detection</p>
+            <p class="box-title">Did the Sheet value really change?</p>
+            <p class="box-text">Compare visible values to source baselines and prior manual rows. Clear stale manual evidence when source catches up.</p>
+          </div>
+          <div class="decision-card red">
+            <p class="decision-label">Validation</p>
+            <p class="box-title">Is the edit valid?</p>
+            <p class="box-text">Block bad dates, duplicate active edits, incomplete new rows, and partial-range planned metrics.</p>
+          </div>
+          <div class="decision-card blue">
+            <p class="decision-label">Grain</p>
+            <p class="box-title">What kind of change is it?</p>
+            <p class="box-text">Delivered metrics join by package/date. Metadata and flight dates apply package-wide.</p>
+          </div>
+          <div class="decision-card slate">
+            <p class="decision-label">Debugging</p>
+            <p class="box-title">Dashboard still looks wrong?</p>
+            <p class="box-text">Trace Sheet value, raw row, daily row, model, mart, and dashboard filters before changing logic.</p>
+          </div>
+        </div>
+      </section>
 
-      <div class="technical-grid">
-        <article class="technical-card">
-          <strong>Write Boundary</strong>
-          <ul>
-            <li>The Apps Script request control sends notification only; it does not call the loader or write warehouse tables.</li>
-            <li>The R loader is the normal write boundary for Sheet values plus the raw and daily manual BigQuery tables.</li>
-            <li>The sheet formatting rebuild script is outside routine refresh and should not be run against the live sheet without explicit rebuild approval.</li>
-          </ul>
-        </article>
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Main Data Model Integration</h2>
+            <p>Manual edits are not a replacement source. They overlay the normal master model at specific grains and remain visible as <code>man_*</code> evidence.</p>
+          </div>
+        </div>
+        <div class="model-map">
+          <div class="lane">
+            <h3>Normal Inputs</h3>
+            <div class="box compact slate">
+              <p class="box-title">PRISMA</p>
+              <p class="box-text">Package plans, flight dates, and package metadata.</p>
+            </div>
+            <div class="box compact slate">
+              <p class="box-title">Delivery Sources</p>
+              <p class="box-text">DCM, FPD, social, TV, and Amazon delivery evidence.</p>
+            </div>
+          </div>
 
-        <article class="technical-card">
-          <strong>Comparison Inputs</strong>
-          <ul>
-            <li>Planned spend and planned impressions compare against PRISMA package totals so filtered mart rows do not create false planned edits.</li>
-            <li>Delivered metric baselines are recalculated from source delivery fields instead of manual-affected final fields.</li>
-            <li>Prior raw manual rows help the loader distinguish a kept override, a corrected override, an undo, and source catch-up.</li>
-          </ul>
-        </article>
+          <div class="lane">
+            <h3>Manual Evidence</h3>
+            <div class="box compact gold">
+              <p class="box-title">Raw Manual Edits</p>
+              <p class="box-text">One row per editor row with validation and replacements.</p>
+            </div>
+            <div class="box compact blue">
+              <p class="box-title">Daily Manual Rows</p>
+              <p class="box-text">Active valid metric edits at package/date grain.</p>
+            </div>
+          </div>
 
-        <article class="technical-card">
-          <strong>Warehouse Grain</strong>
-          <ul>
-            <li>The raw manual table is one row per editor row and carries validation, replacement, current, and metadata fields.</li>
-            <li>The daily manual table is package/date grain and carries only active valid metric rows for model joins.</li>
-            <li>Repeated total fields ending in <code>doNotSum</code> are context fields, not additive daily measures.</li>
-          </ul>
-        </article>
+          <div class="lane">
+            <h3>Master Evidence Model</h3>
+            <div class="box blue">
+              <p class="box-title">data_model</p>
+              <p class="box-text">Combines normal rows with manual metric and metadata overlays.</p>
+              <span class="join-note">metrics: package + date</span>
+              <span class="join-note">metadata: package</span>
+            </div>
+          </div>
 
-        <article class="technical-card">
-          <strong>Model Merge Rules</strong>
-          <ul>
-            <li>Manual metric rows join to existing model rows by package ID and date.</li>
-            <li>Manual metadata joins by package ID and can apply outside a metric override date range.</li>
-            <li>Manual-only packages enter through the manual branch only when required identity, date, metric, and metadata fields are valid.</li>
-          </ul>
-        </article>
+          <div class="lane">
+            <h3>Reporting Output</h3>
+            <div class="box red">
+              <p class="box-title">data_model_mart</p>
+              <p class="box-text">Filters reporting-only noise, recalculates rollups, and feeds dashboards.</p>
+              <span class="join-note">watch dashboard source filters</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
 
-        <article class="technical-card">
-          <strong>Validation And Proof</strong>
-          <ul>
-            <li>Partial-range planned metric edits are blocked; delivered metrics can use day, week, or full-flight windows.</li>
-            <li>Daily allocation proof must show spread rows add back to the replacement total before the upload is trusted.</li>
-            <li>End-to-end proof means tracing Sheet value, raw row, daily rows, model fields, mart fields, and dashboard refresh/filter behavior.</li>
-          </ul>
-        </article>
-
-        <article class="technical-card">
-          <strong>Common Debug Trap</strong>
-          <ul>
-            <li>A valid manual edit changes the row source classification to manual package edits.</li>
-            <li>A downstream dashboard filter that keeps only DCM-classified rows can hide correct manual-backed values.</li>
-            <li>For marker bugs, compare visible value, hidden baseline, hidden marker, raw row, daily row, model, mart, and loader comparator source.</li>
-          </ul>
-        </article>
-      </div>
+    <section class="notes-panel" aria-label="Technical notes">
+      <h2>Technical Notes</h2>
+      <details>
+        <summary>How the loader decides whether a Sheet value is an edit</summary>
+        <ul>
+          <li>Blank or source-matching metric cells are treated as no manual override.</li>
+          <li>Planned metrics compare against PRISMA package totals, not filtered mart sums.</li>
+          <li>Delivered metrics compare against source delivery baselines, not manual-affected final fields.</li>
+          <li>Prior raw manual rows help identify kept overrides, corrections, undos, and source catch-up.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>What gets written to BigQuery</summary>
+        <ul>
+          <li>The raw table stores one row per editor row with current values, replacement values, validation status, and metadata overrides.</li>
+          <li>The daily table stores active valid metric edits at package/date grain for model joins.</li>
+          <li>Total fields ending in <code>doNotSum</code> repeat context across daily rows and should not be summed as daily measures.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>How manual values merge into the model</summary>
+        <ul>
+          <li>Manual metrics join by package ID and date.</li>
+          <li>Manual metadata joins by package ID and can apply outside the edited metric date range.</li>
+          <li>Manual-only packages enter through a separate manual branch when identity, dates, metric, and metadata are valid.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Fastest debugging path</summary>
+        <ul>
+          <li>Trace the visible Sheet value, hidden baseline, hidden marker, raw manual row, daily manual row, model fields, mart fields, and dashboard filters.</li>
+          <li>A valid manual edit can change <code>qa_row_data_source_primary</code> to manual package edits.</li>
+          <li>A dashboard filtered to only DCM-classified rows can hide correct manual-backed delivery values.</li>
+        </ul>
+      </details>
     </section>
   </main>
 
@@ -615,56 +782,19 @@
     const bqBase = "https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620";
     const bq = (dataset, table) => `${bqBase}&p=looker-studio-pro-452620&d=${dataset}&t=${table}&page=table`;
 
-    const groups = [
+    const steps = [
       {
         id: "edit",
-        order: "01",
-        title: "Edit Surface",
-        tone: "violet",
-        summary: "The Google Sheet is where humans find the package and make visible corrections."
-      },
-      {
-        id: "request",
-        order: "02",
-        title: "Request Or Run",
-        tone: "mint",
-        summary: "The checkbox only asks for help. The loader is the thing that validates and writes."
-      },
-      {
-        id: "landing",
-        order: "03",
-        title: "Manual Evidence",
-        tone: "gold",
-        summary: "Valid edits become raw records and date-level manual rows in BigQuery."
-      },
-      {
-        id: "model",
-        order: "04",
-        title: "Model Merge",
-        tone: "blue",
-        summary: "Manual values take priority where they match the package/date or package metadata grain."
-      },
-      {
-        id: "feedback",
-        order: "05",
-        title: "Reporting Loop",
-        tone: "coral",
-        summary: "The mart and refreshed sheet show what changed, what stayed source-driven, and what needs review."
-      }
-    ];
-
-    const nodes = [
-      {
-        id: "sheet",
-        groupId: "edit",
-        title: "Package Editor tab",
-        summary: "Media buyers use slicers, find a package, and edit visible date, metric, or metadata cells.",
-        callouts: { truth: true, write: false, human: true, risk: "medium" },
-        description: "This is the user-facing workspace. Existing row identity fields are protected, normal edits happen in visible value cells, and new manual-only rows must include package IDs, dates, at least one metric, and required metadata.",
-        checks: [
-          "Orange means the visible value differs from the current dashboard snapshot.",
-          "Purple means the value is backed by a valid manual update.",
-          "Red means a started row is not valid enough to load."
+        number: "1",
+        tone: "green",
+        title: "Edit the Sheet",
+        summary: "A user changes the visible dashboard-like value.",
+        tags: ["human", "Sheet"],
+        description: "The Package Editor tab is the only user-facing edit surface. Users filter with slicers, find the package row, and edit visible date, metric, or metadata fields.",
+        details: [
+          "Orange means changed from the current dashboard snapshot.",
+          "Purple means a valid manual update is already backing the value.",
+          "Red means a started row is incomplete or invalid."
         ],
         sources: [
           ["Manual editor README", `${repoRoot}manual_package_edits/README.md`],
@@ -672,134 +802,55 @@
         ]
       },
       {
-        id: "instructions",
-        groupId: "edit",
-        title: "Instructions and protected helpers",
-        summary: "The sheet keeps visible guidance, editable columns, hidden baselines, manual markers, and filter helpers in one surface.",
-        callouts: { truth: true, write: false, human: true, risk: "medium" },
-        description: "The live sheet formatting is treated as the current source of truth after user formatting edits. Routine data refreshes should not run a full formatting rebuild.",
-        checks: [
-          "Hidden baseline columns support comparison and marker logic.",
-          "The Edited Rows slicer should use the hidden Edited Row Filter helper.",
-          "Formatting rebuild scripts need explicit approval for the live sheet."
+        id: "run",
+        number: "2",
+        tone: "gold",
+        title: "Request or Run",
+        summary: "Request sends a notification. Loader writes data.",
+        tags: ["boundary", "important"],
+        description: "This is the key workflow split. The Apps Script sends a notification only; the R loader reads the Sheet, validates edits, writes BigQuery, and refreshes Sheet values.",
+        details: [
+          "Request refresh sends email and optional Slack only.",
+          "The direct loader is the normal troubleshooting path.",
+          "The universal runner wrapper launches the same loader through the runner hub."
         ],
         sources: [
-          ["Sheet setup script", `${repoRoot}manual_package_edits/setup_manual_package_editor_sheet.mjs`],
-          ["Filter repair script", `${repoRoot}manual_package_edits/repair_manual_package_editor_filters.mjs`]
-        ]
-      },
-      {
-        id: "request-checkbox",
-        groupId: "request",
-        title: "Request refresh checkbox",
-        summary: "Checking the box sends an email and optional Slack message. It does not validate rows or write BigQuery.",
-        callouts: { truth: false, write: true, human: true, risk: "low" },
-        description: "This path is notification-only. It resets the checkbox, updates the status text, and includes the loader command for the person who will run the refresh.",
-        checks: [
-          "Use it when edits are ready but the user is not running the loader.",
-          "If it does not send, authorize the installable edit trigger from the Manual Editor menu.",
-          "Do not treat a sent request as proof that dashboards changed."
-        ],
-        sources: [
-          ["Apps Script", `${repoRoot}manual_package_edits/apps_script/Code.js`]
-        ]
-      },
-      {
-        id: "loader",
-        groupId: "request",
-        title: "R loader",
-        summary: "Reads the sheet, compares values to baselines and prior manual rows, validates edits, writes BigQuery, and refreshes sheet values.",
-        callouts: { truth: true, write: true, human: false, risk: "high" },
-        description: "The loader is the core write path. It authenticates to Sheets, Drive, and BigQuery, uses the reporting mart plus PRISMA package totals for baselines, and calls the narrow filter repair helper after writing values.",
-        checks: [
-          "Planned totals compare to PRISMA package totals, not filtered mart row sums.",
-          "Delivered baselines are recalculated from raw delivery fields, not manual-affected final fields.",
-          "Daily proof must pass before replacement rows are trusted."
-        ],
-        sources: [
-          ["Main loader", `${repoRoot}manual_package_edits/load_manual_package_edits.R`],
-          ["Choice logic test", `${repoRoot}manual_package_edits/tests/test_loader_choice_logic.R`],
-          ["Daily proof test", `${repoRoot}manual_package_edits/tests/test_daily_total_proof.R`]
-        ]
-      },
-      {
-        id: "runner",
-        groupId: "request",
-        title: "Universal runner wrapper",
-        summary: "Runs the production loader through the runner hub when this workflow is scheduled or launched centrally.",
-        callouts: { truth: false, write: true, human: false, risk: "medium" },
-        description: "The runner wrapper sources the main loader. The runner inventory and the workload config are separate pieces, so a script can run directly even when hub listing needs its own registry row.",
-        checks: [
-          "Use the direct loader for focused troubleshooting.",
-          "Use the runner wrapper when proving hub wiring.",
-          "A successful process exit and table modified times are both useful proof."
-        ],
-        sources: [
+          ["Apps Script", `${repoRoot}manual_package_edits/apps_script/Code.js`],
+          ["R loader", `${repoRoot}manual_package_edits/load_manual_package_edits.R`],
           ["Runner wrapper", `${runnerRoot}automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`]
         ]
       },
       {
-        id: "raw-table",
-        groupId: "landing",
-        title: "Raw manual edits",
-        summary: "One row per editor row, with current values, replacements, deltas, validation status, and metadata overrides.",
-        callouts: { truth: true, write: true, human: false, risk: "medium" },
-        description: "This is the first warehouse proof layer. It tells you whether the loader recognized an edit and whether the row is active, valid, blocked, or inactive.",
-        checks: [
-          "Live BigQuery check: 2,399 rows, modified 2026-06-18 13:13:56 UTC.",
-          "Healthy manual edits have is_active = TRUE and validation_status = valid.",
-          "Blocked rows should explain what the user must fix in validation_messages."
+        id: "evidence",
+        number: "3",
+        tone: "blue",
+        title: "Store Evidence",
+        summary: "BigQuery stores traceable manual rows.",
+        tags: ["BigQuery", "proof"],
+        description: "BigQuery keeps both the editor-row record and the daily rows consumed by the model. This makes manual values traceable instead of silently replacing source data.",
+        details: [
+          "Raw manual edits: one row per editor row, including validation status.",
+          "Daily manual rows: package/date rows for active valid metric edits.",
+          "Daily proof checks that spread rows add back to the edited total."
         ],
         sources: [
           ["Raw manual edits table", bq("landing", "master_data_model_manual_package_edits_raw")],
-          ["Raw table runbook section", `${repoRoot}manual_package_edits/QA_RUNBOOK.md`]
-        ]
-      },
-      {
-        id: "daily-table",
-        groupId: "landing",
-        title: "Daily manual rows",
-        summary: "Valid active metric edits are spread to package/date rows for model joins.",
-        callouts: { truth: true, write: true, human: false, risk: "medium" },
-        description: "The model reads only active valid daily manual rows. Total fields ending in doNotSum repeat the edited total across daily rows as context, so dashboard sums should use the daily fields.",
-        checks: [
-          "Live BigQuery check: 6,461 rows, modified 2026-06-18 13:14:14 UTC.",
-          "Join grain is package_id plus date for metric corrections.",
-          "Daily proof checks that spread rows add back to the edited replacement total."
-        ],
-        sources: [
           ["Daily manual rows table", bq("landing", "master_data_model_manual_package_daily")],
           ["Daily proof test", `${repoRoot}manual_package_edits/tests/test_daily_total_proof.R`]
         ]
       },
       {
-        id: "validation",
-        groupId: "landing",
-        title: "Validation blockers",
-        summary: "The loader blocks incomplete packages, invalid dates, duplicate active edits, and partial planned edits.",
-        callouts: { truth: false, write: false, human: false, risk: "high" },
-        description: "Validation is the guardrail between a visible sheet edit and backend evidence. It prevents started rows from entering reporting when required fields or date rules are missing.",
-        checks: [
-          "Planned spend and planned impressions are full-flight only.",
-          "Delivered metrics can be day, week, or full-flight replacements.",
-          "New manual-only packages need identity, dates, a metric, and required metadata."
-        ],
-        sources: [
-          ["Validation rules", `${repoRoot}manual_package_edits/QA_RUNBOOK.md`],
-          ["Loader validation logic", `${repoRoot}manual_package_edits/load_manual_package_edits.R`]
-        ]
-      },
-      {
-        id: "evidence-model",
-        groupId: "model",
-        title: "Master evidence model",
-        summary: "Manual daily rows and package metadata are merged before rollups and final fields are projected.",
-        callouts: { truth: true, write: false, human: false, risk: "medium" },
-        description: "This is the canonical package/date evidence layer. If a valid manual metric value exists for package/date, it wins. If package metadata exists for package_id, it applies across that package.",
-        checks: [
-          "Metric merge key: package_id plus date.",
-          "Metadata merge key: package_id.",
-          "Manual evidence is exposed in man_* columns."
+        id: "model",
+        number: "4",
+        tone: "blue",
+        title: "Apply in Model",
+        summary: "Manual values overlay the normal model.",
+        tags: ["model", "merge"],
+        description: "The master evidence model reads active valid manual rows. Metric edits join by package and date. Metadata joins by package and can apply outside the edited metric date window.",
+        details: [
+          "Metric merge key: package ID plus date.",
+          "Metadata merge key: package ID.",
+          "Manual evidence stays visible in man_* fields."
         ],
         sources: [
           ["Master evidence model", bq("master_stg", "data_model")],
@@ -807,200 +858,80 @@
         ]
       },
       {
-        id: "manual-only",
-        groupId: "model",
-        title: "Manual-only package rows",
-        summary: "Valid manual rows can create package/date rows even when the package was not already in the normal model.",
-        callouts: { truth: true, write: false, human: true, risk: "high" },
-        description: "Manual-only rows use qa_row_type = manual and qa_row_data_source_primary = manual_package_edits. This path needs stronger metadata completeness because there is no normal source package row to fill gaps.",
-        checks: [
-          "Use this when the package is genuinely absent from the editor/model.",
-          "Do not use it to dodge normal date-window rules.",
-          "Trace raw -> daily -> model -> mart before claiming a new package is live."
+        id: "report",
+        number: "5",
+        tone: "red",
+        title: "Report and Debug",
+        summary: "The mart feeds dashboards and can reveal filter traps.",
+        tags: ["dashboard", "watch"],
+        description: "The reporting mart sits downstream of the evidence model. It filters reporting-only noise and recalculates rollups. If a dashboard looks wrong, trace the row before changing logic.",
+        details: [
+          "The mart is the dashboard-like snapshot used by the editor.",
+          "Manual-backed rows can be classified as manual package edits.",
+          "A dashboard source filter can hide rows even when BigQuery is correct."
         ],
         sources: [
-          ["Manual-only SQL branch", `${repoRoot}create_master_stg_data_model.sql`],
-          ["Manual package edit README", `${repoRoot}manual_package_edits/README.md`]
-        ]
-      },
-      {
-        id: "prisma-mart-baselines",
-        groupId: "model",
-        title: "Baselines: PRISMA and mart",
-        summary: "The loader uses PRISMA for planned package totals and the reporting mart for current dashboard-like values.",
-        callouts: { truth: true, write: false, human: false, risk: "medium" },
-        description: "This split matters. Planned package totals should not be distorted by reporting filters, while delivered dashboard values need to match what the editor is showing users.",
-        checks: [
-          "PRISMA package totals supply planned baselines.",
-          "The mart supplies the current visible reporting snapshot.",
-          "A dashboard can look wrong if downstream filters exclude manual-classified rows."
-        ],
-        sources: [
-          ["PRISMA expanded full", bq("20250327_data_model", "prisma_expanded_full")],
           ["Reporting mart", bq("master_stg", "data_model_mart")],
-          ["Loader baseline query", `${repoRoot}manual_package_edits/load_manual_package_edits.R`]
-        ]
-      },
-      {
-        id: "mart",
-        groupId: "feedback",
-        title: "Dashboard reporting mart",
-        summary: "The mart filters reporting-only noise and recalculates package rollups after exclusions.",
-        callouts: { truth: true, write: false, human: false, risk: "medium" },
-        description: "The mart is what the editor uses as the dashboard-like snapshot and what reporting consumers normally read. It filters low-signal DCM rows, then rebuilds package totals over the remaining rows.",
-        checks: [
-          "The mart is downstream of the evidence model.",
-          "It preserves manual evidence fields for tracing.",
-          "Dashboard filters should not accidentally exclude qa_row_data_source_primary = manual_package_edits."
-        ],
-        sources: [
-          ["Dashboard reporting mart", bq("master_stg", "data_model_mart")],
-          ["Mart SQL", `${repoRoot}create_master_stg_data_model_mart.sql`]
-        ]
-      },
-      {
-        id: "sheet-refresh",
-        groupId: "feedback",
-        title: "Sheet refresh and markers",
-        summary: "After the loader writes, it refreshes visible values, hidden markers, the status cell, and filter helper ranges.",
-        callouts: { truth: false, write: true, human: true, risk: "medium" },
-        description: "The sheet becomes the next review surface. A purple marker means a backend manual value is still needed; if normal source data catches up, the next loader run clears stale manual evidence.",
-        checks: [
-          "The loader refreshes data values but should not rebuild live formatting.",
-          "Filter repair expands ranges so new rows stay filterable.",
-          "Visual layout claims need rendered Sheet proof, not only API order."
-        ],
-        sources: [
-          ["Loader sheet writes", `${repoRoot}manual_package_edits/load_manual_package_edits.R`],
-          ["Filter repair script", `${repoRoot}manual_package_edits/repair_manual_package_editor_filters.mjs`]
-        ]
-      },
-      {
-        id: "qa-path",
-        groupId: "feedback",
-        title: "Troubleshooting path",
-        summary: "Trace a suspect value from visible sheet cell to raw row, daily row, model, mart, and dashboard filter.",
-        callouts: { truth: true, write: false, human: true, risk: "high" },
-        description: "For marker bugs or dashboard mismatches, do not guess from one layer. The runbook path separates visible value, hidden baseline, manual marker, raw landing row, daily landing row, model field, mart field, and dashboard filter behavior.",
-        checks: [
-          "A refresh request is not a loader run.",
-          "A loader run is not proof that a dashboard has refreshed.",
-          "A correct warehouse value can still be hidden by dashboard source filters."
-        ],
-        sources: [
-          ["QA runbook", `${repoRoot}manual_package_edits/QA_RUNBOOK.md`],
-          ["Project README quick reference", `${repoRoot}README.md`]
+          ["Mart SQL", `${repoRoot}create_master_stg_data_model_mart.sql`],
+          ["QA runbook", `${repoRoot}manual_package_edits/QA_RUNBOOK.md`]
         ]
       }
     ];
 
+    const stepsEl = document.getElementById("steps");
     const inspector = document.getElementById("inspector");
-    const mapGrid = document.getElementById("mapGrid");
 
-    function calloutItems(callouts) {
-      const riskClass = `risk-${callouts.risk}`;
-      return [
-        callouts.truth ? { className: "truth", label: "truth" } : null,
-        callouts.write ? { className: "write", label: "writes" } : null,
-        callouts.human ? { className: "human", label: "manual" } : null,
-        { className: riskClass, label: `${callouts.risk} risk` }
-      ].filter(Boolean);
+    function renderTags(tags) {
+      return tags.map((tag) => `<span class="tag">${tag}</span>`).join("");
     }
 
-    function renderCallouts(callouts) {
-      return calloutItems(callouts)
-        .map((item) => `<span class="callout ${item.className}"><span class="callout-dot"></span>${item.label}</span>`)
-        .join("");
+    function renderSteps() {
+      stepsEl.innerHTML = steps.map((step) => `
+        <button class="step" type="button" data-step="${step.id}" data-tone="${step.tone}">
+          <span class="number">${step.number}</span>
+          <h3 class="step-title">${step.title}</h3>
+          <p class="step-summary">${step.summary}</p>
+          <span class="step-meta">${renderTags(step.tags)}</span>
+        </button>
+      `).join("");
     }
 
-    function renderMap() {
-      mapGrid.innerHTML = groups.map((group) => {
-        const groupNodes = nodes.filter((node) => node.groupId === group.id);
-        return `
-          <section class="phase" data-tone="${group.tone}">
-            <button class="phase-button" type="button" data-group="${group.id}">
-              <span class="phase-kicker">${group.order}</span>
-              <h2 class="phase-title">${group.title}</h2>
-              <p class="phase-summary">${group.summary}</p>
-            </button>
-            <div class="node-stack">
-              ${groupNodes.map((node) => `
-                <button class="node" type="button" data-node="${node.id}">
-                  <span class="node-title">${node.title}</span>
-                  <span class="node-summary">${node.summary}</span>
-                  <span class="node-callouts">${renderCallouts(node.callouts)}</span>
-                </button>
-              `).join("")}
-            </div>
-          </section>
-        `;
-      }).join("");
-    }
-
-    function renderInspectorForNode(node) {
-      const sourceLinks = node.sources.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join("");
-      const checks = node.checks.map((check) => `<li>${check}</li>`).join("");
+    function renderInspector(step) {
       inspector.innerHTML = `
-        <div class="node-callouts">${renderCallouts(node.callouts)}</div>
-        <h2>${node.title}</h2>
-        <p>${node.description}</p>
+        <span class="tag">Step ${step.number}</span>
+        <h2>${step.title}</h2>
+        <p>${step.description}</p>
         <section class="detail-section">
-          <h3>What To Check</h3>
-          <ul class="detail-list">${checks}</ul>
+          <h3>What To Know</h3>
+          <ul class="detail-list">
+            ${step.details.map((detail) => `<li>${detail}</li>`).join("")}
+          </ul>
         </section>
         <section class="detail-section">
           <h3>Source Pointers</h3>
-          <ul class="source-list">${sourceLinks}</ul>
-        </section>
-      `;
-    }
-
-    function renderInspectorForGroup(group) {
-      const groupNodes = nodes.filter((node) => node.groupId === group.id);
-      inspector.innerHTML = `
-        <span class="mini-pill">${group.order} workflow phase</span>
-        <h2>${group.title}</h2>
-        <p>${group.summary}</p>
-        <section class="detail-section">
-          <h3>Contains</h3>
-          <ul class="detail-list">
-            ${groupNodes.map((node) => `<li><strong>${node.title}</strong>: ${node.summary}</li>`).join("")}
+          <ul class="source-list">
+            ${step.sources.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join("")}
           </ul>
         </section>
       `;
     }
 
-    function selectNode(nodeId) {
-      const node = nodes.find((item) => item.id === nodeId);
-      if (!node) return;
-      document.querySelectorAll(".node").forEach((button) => {
-        button.classList.toggle("active", button.dataset.node === nodeId);
+    function selectStep(stepId) {
+      const step = steps.find((item) => item.id === stepId);
+      if (!step) return;
+      document.querySelectorAll(".step").forEach((button) => {
+        button.classList.toggle("active", button.dataset.step === stepId);
       });
-      renderInspectorForNode(node);
+      renderInspector(step);
     }
 
-    function bindEvents() {
-      mapGrid.addEventListener("click", (event) => {
-        const nodeButton = event.target.closest("[data-node]");
-        if (nodeButton) {
-          selectNode(nodeButton.dataset.node);
-          return;
-        }
+    stepsEl.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-step]");
+      if (button) selectStep(button.dataset.step);
+    });
 
-        const groupButton = event.target.closest("[data-group]");
-        if (groupButton) {
-          const group = groups.find((item) => item.id === groupButton.dataset.group);
-          if (group) {
-            document.querySelectorAll(".node").forEach((button) => button.classList.remove("active"));
-            renderInspectorForGroup(group);
-          }
-        }
-      });
-    }
-
-    renderMap();
-    bindEvents();
-    selectNode("sheet");
+    renderSteps();
+    selectStep("edit");
   </script>
 </body>
 </html>
