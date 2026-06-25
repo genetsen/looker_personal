@@ -2,6 +2,42 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-06-24
+
+### Changed
+
+- **FIXED** - Made the FPD multi-sheet combine tolerate mixed text and date cells in `partner_placement_name` by converting that one field to a stable character representation before binding source sheets.
+
+  <details><summary>Paths - FPD partner placement normalization</summary>
+
+  [FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)
+  [FPD loader changelog](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/CHANGELOG.md)
+
+  </details>
+
+- **CHANGED** - Added Manual Data Editor audit timestamps and editor identity from the live Google Sheet through the raw and daily landing tables into the master-model evidence fields. The loader now records the publish timestamp separately from the user edit timestamp, and the sheet-repair tooling preserves filters, conditional formatting, protections, and visibility settings.
+
+  <details><summary>Paths - Manual Data Editor audit trail</summary>
+
+  [Manual Data Editor README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/README.md)
+  [QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md)
+  [Table builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_manual_package_edit_tables.sql)
+
+  </details>
+
+- **CHANGED** - Published Omni advertiser access control for the shared Master Stg Data Model topic after synchronizing `client_access` for 26 users and granting Ritual and Olipop the same `QUERY_TOPICS` role used by Apollo. Production tests verified all single-client and multi-client combinations, administrator bypass, and fail-closed behavior for unassigned users.
+
+  <details><summary>Paths - Omni client access control</summary>
+
+  [Omni operations README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/README.md)
+  [Omni changelog](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/CHANGELOG.md)
+
+  </details>
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-06-05
 
 ### Changed

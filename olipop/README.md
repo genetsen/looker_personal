@@ -2,7 +2,7 @@
 
 This folder holds a small set of Olipop-specific SQL assets.
 
-Verified against live BigQuery on `2026-03-31`. When a local SQL file and the live warehouse object disagree, this guide treats the live BigQuery object as the source of truth.
+Verified against live BigQuery on `2026-06-23` for the top-level MMM view and on `2026-03-31` for the smaller helper SQL assets. When a local SQL file and the live warehouse object disagree, this guide treats the live BigQuery object as the source of truth.
 
 ## What Is In This Folder
 
@@ -17,7 +17,7 @@ Verified against live BigQuery on `2026-03-31`. When a local SQL file and the li
 ```mermaid
 flowchart TD
     A["Olipop.MMM_crossplatform<br/>VIEW"] --> B["repo_mart.olipop_MMM<br/>VIEW"]
-    A --> C["repo_stg.cross_client_dataModel<br/>VIEW"]
+    A --> C["master_stg.data_model<br/>VIEW"]
 
     B --> D["repo_mart.mart__olipop__crossplatform<br/>VIEW"]
     D --> E["repo_stg.stg__olipop__crossplatform_raw_tbl<br/>TABLE"]
@@ -32,6 +32,10 @@ flowchart TD
 
     C --> L["DCM.20250505_costModel_v5"]
     C --> M["landing.fpd_data_ranged_shortcutsFolder"]
+    C --> O["landing.adif_updated_fpd_daily"]
+    C --> P["landing.master_data_model_manual_package_daily"]
+    C --> Q["repo_stg.stg__olipop__crossplatform_raw_tbl"]
+    C --> R["TV monthly estimates"]
     C --> N["20250327_data_model.prisma_expanded_full"]
 ```
 
@@ -42,15 +46,19 @@ flowchart TD
 - Type: view
 - Role: top-level weekly MMM output for Olipop
 - Live behavior:
-  - Builds a `social` branch from `repo_mart.olipop_MMM`
-  - Builds a `digital` branch from `repo_stg.cross_client_dataModel`
+  - Builds a `social` branch from [the OLIPOP social summary](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_mart&t=olipop_MMM&page=table)
+  - Builds non-social rows from [the master data model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table)
+  - Labels non-social rows by `qa_row_type`, so TV rows show as `tv`, standalone manual corrections show as `manual`, and digital rows stay `digital`
+  - Aggregates non-social rows to package, tactic, data source, and Sunday-start week
   - Returns `data_source`, `package`, `Product`, `Tactic`, `date_week`, `impressions`, `clicks`, and `spend`
 - Important live filters:
-  - The digital branch keeps rows where `advertiser_name LIKE "%Olipop%"`
-  - The digital branch also keeps rows where `campaign_name LIKE "%26%"`
+  - The non-social master-model branch keeps rows where `_advertiser_short_name` contains `OLI`
+  - The non-social master-model branch also keeps rows where `_campaign_name LIKE "%26%"`
+  - The non-social master-model branch currently includes `qa_row_type IN ("digital", "tv", "manual")`
 - Notes:
   - The `social` branch hardcodes `data_source = "social"` and `package = ""`
-  - The `digital` branch hardcodes `data_source = "digital"` and uses `package_name` as `package`
+  - The non-social branch uses `_package_name` as `package` and `_supplier_name` as `Tactic`
+  - On `2026-06-23`, the live view was corrected so TV and manual rows are no longer hidden under the `digital` label
 
 ### 2. `looker-studio-pro-452620.repo_mart.olipop_MMM`
 
@@ -129,19 +137,22 @@ select * from looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_t
   - `video_views_p_100`
   - `hookrate_num`
 
-### 6. `looker-studio-pro-452620.repo_stg.cross_client_dataModel`
+### 6. `looker-studio-pro-452620.master_stg.data_model`
 
 - Type: view
-- Role: digital planning-plus-delivery layer feeding the `digital` branch of `Olipop.MMM_crossplatform`
+- Role: master package/date evidence layer feeding the non-social branch of `Olipop.MMM_crossplatform`
 - This object is not defined in this folder, but it is a direct dependency of the top-level MMM view
 - Live behavior:
   - Starts from `DCM.20250505_costModel_v5`
   - Aggregates and normalizes original FPD from `landing.fpd_data_ranged_shortcutsFolder`
+  - Incorporates updated FPD from `landing.adif_updated_fpd_daily`
+  - Incorporates valid manual package edits from `landing.master_data_model_manual_package_daily`
+  - Incorporates OLIPOP shared-social staging rows and TV rows where the master model classifies them
   - Aggregates Prisma planning rows from `20250327_data_model.prisma_expanded_full`
-  - Full outer joins DCM, FPD, and Prisma by package/date
-  - Creates final delivery metrics with `COALESCE(fpd_*, dcm_*)`
+  - Full outer joins delivery, manual, planning, social, TV, and related evidence by the master model's package/date logic
+  - Creates final delivery metrics in `_impressions`, `_clicks`, and `_spend`
   - Adds package-level plan-vs-actual rollups and package-overdelivery flags
-  - Joins back the latest Prisma package metadata
+  - Exposes QA/source labels such as `qa_row_type`, `qa_row_data_source_primary`, and `qa_row_data_issue_category`
 
 ### 7. Leaf Dependencies
 
@@ -154,9 +165,11 @@ These are the lowest visible objects in the live graph we inspected during this 
 | `repo_google_ads.google_ads_video_stats_vw` | Google Ads video-metrics source | [`sql/stg/stg__olipop_videoviews_crossplatform.sql`](../sql/stg/stg__olipop_videoviews_crossplatform.sql) and this README |
 | `repo_tiktok.mart__tiktok__ad_daily` | TikTok video-metrics source | [`sql/stg/stg__olipop_videoviews_crossplatform.sql`](../sql/stg/stg__olipop_videoviews_crossplatform.sql) and this README |
 | `repo_facebook.facebook_daily_and_lifetime_vw` | Facebook video-metrics source | [`sql/stg/stg__olipop_videoviews_crossplatform.sql`](../sql/stg/stg__olipop_videoviews_crossplatform.sql) and this README |
-| `DCM.20250505_costModel_v5` | DCM delivery/cost-model source for the digital branch | [`docs/SCHEDULED_QUERIES.md`](../docs/SCHEDULED_QUERIES.md) section `mm_dcm_costmodel` and [`sql/base/dcm/20250505_costModel_v5.sql`](../sql/base/dcm/20250505_costModel_v5.sql) |
-| `landing.fpd_data_ranged_shortcutsFolder` | Original FPD source for the digital branch | [`FPD/FPD_loader/README.md`](../FPD/FPD_loader/README.md), [`util/data_loaders/FPD_loader/README.md`](../util/data_loaders/FPD_loader/README.md), and this README |
-| `20250327_data_model.prisma_expanded_full` | Prisma planning source for the digital branch | [`docs/SCHEDULED_QUERIES.md`](../docs/SCHEDULED_QUERIES.md) section `Prisma_expanded` and this README |
+| `DCM.20250505_costModel_v5` | DCM delivery/cost-model source for master-model digital rows | [`docs/SCHEDULED_QUERIES.md`](../docs/SCHEDULED_QUERIES.md) section `mm_dcm_costmodel` and [`sql/base/dcm/20250505_costModel_v5.sql`](../sql/base/dcm/20250505_costModel_v5.sql) |
+| `landing.fpd_data_ranged_shortcutsFolder` | Original FPD source for master-model delivery rows | [`FPD/FPD_loader/README.md`](../FPD/FPD_loader/README.md), [`util/data_loaders/FPD_loader/README.md`](../util/data_loaders/FPD_loader/README.md), and this README |
+| `landing.adif_updated_fpd_daily` | Updated FPD source where the master model uses updated first-party delivery | [`adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md`](../adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md) |
+| `landing.master_data_model_manual_package_daily` | Valid daily manual package corrections consumed by the master model | [`manual_package_edits/README.md`](../master_data_model/manual_package_edits/README.md) |
+| `20250327_data_model.prisma_expanded_full` | Prisma planning source for master-model planning rows | [`docs/SCHEDULED_QUERIES.md`](../docs/SCHEDULED_QUERIES.md) section `Prisma_expanded` and this README |
 
 ## Script-By-Script Explanation
 
@@ -223,10 +236,11 @@ Current role:
 | --- | --- | --- | --- |
 | `repo_stg.stg__olipop__crossplatform_raw_tbl` | Built by scheduled query `stg__olipop__crossplatform_raw_tbl_sched`; compares `ad_reporting_transformed` vs `ad_reporting_reports`, picks the fresher source at runtime, and sets `video_flag` from actual plays/views | Related checked-in SQL in [`sql/marts/olipop/mart__olipop__crossplatform.sql`](../sql/marts/olipop/mart__olipop__crossplatform.sql) hardcodes `ad_reporting_transformed` and contains older naming/comments | Trust the live scheduled query and live table metadata |
 | `repo_mart.mart__olipop__crossplatform` | Simple live pass-through to `repo_stg.stg__olipop__crossplatform_raw_tbl` | Nearby checked-in SQL mixes raw-table build logic with mart naming | Trust the live view definition first |
+| `Olipop.MMM_crossplatform` | Live view now uses the master model for non-social rows and labels `digital`, `tv`, and `manual` separately | Older README text described `repo_stg.cross_client_dataModel` as the digital branch and said all non-social rows were hardcoded to `digital` | Trust the live view definition and this updated README |
 
 ## Quick Reference
 
 - Top-level output: `looker-studio-pro-452620.Olipop.MMM_crossplatform`
 - Social branch entrypoint in this folder: `olipop_MMM.sql`
-- Digital branch entrypoint outside this folder: `looker-studio-pro-452620.repo_stg.cross_client_dataModel`
+- Non-social branch entrypoint outside this folder: `looker-studio-pro-452620.master_stg.data_model`
 - Main operational builder to remember: scheduled query `stg__olipop__crossplatform_raw_tbl_sched`
