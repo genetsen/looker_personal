@@ -68,6 +68,5 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false --dry_run 
 | Do not treat local SQL as live truth | Inspect BigQuery before current-state claims or production deploy decisions. |
 | Do not silently add lower-grain fields to package/date rows | Use detail views, nested structures, or explicit user-approved summaries. |
 | Do not run full Sheet formatting rebuilds casually | Use loader for routine refreshes; snapshot and compare formatting before UX edits. |
-| Do not call request-refresh end-to-end proof | It sends notification only; it does not run the loader. |
+| Do not call request-refresh end-to-end proof | It can stamp audit cells and send notification, but it does not run the loader or publish BigQuery changes. |
 | Do not preserve fluctuating counts in durable docs | Counts belong in run-specific handoffs unless the user asks for a snapshot. |
-

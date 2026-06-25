@@ -65,7 +65,7 @@ flowchart LR
 | Daily total proof | Ensures allocated daily rows sum back to the replacement total within tolerance. |
 | Backend validation | Blocks invalid rows even if Sheet formatting missed them. |
 | Separate formatting scripts | Keeps routine data refresh from overwriting live user formatting. |
-| Notification-only Apps Script | Keeps the request button honest: it asks for refresh; it does not perform refresh. |
+| Apps Script audit and request control | Stamps row-level manual-edit audit cells and keeps the request button honest: it asks for refresh; it does not perform refresh. |
 
 ## Primary References
 
@@ -74,5 +74,4 @@ flowchart LR
 | [Manual editor README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/README.md) | Normal workflow, edit rules, and user-facing meaning. |
 | [Manual editor QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) | Proof path, queries, troubleshooting, and gotchas. |
 | [Manual editor loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) | Implementation of edit detection, validation, writes, and refresh. |
-| [Request notification Apps Script](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Notification control implementation. |
-
+| [Apps Script audit and request control](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Audit stamp and notification control implementation. |

@@ -808,7 +808,7 @@
         title: "Request or Run",
         summary: "Request sends a notification. Loader writes data.",
         tags: ["boundary", "important"],
-        description: "This is the key workflow split. The Apps Script sends a notification only; the R loader reads the Sheet, validates edits, writes BigQuery, and refreshes Sheet values.",
+        description: "This is the key workflow split. The Apps Script stamps row-level audit cells and sends notification only; the R loader reads the Sheet, validates edits, writes BigQuery, and refreshes Sheet values.",
         details: [
           "Request refresh sends email and optional Slack only.",
           "The direct loader is the normal troubleshooting path.",

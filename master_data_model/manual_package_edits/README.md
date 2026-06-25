@@ -32,6 +32,8 @@ The `Instructions` tab is the user-facing quick guide. It explains the normal ed
 
 Existing package identity fields, table headers, request-helper text, visible status/context fields, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible flight dates, delivery override dates, metric values, and metadata correction columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
 
+The editor includes audit columns for `Manually Edited?`, `Manual Edit At`, `Manual Edit By`, and `Manual Edit Published At`. `Manual Edit At` and `Manual Edit By` are stamped by the bound Apps Script when a user edits an editable package row. Google may hide the editor email in some trigger/security contexts, so `Manual Edit By` can show an unidentified-editor message instead of an email. `Manual Edit Published At` is set by the loader after a valid manual edit is accepted into BigQuery.
+
 The request checkbox requires the bound Apps Script's installable edit trigger. If the checkbox does not send, use `Manual Editor` -> `Authorize request button` once from the sheet menu, then try again.
 
 ## Displayed Data Sources
@@ -144,11 +146,11 @@ Common blockers: missing `Package ID`, invalid dates, no changed metric/date val
 
 ## Scripts
 
-- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges to the full sheet grid. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
+- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges plus narrow column visibility/protection settings after header shifts. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
 - The production Manual Data Editor sheet is the loader default. Use `MASTER_MANUAL_EDIT_SHEET_ID=...` only when intentionally testing another sheet copy.
 - `setup_manual_package_editor_sheet.mjs` is a rebuild tool for Google Sheet formatting, the `Instructions` tab, visible metadata columns, hidden internal baseline/manual-marker columns, native slicers, notes, warnings, widths, and colors. Do not run it against the live sheet after user-made manual formatting edits unless the user explicitly asks for a full formatting rebuild. The script is guarded and now requires `MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD=YES` to run.
-- `repair_manual_package_editor_filters.mjs` is a narrow filter/slicer repair tool. It preserves existing slicer titles, positions, and filter choices while expanding ranges to the full current sheet grid so newly added rows stay filterable. The `Edited Rows` slicer must point to the hidden `Edited Row Filter` helper, not to an individual manual-marker column.
-- `apps_script/Code.js` is the bound Apps Script for the update-request notification control only. Filtering should stay native through Google Sheets slicers.
+- `repair_manual_package_editor_filters.mjs` is a narrow sheet-geometry repair tool. It preserves existing slicer titles, positions, filter choices, formatting, and widths while expanding ranges to the full current sheet grid, keeping user-facing audit/status columns visible, and keeping backend baseline/marker/helper columns hidden and protected. The `Edited Rows` slicer must point to the hidden `Edited Row Filter` helper, not to an individual manual-marker column.
+- `apps_script/Code.js` is the bound Apps Script for the update-request notification control and row-level manual-edit audit stamps. Filtering should stay native through Google Sheets slicers.
 - The universal script runner entrypoint is `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`.
 
 R should stay focused on data loading. The current live sheet formatting is the source of truth once users have made manual formatting edits. Before future formatting work, take a read-only formatting snapshot and preserve user-made changes unless a full rebuild is explicitly requested.

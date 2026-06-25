@@ -62,7 +62,7 @@ master_data_model/
 | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) | SQL model | Reporting mart deploy definition. |
 | [create_master_data_model_upstream_tables_sched.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql) | SQL table refresh | Stored upstream source table refresh. |
 | [load_manual_package_edits.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) | R loader | Manual editor refresh, validation, and BigQuery write path. |
-| [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Apps Script | Notification-only request-refresh control. |
+| [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Apps Script | Row-level manual-edit audit stamps plus request-refresh notification control. |
 
 ## Generated Or Supporting Areas
 
@@ -71,4 +71,3 @@ master_data_model/
 | [outputs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/outputs) | Generated proof/presentation artifacts; skipped for normal architecture docs unless a task targets them. |
 | [_bmad](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad) | Tooling/config; read for workflow behavior, not treated as model code. |
 | [_bmad-output](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad-output) | Generated context; read as supporting context, not source of truth. |
-

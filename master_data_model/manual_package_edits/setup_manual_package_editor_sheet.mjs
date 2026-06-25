@@ -44,6 +44,10 @@ const columns = [
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Manually Edited?",
+  "Manual Edit At",
+  "Manual Edit By",
+  "Manual Edit Published At",
   "Primary Row Data Source",
   "Validation Status",
   "Validation Reason",
@@ -104,7 +108,10 @@ const editableColumnIndexes = new Set([
   "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Override Start Date", "Delivery Override End Date",
   "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel",
 ].map((name) => colIndex[name]));
-const diagnosticColumnIndexes = new Set(["Primary Row Data Source", "Validation Status", "Validation Reason"].map((name) => colIndex[name]));
+const diagnosticColumnIndexes = new Set([
+  "Manually Edited?", "Manual Edit At", "Manual Edit By", "Manual Edit Published At",
+  "Primary Row Data Source", "Validation Status", "Validation Reason",
+].map((name) => colIndex[name]));
 const deliveredMetricColumnIndexes = new Set(["Spend", "Impressions", "Clicks", "Video Plays", "Video Completions"].map((name) => colIndex[name]));
 const plannedMetricColumnIndexes = new Set(["Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
 const packageFriendlyNameColumnIndexes = new Set(["Package Friendly Name"].map((name) => colIndex[name]));
@@ -157,8 +164,8 @@ const slicers = [
 const widths = [
   105, 135, 720, 112, 112, 125, 140, 105, 120, 90,
   110, 130, 132, 132, 140, 110, 105, 150, 115, 90,
-  140, 220, 120, 150, 120, 240,
-  ...Array(colCount - 26).fill(100),
+  140, 220, 120, 120, 145, 220, 170, 150, 120, 240,
+  ...Array(colCount - 30).fill(100),
 ];
 
 function color(red, green, blue) {
@@ -810,6 +817,8 @@ function buildRequests(sheet, existingDataEndRowIndex) {
   const firstBlankRow = existingDataEndRowIndex;
   const firstBlankSheetRow = firstBlankRow + 1;
   const firstDataSheetRow = dataStartRowIndex + 1;
+  const validationStatusColumn = columnLetter(colIndex["Validation Status"]);
+  const baselineFlightStartColumn = columnLetter(colIndex["Baseline Flight Start Date"]);
   requests.push({
     addConditionalFormatRule: {
       rule: {
@@ -819,7 +828,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
             type: "CUSTOM_FORMULA",
             values: [
               {
-                userEnteredValue: `=OR($Y${firstDataSheetRow}="blocked",AND($A${firstDataSheetRow}<>"",$AA${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$M${firstDataSheetRow}>$N${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow}))))`,
+                userEnteredValue: `=OR($${validationStatusColumn}${firstDataSheetRow}="blocked",AND($A${firstDataSheetRow}<>"",$${baselineFlightStartColumn}${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$M${firstDataSheetRow}>$N${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow}))))`,
               },
             ],
           },
@@ -890,6 +899,10 @@ function buildRequests(sheet, existingDataEndRowIndex) {
 
   if (existingDataEndRowIndex > dataStartRowIndex) {
     const firstDataRow = dataStartRowIndex + 1;
+    const baselinePlannedSpendColumn = columnLetter(colIndex["Baseline Planned Spend"]);
+    const baselinePlannedImpressionsColumn = columnLetter(colIndex["Baseline Planned Impressions"]);
+    const baselineDeliveryStartColumn = columnLetter(colIndex["Baseline Delivery Start Date"]);
+    const baselineDeliveryEndColumn = columnLetter(colIndex["Baseline Delivery End Date"]);
     requests.push({
       addConditionalFormatRule: {
         rule: {
@@ -899,7 +912,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
               type: "CUSTOM_FORMULA",
               values: [
                 {
-                  userEnteredValue: `=AND(OR($F${firstDataRow}<>$Z${firstDataRow},$G${firstDataRow}<>$AA${firstDataRow}),OR($M${firstDataRow}<>$AG${firstDataRow},$N${firstDataRow}<>$AH${firstDataRow}))`,
+                  userEnteredValue: `=AND(OR($F${firstDataRow}<>$${baselinePlannedSpendColumn}${firstDataRow},$G${firstDataRow}<>$${baselinePlannedImpressionsColumn}${firstDataRow}),OR($M${firstDataRow}<>$${baselineDeliveryStartColumn}${firstDataRow},$N${firstDataRow}<>$${baselineDeliveryEndColumn}${firstDataRow}))`,
                 },
               ],
             },

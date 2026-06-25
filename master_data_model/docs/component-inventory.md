@@ -25,7 +25,7 @@ This project does not have application UI components in the usual web-app sense.
 | Full Sheet setup | [setup_manual_package_editor_sheet.mjs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs) | Rebuilds formatting, instructions, protections, hidden helpers, and slicers; guarded against accidental live rebuilds. |
 | Filter repair | [repair_manual_package_editor_filters.mjs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs) | Expands filters/slicers and points Edited Rows to the correct helper. |
 | Conditional formatting repair | [repair_manual_package_editor_conditional_formatting.mjs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_conditional_formatting.mjs) | Repairs marker color rules without a full rebuild. |
-| Apps Script request control | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Sends notification email/optional Slack request and resets the checkbox. |
+| Apps Script audit and request control | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Stamps row-level manual-edit audit cells, sends notification email or optional Slack request, and resets the checkbox. |
 
 ## Test Components
 
@@ -43,4 +43,3 @@ This project does not have application UI components in the usual web-app sense.
 | Manual editor runbook | [manual_package_edits/QA_RUNBOOK.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) | QA queries, proof path, and troubleshooting map. |
 | Model map | [master-data-model-map.html](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) | Interactive lineage and risk orientation. |
 | Audits | Root audit Markdown files | Source-field preservation and ADIF comparison context. |
-

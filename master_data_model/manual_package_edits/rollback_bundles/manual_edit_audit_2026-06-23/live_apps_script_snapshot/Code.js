@@ -1,40 +1,11 @@
 const EDITOR_SHEET_NAME = "Package Editor";
 const HEADER_ROW = 4;
 const DATA_START_ROW = 5;
-const TABLE_COL_COUNT = 34;
+const TABLE_COL_COUNT = 30;
 const REQUEST_UPDATE_CELL = "E2";
 const REQUEST_STATUS_CELL = "F2";
 const DEFAULT_NOTIFY_EMAIL = "gene.tsenter@giantspoon.com";
 const LOADER_COMMAND = "Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R";
-const AUDIT_EDITED_FLAG_HEADER = "Manually Edited?";
-const AUDIT_EDITED_AT_HEADER = "Manual Edit At";
-const AUDIT_EDITED_BY_HEADER = "Manual Edit By";
-const AUDIT_PUBLISHED_AT_HEADER = "Manual Edit Published At";
-const AUDIT_EDITABLE_HEADERS = new Set([
-  "Package ID",
-  "Site",
-  "Package Friendly Name",
-  "Flight Start Date",
-  "Flight End Date",
-  "Planned Spend",
-  "Planned Impressions",
-  "Spend",
-  "Impressions",
-  "Clicks",
-  "Video Plays",
-  "Video Completions",
-  "Delivery Override Start Date",
-  "Delivery Override End Date",
-  "Advertiser",
-  "Package Type",
-  "Channel",
-  "Campaign",
-  "Initiative",
-  "Supplier Code",
-  "Supplier Name",
-  "Package Name",
-  "GS Channel",
-]);
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -67,10 +38,6 @@ function handleManualEditorEdit_(event, canSendNotification) {
       SpreadsheetApp.getActive().toast("Sending refresh request...", "Manual Editor", 5);
     }
     return;
-  }
-
-  if (canSendNotification) {
-    stampManualEditAudit_(sheet, event.range, event);
   }
 }
 
@@ -144,53 +111,6 @@ function getRequesterEmail_(event) {
   if (activeUserEmail) return activeUserEmail;
 
   return "Requester could not be identified by Google Apps Script";
-}
-
-function stampManualEditAudit_(sheet, editedRange, event) {
-  const firstEditedRow = editedRange.getRow();
-  const lastEditedRow = firstEditedRow + editedRange.getNumRows() - 1;
-  if (lastEditedRow < DATA_START_ROW) return;
-
-  const headers = sheet.getRange(HEADER_ROW, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const headerByColumn = new Map(headers.map((header, index) => [index + 1, String(header || "")]));
-  const auditColumns = getAuditColumnIndexes_(headers);
-  if (!auditColumns.editedFlag || !auditColumns.editedAt || !auditColumns.editedBy || !auditColumns.publishedAt) return;
-
-  const firstEditedColumn = editedRange.getColumn();
-  const lastEditedColumn = firstEditedColumn + editedRange.getNumColumns() - 1;
-  let touchesEditableColumn = false;
-  for (let column = firstEditedColumn; column <= lastEditedColumn; column += 1) {
-    if (AUDIT_EDITABLE_HEADERS.has(headerByColumn.get(column))) {
-      touchesEditableColumn = true;
-      break;
-    }
-  }
-  if (!touchesEditableColumn) return;
-
-  const firstAuditRow = Math.max(firstEditedRow, DATA_START_ROW);
-  const auditRowCount = lastEditedRow - firstAuditRow + 1;
-  const editedAt = Utilities.formatDate(new Date(), "UTC", "yyyy-MM-dd'T'HH:mm:ss'Z'");
-  const editedBy = getRequesterEmail_(event).replace(/^Requester/, "Editor");
-
-  sheet.getRange(firstAuditRow, auditColumns.editedFlag, auditRowCount, 1)
-    .setValues(Array.from({ length: auditRowCount }, () => ["Pending"]));
-  sheet.getRange(firstAuditRow, auditColumns.editedAt, auditRowCount, 1)
-    .setValues(Array.from({ length: auditRowCount }, () => [editedAt]));
-  sheet.getRange(firstAuditRow, auditColumns.editedBy, auditRowCount, 1)
-    .setValues(Array.from({ length: auditRowCount }, () => [editedBy]));
-  sheet.getRange(firstAuditRow, auditColumns.publishedAt, auditRowCount, 1).clearContent();
-}
-
-function getAuditColumnIndexes_(headers) {
-  const indexes = {};
-  headers.forEach((header, index) => {
-    const name = String(header || "");
-    if (name === AUDIT_EDITED_FLAG_HEADER) indexes.editedFlag = index + 1;
-    if (name === AUDIT_EDITED_AT_HEADER) indexes.editedAt = index + 1;
-    if (name === AUDIT_EDITED_BY_HEADER) indexes.editedBy = index + 1;
-    if (name === AUDIT_PUBLISHED_AT_HEADER) indexes.publishedAt = index + 1;
-  });
-  return indexes;
 }
 
 function installManualEditorAutomation() {

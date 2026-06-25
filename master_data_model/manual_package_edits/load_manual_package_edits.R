@@ -70,10 +70,10 @@ EDITOR_HEADER_ROW <- 4
 EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
 EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
 REQUEST_STATUS_CELL <- "F2"
-EDITOR_VISIBLE_LAST_COLUMN <- "AU"
-MANUAL_MARKER_START_COLUMN <- "AV"
-FILTER_HELPER_START_COLUMN <- "BQ"
-EDITOR_LAST_COLUMN <- "BQ"
+EDITOR_VISIBLE_LAST_COLUMN <- "AY"
+MANUAL_MARKER_START_COLUMN <- "AZ"
+FILTER_HELPER_START_COLUMN <- "BU"
+EDITOR_LAST_COLUMN <- "BU"
 LEGACY_TABS <- c(
   "Sheet1", "Package Lookup", "Start Here", "Manual Package Edits",
   "Validation Preview", "Daily Proof", "Publish Status", "Change History"
@@ -117,6 +117,10 @@ display_columns <- c(
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Manually Edited?",
+  "Manual Edit At",
+  "Manual Edit By",
+  "Manual Edit Published At",
   "Primary Row Data Source",
   "Validation Status",
   "Validation Reason",
@@ -249,6 +253,9 @@ raw_columns <- c(
   "p_rate",
   "edit_reason",
   "editor_email",
+  "manual_edit_at",
+  "manual_edit_by",
+  "manual_edit_published_at",
   "validation_status",
   "validation_messages"
 )
@@ -285,6 +292,24 @@ parse_date <- function(x) {
   serial_date <- suppressWarnings(as.numeric(y))
   serial_date[is.na(serial_date)] <- NA_real_
   dplyr::coalesce(parsed, as.Date(serial_date, origin = "1899-12-30"))
+}
+
+parse_timestamp <- function(x) {
+  if (inherits(x, "POSIXt")) {
+    return(as.POSIXct(x, tz = "UTC"))
+  }
+  if (inherits(x, "Date")) {
+    return(as.POSIXct(x, tz = "UTC"))
+  }
+  if (is.numeric(x)) {
+    return(as.POSIXct((as.numeric(x) - 25569) * 86400, origin = "1970-01-01", tz = "UTC"))
+  }
+  y <- str_trim(as.character(x))
+  y[y == "" | str_to_lower(y) %in% c("na", "nan", "null")] <- NA_character_
+  y <- str_replace(y, "Z$", "+00:00")
+  parsed <- suppressWarnings(ymd_hms(y, tz = "UTC", quiet = TRUE))
+  fallback <- suppressWarnings(as.POSIXct(y, tz = "UTC"))
+  dplyr::coalesce(as.POSIXct(parsed, tz = "UTC"), fallback)
 }
 
 same_num <- function(a, b, tol = 0.01) {
@@ -336,6 +361,7 @@ write_tab <- function(sheet_id, tab_name, data) {
 
 write_editor_tab <- function(sheet_id, tab_name, data) {
   ensure_tab(sheet_id, tab_name)
+  sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
   range_clear(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0("A", EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
 }
@@ -348,7 +374,7 @@ write_manual_marker_columns <- function(sheet_id, tab_name, data) {
 
 write_filter_helper_columns <- function(sheet_id, tab_name, data) {
   ensure_tab(sheet_id, tab_name)
-  sheet_resize(sheet_id, sheet = tab_name, ncol = 69)
+  sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
   range_clear(sheet_id, range = paste0("'", tab_name, "'!", FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0(FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
 }
@@ -505,7 +531,10 @@ normalize_existing_editor <- function(data) {
     package_type = as_trimmed_character(pick_existing_col(data, c("Package Type", "Media Type", "package_type"))),
     media_name = as_trimmed_character(pick_existing_col(data, c("Media", "media_name"))),
     ADIF_channel = as_trimmed_character(pick_existing_col(data, c("GS Channel", "ADIF Channel", "ADIF_channel"))),
-    channel_group = as_trimmed_character(pick_existing_col(data, c("Channel Group", "channel_group")))
+    channel_group = as_trimmed_character(pick_existing_col(data, c("Channel Group", "channel_group"))),
+    manual_edit_at = parse_timestamp(pick_existing_col(data, c("Manual Edit At", "manual_edit_at"))),
+    manual_edit_by = as_trimmed_character(pick_existing_col(data, c("Manual Edit By", "manual_edit_by"))),
+    manual_edit_published_at = parse_timestamp(pick_existing_col(data, c("Manual Edit Published At", "manual_edit_published_at")))
   )
 
   for (idx in seq_len(nrow(metric_specs))) {
@@ -549,6 +578,8 @@ download_previous_raw <- function() {
   out$current_flight_end_date <- parse_date(out$current_flight_end_date)
   out$replacement_flight_start_date <- parse_date(out$replacement_flight_start_date)
   out$replacement_flight_end_date <- parse_date(out$replacement_flight_end_date)
+  out$manual_edit_at <- parse_timestamp(out$manual_edit_at)
+  out$manual_edit_published_at <- parse_timestamp(out$manual_edit_published_at)
   out$is_active <- out$is_active %in% TRUE
   out %>%
     filter(!is.na(package_id))
@@ -935,6 +966,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   prior_value <- function(col) {
     if (has_prior && col %in% names(prior)) prior[[col]][[1]] else NA
   }
+  manual_edit_at <- sheet_value("manual_edit_at") %pick% prior_value("manual_edit_at")
+  manual_edit_by <- sheet_value("manual_edit_by") %pick% prior_value("manual_edit_by")
 
   flight_start_choice <- choose_date_value(
     sheet_value("flight_start_date"),
@@ -1011,6 +1044,10 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `Supplier Name` = metadata_choices$supplier_name$value,
       `Package Name` = metadata_choices$package_name$value,
       `GS Channel` = metadata_choices$ADIF_channel$value,
+      `Manually Edited?` = "",
+      `Manual Edit At` = manual_edit_at,
+      `Manual Edit By` = manual_edit_by,
+      `Manual Edit Published At` = "",
       `Primary Row Data Source` = live_value("qa_row_data_source_primary"),
       `Validation Status` = "",
       `Validation Reason` = "",
@@ -1080,6 +1117,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   raw$p_unit_type <- live_value("p_unit_type")
   raw$p_rate <- live_value("p_rate")
   raw$editor_email <- AUTH_EMAIL
+  raw$manual_edit_at <- manual_edit_at
+  raw$manual_edit_by <- manual_edit_by
 
   flight_date_edited <- flight_start_choice$edited || flight_end_choice$edited
   delivery_date_edited <- delivery_start_choice$edited || delivery_end_choice$edited
@@ -1170,6 +1209,8 @@ raw_upload$current_flight_end_date <- parse_date(raw_upload$current_flight_end_d
 raw_upload$replacement_flight_start_date <- parse_date(raw_upload$replacement_flight_start_date)
 raw_upload$replacement_flight_end_date <- parse_date(raw_upload$replacement_flight_end_date)
 raw_upload$current_row_count <- parse_num(raw_upload$current_row_count)
+raw_upload$manual_edit_at <- parse_timestamp(raw_upload$manual_edit_at)
+raw_upload$manual_edit_by <- as_trimmed_character(raw_upload$manual_edit_by)
 
 has_replacement <- apply(!is.na(raw_upload[, metric_specs$replacement_col, drop = FALSE]), 1, any)
 has_metadata_replacement <- apply(!is.na(raw_upload[, metadata_specs$manual_col, drop = FALSE]), 1, any)
@@ -1248,7 +1289,20 @@ raw_upload$validation_status <- dplyr::case_when(
   TRUE ~ "blocked"
 )
 raw_upload$validation_messages <- unlist(validation_messages)
+raw_upload$manual_edit_published_at <- dplyr::if_else(
+  raw_upload$is_active & raw_upload$validation_status == "valid",
+  loaded_at,
+  as.POSIXct(NA)
+)
 
+display_data$`Manually Edited?` <- dplyr::case_when(
+  raw_upload$is_active & raw_upload$validation_status == "valid" ~ "Yes",
+  raw_upload$is_active & raw_upload$validation_status == "blocked" ~ "Blocked",
+  TRUE ~ "No"
+)
+display_data$`Manual Edit At` <- raw_upload$manual_edit_at
+display_data$`Manual Edit By` <- raw_upload$manual_edit_by
+display_data$`Manual Edit Published At` <- raw_upload$manual_edit_published_at
 display_data$`Validation Status` <- raw_upload$validation_status
 display_data$`Validation Reason` <- raw_upload$validation_messages
 
@@ -1312,7 +1366,8 @@ if (nrow(valid_metric_edits) > 0) {
       "supplier_logo", "p_buy_type", "p_buy_category", "channel", "channel_raw",
       "channel_group", "media_name", "p_cost_method", "p_planned_amount_doNotSum",
       "p_planned_impressions_doNotSum", "p_planned_units_doNotSum", "p_unit_type",
-      "p_rate", "edit_reason", "editor_email"
+      "p_rate", "edit_reason", "editor_email", "manual_edit_at", "manual_edit_by",
+      "manual_edit_published_at"
     )
     for (col in passthrough_cols) {
       daily[[col]] <- row[[col]]
@@ -1376,6 +1431,9 @@ if (length(daily_rows) == 0) {
     p_rate = numeric(),
     edit_reason = character(),
     editor_email = character(),
+    manual_edit_at = as.POSIXct(character()),
+    manual_edit_by = character(),
+    manual_edit_published_at = as.POSIXct(character()),
     source_sheet_url = character(),
     source_sheet_modified_time = as.POSIXct(character()),
     loaded_at = as.POSIXct(character())

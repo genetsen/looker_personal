@@ -89,6 +89,9 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
   p_rate FLOAT64,
   edit_reason STRING,
   editor_email STRING,
+  manual_edit_at TIMESTAMP,
+  manual_edit_by STRING,
+  manual_edit_published_at TIMESTAMP,
   source_sheet_url STRING,
   source_sheet_modified_time TIMESTAMP,
   loaded_at TIMESTAMP,
@@ -186,6 +189,15 @@ ADD COLUMN IF NOT EXISTS current_ADIF_channel STRING;
 ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
 ADD COLUMN IF NOT EXISTS man_ADIF_channel STRING;
 
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS manual_edit_at TIMESTAMP;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS manual_edit_by STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ADD COLUMN IF NOT EXISTS manual_edit_published_at TIMESTAMP;
+
 CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_manual_package_daily` (
   is_active BOOL,
   validation_status STRING,
@@ -237,6 +249,9 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
   p_rate FLOAT64,
   edit_reason STRING,
   editor_email STRING,
+  manual_edit_at TIMESTAMP,
+  manual_edit_by STRING,
+  manual_edit_published_at TIMESTAMP,
   source_sheet_url STRING,
   source_sheet_modified_time TIMESTAMP,
   loaded_at TIMESTAMP
@@ -244,3 +259,12 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
 OPTIONS (
   description = "Valid active manual package edits spread to daily package rows. Consumed by master_stg.data_model as top-priority man_ evidence."
 );
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
+ADD COLUMN IF NOT EXISTS manual_edit_at TIMESTAMP;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
+ADD COLUMN IF NOT EXISTS manual_edit_by STRING;
+
+ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
+ADD COLUMN IF NOT EXISTS manual_edit_published_at TIMESTAMP;

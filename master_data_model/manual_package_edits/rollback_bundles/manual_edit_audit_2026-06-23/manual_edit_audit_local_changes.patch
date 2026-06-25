@@ -1,0 +1,833 @@
+diff --git a/master_data_model/CHANGELOG.md b/master_data_model/CHANGELOG.md
+index 825649d..2d3b391 100644
+--- a/master_data_model/CHANGELOG.md
++++ b/master_data_model/CHANGELOG.md
+@@ -1,5 +1,14 @@
+ # Changelog
+ 
++## 2026-06-23
++
++- **ADDED** - Prepared Manual Data Editor audit fields for the Sheet, manual landing tables, master evidence model, and reporting mart: row-level manual-edit status, edit timestamp, editor when Google exposes it, and loader publish timestamp.
++- **IMPROVED** - Documented the difference between row edit time and loader publish time so manual-edit audit fields do not overstate what Google Sheets can identify.
++
++### Next
++
++- Deploy the manual table schema and master views after approval, then run the loader and verify the live Sheet plus BigQuery fields end to end - PENDING
++
+ ## 2026-06-18
+ 
+ - **IMPROVED** - Expanded the Manual Data Editor product brief into slide-ready presentation notes and added the problems and bottlenecks the workflow resolves.
+diff --git a/master_data_model/README.md b/master_data_model/README.md
+index c0f0aa4..0ab8db1 100644
+--- a/master_data_model/README.md
++++ b/master_data_model/README.md
+@@ -167,6 +167,7 @@ Ritual delivery detail v2:
+ - The manual edit sheet uses a single `Package Editor` tab. It shows package lookup context and dashboard values in the same row; users edit the value cell directly, and the loader compares that cell to source-derived baselines plus the last run to decide whether to write or clear a backend manual value.
+ - The loader treats source values as the baseline for edit detection. Planned package totals come directly from PRISMA package totals, while delivered metric baselines are recalculated from the raw delivery fields instead of manual-affected final `_` fields. This prevents stale manual values from re-marking themselves as edits after the source data catches up.
+ - The visible editor starts with the fields a media buyer needs to recognize the row: `Package ID`, `Site`, and `Package Friendly Name`, followed by pale-yellow editable date and metric columns.
++- The visible editor also shows manual-edit audit columns: `Manually Edited?`, `Manual Edit At`, `Manual Edit By`, and `Manual Edit Published At`. The edit timestamp and editor value come from the bound Apps Script when Google exposes the editor identity; the published timestamp is set when the loader accepts a valid manual edit into BigQuery.
+ - The package lookup facets live in native Google Sheets slicers for Advertiser, Channel, Campaign, and Site. They filter the real editable package rows without Apps Script-driven dropdowns or hidden helper columns.
+ - The sheet has a `Request refresh` checkbox-style control. Checking it notifies Gene by email; if a Slack webhook script property exists, the same request can post to Slack. It is notification-only and does not run the loader or write to the warehouse by itself.
+ - `Flight Start Date` and `Flight End Date` are package-level fields. `Delivery Override Start Date` and `Delivery Override End Date` define the metric override window. To change delivery for one week while leaving other weeks as-is, users add or duplicate a row, set the delivery override dates to that week, and enter replacement delivered totals for that week only.
+@@ -179,7 +180,7 @@ Ritual delivery detail v2:
+ - Edited/manual-backed cells are marked only with Google Sheet formatting. The user-facing sheet does not expose replacement columns, delta columns, validation tabs, proof tabs, or `man_*` backend fields.
+ - The loader still proves each uploaded daily metric sums back to the edited total before it replaces the daily manual table.
+ - Manual-only packages can enter the model only from valid active manual rows with required metadata. They use `qa_row_type = 'manual'` and `qa_row_data_source_primary = 'manual_package_edits'`.
+-- Manual evidence is visible in `man_*` fields, including edit ID, reason, editor, source sheet URL, modified time, daily values, and total replacement values marked with `_doNotSum` where they are repeated across daily rows.
++- Manual evidence is visible in `man_*` fields, including edit ID, reason, loader account, source sheet URL, modified time, row-level edit audit fields, daily values, and total replacement values marked with `_doNotSum` where they are repeated across daily rows. Friendly `qa_manual_*` fields expose whether a row has a manual edit, when the user edited it when available, who edited it when Google exposes that identity, and when the edit was accepted into BigQuery.
+ - `row_data_source_primary` is a priority label. FPD wins over DCM when both are present.
+ - `row_data_sources_available` lists every detected source for the row, such as `prisma | prisma_daily | dcm | fpd_original`.
+ - `row_data_issue_category` uses compact source/cause labels such as `missing_prisma_package`, `missing_prisma_daily`, `actual_source_conflict`, `missing_actuals`, `missing_social_pacing`, and `missing_final_metrics`.
+diff --git a/master_data_model/create_manual_package_edit_tables.sql b/master_data_model/create_manual_package_edit_tables.sql
+index 87fc34d..9b4dd07 100644
+--- a/master_data_model/create_manual_package_edit_tables.sql
++++ b/master_data_model/create_manual_package_edit_tables.sql
+@@ -89,6 +89,9 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
+   p_rate FLOAT64,
+   edit_reason STRING,
+   editor_email STRING,
++  manual_edit_at TIMESTAMP,
++  manual_edit_by STRING,
++  manual_edit_published_at TIMESTAMP,
+   source_sheet_url STRING,
+   source_sheet_modified_time TIMESTAMP,
+   loaded_at TIMESTAMP,
+@@ -186,6 +189,15 @@ ADD COLUMN IF NOT EXISTS current_ADIF_channel STRING;
+ ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
+ ADD COLUMN IF NOT EXISTS man_ADIF_channel STRING;
+ 
++ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
++ADD COLUMN IF NOT EXISTS manual_edit_at TIMESTAMP;
++
++ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
++ADD COLUMN IF NOT EXISTS manual_edit_by STRING;
++
++ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
++ADD COLUMN IF NOT EXISTS manual_edit_published_at TIMESTAMP;
++
+ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_manual_package_daily` (
+   is_active BOOL,
+   validation_status STRING,
+@@ -237,6 +249,9 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
+   p_rate FLOAT64,
+   edit_reason STRING,
+   editor_email STRING,
++  manual_edit_at TIMESTAMP,
++  manual_edit_by STRING,
++  manual_edit_published_at TIMESTAMP,
+   source_sheet_url STRING,
+   source_sheet_modified_time TIMESTAMP,
+   loaded_at TIMESTAMP
+@@ -244,3 +259,12 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_m
+ OPTIONS (
+   description = "Valid active manual package edits spread to daily package rows. Consumed by master_stg.data_model as top-priority man_ evidence."
+ );
++
++ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
++ADD COLUMN IF NOT EXISTS manual_edit_at TIMESTAMP;
++
++ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
++ADD COLUMN IF NOT EXISTS manual_edit_by STRING;
++
++ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
++ADD COLUMN IF NOT EXISTS manual_edit_published_at TIMESTAMP;
+diff --git a/master_data_model/create_master_stg_data_model.sql b/master_data_model/create_master_stg_data_model.sql
+index 990c69a..e55537e 100644
+--- a/master_data_model/create_master_stg_data_model.sql
++++ b/master_data_model/create_master_stg_data_model.sql
+@@ -163,6 +163,9 @@ manual_package_daily AS (
+     edit_id,
+     edit_reason,
+     editor_email,
++    manual_edit_at,
++    manual_edit_by,
++    manual_edit_published_at,
+     source_sheet_url,
+     source_sheet_modified_time,
+     loaded_at
+@@ -179,6 +182,9 @@ manual_package_metadata AS (
+     ARRAY_AGG(edit_id IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS edit_id,
+     ARRAY_AGG(edit_reason IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS edit_reason,
+     ARRAY_AGG(editor_email IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS editor_email,
++    ARRAY_AGG(manual_edit_at IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS manual_edit_at,
++    ARRAY_AGG(manual_edit_by IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS manual_edit_by,
++    ARRAY_AGG(manual_edit_published_at IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS manual_edit_published_at,
+     ARRAY_AGG(source_sheet_url IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS source_sheet_url,
+     ARRAY_AGG(source_sheet_modified_time IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS source_sheet_modified_time,
+     MAX(loaded_at) AS loaded_at,
+@@ -1391,6 +1397,9 @@ manual_existing_rows AS (
+     COALESCE(m.source_sheet_url, pm.source_sheet_url) AS man_source_sheet_url,
+     COALESCE(m.source_sheet_modified_time, pm.source_sheet_modified_time) AS man_source_sheet_modified_time,
+     COALESCE(m.loaded_at, pm.loaded_at) AS man_loaded_at,
++    COALESCE(m.manual_edit_at, pm.manual_edit_at) AS man_manual_edit_at,
++    COALESCE(m.manual_edit_by, pm.manual_edit_by) AS man_manual_edit_by,
++    COALESCE(m.manual_edit_published_at, pm.manual_edit_published_at) AS man_manual_edit_published_at,
+     m.man_start_date,
+     m.man_end_date,
+     m.man_daily_spend,
+@@ -1579,6 +1588,9 @@ manual_only_rows AS (
+     COALESCE(m.source_sheet_url, pm.source_sheet_url) AS man_source_sheet_url,
+     COALESCE(m.source_sheet_modified_time, pm.source_sheet_modified_time) AS man_source_sheet_modified_time,
+     COALESCE(m.loaded_at, pm.loaded_at) AS man_loaded_at,
++    COALESCE(m.manual_edit_at, pm.manual_edit_at) AS man_manual_edit_at,
++    COALESCE(m.manual_edit_by, pm.manual_edit_by) AS man_manual_edit_by,
++    COALESCE(m.manual_edit_published_at, pm.manual_edit_published_at) AS man_manual_edit_published_at,
+     m.man_start_date,
+     m.man_end_date,
+     m.man_daily_spend,
+@@ -1928,6 +1940,13 @@ SELECT
+   man_source_sheet_url AS `man_source_sheet_url`,
+   man_source_sheet_modified_time AS `man_source_sheet_modified_time`,
+   man_loaded_at AS `man_loaded_at`,
++  man_manual_edit_at AS `man_manual_edit_at`,
++  man_manual_edit_by AS `man_manual_edit_by`,
++  man_manual_edit_published_at AS `man_manual_edit_published_at`,
++  man_edit_id IS NOT NULL AS `qa_manual_edit_flag`,
++  man_manual_edit_at AS `qa_manual_edit_at`,
++  man_manual_edit_by AS `qa_manual_edit_by`,
++  COALESCE(man_manual_edit_published_at, man_loaded_at) AS `qa_manual_edit_published_at`,
+   man_start_date AS `man_start_date`,
+   man_end_date AS `man_end_date`,
+   man_daily_spend AS `man_daily_spend`,
+diff --git a/master_data_model/docs/architecture.md b/master_data_model/docs/architecture.md
+index 8fdf851..e6877f2 100644
+--- a/master_data_model/docs/architecture.md
++++ b/master_data_model/docs/architecture.md
+@@ -26,7 +26,7 @@ flowchart TD
+ | Reporting mart | Apply reporting-only exclusions and recalculate package rollups after filtering | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) |
+ | Manual editor loader | Detect edited Sheet cells, validate them, write raw/daily manual rows, and refresh visible values | [load_manual_package_edits.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) |
+ | Manual editor UX tools | Manage Sheet formatting, filters, slicers, helper columns, and visual markers | [manual_package_edits](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits) |
+-| Notification control | Send a refresh request without running the loader | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) |
++| Apps Script audit and request control | Stamp row-level manual-edit audit fields and send a refresh request without running the loader | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) |
+ 
+ ## Model Layers
+ 
+@@ -55,7 +55,7 @@ flowchart TD
+ | Do not silently collapse lower-grain fields | Creative/detail fields live in sibling detail views, not the package/date model. |
+ | Keep unmatched delivery visible but non-inflating | Rows can preserve raw evidence and issue labels without contributing to final package actuals unless approved. |
+ | Keep Sheet UX separate from data loading | R refreshes values and writes warehouse rows; JavaScript owns formatting and slicer repair. |
+-| Treat request refresh as notification only | Apps Script sends a message and resets the checkbox; it does not validate, load, or deploy data. |
++| Treat request refresh as notification only | Apps Script stamps audit cells during user edits, then sends a message and resets the checkbox when refresh is requested; it does not validate, load, or deploy data. |
+ | Verify live warehouse behavior before claims | Local SQL is deploy input, not proof of current production state. |
+ 
+ ## Main Risks
+@@ -67,4 +67,3 @@ flowchart TD
+ | User Sheet formatting can be overwritten | Do not run setup/rebuild scripts unless a full rebuild is explicitly approved. |
+ | Manual values can re-mark themselves if baselines use final fields | Loader uses source-derived baselines instead of manual-affected final dashboard fields. |
+ | Row counts and source totals naturally fluctuate | Keep counts in run-specific proof notes, not durable docs. |
+-
+diff --git a/master_data_model/docs/component-inventory.md b/master_data_model/docs/component-inventory.md
+index 82d4340..6dcc4f6 100644
+--- a/master_data_model/docs/component-inventory.md
++++ b/master_data_model/docs/component-inventory.md
+@@ -25,7 +25,7 @@ This project does not have application UI components in the usual web-app sense.
+ | Full Sheet setup | [setup_manual_package_editor_sheet.mjs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs) | Rebuilds formatting, instructions, protections, hidden helpers, and slicers; guarded against accidental live rebuilds. |
+ | Filter repair | [repair_manual_package_editor_filters.mjs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs) | Expands filters/slicers and points Edited Rows to the correct helper. |
+ | Conditional formatting repair | [repair_manual_package_editor_conditional_formatting.mjs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_conditional_formatting.mjs) | Repairs marker color rules without a full rebuild. |
+-| Apps Script request control | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Sends notification email/optional Slack request and resets the checkbox. |
++| Apps Script audit and request control | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Stamps row-level manual-edit audit cells, sends notification email or optional Slack request, and resets the checkbox. |
+ 
+ ## Test Components
+ 
+@@ -43,4 +43,3 @@ This project does not have application UI components in the usual web-app sense.
+ | Manual editor runbook | [manual_package_edits/QA_RUNBOOK.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) | QA queries, proof path, and troubleshooting map. |
+ | Model map | [master-data-model-map.html](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) | Interactive lineage and risk orientation. |
+ | Audits | Root audit Markdown files | Source-field preservation and ADIF comparison context. |
+-
+diff --git a/master_data_model/docs/development-guide.md b/master_data_model/docs/development-guide.md
+index b6199e4..fe50cbe 100644
+--- a/master_data_model/docs/development-guide.md
++++ b/master_data_model/docs/development-guide.md
+@@ -68,6 +68,5 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false --dry_run
+ | Do not treat local SQL as live truth | Inspect BigQuery before current-state claims or production deploy decisions. |
+ | Do not silently add lower-grain fields to package/date rows | Use detail views, nested structures, or explicit user-approved summaries. |
+ | Do not run full Sheet formatting rebuilds casually | Use loader for routine refreshes; snapshot and compare formatting before UX edits. |
+-| Do not call request-refresh end-to-end proof | It sends notification only; it does not run the loader. |
++| Do not call request-refresh end-to-end proof | It can stamp audit cells and send notification, but it does not run the loader or publish BigQuery changes. |
+ | Do not preserve fluctuating counts in durable docs | Counts belong in run-specific handoffs unless the user asks for a snapshot. |
+-
+diff --git a/master_data_model/docs/manual-data-editor-workflow-map.html b/master_data_model/docs/manual-data-editor-workflow-map.html
+index f454925..14ee6e0 100644
+--- a/master_data_model/docs/manual-data-editor-workflow-map.html
++++ b/master_data_model/docs/manual-data-editor-workflow-map.html
+@@ -808,7 +808,7 @@
+         title: "Request or Run",
+         summary: "Request sends a notification. Loader writes data.",
+         tags: ["boundary", "important"],
+-        description: "This is the key workflow split. The Apps Script sends a notification only; the R loader reads the Sheet, validates edits, writes BigQuery, and refreshes Sheet values.",
++        description: "This is the key workflow split. The Apps Script stamps row-level audit cells and sends notification only; the R loader reads the Sheet, validates edits, writes BigQuery, and refreshes Sheet values.",
+         details: [
+           "Request refresh sends email and optional Slack only.",
+           "The direct loader is the normal troubleshooting path.",
+diff --git a/master_data_model/docs/manual-package-editor-workflow.md b/master_data_model/docs/manual-package-editor-workflow.md
+index fc9f2c6..e8c085c 100644
+--- a/master_data_model/docs/manual-package-editor-workflow.md
++++ b/master_data_model/docs/manual-package-editor-workflow.md
+@@ -65,7 +65,7 @@ flowchart LR
+ | Daily total proof | Ensures allocated daily rows sum back to the replacement total within tolerance. |
+ | Backend validation | Blocks invalid rows even if Sheet formatting missed them. |
+ | Separate formatting scripts | Keeps routine data refresh from overwriting live user formatting. |
+-| Notification-only Apps Script | Keeps the request button honest: it asks for refresh; it does not perform refresh. |
++| Apps Script audit and request control | Stamps row-level manual-edit audit cells and keeps the request button honest: it asks for refresh; it does not perform refresh. |
+ 
+ ## Primary References
+ 
+@@ -74,5 +74,4 @@ flowchart LR
+ | [Manual editor README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/README.md) | Normal workflow, edit rules, and user-facing meaning. |
+ | [Manual editor QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) | Proof path, queries, troubleshooting, and gotchas. |
+ | [Manual editor loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) | Implementation of edit detection, validation, writes, and refresh. |
+-| [Request notification Apps Script](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Notification control implementation. |
+-
++| [Apps Script audit and request control](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Audit stamp and notification control implementation. |
+diff --git a/master_data_model/docs/master-data-model-map.html b/master_data_model/docs/master-data-model-map.html
+index 0223f19..4e1a491 100644
+--- a/master_data_model/docs/master-data-model-map.html
++++ b/master_data_model/docs/master-data-model-map.html
+@@ -1095,7 +1095,7 @@
+         id: "manual-edits",
+         groupId: "union-rollups",
+         title: "Manual Edits",
+-        summary: "Separate tables joined into main rows.",
++        summary: "Separate tables joined into main rows, with audit fields for manual-edit status, edit time, editor, and publish time.",
+         truth: "Tables: landing.master_data_model_manual_package_edits_raw and landing.master_data_model_manual_package_daily.",
+         writes: "Refresh: manual package edit loader, then rebuild master view and mart.",
+         freshness: "Current after the manual loader writes valid active rows.",
+@@ -1107,7 +1107,8 @@
+           "These are separate landing tables, not rows produced by the media-lane union.",
+           "In create_master_stg_data_model.sql, manual_package_daily and manual_package_metadata are read before with_rollups.",
+           "manual_existing_rows left-joins those tables onto the unioned rows, while manual_only_rows can add valid manual-only packages.",
+-          "Then with_rollups sums the manual-prioritized final fields."
++          "Then with_rollups sums the manual-prioritized final fields.",
++          "The model exposes friendly qa_manual_* fields so readers can see whether a row used manual evidence, when the user edited it when available, who edited it when Google exposes the identity, and when the loader accepted it into BigQuery."
+         ],
+         sources: [
+           ["BigQuery: Manual raw edits", bq("landing", "master_data_model_manual_package_edits_raw")],
+diff --git a/master_data_model/docs/source-tree-analysis.md b/master_data_model/docs/source-tree-analysis.md
+index 5e8df03..e7cdab7 100644
+--- a/master_data_model/docs/source-tree-analysis.md
++++ b/master_data_model/docs/source-tree-analysis.md
+@@ -62,7 +62,7 @@ master_data_model/
+ | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) | SQL model | Reporting mart deploy definition. |
+ | [create_master_data_model_upstream_tables_sched.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql) | SQL table refresh | Stored upstream source table refresh. |
+ | [load_manual_package_edits.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) | R loader | Manual editor refresh, validation, and BigQuery write path. |
+-| [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Apps Script | Notification-only request-refresh control. |
++| [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Apps Script | Row-level manual-edit audit stamps plus request-refresh notification control. |
+ 
+ ## Generated Or Supporting Areas
+ 
+@@ -71,4 +71,3 @@ master_data_model/
+ | [outputs](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/outputs) | Generated proof/presentation artifacts; skipped for normal architecture docs unless a task targets them. |
+ | [_bmad](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad) | Tooling/config; read for workflow behavior, not treated as model code. |
+ | [_bmad-output](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad-output) | Generated context; read as supporting context, not source of truth. |
+-
+diff --git a/master_data_model/manual_package_edits/QA_RUNBOOK.md b/master_data_model/manual_package_edits/QA_RUNBOOK.md
+index 99defdb..74eee49 100644
+--- a/master_data_model/manual_package_edits/QA_RUNBOOK.md
++++ b/master_data_model/manual_package_edits/QA_RUNBOOK.md
+@@ -35,10 +35,10 @@ This runbook is for checking the Manual Data Editor when a dashboard value, shee
+ |---|---|---|---|---|
+ | [Main loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) | Reads the sheet and warehouse, detects edits, validates rows, writes raw/daily landing tables, and refreshes visible values plus hidden markers | Writes BigQuery and sheet values | Normal manual editor refresh | Does not rebuild formatting |
+ | [Universal runner wrapper](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R) | Runs the production manual editor loader from the universal-runner workflow | Writes BigQuery and sheet values | Running through the universal runner path | Sources the main loader |
+-| [Request notification Apps Script](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Sends the request-refresh email and optional Slack message from the Google Sheet | Sends notification only | Installed in the Google Sheet | Does not run the loader or write BigQuery |
++| [Apps Script audit and request control](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Stamps row-level manual-edit audit fields and sends the request-refresh email or optional Slack message | Writes audit cells and sends notification | Installed in the Google Sheet | Does not run the loader or write BigQuery |
+ | [Choice-logic tests](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/tests/test_loader_choice_logic.R) | Tests edit detection rules for undo, corrections, stale source catch-up, blanks, zero overrides, text, and dates | No live writes | Before claiming loader choice logic is safe | Local regression test only |
+ | [Sheet UX rebuild](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs) | Rebuilds sheet formatting, slicers, instructions, protections, hidden helpers, notes, widths, and colors | Rewrites sheet formatting | Only with explicit full-formatting-rebuild approval | Do not run during routine QA; live user formatting is source of truth |
+-| [Filter range repair](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs) | Expands native filter and slicer ranges to the full current sheet grid and points `Edited Rows` to `Edited Row Filter` | Filter/slicer ranges only | After loader row-count or column-count changes | Loader resolves this helper from its own folder when sourced by the universal runner; if Node is installed outside common Mac paths, set `MASTER_MANUAL_EDIT_NODE` |
++| [Sheet geometry repair](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs) | Expands native filter and slicer ranges, points `Edited Rows` to `Edited Row Filter`, shows user-facing audit/status columns, and hides/protects backend columns | Filter/slicer ranges, column visibility, and the affected protected ranges only | After loader row-count or column-count/header changes | Loader resolves this helper from its own folder when sourced by the universal runner; if Node is installed outside common Mac paths, set `MASTER_MANUAL_EDIT_NODE` |
+ | [Manual table schema deploy](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_manual_package_edit_tables.sql) | Creates or replaces the manual raw and daily landing table schemas | Writes BigQuery schemas | Schema deployment only | Not part of routine refresh |
+ | [Master model deploy](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql) | Applies manual rows into the master package/date model | Replaces BigQuery view if deployed | Model deployment only | Compare local SQL to live before deploy |
+ | [Reporting mart deploy](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) | Builds the dashboard-ready mart over the master model | Replaces BigQuery view if deployed | Mart deployment only | Filters `low_signal_dcm` rows and recalculates rollups |
+@@ -49,10 +49,10 @@ This runbook is for checking the Manual Data Editor when a dashboard value, shee
+ |---|---|---|---|
+ | [PRISMA expanded full](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2s20250327_data_model!3sprisma_expanded_full) | PRISMA package/day | Source for planned values, flight dates, and package metadata | `package_id`, `start_date`, `end_date`, `planned_amount`, `planned_impressions`, `package_name` |
+ | [Reporting mart snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_mart) | Package/date reporting mart | Source for the visible current dashboard snapshot in the sheet | `_package_id`, `_spend`, `_impressions`, `_planned_spend`, `_planned_impressions`, `qa_row_data_issue_category` |
+-| [Raw manual edits](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_edits_raw) | One row per editor row | Raw manual edit record, validation status, replacement values, metadata overrides, current baselines | `is_active`, `validation_status`, `validation_messages`, `replacement_*`, `man_*`, `current_*` |
+-| [Daily manual rows](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_daily) | Package/date for active valid metric edits | Daily manual metric rows used by the model | `package_id`, `date`, `man_daily_*`, `man_total_*_doNotSum` |
+-| [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model) | Package/date evidence layer | Applies manual values before rollups and preserves `man_*` evidence | `_spend`, `_impressions`, `_planned_spend`, `_planned_impressions`, `man_daily_*`, `man_total_*` |
+-| [Dashboard reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_mart) | Dashboard-ready package/date | Filters low-signal rows and recalculates reporting rollups | Final `_` fields, `man_*` evidence, rollup fields |
++| [Raw manual edits](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_edits_raw) | One row per editor row | Raw manual edit record, validation status, replacement values, metadata overrides, current baselines | `is_active`, `validation_status`, `validation_messages`, `replacement_*`, `man_*`, `current_*`, `manual_edit_*` |
++| [Daily manual rows](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_daily) | Package/date for active valid metric edits | Daily manual metric rows used by the model | `package_id`, `date`, `man_daily_*`, `man_total_*_doNotSum`, `manual_edit_*` |
++| [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model) | Package/date evidence layer | Applies manual values before rollups and preserves `man_*` evidence | `_spend`, `_impressions`, `_planned_spend`, `_planned_impressions`, `man_daily_*`, `man_total_*`, `qa_manual_*` |
++| [Dashboard reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_mart) | Dashboard-ready package/date | Filters low-signal rows and recalculates reporting rollups | Final `_` fields, `man_*` evidence, `qa_manual_*`, rollup fields |
+ 
+ ## Sheet Surface
+ 
+@@ -301,6 +301,10 @@ SELECT
+   _clicks,
+   _video_plays,
+   man_edit_id,
++  qa_manual_edit_flag,
++  qa_manual_edit_at,
++  qa_manual_edit_by,
++  qa_manual_edit_published_at,
+   man_start_date,
+   man_end_date,
+   man_daily_spend,
+diff --git a/master_data_model/manual_package_edits/README.md b/master_data_model/manual_package_edits/README.md
+index 83e949b..a500af7 100644
+--- a/master_data_model/manual_package_edits/README.md
++++ b/master_data_model/manual_package_edits/README.md
+@@ -32,6 +32,8 @@ The `Instructions` tab is the user-facing quick guide. It explains the normal ed
+ 
+ Existing package identity fields, table headers, request-helper text, visible status/context fields, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible flight dates, delivery override dates, metric values, and metadata correction columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
+ 
++The editor includes audit columns for `Manually Edited?`, `Manual Edit At`, `Manual Edit By`, and `Manual Edit Published At`. `Manual Edit At` and `Manual Edit By` are stamped by the bound Apps Script when a user edits an editable package row. Google may hide the editor email in some trigger/security contexts, so `Manual Edit By` can show an unidentified-editor message instead of an email. `Manual Edit Published At` is set by the loader after a valid manual edit is accepted into BigQuery.
++
+ The request checkbox requires the bound Apps Script's installable edit trigger. If the checkbox does not send, use `Manual Editor` -> `Authorize request button` once from the sheet menu, then try again.
+ 
+ ## Displayed Data Sources
+@@ -144,11 +146,11 @@ Common blockers: missing `Package ID`, invalid dates, no changed metric/date val
+ 
+ ## Scripts
+ 
+-- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges to the full sheet grid. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
++- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges plus narrow column visibility/protection settings after header shifts. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
+ - The production Manual Data Editor sheet is the loader default. Use `MASTER_MANUAL_EDIT_SHEET_ID=...` only when intentionally testing another sheet copy.
+ - `setup_manual_package_editor_sheet.mjs` is a rebuild tool for Google Sheet formatting, the `Instructions` tab, visible metadata columns, hidden internal baseline/manual-marker columns, native slicers, notes, warnings, widths, and colors. Do not run it against the live sheet after user-made manual formatting edits unless the user explicitly asks for a full formatting rebuild. The script is guarded and now requires `MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD=YES` to run.
+-- `repair_manual_package_editor_filters.mjs` is a narrow filter/slicer repair tool. It preserves existing slicer titles, positions, and filter choices while expanding ranges to the full current sheet grid so newly added rows stay filterable. The `Edited Rows` slicer must point to the hidden `Edited Row Filter` helper, not to an individual manual-marker column.
+-- `apps_script/Code.js` is the bound Apps Script for the update-request notification control only. Filtering should stay native through Google Sheets slicers.
++- `repair_manual_package_editor_filters.mjs` is a narrow sheet-geometry repair tool. It preserves existing slicer titles, positions, filter choices, formatting, and widths while expanding ranges to the full current sheet grid, keeping user-facing audit/status columns visible, and keeping backend baseline/marker/helper columns hidden and protected. The `Edited Rows` slicer must point to the hidden `Edited Row Filter` helper, not to an individual manual-marker column.
++- `apps_script/Code.js` is the bound Apps Script for the update-request notification control and row-level manual-edit audit stamps. Filtering should stay native through Google Sheets slicers.
+ - The universal script runner entrypoint is `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`.
+ 
+ R should stay focused on data loading. The current live sheet formatting is the source of truth once users have made manual formatting edits. Before future formatting work, take a read-only formatting snapshot and preserve user-made changes unless a full rebuild is explicitly requested.
+diff --git a/master_data_model/manual_package_edits/apps_script/Code.js b/master_data_model/manual_package_edits/apps_script/Code.js
+index 7d97574..6c44303 100644
+--- a/master_data_model/manual_package_edits/apps_script/Code.js
++++ b/master_data_model/manual_package_edits/apps_script/Code.js
+@@ -1,11 +1,40 @@
+ const EDITOR_SHEET_NAME = "Package Editor";
+ const HEADER_ROW = 4;
+ const DATA_START_ROW = 5;
+-const TABLE_COL_COUNT = 30;
++const TABLE_COL_COUNT = 34;
+ const REQUEST_UPDATE_CELL = "E2";
+ const REQUEST_STATUS_CELL = "F2";
+ const DEFAULT_NOTIFY_EMAIL = "gene.tsenter@giantspoon.com";
+ const LOADER_COMMAND = "Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R";
++const AUDIT_EDITED_FLAG_HEADER = "Manually Edited?";
++const AUDIT_EDITED_AT_HEADER = "Manual Edit At";
++const AUDIT_EDITED_BY_HEADER = "Manual Edit By";
++const AUDIT_PUBLISHED_AT_HEADER = "Manual Edit Published At";
++const AUDIT_EDITABLE_HEADERS = new Set([
++  "Package ID",
++  "Site",
++  "Package Friendly Name",
++  "Flight Start Date",
++  "Flight End Date",
++  "Planned Spend",
++  "Planned Impressions",
++  "Spend",
++  "Impressions",
++  "Clicks",
++  "Video Plays",
++  "Video Completions",
++  "Delivery Override Start Date",
++  "Delivery Override End Date",
++  "Advertiser",
++  "Package Type",
++  "Channel",
++  "Campaign",
++  "Initiative",
++  "Supplier Code",
++  "Supplier Name",
++  "Package Name",
++  "GS Channel",
++]);
+ 
+ function onOpen() {
+   SpreadsheetApp.getUi()
+@@ -39,6 +68,10 @@ function handleManualEditorEdit_(event, canSendNotification) {
+     }
+     return;
+   }
++
++  if (canSendNotification) {
++    stampManualEditAudit_(sheet, event.range, event);
++  }
+ }
+ 
+ function setupManualEditorControls() {
+@@ -113,6 +146,53 @@ function getRequesterEmail_(event) {
+   return "Requester could not be identified by Google Apps Script";
+ }
+ 
++function stampManualEditAudit_(sheet, editedRange, event) {
++  const firstEditedRow = editedRange.getRow();
++  const lastEditedRow = firstEditedRow + editedRange.getNumRows() - 1;
++  if (lastEditedRow < DATA_START_ROW) return;
++
++  const headers = sheet.getRange(HEADER_ROW, 1, 1, sheet.getLastColumn()).getValues()[0];
++  const headerByColumn = new Map(headers.map((header, index) => [index + 1, String(header || "")]));
++  const auditColumns = getAuditColumnIndexes_(headers);
++  if (!auditColumns.editedFlag || !auditColumns.editedAt || !auditColumns.editedBy || !auditColumns.publishedAt) return;
++
++  const firstEditedColumn = editedRange.getColumn();
++  const lastEditedColumn = firstEditedColumn + editedRange.getNumColumns() - 1;
++  let touchesEditableColumn = false;
++  for (let column = firstEditedColumn; column <= lastEditedColumn; column += 1) {
++    if (AUDIT_EDITABLE_HEADERS.has(headerByColumn.get(column))) {
++      touchesEditableColumn = true;
++      break;
++    }
++  }
++  if (!touchesEditableColumn) return;
++
++  const firstAuditRow = Math.max(firstEditedRow, DATA_START_ROW);
++  const auditRowCount = lastEditedRow - firstAuditRow + 1;
++  const editedAt = Utilities.formatDate(new Date(), "UTC", "yyyy-MM-dd'T'HH:mm:ss'Z'");
++  const editedBy = getRequesterEmail_(event).replace(/^Requester/, "Editor");
++
++  sheet.getRange(firstAuditRow, auditColumns.editedFlag, auditRowCount, 1)
++    .setValues(Array.from({ length: auditRowCount }, () => ["Pending"]));
++  sheet.getRange(firstAuditRow, auditColumns.editedAt, auditRowCount, 1)
++    .setValues(Array.from({ length: auditRowCount }, () => [editedAt]));
++  sheet.getRange(firstAuditRow, auditColumns.editedBy, auditRowCount, 1)
++    .setValues(Array.from({ length: auditRowCount }, () => [editedBy]));
++  sheet.getRange(firstAuditRow, auditColumns.publishedAt, auditRowCount, 1).clearContent();
++}
++
++function getAuditColumnIndexes_(headers) {
++  const indexes = {};
++  headers.forEach((header, index) => {
++    const name = String(header || "");
++    if (name === AUDIT_EDITED_FLAG_HEADER) indexes.editedFlag = index + 1;
++    if (name === AUDIT_EDITED_AT_HEADER) indexes.editedAt = index + 1;
++    if (name === AUDIT_EDITED_BY_HEADER) indexes.editedBy = index + 1;
++    if (name === AUDIT_PUBLISHED_AT_HEADER) indexes.publishedAt = index + 1;
++  });
++  return indexes;
++}
++
+ function installManualEditorAutomation() {
+   const spreadsheet = SpreadsheetApp.getActive();
+   ScriptApp.getProjectTriggers().forEach((trigger) => {
+diff --git a/master_data_model/manual_package_edits/load_manual_package_edits.R b/master_data_model/manual_package_edits/load_manual_package_edits.R
+index b3558fc..4625366 100644
+--- a/master_data_model/manual_package_edits/load_manual_package_edits.R
++++ b/master_data_model/manual_package_edits/load_manual_package_edits.R
+@@ -70,10 +70,10 @@ EDITOR_HEADER_ROW <- 4
+ EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
+ EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
+ REQUEST_STATUS_CELL <- "F2"
+-EDITOR_VISIBLE_LAST_COLUMN <- "AU"
+-MANUAL_MARKER_START_COLUMN <- "AV"
+-FILTER_HELPER_START_COLUMN <- "BQ"
+-EDITOR_LAST_COLUMN <- "BQ"
++EDITOR_VISIBLE_LAST_COLUMN <- "AY"
++MANUAL_MARKER_START_COLUMN <- "AZ"
++FILTER_HELPER_START_COLUMN <- "BU"
++EDITOR_LAST_COLUMN <- "BU"
+ LEGACY_TABS <- c(
+   "Sheet1", "Package Lookup", "Start Here", "Manual Package Edits",
+   "Validation Preview", "Daily Proof", "Publish Status", "Change History"
+@@ -117,6 +117,10 @@ display_columns <- c(
+   "Supplier Name",
+   "Package Name",
+   "GS Channel",
++  "Manually Edited?",
++  "Manual Edit At",
++  "Manual Edit By",
++  "Manual Edit Published At",
+   "Primary Row Data Source",
+   "Validation Status",
+   "Validation Reason",
+@@ -249,6 +253,9 @@ raw_columns <- c(
+   "p_rate",
+   "edit_reason",
+   "editor_email",
++  "manual_edit_at",
++  "manual_edit_by",
++  "manual_edit_published_at",
+   "validation_status",
+   "validation_messages"
+ )
+@@ -287,6 +294,24 @@ parse_date <- function(x) {
+   dplyr::coalesce(parsed, as.Date(serial_date, origin = "1899-12-30"))
+ }
+ 
++parse_timestamp <- function(x) {
++  if (inherits(x, "POSIXt")) {
++    return(as.POSIXct(x, tz = "UTC"))
++  }
++  if (inherits(x, "Date")) {
++    return(as.POSIXct(x, tz = "UTC"))
++  }
++  if (is.numeric(x)) {
++    return(as.POSIXct((as.numeric(x) - 25569) * 86400, origin = "1970-01-01", tz = "UTC"))
++  }
++  y <- str_trim(as.character(x))
++  y[y == "" | str_to_lower(y) %in% c("na", "nan", "null")] <- NA_character_
++  y <- str_replace(y, "Z$", "+00:00")
++  parsed <- suppressWarnings(ymd_hms(y, tz = "UTC", quiet = TRUE))
++  fallback <- suppressWarnings(as.POSIXct(y, tz = "UTC"))
++  dplyr::coalesce(as.POSIXct(parsed, tz = "UTC"), fallback)
++}
++
+ same_num <- function(a, b, tol = 0.01) {
+   if (is.na(a) && is.na(b)) return(TRUE)
+   if (is.na(a) || is.na(b)) return(FALSE)
+@@ -336,6 +361,7 @@ write_tab <- function(sheet_id, tab_name, data) {
+ 
+ write_editor_tab <- function(sheet_id, tab_name, data) {
+   ensure_tab(sheet_id, tab_name)
++  sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
+   range_clear(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
+   range_write(sheet_id, data = data, sheet = tab_name, range = paste0("A", EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
+ }
+@@ -348,7 +374,7 @@ write_manual_marker_columns <- function(sheet_id, tab_name, data) {
+ 
+ write_filter_helper_columns <- function(sheet_id, tab_name, data) {
+   ensure_tab(sheet_id, tab_name)
+-  sheet_resize(sheet_id, sheet = tab_name, ncol = 69)
++  sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
+   range_clear(sheet_id, range = paste0("'", tab_name, "'!", FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
+   range_write(sheet_id, data = data, sheet = tab_name, range = paste0(FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
+ }
+@@ -505,7 +531,10 @@ normalize_existing_editor <- function(data) {
+     package_type = as_trimmed_character(pick_existing_col(data, c("Package Type", "Media Type", "package_type"))),
+     media_name = as_trimmed_character(pick_existing_col(data, c("Media", "media_name"))),
+     ADIF_channel = as_trimmed_character(pick_existing_col(data, c("GS Channel", "ADIF Channel", "ADIF_channel"))),
+-    channel_group = as_trimmed_character(pick_existing_col(data, c("Channel Group", "channel_group")))
++    channel_group = as_trimmed_character(pick_existing_col(data, c("Channel Group", "channel_group"))),
++    manual_edit_at = parse_timestamp(pick_existing_col(data, c("Manual Edit At", "manual_edit_at"))),
++    manual_edit_by = as_trimmed_character(pick_existing_col(data, c("Manual Edit By", "manual_edit_by"))),
++    manual_edit_published_at = parse_timestamp(pick_existing_col(data, c("Manual Edit Published At", "manual_edit_published_at")))
+   )
+ 
+   for (idx in seq_len(nrow(metric_specs))) {
+@@ -549,6 +578,8 @@ download_previous_raw <- function() {
+   out$current_flight_end_date <- parse_date(out$current_flight_end_date)
+   out$replacement_flight_start_date <- parse_date(out$replacement_flight_start_date)
+   out$replacement_flight_end_date <- parse_date(out$replacement_flight_end_date)
++  out$manual_edit_at <- parse_timestamp(out$manual_edit_at)
++  out$manual_edit_published_at <- parse_timestamp(out$manual_edit_published_at)
+   out$is_active <- out$is_active %in% TRUE
+   out %>%
+     filter(!is.na(package_id))
+@@ -935,6 +966,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
+   prior_value <- function(col) {
+     if (has_prior && col %in% names(prior)) prior[[col]][[1]] else NA
+   }
++  manual_edit_at <- sheet_value("manual_edit_at") %pick% prior_value("manual_edit_at")
++  manual_edit_by <- sheet_value("manual_edit_by") %pick% prior_value("manual_edit_by")
+ 
+   flight_start_choice <- choose_date_value(
+     sheet_value("flight_start_date"),
+@@ -1011,6 +1044,10 @@ for (row_idx in seq_len(nrow(editor_rows))) {
+       `Supplier Name` = metadata_choices$supplier_name$value,
+       `Package Name` = metadata_choices$package_name$value,
+       `GS Channel` = metadata_choices$ADIF_channel$value,
++      `Manually Edited?` = "",
++      `Manual Edit At` = manual_edit_at,
++      `Manual Edit By` = manual_edit_by,
++      `Manual Edit Published At` = "",
+       `Primary Row Data Source` = live_value("qa_row_data_source_primary"),
+       `Validation Status` = "",
+       `Validation Reason` = "",
+@@ -1080,6 +1117,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
+   raw$p_unit_type <- live_value("p_unit_type")
+   raw$p_rate <- live_value("p_rate")
+   raw$editor_email <- AUTH_EMAIL
++  raw$manual_edit_at <- manual_edit_at
++  raw$manual_edit_by <- manual_edit_by
+ 
+   flight_date_edited <- flight_start_choice$edited || flight_end_choice$edited
+   delivery_date_edited <- delivery_start_choice$edited || delivery_end_choice$edited
+@@ -1170,6 +1209,8 @@ raw_upload$current_flight_end_date <- parse_date(raw_upload$current_flight_end_d
+ raw_upload$replacement_flight_start_date <- parse_date(raw_upload$replacement_flight_start_date)
+ raw_upload$replacement_flight_end_date <- parse_date(raw_upload$replacement_flight_end_date)
+ raw_upload$current_row_count <- parse_num(raw_upload$current_row_count)
++raw_upload$manual_edit_at <- parse_timestamp(raw_upload$manual_edit_at)
++raw_upload$manual_edit_by <- as_trimmed_character(raw_upload$manual_edit_by)
+ 
+ has_replacement <- apply(!is.na(raw_upload[, metric_specs$replacement_col, drop = FALSE]), 1, any)
+ has_metadata_replacement <- apply(!is.na(raw_upload[, metadata_specs$manual_col, drop = FALSE]), 1, any)
+@@ -1248,7 +1289,20 @@ raw_upload$validation_status <- dplyr::case_when(
+   TRUE ~ "blocked"
+ )
+ raw_upload$validation_messages <- unlist(validation_messages)
++raw_upload$manual_edit_published_at <- dplyr::if_else(
++  raw_upload$is_active & raw_upload$validation_status == "valid",
++  loaded_at,
++  as.POSIXct(NA)
++)
+ 
++display_data$`Manually Edited?` <- dplyr::case_when(
++  raw_upload$is_active & raw_upload$validation_status == "valid" ~ "Yes",
++  raw_upload$is_active & raw_upload$validation_status == "blocked" ~ "Blocked",
++  TRUE ~ "No"
++)
++display_data$`Manual Edit At` <- raw_upload$manual_edit_at
++display_data$`Manual Edit By` <- raw_upload$manual_edit_by
++display_data$`Manual Edit Published At` <- raw_upload$manual_edit_published_at
+ display_data$`Validation Status` <- raw_upload$validation_status
+ display_data$`Validation Reason` <- raw_upload$validation_messages
+ 
+@@ -1312,7 +1366,8 @@ if (nrow(valid_metric_edits) > 0) {
+       "supplier_logo", "p_buy_type", "p_buy_category", "channel", "channel_raw",
+       "channel_group", "media_name", "p_cost_method", "p_planned_amount_doNotSum",
+       "p_planned_impressions_doNotSum", "p_planned_units_doNotSum", "p_unit_type",
+-      "p_rate", "edit_reason", "editor_email"
++      "p_rate", "edit_reason", "editor_email", "manual_edit_at", "manual_edit_by",
++      "manual_edit_published_at"
+     )
+     for (col in passthrough_cols) {
+       daily[[col]] <- row[[col]]
+@@ -1376,6 +1431,9 @@ if (length(daily_rows) == 0) {
+     p_rate = numeric(),
+     edit_reason = character(),
+     editor_email = character(),
++    manual_edit_at = as.POSIXct(character()),
++    manual_edit_by = character(),
++    manual_edit_published_at = as.POSIXct(character()),
+     source_sheet_url = character(),
+     source_sheet_modified_time = as.POSIXct(character()),
+     loaded_at = as.POSIXct(character())
+diff --git a/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs b/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs
+index 6f0725a..acf21eb 100644
+--- a/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs
++++ b/master_data_model/manual_package_edits/repair_manual_package_editor_filters.mjs
+@@ -1,10 +1,12 @@
+ #!/usr/bin/env node
+ 
+ /*
+- * Repairs only filter and slicer ranges on the Manual Data Editor Package
+- * Editor tab. It preserves existing slicers, slicer positions, slicer column
+- * choices, and current basic-filter criteria; it only expands their ranges to
+- * the current sheet geometry after visible/hidden column changes.
++ * Repairs the lightweight sheet geometry that can drift after the Manual Data
++ * Editor loader writes a new header shape. It preserves existing slicers,
++ * slicer positions, slicer column choices, current basic-filter criteria,
++ * formatting, and widths; it only updates filter/slicer ranges, column
++ * visibility, and the two protected ranges affected by visible/hidden column
++ * changes.
+  */
+ 
+ import { execFileSync } from "node:child_process";
+@@ -13,7 +15,12 @@ const SHEET_ID = process.env.MASTER_MANUAL_EDIT_SHEET_ID || "1WerhrbBMggzCwIUCOs
+ const TAB_NAME = process.env.MASTER_MANUAL_EDIT_TAB || "Package Editor";
+ const AUTH_ACCOUNT = process.env.MASTER_MANUAL_EDIT_AUTH_EMAIL || "gene.tsenter@giantspoon.com";
+ const HEADER_ROW_INDEX = 3;
++const DATA_START_ROW_INDEX = HEADER_ROW_INDEX + 1;
+ const EDITED_ROW_FILTER_HEADER = "Edited Row Filter";
++const BASELINE_START_HEADER = "Baseline Flight Start Date";
++const AUDIT_STATUS_START_HEADER = "Manually Edited?";
++const HIDDEN_BASELINE_PROTECTION_DESCRIPTION = "Manual editor UX: lock hidden baseline columns";
++const AUDIT_STATUS_PROTECTION_DESCRIPTION = "Manual editor UX: lock audit and status columns";
+ 
+ function token() {
+   return execFileSync(
+@@ -41,7 +48,7 @@ async function sheetsFetch(path, options = {}) {
+ }
+ 
+ async function getSheet() {
+-  const spreadsheet = await sheetsFetch("?fields=sheets(properties(sheetId,title,gridProperties),basicFilter,slicers)");
++  const spreadsheet = await sheetsFetch("?fields=sheets(properties(sheetId,title,gridProperties),basicFilter,slicers,protectedRanges(protectedRangeId,description,range))");
+   const sheet = spreadsheet.sheets.find((candidate) => candidate.properties.title === TAB_NAME);
+   if (!sheet) {
+     throw new Error(`Could not find tab: ${TAB_NAME}`);
+@@ -67,6 +74,43 @@ function rangeFor(sheetId, endRowIndex, endColumnIndex) {
+   };
+ }
+ 
++function dataColumnRange(sheetId, endRowIndex, startColumnIndex, endColumnIndex) {
++  return {
++    sheetId,
++    startRowIndex: DATA_START_ROW_INDEX,
++    endRowIndex,
++    startColumnIndex,
++    endColumnIndex,
++  };
++}
++
++function buildProtectedRangeRequests(sheet, description, desiredRange) {
++  const matchingRanges = (sheet.protectedRanges || [])
++    .filter((protectedRange) => protectedRange.description === description);
++
++  if (matchingRanges.length === 0) {
++    return [{
++      addProtectedRange: {
++        protectedRange: {
++          range: desiredRange,
++          description,
++          warningOnly: false,
++        },
++      },
++    }];
++  }
++
++  return matchingRanges.map((protectedRange) => ({
++    updateProtectedRange: {
++      protectedRange: {
++        protectedRangeId: protectedRange.protectedRangeId,
++        range: desiredRange,
++      },
++      fields: "range",
++    },
++  }));
++}
++
+ async function main() {
+   const sheet = await getSheet();
+   const sheetId = sheet.properties.sheetId;
+@@ -77,10 +121,58 @@ async function main() {
+   if (editedRowFilterColumnIndex === undefined) {
+     throw new Error(`Missing required header: ${EDITED_ROW_FILTER_HEADER}`);
+   }
++  const visibleColumnCount = headerMap[BASELINE_START_HEADER];
++  if (visibleColumnCount === undefined) {
++    throw new Error(`Missing required header: ${BASELINE_START_HEADER}`);
++  }
++  const auditStatusStartColumnIndex = headerMap[AUDIT_STATUS_START_HEADER];
++  if (auditStatusStartColumnIndex === undefined) {
++    throw new Error(`Missing required header: ${AUDIT_STATUS_START_HEADER}`);
++  }
+   const endRowIndex = rowCount;
+   const tableRange = rangeFor(sheetId, endRowIndex, columnCount);
+   const requests = [];
+ 
++  requests.push(
++    {
++      updateDimensionProperties: {
++        range: {
++          sheetId,
++          dimension: "COLUMNS",
++          startIndex: 0,
++          endIndex: visibleColumnCount,
++        },
++        properties: { hiddenByUser: false },
++        fields: "hiddenByUser",
++      },
++    },
++    {
++      updateDimensionProperties: {
++        range: {
++          sheetId,
++          dimension: "COLUMNS",
++          startIndex: visibleColumnCount,
++          endIndex: columnCount,
++        },
++        properties: { hiddenByUser: true },
++        fields: "hiddenByUser",
++      },
++    },
++  );
++
++  requests.push(
++    ...buildProtectedRangeRequests(
++      sheet,
++      HIDDEN_BASELINE_PROTECTION_DESCRIPTION,
++      dataColumnRange(sheetId, endRowIndex, visibleColumnCount, columnCount),
++    ),
++    ...buildProtectedRangeRequests(
++      sheet,
++      AUDIT_STATUS_PROTECTION_DESCRIPTION,
++      dataColumnRange(sheetId, endRowIndex, auditStatusStartColumnIndex, visibleColumnCount),
++    ),
++  );
++
+   requests.push({
+     setBasicFilter: {
+       filter: {
+@@ -130,6 +222,13 @@ async function main() {
+       columnIndex: slicer.spec?.title === "Edited Rows" ? editedRowFilterColumnIndex : slicer.spec?.columnIndex,
+     })),
+     editedRowFilterColumnIndex,
++    visibleColumnCount,
++    auditStatusStartColumnIndex,
++    updatedColumnVisibility: true,
++    updatedProtectedRanges: [
++      HIDDEN_BASELINE_PROTECTION_DESCRIPTION,
++      AUDIT_STATUS_PROTECTION_DESCRIPTION,
++    ],
+     startRowIndex: tableRange.startRowIndex,
+     endRowIndex: tableRange.endRowIndex,
+     startColumnIndex: tableRange.startColumnIndex,
+diff --git a/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs b/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs
+index 85d2f4a..93748f8 100644
+--- a/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs
++++ b/master_data_model/manual_package_edits/setup_manual_package_editor_sheet.mjs
+@@ -44,6 +44,10 @@ const columns = [
+   "Supplier Name",
+   "Package Name",
+   "GS Channel",
++  "Manually Edited?",
++  "Manual Edit At",
++  "Manual Edit By",
++  "Manual Edit Published At",
+   "Primary Row Data Source",
+   "Validation Status",
+   "Validation Reason",
+@@ -104,7 +108,10 @@ const editableColumnIndexes = new Set([
+   "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Override Start Date", "Delivery Override End Date",
+   "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel",
+ ].map((name) => colIndex[name]));
+-const diagnosticColumnIndexes = new Set(["Primary Row Data Source", "Validation Status", "Validation Reason"].map((name) => colIndex[name]));
++const diagnosticColumnIndexes = new Set([
++  "Manually Edited?", "Manual Edit At", "Manual Edit By", "Manual Edit Published At",
++  "Primary Row Data Source", "Validation Status", "Validation Reason",
++].map((name) => colIndex[name]));
+ const deliveredMetricColumnIndexes = new Set(["Spend", "Impressions", "Clicks", "Video Plays", "Video Completions"].map((name) => colIndex[name]));
+ const plannedMetricColumnIndexes = new Set(["Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
+ const packageFriendlyNameColumnIndexes = new Set(["Package Friendly Name"].map((name) => colIndex[name]));
