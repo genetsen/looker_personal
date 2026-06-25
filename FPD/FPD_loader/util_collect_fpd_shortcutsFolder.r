@@ -630,6 +630,17 @@ sanitize_cache_name <- function(x) {
   ifelse(is.na(clean) | clean == "", "unknown_sheet", clean)
 }
 
+# Keep partner placement values bindable when Google Sheets returns mixed text
+# and date cells as a list-column.
+coerce_partner_placement_name <- function(x) {
+  vapply(seq_along(x), function(i) {
+    value <- if (is.list(x)) x[[i]] else x[i]
+    if (length(value) == 0 || all(is.na(value))) return(NA_character_)
+    if (inherits(value, "Date") || inherits(value, "POSIXt")) return(format(value[1], "%Y-%m-%d"))
+    as.character(value[1])
+  }, character(1))
+}
+
 get_sheet_cache_path <- function(cache_dir, sheet_name, sheet_id = NULL) {
   # New cache naming convention: sheet-name based filename.
   # Keep old sheet-id path as a fallback read path in read_sheet_cache.
@@ -1561,6 +1572,10 @@ successful_files <- phase2_results %>% filter(status == "success")
 
     canon_names <- vapply(names(df), normalize_after_unique, FUN.VALUE = character(1), USE.NAMES = FALSE)
     names(df) <- make.unique(canon_names, sep = "__")
+
+    if ("partner_placement_name" %in% names(df)) {
+      df$partner_placement_name <- coerce_partner_placement_name(df$partner_placement_name)
+    }
 
     # Coerce numeric metric columns: remove $ and , then as.numeric
     library(readr)

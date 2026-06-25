@@ -57,7 +57,7 @@ Use this quick checklist before and after every run:
 ## What Changed / How To Undo
 
 - What changed:
-  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, and a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run.
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run, and character coercion for `partner_placement_name` so mixed text/date sheet cells can be combined safely.
 - How to undo:
   if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
 
