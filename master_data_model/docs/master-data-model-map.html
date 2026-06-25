@@ -48,6 +48,10 @@
     }
 
     header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
       margin-bottom: 14px;
     }
 
@@ -64,6 +68,30 @@
       color: var(--muted);
       font-size: 15px;
       line-height: 1.5;
+    }
+
+    .related-maps {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 7px;
+    }
+
+    .related-maps a {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    .related-maps a:hover,
+    .related-maps a:focus-visible {
+      border-color: var(--blue);
+      text-decoration: underline;
     }
 
     .legend {
@@ -98,9 +126,6 @@
     .pip.live { background: var(--teal); }
     .pip.docs { background: var(--blue); }
     .pip.write { background: var(--amber); }
-    .pip.risk-low { background: var(--green); }
-    .pip.risk-med { background: var(--amber); }
-    .pip.risk-high { background: var(--red); }
 
     .workspace {
       display: grid;
@@ -612,6 +637,15 @@
     }
 
     @media (max-width: 760px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .related-maps {
+        justify-content: flex-start;
+      }
+
       .shell {
         padding: 14px;
       }
@@ -654,6 +688,10 @@
         <h1>Master Model Map</h1>
         <p class="subtitle">Digital, social, and TV into production Master.</p>
       </div>
+      <nav class="related-maps" aria-label="Related workflow maps">
+        <a href="./dcm-cost-model-map.html">DCM Cost Model Map</a>
+        <a href="./manual-data-editor-workflow-map.html">Manual Data Editor Workflow</a>
+      </nav>
     </header>
 
     <section class="workspace">
@@ -772,15 +810,13 @@
         </section>
 
         <aside class="definition-sidebar" aria-label="Dot definitions">
-          <h2>Dot Definitions</h2>
-          <p>Warnings mean what to watch out for: what can go wrong if this node is misunderstood, mismatched, summed, or assumed fresh.</p>
+          <h2>Map Markers</h2>
+          <p>Dots identify stored tables, internal CTEs, and documented updater paths. The view tag is reserved for standalone views.</p>
           <div class="definition-list">
             <button class="definition-item" type="button" data-highlight="stable-table"><span class="pip live"></span><span><strong>Stable table</strong><small>Stored data refreshed by a loader or scheduled query.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="view-logic"><span class="pip docs"></span><span><strong>View or logic</strong><small>Calculated from upstream data when the model is queried.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="main-view-cte"><span class="pip docs"></span><span><strong>CTE in Master View</strong><small>An internal SQL stage calculated inside the main data_model view.</small></span></button>
             <button class="definition-item" type="button" data-highlight="updater"><span class="pip write"></span><span><strong>Updater</strong><small>Has a named refresh path, loader, or scheduled query.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="risk-low"><span class="pip risk-low"></span><span><strong>Light warning</strong><small>Mostly pass-through or filtering; fewer places to misread the data.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="risk-med"><span class="pip risk-med"></span><span><strong>Mapping warning</strong><small>IDs, dates, package names, or source fields are being matched.</small></span></button>
-            <button class="definition-item" type="button" data-highlight="risk-high"><span class="pip risk-high"></span><span><strong>Reporting warning</strong><small>Metric precedence, manual values, or rollups can change final reporting.</small></span></button>
+            <button class="definition-item" type="button" data-highlight="standalone-view"><span class="view-pill" aria-hidden="true">view</span><span><strong>Standalone view</strong><small>A separately addressable BigQuery view, not an internal CTE.</small></span></button>
           </div>
         </aside>
       </div>
@@ -844,6 +880,28 @@
         sources: [
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
           ["Refresh doc: Prisma_expanded scheduled query", "../docs/SCHEDULED_QUERIES.md#5-prisma_expanded"]
+        ]
+      },
+      {
+        id: "advertiser-mapping",
+        groupId: "digital-capture",
+        title: "Advertiser Mapping",
+        summary: "Exact aliases resolved to one readable advertiser value.",
+        truth: "Table: master_stg.advertiser_mapping.",
+        writes: "Refresh: run create_advertiser_mapping.sql after approved mapping changes.",
+        freshness: "Current after the mapping table definition is deployed.",
+        risk: "medium",
+        reviewReason: "Mapping: both final advertiser fields use this value; unmapped clients fall back to a cleaned Prisma name.",
+        kind: "source",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Known advertiser short names and source-name aliases map to one standardized value.",
+          "Unmapped clients default to Prisma advertiser_name after trailing legal suffixes such as Inc, LLC, Corp, and Ltd are removed.",
+          "_advertiser_short_name remains unchanged for source lineage."
+        ],
+        sources: [
+          ["BigQuery: Advertiser mapping", bq("master_stg", "advertiser_mapping")],
+          ["Builder SQL: Advertiser mapping", "../create_advertiser_mapping.sql"]
         ]
       },
       {
@@ -916,7 +974,7 @@
         id: "digital-final",
         groupId: "digital-shape",
         title: "Digital Final",
-        summary: "Sets row source, metadata, and final metrics.",
+        summary: "Sets row source, source freshness, metadata, and final metrics.",
         truth: "View logic: master_stg.data_model.",
         writes: "View only. Refresh digital inputs.",
         freshness: "Current when Prisma, DCM, and FPD inputs are current.",
@@ -925,7 +983,9 @@
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
-          "Sets row_data_source_primary plus final_spend, final_impressions, final_clicks, final_video_plays, and final_video_comps."
+          "Sets row_data_source_primary plus final_spend, final_impressions, final_clicks, final_video_plays, and final_video_comps.",
+          "Exposes qa_data_source for the actual driving table and qa_data_source_refresh_at for the operational refresh included in the model.",
+          "Keeps qa_data_source_content_modified_at separate for reliable FPD and Manual Data Editor source-content timestamps."
         ],
         sources: [
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
@@ -1013,7 +1073,9 @@
         callouts: { truth: "logic", writes: false },
         notes: [
           "Flows directly into the shared union, not into digital.",
-          "Exposes s_creative_name, s_video_views, s_record_source, s_wp_row_key, and related WP provenance fields.",
+          "Exposes s_creative_name and contributes it to canonical _creative_name, alongside FPD creative and Amazon ad name.",
+          "DCM creative is not collapsed into _creative_name because one package/date can contain multiple DCM creatives; use the delivery-detail view for that grain.",
+          "Also exposes s_video_views, s_record_source, s_wp_row_key, and related WP provenance fields.",
           "Sets canonical _video_views from source video views where available, with video starts/plays as fallback."
         ],
         sources: [
@@ -1073,7 +1135,7 @@
         summary: "Stacks digital, social, and TV rows.",
         truth: "View logic: master_stg.data_model.",
         writes: "View only. Refresh all upstream lanes.",
-        freshness: "Current when all lanes are current.",
+        freshness: "Current when all lanes are current. Canonical QA fields distinguish operational refresh from source-content modification.",
         risk: "medium",
         reviewReason: "Mapping: all lanes must output the same column set.",
         kind: "transform",
@@ -1095,7 +1157,7 @@
         id: "manual-edits",
         groupId: "union-rollups",
         title: "Manual Edits",
-        summary: "Separate tables joined into main rows.",
+        summary: "Separate tables joined into main rows, with audit fields for manual-edit status, edit time, editor, and publish time.",
         truth: "Tables: landing.master_data_model_manual_package_edits_raw and landing.master_data_model_manual_package_daily.",
         writes: "Refresh: manual package edit loader, then rebuild master view and mart.",
         freshness: "Current after the manual loader writes valid active rows.",
@@ -1107,7 +1169,8 @@
           "These are separate landing tables, not rows produced by the media-lane union.",
           "In create_master_stg_data_model.sql, manual_package_daily and manual_package_metadata are read before with_rollups.",
           "manual_existing_rows left-joins those tables onto the unioned rows, while manual_only_rows can add valid manual-only packages.",
-          "Then with_rollups sums the manual-prioritized final fields."
+          "Then with_rollups sums the manual-prioritized final fields.",
+          "The model exposes friendly qa_manual_* fields so readers can see whether a row used manual evidence, when the user edited it when available, who edited it when Google exposes the identity, and when the loader accepted it into BigQuery."
         ],
         sources: [
           ["BigQuery: Manual raw edits", bq("landing", "master_data_model_manual_package_edits_raw")],
@@ -1131,7 +1194,8 @@
         notes: [
           "Calculates pkg_est_*, pkg_act_*, pkg_fpd_*, pkg_over_bool, and pkg_over_flag.",
           "Runs in the same master SQL script after manual_existing_rows and manual_only_rows.",
-          "Uses final fields after normal source precedence and valid manual replacements are applied."
+          "Uses final fields after normal source precedence and valid manual replacements are applied.",
+          "Carries qa_data_source, qa_data_source_refresh_at, and qa_data_source_content_modified_at into the package/date evidence output and reporting mart."
         ],
         sources: [
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
@@ -1157,10 +1221,13 @@
         callouts: { truth: "live", writes: false },
         notes: [
           "Contains digital, social, TV, WP, and manual-edit evidence in one shared schema.",
-          "Includes initiative, _video_views, _creative_img, man_* evidence, source issue labels, and row callouts."
+          "Includes initiative, _video_views, _creative_name, _creative_img, man_* evidence, source issue labels, and row callouts.",
+          "_advertiser and _advertiser_name use the same standardized label from advertiser_mapping. New clients use a cleaned Prisma advertiser name by default.",
+          "Canonical _creative_name uses original FPD creative, Amazon ad name, then social creative. Amazon is checked before the shared social field because Amazon rows currently populate both fields. DCM creative stays in the delivery-detail view to preserve its lower grain."
         ],
         sources: [
-          ["BigQuery: master_stg.data_model", bq("master_stg", "data_model")]
+          ["BigQuery: master_stg.data_model", bq("master_stg", "data_model")],
+          ["BigQuery: Advertiser mapping", bq("master_stg", "advertiser_mapping")]
         ]
       },
       {
@@ -1246,8 +1313,10 @@
       const categories = [];
       if (node.truth.startsWith("Table:") || node.truth.startsWith("Tables:")) {
         categories.push("stable-table");
-      } else {
-        categories.push("view-logic");
+      } else if (node.kind === "transform") {
+        categories.push("main-view-cte");
+      } else if (node.truth.startsWith("View:") || node.truth.startsWith("Views:")) {
+        categories.push("standalone-view");
       }
       if (node.callouts.writes) categories.push("updater");
       categories.push(`risk-${node.risk}`);
@@ -1258,12 +1327,10 @@
       const pips = [];
       if (nodeCategories(node).includes("stable-table")) {
         pips.push(["live", "Stable table"]);
-      } else {
-        pips.push(["docs", "View or logic"]);
+      } else if (nodeCategories(node).includes("main-view-cte")) {
+        pips.push(["docs", "CTE in Master View"]);
       }
       if (node.callouts.writes) pips.push(["write", "Updater documented"]);
-      const riskLabels = { low: "Light warning", medium: "Mapping warning", high: "Reporting warning" };
-      pips.push([`risk-${node.risk}`, riskLabels[node.risk]]);
       return pips.map(([klass, label]) => `<span class="pip ${klass}" title="${label}" aria-label="${label}"></span>`).join("");
     }
 
@@ -1276,7 +1343,9 @@
       } else if (node.id === "rollup") {
         stepBadge = `<span class="step-badge" aria-label="Step 2">2</span>`;
       }
-      const viewPill = node.truth.includes("master_stg.data_model") ? `<span class="view-pill" aria-label="Inside master_stg.data_model view">view</span>` : "";
+      const viewPill = nodeCategories(node).includes("standalone-view")
+        ? `<span class="view-pill" aria-label="Standalone BigQuery view">view</span>`
+        : "";
       return `${stepBadge}${viewPill}${node.title}`;
     }
 

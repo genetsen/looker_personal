@@ -13,6 +13,171 @@
 
 CREATE OR REPLACE VIEW `looker-studio-pro-452620.master_stg.data_model` AS
 WITH
+-- Canonical source freshness values.
+--
+-- `qa_data_source_refresh_at` means the represented data successfully reached
+-- the source table consumed by this model. Content-edit timestamps are kept
+-- separately so a successful pipeline run is not confused with a user edit.
+source_refreshes AS (
+  SELECT
+    (
+      SELECT TIMESTAMP_MILLIS(MAX(last_modified_time))
+      FROM `looker-studio-pro-452620.20250327_data_model.__TABLES__`
+      WHERE table_id = 'prisma_expanded_full'
+    ) AS prisma_refresh_at,
+    (
+      SELECT TIMESTAMP_MILLIS(MAX(last_modified_time))
+      FROM `giant-spoon-299605.data_model_2025.__TABLES__`
+      WHERE table_id = 'new_md'
+    ) AS dcm_raw_refresh_at,
+    (
+      SELECT TIMESTAMP_MILLIS(MAX(last_modified_time))
+      FROM `looker-studio-pro-452620.DCM.__TABLES__`
+      WHERE table_id = '20250505_costModel_v5'
+    ) AS dcm_cost_model_refresh_at,
+    (
+      SELECT MAX(data_update_datetime)
+      FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
+    ) AS fpd_original_refresh_at,
+    (
+      SELECT MAX(data_update_datetime)
+      FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
+    ) AS fpd_updated_refresh_at,
+    (
+      SELECT TIMESTAMP(MAX(data_refresh_date))
+      FROM `looker-studio-pro-452620.landing.tv_combined_tbl`
+    ) AS tv_refresh_at,
+    (
+      SELECT MAX(loaded_at)
+      FROM `looker-studio-pro-452620.landing.rit_amzn_report_daily`
+    ) AS amazon_ads_refresh_at,
+    (
+      SELECT MAX(wp_loaded_at)
+      FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
+    ) AS wp_search_data_template_refresh_at,
+    (
+      SELECT TIMESTAMP_MILLIS(MAX(last_modified_time))
+      FROM `looker-studio-pro-452620.repo_stg.__TABLES__`
+      WHERE table_id = 'stg__olipop__crossplatform_raw_tbl'
+    ) AS social_aggregate_refresh_at,
+    (
+      SELECT MAX(_fivetran_synced)
+      FROM `giant-spoon-299605.facebook_ads.basic_ad`
+    ) AS facebook_ads_refresh_at,
+    (
+      SELECT MAX(_fivetran_synced)
+      FROM `giant-spoon-299605.google_ads_olipop.ad_stats`
+    ) AS google_ads_olipop_refresh_at,
+    (
+      SELECT MAX(_fivetran_synced)
+      FROM `giant-spoon-299605.tiktok_ads.ad_report_hourly`
+    ) AS tiktok_ads_refresh_at,
+    (
+      SELECT MAX(_fivetran_synced)
+      FROM `giant-spoon-299605.tiktok_ads_adif.ad_report_hourly`
+    ) AS tiktok_ads_adif_refresh_at,
+    (
+      SELECT MAX(_fivetran_synced)
+      FROM `giant-spoon-299605.pinterest_ads.pin_promotion_report`
+    ) AS pinterest_ads_refresh_at,
+    (
+      SELECT MAX(_fivetran_synced)
+      FROM `giant-spoon-299605.linkedin_ads.ad_analytics_by_creative`
+    ) AS linkedin_ads_refresh_at
+),
+
+-- Preserve the raw social source at the exact final social-row key. This keeps
+-- TikTok and TikTok ADIF distinct even though both normalize to `s_platform =
+-- 'tiktok'` in the final model.
+social_source_by_final_row AS (
+  SELECT
+    social_raw.date_day AS social_date,
+    CASE
+      WHEN LOWER(social_raw.platform) IN (
+        'facebook_ads', 'instagram_ads', 'meta', 'facebook', 'instagram'
+      ) THEN 'meta'
+      WHEN LOWER(social_raw.platform) IN ('tiktok_ads', 'tiktok') THEN 'tiktok'
+      WHEN LOWER(social_raw.platform) IN ('pinterest_ads', 'pinterest') THEN 'pinterest'
+      WHEN LOWER(social_raw.platform) IN ('linkedin_ads', 'linkedin') THEN 'linkedin'
+      WHEN LOWER(social_raw.platform) IN ('snapchat_ads', 'snapchat') THEN 'snapchat'
+      ELSE LOWER(social_raw.platform)
+    END AS social_platform_key,
+    CAST(social_raw.campaign_id AS STRING) AS social_campaign_id_key,
+    CAST(social_raw.ad_group_id AS STRING) AS social_ad_group_id_key,
+    CAST(social_raw.ad_id AS STRING) AS social_ad_id_key,
+    STRING_AGG(
+      DISTINCT CASE social_raw.source_relation
+        WHEN 'facebook_ads' THEN 'giant-spoon-299605.facebook_ads.basic_ad'
+        WHEN 'google_ads_olipop' THEN 'giant-spoon-299605.google_ads_olipop.ad_stats'
+        WHEN 'tiktok_ads' THEN 'giant-spoon-299605.tiktok_ads.ad_report_hourly'
+        WHEN 'tiktok_ads_adif' THEN 'giant-spoon-299605.tiktok_ads_adif.ad_report_hourly'
+        WHEN 'pinterest_ads' THEN 'giant-spoon-299605.pinterest_ads.pin_promotion_report'
+        WHEN 'linkedin_ads' THEN 'giant-spoon-299605.linkedin_ads.ad_analytics_by_creative'
+        ELSE CONCAT('unmapped_social_source:', social_raw.source_relation)
+      END,
+      ' | '
+      ORDER BY CASE social_raw.source_relation
+        WHEN 'facebook_ads' THEN 'giant-spoon-299605.facebook_ads.basic_ad'
+        WHEN 'google_ads_olipop' THEN 'giant-spoon-299605.google_ads_olipop.ad_stats'
+        WHEN 'tiktok_ads' THEN 'giant-spoon-299605.tiktok_ads.ad_report_hourly'
+        WHEN 'tiktok_ads_adif' THEN 'giant-spoon-299605.tiktok_ads_adif.ad_report_hourly'
+        WHEN 'pinterest_ads' THEN 'giant-spoon-299605.pinterest_ads.pin_promotion_report'
+        WHEN 'linkedin_ads' THEN 'giant-spoon-299605.linkedin_ads.ad_analytics_by_creative'
+        ELSE CONCAT('unmapped_social_source:', social_raw.source_relation)
+      END
+    ) AS qa_data_source,
+    MIN(
+      CASE social_raw.source_relation
+        WHEN 'facebook_ads' THEN
+          CASE
+            WHEN refresh.facebook_ads_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.facebook_ads_refresh_at
+            ELSE LEAST(refresh.facebook_ads_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        WHEN 'google_ads_olipop' THEN
+          CASE
+            WHEN refresh.google_ads_olipop_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.google_ads_olipop_refresh_at
+            ELSE LEAST(refresh.google_ads_olipop_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        WHEN 'tiktok_ads' THEN
+          CASE
+            WHEN refresh.tiktok_ads_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.tiktok_ads_refresh_at
+            ELSE LEAST(refresh.tiktok_ads_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        WHEN 'tiktok_ads_adif' THEN
+          CASE
+            WHEN refresh.tiktok_ads_adif_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.tiktok_ads_adif_refresh_at
+            ELSE LEAST(refresh.tiktok_ads_adif_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        WHEN 'pinterest_ads' THEN
+          CASE
+            WHEN refresh.pinterest_ads_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.pinterest_ads_refresh_at
+            ELSE LEAST(refresh.pinterest_ads_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        WHEN 'linkedin_ads' THEN
+          CASE
+            WHEN refresh.linkedin_ads_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.linkedin_ads_refresh_at
+            ELSE LEAST(refresh.linkedin_ads_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        ELSE refresh.social_aggregate_refresh_at
+      END
+    ) AS qa_data_source_refresh_at
+  FROM `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS social_raw
+  CROSS JOIN source_refreshes AS refresh
+  WHERE social_raw.date_day >= DATE '2025-01-01'
+  GROUP BY
+    social_date,
+    social_platform_key,
+    social_campaign_id_key,
+    social_ad_group_id_key,
+    social_ad_id_key
+),
+
 dcm_daily AS (
   SELECT
     d.package_id,
@@ -163,6 +328,9 @@ manual_package_daily AS (
     edit_id,
     edit_reason,
     editor_email,
+    manual_edit_at,
+    manual_edit_by,
+    manual_edit_published_at,
     source_sheet_url,
     source_sheet_modified_time,
     loaded_at
@@ -179,6 +347,9 @@ manual_package_metadata AS (
     ARRAY_AGG(edit_id IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS edit_id,
     ARRAY_AGG(edit_reason IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS edit_reason,
     ARRAY_AGG(editor_email IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS editor_email,
+    ARRAY_AGG(manual_edit_at IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS manual_edit_at,
+    ARRAY_AGG(manual_edit_by IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS manual_edit_by,
+    ARRAY_AGG(manual_edit_published_at IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS manual_edit_published_at,
     ARRAY_AGG(source_sheet_url IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS source_sheet_url,
     ARRAY_AGG(source_sheet_modified_time IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS source_sheet_modified_time,
     MAX(loaded_at) AS loaded_at,
@@ -1391,6 +1562,9 @@ manual_existing_rows AS (
     COALESCE(m.source_sheet_url, pm.source_sheet_url) AS man_source_sheet_url,
     COALESCE(m.source_sheet_modified_time, pm.source_sheet_modified_time) AS man_source_sheet_modified_time,
     COALESCE(m.loaded_at, pm.loaded_at) AS man_loaded_at,
+    COALESCE(m.manual_edit_at, pm.manual_edit_at) AS man_manual_edit_at,
+    COALESCE(m.manual_edit_by, pm.manual_edit_by) AS man_manual_edit_by,
+    COALESCE(m.manual_edit_published_at, pm.manual_edit_published_at) AS man_manual_edit_published_at,
     m.man_start_date,
     m.man_end_date,
     m.man_daily_spend,
@@ -1579,6 +1753,9 @@ manual_only_rows AS (
     COALESCE(m.source_sheet_url, pm.source_sheet_url) AS man_source_sheet_url,
     COALESCE(m.source_sheet_modified_time, pm.source_sheet_modified_time) AS man_source_sheet_modified_time,
     COALESCE(m.loaded_at, pm.loaded_at) AS man_loaded_at,
+    COALESCE(m.manual_edit_at, pm.manual_edit_at) AS man_manual_edit_at,
+    COALESCE(m.manual_edit_by, pm.manual_edit_by) AS man_manual_edit_by,
+    COALESCE(m.manual_edit_published_at, pm.manual_edit_published_at) AS man_manual_edit_published_at,
     m.man_start_date,
     m.man_end_date,
     m.man_daily_spend,
@@ -1728,52 +1905,128 @@ with_initiative AS (
     ON wr.package_id_joined = pm.package_id
   LEFT JOIN manual_package_metadata AS mpm
     ON wr.package_id_joined = mpm.package_id
+),
+
+advertiser_mapping AS (
+  SELECT
+    match_field,
+    normalized_match_value,
+    standardized_advertiser_name
+  FROM `looker-studio-pro-452620.master_stg.advertiser_mapping`
+  WHERE is_active
+),
+
+with_standardized_advertiser AS (
+  SELECT
+    wi.*,
+    COALESCE(
+      short_map.standardized_advertiser_name,
+      name_map.standardized_advertiser_name,
+      NULLIF(TRIM(REGEXP_REPLACE(
+        wi.advertiser_name,
+        r'(?i),?\s+(incorporated|inc|l\.?l\.?c\.?|corporation|corp|limited|ltd|plc|l\.?l\.?p\.?|l\.?p\.?|p\.?c\.?|company|co)\.?$',
+        ''
+      )), ''),
+      NULLIF(TRIM(wi.advertiser_short_name), ''),
+      'Unknown'
+    ) AS standardized_advertiser_name
+  FROM with_initiative AS wi
+  LEFT JOIN advertiser_mapping AS short_map
+    ON short_map.match_field = 'advertiser_short_name'
+   AND UPPER(TRIM(wi.advertiser_short_name)) = short_map.normalized_match_value
+  LEFT JOIN advertiser_mapping AS name_map
+    ON name_map.match_field = 'advertiser_name'
+   AND UPPER(TRIM(wi.advertiser_name)) = name_map.normalized_match_value
 )
 
 SELECT
+  -- Canonical package/date creative label: FPD first, then Amazon, then social.
+  -- DCM creative remains in data_model_delivery_detail_v2 to preserve detail grain.
   row_type AS `qa_row_type`,
   row_data_source_primary AS `qa_row_data_source_primary`,
+  CASE
+    WHEN row_data_source_primary = 'manual_package_edits'
+      THEN CASE
+        WHEN man_daily_spend IS NOT NULL
+          OR man_daily_impressions IS NOT NULL
+          OR man_daily_planned_spend IS NOT NULL
+          OR man_daily_planned_impressions IS NOT NULL
+          OR man_daily_clicks IS NOT NULL
+          OR man_daily_video_plays IS NOT NULL
+          OR man_daily_video_comps IS NOT NULL
+          THEN 'looker-studio-pro-452620.landing.master_data_model_manual_package_daily'
+        ELSE 'looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw'
+      END
+    WHEN row_data_source_primary IN ('fpd_updated_only', 'fpd_combined')
+      THEN 'looker-studio-pro-452620.landing.adif_updated_fpd_daily'
+    WHEN row_data_source_primary = 'fpd_original_only'
+      THEN 'looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder'
+    WHEN row_data_source_primary = 'dcm'
+      THEN 'giant-spoon-299605.data_model_2025.new_md'
+    WHEN row_data_source_primary = 'planned_only'
+      THEN 'looker-studio-pro-452620.20250327_data_model.prisma_expanded_full'
+    WHEN row_data_source_primary = 'tv_combined'
+      THEN 'looker-studio-pro-452620.landing.tv_combined_tbl'
+    WHEN row_data_source_primary = 'amazon_ads'
+      THEN 'looker-studio-pro-452620.landing.rit_amzn_report_daily'
+    WHEN row_data_source_primary = 'wp_search_data_template'
+      THEN 'looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily'
+    WHEN row_data_source_primary = 'social'
+      THEN social_source.qa_data_source
+    ELSE NULL
+  END AS `qa_data_source`,
+  CASE
+    WHEN row_data_source_primary = 'manual_package_edits'
+      THEN COALESCE(man_manual_edit_published_at, man_loaded_at)
+    WHEN row_data_source_primary IN ('fpd_updated_only', 'fpd_combined')
+      THEN refresh.fpd_updated_refresh_at
+    WHEN row_data_source_primary = 'fpd_original_only'
+      THEN refresh.fpd_original_refresh_at
+    WHEN row_data_source_primary = 'dcm'
+      THEN CASE
+        WHEN refresh.dcm_raw_refresh_at IS NULL THEN refresh.dcm_cost_model_refresh_at
+        WHEN refresh.dcm_cost_model_refresh_at IS NULL THEN refresh.dcm_raw_refresh_at
+        ELSE LEAST(refresh.dcm_raw_refresh_at, refresh.dcm_cost_model_refresh_at)
+      END
+    WHEN row_data_source_primary = 'planned_only'
+      THEN refresh.prisma_refresh_at
+    WHEN row_data_source_primary = 'tv_combined'
+      THEN refresh.tv_refresh_at
+    WHEN row_data_source_primary = 'amazon_ads'
+      THEN refresh.amazon_ads_refresh_at
+    WHEN row_data_source_primary = 'wp_search_data_template'
+      THEN CASE
+        WHEN COALESCE(social_loaded_at, refresh.wp_search_data_template_refresh_at) IS NULL
+          THEN refresh.social_aggregate_refresh_at
+        WHEN refresh.social_aggregate_refresh_at IS NULL
+          THEN COALESCE(social_loaded_at, refresh.wp_search_data_template_refresh_at)
+        ELSE LEAST(
+          COALESCE(social_loaded_at, refresh.wp_search_data_template_refresh_at),
+          refresh.social_aggregate_refresh_at
+        )
+      END
+    WHEN row_data_source_primary = 'social'
+      THEN social_source.qa_data_source_refresh_at
+    ELSE NULL
+  END AS `qa_data_source_refresh_at`,
+  CASE
+    WHEN row_data_source_primary = 'manual_package_edits'
+      THEN man_source_sheet_modified_time
+    WHEN row_data_source_primary IN ('fpd_updated_only', 'fpd_combined')
+      THEN fpd_updated_source_sheet_modified_time
+    WHEN row_data_source_primary = 'fpd_original_only'
+      THEN fpd_orig_source_modified_time
+    ELSE NULL
+  END AS `qa_data_source_content_modified_at`,
   row_data_sources_available AS `qa_row_data_sources_available`,
   row_data_issue_category AS `qa_row_data_issue_category`,
   package_id_joined AS `_package_id`,
   date AS `_date`,
   package_start_date AS `_start_date`,
   package_end_date AS `_end_date`,
-  advertiser_name AS `_advertiser_name`,
+  standardized_advertiser_name AS `_advertiser_name`,
   advertiser_short_name AS `_advertiser_short_name`,
-  CASE
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'APO'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'APO'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'APOLLO|apollo') THEN 'Apollo'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'OLI'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'OLI'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'OLIPOP') THEN 'Olipop'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'MASS'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'MASS'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'MASSMUTUAL') THEN 'MassMutual'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'FMUS'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'(ADIF|DIAMOND|FOREVERMARK|DE BEERS)') THEN 'A Diamond Is Forever'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'GEA'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'GEA'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'GE AEROSPACE') THEN 'GE Aerospace'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'RTL'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'RTL'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'RITUAL') THEN 'Ritual'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'ICE'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'ICE'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'INTERCONTINENTAL EXCHANGE') THEN 'ICE'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'ADSK'
-      OR UPPER(COALESCE(advertiser_name, '')) = 'ADSK'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'AUTODESK') THEN 'Autodesk'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'ITR'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'CUMBERLAND') THEN 'Cumberland Packing'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'NBC'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'NBC') THEN 'NBC Entertainment'
-    WHEN UPPER(COALESCE(advertiser_short_name, '')) = 'SYNC'
-      OR REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'SYNCHRONY') THEN 'Synchrony'
-    WHEN REGEXP_CONTAINS(UPPER(COALESCE(advertiser_name, '')), r'HIGHLIGHTS') THEN 'Highlights'
-    ELSE COALESCE(NULLIF(TRIM(advertiser_name), ''), NULLIF(TRIM(advertiser_short_name), ''), 'Unknown')
-  END AS `_advertiser`,
+  standardized_advertiser_name AS `_advertiser`,
   campaign_name AS `_campaign_name`,
   campaign_friendly AS `_campaign_friendly`,
   product_code AS `_product_code`,
@@ -1826,6 +2079,7 @@ SELECT
   fpd_orig_benchmark_metric AS `fpd_orig_benchmark_metric`,
   fpd_orig_creative AS `fpd_orig_creative`,
   fpd_creative_img AS `fpd_creative_img`,
+  COALESCE(fpd_orig_creative, amzn_ad_name, social_creative_name) AS `_creative_name`,
   COALESCE(fpd_creative_img, man_creative_img) AS `_creative_img`,
   man_creative_img AS `man_creative_img`,
   fpd_orig_source_files AS `fpd_orig_source_files`,
@@ -1928,6 +2182,13 @@ SELECT
   man_source_sheet_url AS `man_source_sheet_url`,
   man_source_sheet_modified_time AS `man_source_sheet_modified_time`,
   man_loaded_at AS `man_loaded_at`,
+  man_manual_edit_at AS `man_manual_edit_at`,
+  man_manual_edit_by AS `man_manual_edit_by`,
+  man_manual_edit_published_at AS `man_manual_edit_published_at`,
+  man_edit_id IS NOT NULL AS `qa_manual_edit_flag`,
+  man_manual_edit_at AS `qa_manual_edit_at`,
+  man_manual_edit_by AS `qa_manual_edit_by`,
+  COALESCE(man_manual_edit_published_at, man_loaded_at) AS `qa_manual_edit_published_at`,
   man_start_date AS `man_start_date`,
   man_end_date AS `man_end_date`,
   man_daily_spend AS `man_daily_spend`,
@@ -1967,4 +2228,12 @@ SELECT
   END AS `qa_pkg_over_flag`,
   CURRENT_TIMESTAMP() AS `qa_model_view_runtime_timestamp`,
   initiative AS `initiative`
-FROM with_initiative;
+FROM with_standardized_advertiser
+CROSS JOIN source_refreshes AS refresh
+LEFT JOIN social_source_by_final_row AS social_source
+  ON row_data_source_primary = 'social'
+ AND date = social_source.social_date
+ AND social_platform = social_source.social_platform_key
+ AND social_campaign_id = social_source.social_campaign_id_key
+ AND social_ad_group_id = social_source.social_ad_group_id_key
+ AND social_ad_id = social_source.social_ad_id_key;

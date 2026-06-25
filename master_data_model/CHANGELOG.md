@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-06-24
+
+- **ADDED** - Published canonical source and freshness fields to the live master evidence model and reporting mart. Every row now identifies its driving source table and operational refresh time, while FPD and Manual Data Editor rows separately expose reliable source-content modification time.
+- **VERIFIED** - Confirmed the source fields are populated across all current rows, social rows resolve to their real platform tables, and row count, spend, impressions, and clicks remain unchanged apart from normal floating-point precision.
+- **CHANGED** - Replaced overlapping validation passes with one lean deployment workflow: verify live/local parity once, use SQL Change Guard as the sole broad pre-deployment comparison, perform one focused live master/mart check, and clean up temporary artifacts once.
+- **CHANGED** - Standardized both advertiser fields to one readable client name through a separate mapping table. New clients now default to Prisma's advertiser name, with legal suffixes such as `Inc`, `LLC`, `Corp`, and `Ltd` removed automatically.
+- **ADDED** - Published a canonical creative-name field to the live package/date model and reporting mart using available FPD, Amazon, and social labels. DCM creative remains in the delivery-detail model so multiple creatives are not silently collapsed into one value.
+- **VERIFIED** - Confirmed the live field has 80,639 populated rows, follows the intended FPD-to-Amazon-to-social precedence with no mismatches, and leaves row count, spend, impressions, and clicks unchanged.
+
+### Next
+
+- Publish the verified `_creative_name` change to the live master model and confirm downstream visibility - DONE
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan - RECOMMENDED
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
+## 2026-06-23
+
+- **ADDED** - Prepared Manual Data Editor audit fields for the Sheet, manual landing tables, master evidence model, and reporting mart: row-level manual-edit status, edit timestamp, editor when Google exposes it, and loader publish timestamp.
+- **IMPROVED** - Documented the difference between row edit time and loader publish time so manual-edit audit fields do not overstate what Google Sheets can identify.
+
+### Next
+
+- Deploy the manual table schema and master views after approval, then run the loader and verify the live Sheet plus BigQuery fields end to end - PENDING
+
 ## 2026-06-18
 
 - **IMPROVED** - Expanded the Manual Data Editor product brief into slide-ready presentation notes and added the problems and bottlenecks the workflow resolves.
