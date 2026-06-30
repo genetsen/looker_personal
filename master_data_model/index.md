@@ -9,7 +9,7 @@ the files most useful for day-to-day navigation.
 
 - **[AGENTS.md](./AGENTS.md)** - Project-local agent operating rules
 - **[CHANGELOG.md](./CHANGELOG.md)** - Durable model change history
-- **[Folder organization impact](./docs/folder-organization-impact.md)** - Safe-move matrix for docs, generated artifacts, SQL builders, loaders, and workflow folders
+- **[model/README.md](./model/README.md)** - Current function-organized model workspace
 - **[README.md](./README.md)** - Master data model overview
 
 ## Audit References
@@ -20,29 +20,22 @@ the files most useful for day-to-day navigation.
 
 ## Core SQL Models
 
-- **[create_master_data_model_upstream_tables_sched.sql](./create_master_data_model_upstream_tables_sched.sql)** - Scheduled upstream table snapshots
-- **[create_master_stg_data_model.sql](./create_master_stg_data_model.sql)** - Main package/date evidence model
-- **[create_master_stg_data_model_mart.sql](./create_master_stg_data_model_mart.sql)** - Dashboard reporting mart model
-- **[create_master_stg_data_model_v3.sql](./create_master_stg_data_model_v3.sql)** - V3 lowest-grain evaluation table builder
-- **[create_manual_package_edit_tables.sql](./create_manual_package_edit_tables.sql)** - Manual edit landing schemas
-
-## Versioned And Sample SQL
-
-- **[create_data_model_delivery_detail_v2.sql](./create_data_model_delivery_detail_v2.sql)** - Corrected delivery-detail v2 model
-- **[create_data_model_delivery_detail_v3_sample.sql](./create_data_model_delivery_detail_v3_sample.sql)** - Sample delivery-detail v3 model
-- **[create_data_model_detail_master_v2_sample.sql](./create_data_model_detail_master_v2_sample.sql)** - Sample one-table v2 hierarchy
-- **[create_data_model_detail_master_v3_sample.sql](./create_data_model_detail_master_v3_sample.sql)** - Sample one-table v3 hierarchy
-- **[create_data_model_package_daily_v3_sample.sql](./create_data_model_package_daily_v3_sample.sql)** - Sample package/date v3 summary
-- **[create_master_stg_data_model_mart_v2.sql](./create_master_stg_data_model_mart_v2.sql)** - Reporting mart v2 wrapper
-- **[create_master_stg_data_model_v2.sql](./create_master_stg_data_model_v2.sql)** - Package/date v2 compatibility wrapper
-- **[create_ritual_data_model_delivery_detail_v2.sql](./create_ritual_data_model_delivery_detail_v2.sql)** - Ritual delivery-detail v2 view
-- **[create_ritual_data_model_view.sql](./create_ritual_data_model_view.sql)** - Ritual package/date compatibility view
-- **[create_ritual_data_model_view_v2.sql](./create_ritual_data_model_view_v2.sql)** - Ritual v2 compatibility view
+- **[Current final model](./model/final_model/create_master_stg_data_model_v3.sql)** - Clustered creative-capable v3 table builder
+- **[Stable base model](./model/stable_base/create_master_stg_data_model.sql)** - Package/date base model consumed by v3
+- **[Upstream support refresh](./model/stable_base/create_master_data_model_upstream_tables_sched.sql)** - Stored upstream source snapshots
+- **[Reporting mart](./model/reporting_outputs/create_master_stg_data_model_mart.sql)** - Dashboard-facing mart model
+- **[Manual edit schemas](./model/manual_editor/create_manual_package_edit_tables.sql)** - Manual edit landing schemas
+- **[Archived deprecated SQL](./model/archive_candidates/deprecated_sql/)** - Retired v2, Ritual, sample, and QA candidate SQL
 
 ## Manual Package Editor
 
-- **[manual_package_edits/QA_RUNBOOK.md](./manual_package_edits/QA_RUNBOOK.md)** - Manual editor QA runbook
-- **[manual_package_edits/README.md](./manual_package_edits/README.md)** - Manual package editor guide
+- **[Manual Editor workspace](./model/manual_editor/)** - Manual editor guide, QA, loader, Apps Script, repair tools, and tests
+
+## Maps
+
+- **[Master model map](./model/reference_maps/master-data-model-map.html)** - Main interactive map
+- **[DCM cost model map](./model/reference_maps/dcm-cost-model-map.html)** - DCM and creative-safe join map
+- **[Manual editor workflow map](./model/reference_maps/manual-data-editor-workflow-map.html)** - Manual editor workflow map
 
 ## Context Summaries
 

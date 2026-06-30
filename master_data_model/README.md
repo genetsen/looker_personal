@@ -38,28 +38,27 @@ Use this when a dashboard value needs a direct manual correction.
 
 ## What The View Does
 
-The SQL definition is in:
+The current final model builder is in:
 
-`create_master_stg_data_model.sql`
+`model/final_model/create_master_stg_data_model_v3.sql`
+
+The stable package/date base that v3 reads from is in:
+
+`model/stable_base/create_master_stg_data_model.sql`
 
 The reporting mart definition is in:
 
-`create_master_stg_data_model_mart.sql`
+`model/reporting_outputs/create_master_stg_data_model_mart.sql`
 
-The compatibility and creative-grain v2 definitions are in:
+Deprecated v2, Ritual, sample, and temporary QA SQL are no longer active root-level files. They are preserved under:
 
-- `create_master_stg_data_model_v2.sql`
-- `create_master_stg_data_model_mart_v2.sql`
-- `create_ritual_data_model_view_v2.sql`
-- `create_data_model_delivery_detail_v2.sql`
-- `create_ritual_data_model_delivery_detail_v2.sql`
-- `create_data_model_detail_master_v2_sample.sql`
+`model/archive_candidates/deprecated_sql/`
 
 The dashboard-like manual package edit path is in:
 
-- `create_manual_package_edit_tables.sql`
-- `manual_package_edits/load_manual_package_edits.R`
-- `manual_package_edits/QA_RUNBOOK.md`
+- `model/manual_editor/create_manual_package_edit_tables.sql`
+- `model/manual_editor/load_manual_package_edits.R`
+- `model/manual_editor/QA_RUNBOOK.md`
 
 The view:
 
@@ -133,31 +132,7 @@ Output:
 - `looker-studio-pro-452620.master_stg.data_model_qa_tv_layer` - QA validation view used before the TV layer was promoted to production.
 - `looker-studio-pro-452620.master_stg.data_model_qa_source_issues` - QA validation view for source visibility, issue labels, and non-Prisma DCM/FPD rows.
 - `looker-studio-pro-452620.master_stg.data_model_mart_qa_source_issues` - QA validation mart built from the source-issue QA view.
-- `looker-studio-pro-452620.master_stg.ritual_data_model` - Ritual-only filtered view over the master data model.
-- `looker-studio-pro-452620.master_stg.ritual_data_model_v2` - Ritual-only filtered view over `data_model_v2`.
-- `looker-studio-pro-452620.master_stg.ritual_data_model_delivery_detail_v2` - Ritual-only filtered view over `data_model_delivery_detail_v2`.
-
-## Client-Specific Views
-
-Ritual:
-
-- View: `looker-studio-pro-452620.master_stg.ritual_data_model`
-- SQL definition: `create_ritual_data_model_view.sql`
-- Filter: `advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'`
-- Source view: `looker-studio-pro-452620.master_stg.data_model`
-
-Ritual v2:
-
-- View: `looker-studio-pro-452620.master_stg.ritual_data_model_v2`
-- SQL definition: `create_ritual_data_model_view_v2.sql`
-- Filter: `advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'`
-- Source view: `looker-studio-pro-452620.master_stg.data_model_v2`
-
-Ritual delivery detail v2:
-
-- View: `looker-studio-pro-452620.master_stg.ritual_data_model_delivery_detail_v2`
-- SQL definition: `create_ritual_data_model_delivery_detail_v2.sql`
-- Filter: `_advertiser_name = 'Ritual' OR _advertiser_short_name = 'RTL'`
+Deprecated Ritual and v2 compatibility SQL is archived in `model/archive_candidates/deprecated_sql/`. Do not use it as the current path unless you are answering a historical or rollback question.
 - Source view: `looker-studio-pro-452620.master_stg.data_model_delivery_detail_v2`
 
 ## Important Modeling Notes
@@ -284,40 +259,18 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < wp/sql/create_stg_crossplatform_wp_primary_production.sql
 ```
 
-Refresh the Ritual-only view:
+Refresh the current final v3 table:
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_ritual_data_model_view.sql
+  < master_data_model/model/final_model/create_master_stg_data_model_v3.sql
 ```
 
 Refresh the reporting mart after the master view is current:
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_stg_data_model_mart.sql
-```
-
-Create or refresh the v2 sibling views:
-
-```bash
-bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_stg_data_model_v2.sql
-
-bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_data_model_delivery_detail_v2.sql
-
-bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_stg_data_model_mart_v2.sql
-
-bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_ritual_data_model_view_v2.sql
-
-bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_ritual_data_model_delivery_detail_v2.sql
-
-bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_data_model_detail_master_v2_sample.sql
+  < master_data_model/model/reporting_outputs/create_master_stg_data_model_mart.sql
 ```
 
 Dry-run validation:
