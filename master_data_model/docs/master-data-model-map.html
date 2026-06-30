@@ -998,7 +998,7 @@
         id: "social-raw",
         groupId: "social-capture",
         title: "Shared Social",
-        summary: "Daily social actuals with WP-first Apollo rows.",
+        summary: "Daily social actuals with WP-first Apollo and Reddit email-ingested rows.",
         truth: "Table: repo_stg.stg__olipop__crossplatform_raw_tbl.",
         writes: "Refresh: shared-social scheduled query after standard and WP social inputs are current.",
         freshness: "Current after shared social refreshes.",
@@ -1008,10 +1008,13 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "Feeds social metrics, creative names, video views, and WP provenance into the master model.",
+          "Reddit email-ingested rows preserve their landing-table lineage and share the standard social package key.",
           "WP campaign-separated ad-ID records stay visible with pending source-owner provenance."
         ],
         sources: [
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
+          ["BigQuery: Reddit email landing", bq("landing", "reddit-ads-email")],
+          ["BigQuery: Reddit social staging", bq("repo_stg", "stg__olipop_reddit_crossplatform")],
           ["Refresh doc: social raw scheduled query", "../docs/SCHEDULED_QUERIES.md#11-stg__olipop__crossplatform_raw_tbl_sched"]
         ]
       },
@@ -1068,11 +1071,12 @@
         writes: "View only. Refresh social raw and pacing.",
         freshness: "Current when social raw and pacing are current.",
         risk: "medium",
-        reviewReason: "Mapping: social rows use synthetic package IDs, WP classification, and video-view precedence.",
+        reviewReason: "Mapping: social rows use synthetic package IDs, platform-specific source lineage, WP classification, and video-view precedence.",
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
           "Flows directly into the shared union, not into digital.",
+          "Reddit rows normalize to s_platform = reddit and use the Reddit landing table for qa_data_source.",
           "Exposes s_creative_name and contributes it to canonical _creative_name, alongside FPD creative and Amazon ad name.",
           "DCM creative is not collapsed into _creative_name because one package/date can contain multiple DCM creatives; use the delivery-detail view for that grain.",
           "Also exposes s_video_views, s_record_source, s_wp_row_key, and related WP provenance fields.",
@@ -1080,6 +1084,7 @@
         ],
         sources: [
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],
+          ["BigQuery: Reddit email landing", bq("landing", "reddit-ads-email")],
           ["BigQuery: WP normalized staging", bq("repo_stg", "stg__wp__search_data_template_daily")],
           ["BigQuery: Social pacing table", bq("repo_int", "crossplatform_pacing_tbl")]
         ]

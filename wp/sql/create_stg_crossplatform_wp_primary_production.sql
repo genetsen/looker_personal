@@ -173,7 +173,10 @@ SELECT *
 FROM standard_non_apollo
 UNION ALL
 SELECT *
-FROM merged_apollo;
+FROM merged_apollo
+UNION ALL
+SELECT *
+FROM `looker-studio-pro-452620.repo_stg.stg__olipop_reddit_crossplatform`;
 
 -- Preserve the existing video-metric refresh in the live scheduled build.
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop_videoviews_crossplatform_tbl` AS

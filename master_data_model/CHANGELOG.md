@@ -3,6 +3,8 @@
 ## 2026-06-30
 
 - **CHANGED** - Added the v3 lowest-grain evaluation table refresh to the universal runner's master-model clustered advertiser refresh step, so a normal runner refresh now rebuilds both stored master-model support tables and checks v3's no-duplicate/no-extra-planned-carrier contract.
+- **FIXED** - Deployed Reddit social-row ingestion through the master-model mapping path, including Reddit source lineage, refresh timestamps, platform normalization, and the Olipop Reddit advertiser alias. Verified the master model, reporting mart, clustered QA table, and v3 table all retain 654 Reddit rows with Olipop advertiser mapping.
+- **FIXED** - Made the WP social QA builders runnable without a missing scratch input table by pointing the QA candidate at the maintained WP staging table.
 
 ## 2026-06-29
 

@@ -59,6 +59,7 @@ FROM UNNEST([
   STRUCT('advertiser_name', 'NBC Entertainment', 'NBC Entertainment', 'NBC Entertainment', 'Prisma source name.'),
   STRUCT('advertiser_name', 'Olipop, Inc', 'Olipop, Inc', 'Olipop', 'Prisma source name.'),
   STRUCT('advertiser_name', 'OLIPOP AD ACCOUNT', 'Olipop, Inc', 'Olipop', 'Existing source alias.'),
+  STRUCT('advertiser_name', 'Olipop Reddit', 'Olipop, Inc', 'Olipop', 'Reddit Ads email-ingested source alias.'),
   STRUCT('advertiser_name', 'OLIPOP INC.', 'Olipop, Inc', 'Olipop', 'Existing source alias.'),
   STRUCT('advertiser_name', 'Olipop', 'Olipop, Inc', 'Olipop', 'Existing source alias.'),
   STRUCT('advertiser_name', 'OLI', 'Olipop, Inc', 'Olipop', 'Existing source alias.'),

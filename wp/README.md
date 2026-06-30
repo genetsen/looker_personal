@@ -26,7 +26,7 @@ In plain English: WP is now the first source for Apollo social/search/video deli
 | [test_wp_search_social_logic.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/tests/test_wp_search_social_logic.R) | Tests | Keep | Proves the rules without touching Sheets or BigQuery. |
 | [create_stg_crossplatform_wp_primary_production.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_production.sql) | Production builder | Keep | Builds the live shared-social staging table with WP precedence. |
 | [rollback_stg_crossplatform_pre_wp_production.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/rollback_stg_crossplatform_pre_wp_production.sql) | Rollback builder | Keep | Restores the pre-WP shared-social logic if a rollback is approved. |
-| [create_stg_crossplatform_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_qa.sql) | QA builder | Keep | Rebuilds the WP-first shared-social candidate without touching production. |
+| [create_stg_crossplatform_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_qa.sql) | QA builder | Keep | Rebuilds the WP-first shared-social candidate without touching production, using the maintained WP production staging input. |
 | [create_data_model_social_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_data_model_social_wp_primary_qa.sql) | QA final-shape builder | Keep | Rebuilds a social-only final-data candidate for review. |
 | [validate_wp_primary_social_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/validate_wp_primary_social_qa.sql) | Read-only QA checks | Keep | Checks classification, overlap, new rows, and protected non-Apollo scopes. |
 
@@ -63,7 +63,6 @@ This matrix shows how workbook values move into staging and then into final repo
 | [WP normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily&page=table) | Production daily-ad input from the workbook. | Live table verified on 2026-06-05. |
 | [Shared cross-platform raw staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_raw_tbl&page=table) | Production shared-social staging with WP-first Apollo behavior. | Live table verified on 2026-06-05. |
 | [Master data model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Final reporting model. | Live view verified on 2026-06-05. |
-| [WP normalized staging QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily_qa&page=table) | Rebuildable QA input. | Created only when the QA loader command runs. |
 | [WP-primary cross-platform QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__crossplatform_wp_primary_qa&page=table) | Rebuildable QA merge candidate. | Created only when the QA SQL command runs. |
 | [WP-primary social reporting QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_social_wp_primary_qa&page=table) | Rebuildable final-shape social QA view. | Not live during the 2026-06-05 cleanup check; rebuild before using. |
 
@@ -92,8 +91,6 @@ Run from the repository root. These commands replace only QA objects.
 
 ```bash
 Rscript wp/tests/test_wp_search_social_logic.R
-
-WP_SEARCH_UPLOAD=TRUE Rscript wp/load_wp_search_data_template.R
 
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < wp/sql/create_stg_crossplatform_wp_primary_qa.sql

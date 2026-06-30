@@ -5,6 +5,7 @@ All notable changes to this repository are documented in this file.
 ## 2026-06-30
 
 - **ADDED** - Created a live Omni AI eval prompt set for the shared Master Stg Data Model so future AI-answer checks cover normal performance questions, Ritual and Apollo topic routing, and the highest-risk QA cases: unmatched packages, missing delivery, pacing issues, source reconciliation, manual overrides, QTD reach, and v3 metric-grain behavior.
+- **FIXED** - Made Reddit social ingestion work through the master-model mapping path and made the WP social QA builder runnable from maintained production staging instead of a missing scratch input table.
 
 ### Pending Next Actions
 

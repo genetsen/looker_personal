@@ -3,7 +3,7 @@
 --               the existing
 --               production raw source fills absent rows or fields.
 -- @sources:     repo_stg.stg__olipop__crossplatform_raw_tbl,
---               repo_stg.stg__wp__search_data_template_daily_qa
+--               repo_stg.stg__wp__search_data_template_daily
 -- @output:      repo_stg.stg__crossplatform_wp_primary_qa at
 --               date/platform/campaign/ad-group/ad grain; conflicting
 --               cross-campaign ad identities remain flagged pending review.
@@ -17,21 +17,7 @@ OPTIONS (
 WITH
 standard_extended AS (
   SELECT
-    s.*,
-    CAST(NULL AS STRING) AS wp_channel,
-    CAST(NULL AS STRING) AS wp_channel_group,
-    CAST(NULL AS STRING) AS wp_media_name,
-    CAST(NULL AS STRING) AS wp_ADIF_channel,
-    CAST(NULL AS STRING) AS wp_classification_source,
-    CAST(NULL AS STRING) AS wp_publication_status,
-    CAST(NULL AS STRING) AS wp_creative_name,
-    CAST(NULL AS STRING) AS wp_creative_img,
-    CAST(NULL AS STRING) AS wp_source_sheet_url,
-    CAST(NULL AS TIMESTAMP) AS wp_loaded_at,
-    CAST(NULL AS STRING) AS wp_row_key,
-    'standard_only' AS wp_record_source,
-    FALSE AS wp_has_standard_fallback,
-    CAST(NULL AS STRING) AS wp_fallback_fields
+    s.*
   FROM `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
 ),
 standard_apollo AS (
@@ -46,7 +32,7 @@ standard_non_apollo AS (
 ),
 wp_publishable AS (
   SELECT *
-  FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
+  FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
   WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
 ),
 merged_apollo AS (
@@ -128,4 +114,7 @@ SELECT
 FROM standard_non_apollo
 UNION ALL
 SELECT *
-FROM merged_apollo;
+FROM merged_apollo
+UNION ALL
+SELECT *
+FROM `looker-studio-pro-452620.repo_stg.stg__olipop_reddit_crossplatform`;

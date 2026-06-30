@@ -61,6 +61,11 @@ source_refreshes AS (
       WHERE table_id = 'stg__olipop__crossplatform_raw_tbl'
     ) AS social_aggregate_refresh_at,
     (
+      SELECT TIMESTAMP_MILLIS(MAX(last_modified_time))
+      FROM `looker-studio-pro-452620.landing.__TABLES__`
+      WHERE table_id = 'reddit-ads-email'
+    ) AS reddit_ads_refresh_at,
+    (
       SELECT MAX(_fivetran_synced)
       FROM `giant-spoon-299605.facebook_ads.basic_ad`
     ) AS facebook_ads_refresh_at,
@@ -100,6 +105,7 @@ social_source_by_final_row AS (
       WHEN LOWER(social_raw.platform) IN ('pinterest_ads', 'pinterest') THEN 'pinterest'
       WHEN LOWER(social_raw.platform) IN ('linkedin_ads', 'linkedin') THEN 'linkedin'
       WHEN LOWER(social_raw.platform) IN ('snapchat_ads', 'snapchat') THEN 'snapchat'
+      WHEN LOWER(social_raw.platform) IN ('reddit_ads', 'reddit') THEN 'reddit'
       ELSE LOWER(social_raw.platform)
     END AS social_platform_key,
     CAST(social_raw.campaign_id AS STRING) AS social_campaign_id_key,
@@ -113,6 +119,7 @@ social_source_by_final_row AS (
         WHEN 'tiktok_ads_adif' THEN 'giant-spoon-299605.tiktok_ads_adif.ad_report_hourly'
         WHEN 'pinterest_ads' THEN 'giant-spoon-299605.pinterest_ads.pin_promotion_report'
         WHEN 'linkedin_ads' THEN 'giant-spoon-299605.linkedin_ads.ad_analytics_by_creative'
+        WHEN 'reddit-ads-email' THEN 'looker-studio-pro-452620.landing.reddit-ads-email'
         ELSE CONCAT('unmapped_social_source:', social_raw.source_relation)
       END,
       ' | '
@@ -123,6 +130,7 @@ social_source_by_final_row AS (
         WHEN 'tiktok_ads_adif' THEN 'giant-spoon-299605.tiktok_ads_adif.ad_report_hourly'
         WHEN 'pinterest_ads' THEN 'giant-spoon-299605.pinterest_ads.pin_promotion_report'
         WHEN 'linkedin_ads' THEN 'giant-spoon-299605.linkedin_ads.ad_analytics_by_creative'
+        WHEN 'reddit-ads-email' THEN 'looker-studio-pro-452620.landing.reddit-ads-email'
         ELSE CONCAT('unmapped_social_source:', social_raw.source_relation)
       END
     ) AS qa_data_source,
@@ -163,6 +171,12 @@ social_source_by_final_row AS (
             WHEN refresh.linkedin_ads_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
             WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.linkedin_ads_refresh_at
             ELSE LEAST(refresh.linkedin_ads_refresh_at, refresh.social_aggregate_refresh_at)
+          END
+        WHEN 'reddit-ads-email' THEN
+          CASE
+            WHEN refresh.reddit_ads_refresh_at IS NULL THEN refresh.social_aggregate_refresh_at
+            WHEN refresh.social_aggregate_refresh_at IS NULL THEN refresh.reddit_ads_refresh_at
+            ELSE LEAST(refresh.reddit_ads_refresh_at, refresh.social_aggregate_refresh_at)
           END
         ELSE refresh.social_aggregate_refresh_at
       END
@@ -794,6 +808,7 @@ social_daily AS (
       WHEN LOWER(s.platform) IN ('pinterest_ads', 'pinterest') THEN 'pinterest'
       WHEN LOWER(s.platform) IN ('linkedin_ads', 'linkedin') THEN 'linkedin'
       WHEN LOWER(s.platform) IN ('snapchat_ads', 'snapchat') THEN 'snapchat'
+      WHEN LOWER(s.platform) IN ('reddit_ads', 'reddit') THEN 'reddit'
       ELSE LOWER(s.platform)
     END AS social_platform,
     CAST(s.campaign_id AS STRING) AS campaign_id,
@@ -835,6 +850,7 @@ social_pacing_dedup AS (
       WHEN LOWER(platform) IN ('pinterest_ads', 'pinterest') THEN 'pinterest'
       WHEN LOWER(platform) IN ('linkedin_ads', 'linkedin') THEN 'linkedin'
       WHEN LOWER(platform) IN ('snapchat_ads', 'snapchat') THEN 'snapchat'
+      WHEN LOWER(platform) IN ('reddit_ads', 'reddit') THEN 'reddit'
       ELSE LOWER(platform)
     END AS social_platform,
     CAST(c_id AS STRING) AS campaign_id,

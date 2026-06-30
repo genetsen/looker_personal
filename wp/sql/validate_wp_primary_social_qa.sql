@@ -1,6 +1,6 @@
 -- @description: Runs read-only QA checks for the WP-first shared-social
 --               candidate and its reporting-shaped social impact view.
--- @sources:     repo_stg.stg__wp__search_data_template_daily_qa,
+-- @sources:     repo_stg.stg__wp__search_data_template_daily,
 --               repo_stg.stg__crossplatform_wp_primary_qa,
 --               master_stg.data_model_social_wp_primary_qa,
 --               repo_stg.stg__olipop__crossplatform_raw_tbl.
@@ -21,7 +21,7 @@ SELECT
   COUNTIF(spend = 0) AS zero_spend_rows,
   COUNTIF(spend IS NULL) AS blank_spend_rows,
   COUNTIF(wp_creative_img IS NOT NULL) AS rows_with_creative_img
-FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
 GROUP BY 1,2,3,4
 ORDER BY 1,2,3,4;
 
@@ -31,7 +31,7 @@ SELECT
   date_day,
   wp_row_key,
   COUNT(*) AS duplicate_rows
-FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
 WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
 GROUP BY 1,2,3
 HAVING COUNT(*) > 1
@@ -45,7 +45,7 @@ WITH pending_input AS (
     SUM(spend) AS spend,
     SUM(impressions) AS impressions,
     SUM(clicks) AS clicks
-  FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa`
+  FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
   WHERE wp_publication_status = 'publish_pending_source_owner_review'
 ),
 pending_candidate AS (
@@ -101,7 +101,7 @@ SELECT
   a.impressions AS wp_impressions,
   s.clicks AS standard_clicks,
   a.clicks AS wp_clicks
-FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa` AS a
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily` AS a
 JOIN `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
   ON a.date_day = s.date_day
  AND LOWER(a.platform) = LOWER(s.platform)
@@ -124,7 +124,7 @@ SELECT
   SUM(a.spend) AS new_spend,
   SUM(a.impressions) AS new_impressions,
   SUM(a.clicks) AS new_clicks
-FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily_qa` AS a
+FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily` AS a
 LEFT JOIN `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl` AS s
   ON a.date_day = s.date_day
  AND LOWER(a.platform) = LOWER(s.platform)
