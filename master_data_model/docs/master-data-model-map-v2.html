@@ -808,7 +808,7 @@
           <button class="pill-btn active" id="f-all" onclick="filterPipeline('all')">Show All Nodes</button>
           <button class="pill-btn" id="f-v1" onclick="filterPipeline('v1')">v1 Canonical Production</button>
           <button class="pill-btn v2-active" id="f-v2" onclick="filterPipeline('v2')">v2 Sibling Compatibility</button>
-          <button class="pill-btn v3-active" id="f-v3" onclick="filterPipeline('v3')">v3 Sibling Samples</button>
+          <button class="pill-btn v3-active" id="f-v3" onclick="filterPipeline('v3')">v3 Outputs & Samples</button>
         </div>
       </div>
 
@@ -895,7 +895,7 @@
           <div class="output-tabs" id="outputTabRow" role="tablist">
             <button class="output-tab-btn active" id="tab-v1" onclick="switchOutputTab('v1')" role="tab" aria-selected="true" aria-controls="panel-v1">v1 Canonical Production</button>
             <button class="output-tab-btn" id="tab-v2" onclick="switchOutputTab('v2')" role="tab" aria-selected="false" aria-controls="panel-v2">v2 Sibling Compatibility</button>
-            <button class="output-tab-btn" id="tab-v3" onclick="switchOutputTab('v3')" role="tab" aria-selected="false" aria-controls="panel-v3">v3 Sibling Samples</button>
+            <button class="output-tab-btn" id="tab-v3" onclick="switchOutputTab('v3')" role="tab" aria-selected="false" aria-controls="panel-v3">v3 Outputs & Samples</button>
           </div>
 
           <!-- Tab Panels -->
@@ -1003,7 +1003,7 @@
       ["reporting-mart", "Reporting Mart"],
       ["ritual-slice", "Ritual Slice"],
       ["v2-compatibility", "v2 Sibling Compatibility Layer"],
-      ["v3-samples", "v3 Sibling Samples Layer"]
+      ["v3-samples", "v3 Outputs And Samples Layer"]
     ]);
 
     // Complete Database of Lineage Nodes
@@ -1082,16 +1082,16 @@
         freshness: "Loads directly from Google Sheets API pipelines.",
         risk: "medium",
         objType: "Multiple Tables",
-        caveat: "Mapping: Original FPD feeds 'fpd_orig_*' while updated FPD feeds 'fpd_updated_*' separately to prevent data drift.",
+        caveat: "Mapping: Original and revised FPD inputs are resolved into one public fpd_* family. Source-specific inputs remain private transformation evidence rather than duplicate reporting columns.",
         notes: [
           "Maintains separation of old and new first-party inputs before final stitching.",
           "Leverages R-based packages like googledrive and bigrquery."
         ],
         fields: [
-          ["fpd_orig_spend", "Original first-party spending actuals."],
-          ["fpd_orig_impressions", "Original impressions tracked."],
-          ["fpd_updated_spend", "Newly integrated FPD daily cost metric."],
-          ["fpd_updated_impressions", "Newly integrated FPD daily impressions."]
+          ["fpd_spend", "Consolidated first-party spending actuals."],
+          ["fpd_impressions", "Consolidated first-party impressions."],
+          ["fpd_factor", "Source-provided media factor from contributing FPD data."],
+          ["fpd_source_name", "Names the FPD source or sources contributing to the final row."]
         ],
         sources: [
           ["Original FPD Table", bq("landing", "fpd_data_ranged_shortcutsFolder"), "bq"],
@@ -1596,7 +1596,37 @@
         ]
       },
 
-      // V3 Nodes (Sibling Sample Models - Creative-Grain Recovery)
+      // V3 Nodes (Active Evaluation Table And Historical Samples)
+      {
+        id: "data_model_v3",
+        groupId: "master-output",
+        lane: "all",
+        version: "v3",
+        title: "data_model_v3",
+        summary: "Active v3 lowest-grain evaluation table with natural source rows and one planned carrier per package/date.",
+        truth: "master_stg.data_model_v3",
+        writes: "Stored Table",
+        freshness: "Refreshed by create_master_stg_data_model_v3.sql or the universal runner's Master Data Model Clustered Advertiser Refresh step.",
+        risk: "high",
+        objType: "Evaluation Table",
+        caveat: "Production: Evaluation-only sibling. It keeps production data_model untouched while testing one-table lowest-available-grain behavior.",
+        notes: [
+          "Source rows stay at their natural grain, including DCM placement/ad/creative and original FPD placement/factor/creative detail.",
+          "Summable _planned_* metrics are carried on one deduced natural row per package/date.",
+          "The runner proof checks clustering, no package_plan rows, unique visible grain keys, and no more than one planned carrier per package/date."
+        ],
+        fields: [
+          ["qa_v3_row_type", "Labels source_actual, manual_delivery_override, or planned_only_package_date rows."],
+          ["qa_v3_metric_grain", "Describes the natural metric grain for each row."],
+          ["qa_v3_package_planned_spend_doNotSum", "Repeated package/date planned context that should not be summed."],
+          ["_planned_spend", "Summable planned spend carried on exactly one package/date row."]
+        ],
+        sources: [
+          ["V3 Evaluation Table", bq("master_stg", "data_model_v3"), "bq"],
+          ["V3 Builder SQL", localFile("create_master_stg_data_model_v3.sql"), "file"],
+          ["Universal Runner Refresh Wrapper", "file:///Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh", "file"]
+        ]
+      },
       {
         id: "package_daily_v3",
         groupId: "master-output",
@@ -1681,11 +1711,11 @@
 
     // Schema Column Index for interactive tracing
     const columnTraceIndex = new Map([
-      ["initiative", ["prisma", "digital-final", "union", "rollup", "data_model_v1", "data_model_v2", "package_daily_v3", "delivery_detail_v3", "detail_master_v3_sample"]],
+      ["initiative", ["prisma", "digital-final", "union", "rollup", "data_model_v1", "data_model_v2", "data_model_v3", "package_daily_v3", "delivery_detail_v3", "detail_master_v3_sample"]],
       ["final_spend", ["digital-final", "social-final", "tv-final", "union", "rollup", "data_model_v1", "reporting_mart_v1"]],
-      ["_spend", ["data_model_v1", "reporting_mart_v1", "data_model_v2", "reporting_mart_v2", "delivery_detail_v2", "delivery_detail_v3", "detail_master_v3_sample"]],
-      ["_package_id", ["prisma", "delivery", "fpd", "digital-join", "digital-final", "social-raw", "wp-workbook", "social-pacing", "social-final", "tv-final", "union", "manual-edits", "rollup", "data_model_v1", "reporting_mart_v1", "data_model_v2", "reporting_mart_v2", "delivery_detail_v2", "detail_master_v2_sample", "package_daily_v3", "delivery_detail_v3", "detail_master_v3_sample"]],
-      ["_date", ["prisma", "delivery", "fpd", "digital-join", "digital-final", "social-raw", "wp-workbook", "social-pacing", "social-final", "tv-combined", "tv-final", "union", "manual-edits", "rollup", "data_model_v1", "reporting_mart_v1", "data_model_v2", "delivery_detail_v2", "package_daily_v3", "delivery_detail_v3", "detail_master_v3_sample"]],
+      ["_spend", ["data_model_v1", "reporting_mart_v1", "data_model_v2", "reporting_mart_v2", "data_model_v3", "delivery_detail_v2", "delivery_detail_v3", "detail_master_v3_sample"]],
+      ["_package_id", ["prisma", "delivery", "fpd", "digital-join", "digital-final", "social-raw", "wp-workbook", "social-pacing", "social-final", "tv-final", "union", "manual-edits", "rollup", "data_model_v1", "reporting_mart_v1", "data_model_v2", "reporting_mart_v2", "data_model_v3", "delivery_detail_v2", "detail_master_v2_sample", "package_daily_v3", "delivery_detail_v3", "detail_master_v3_sample"]],
+      ["_date", ["prisma", "delivery", "fpd", "digital-join", "digital-final", "social-raw", "wp-workbook", "social-pacing", "social-final", "tv-combined", "tv-final", "union", "manual-edits", "rollup", "data_model_v1", "reporting_mart_v1", "data_model_v2", "data_model_v3", "delivery_detail_v2", "package_daily_v3", "delivery_detail_v3", "detail_master_v3_sample"]],
       ["creative", ["delivery_detail_v2", "ritual_detail_v2", "delivery_detail_v3", "detail_master_v3_sample"]],
       ["s_creative_name", ["social-raw", "wp-workbook", "social-final", "union", "rollup", "data_model_v1"]],
       ["_video_views", ["social-raw", "wp-workbook", "social-final", "union", "rollup", "data_model_v1"]],

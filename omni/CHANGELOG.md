@@ -3,6 +3,15 @@
 This file records meaningful changes to Omni administration, access control,
 semantic models, and user-facing Omni workflows.
 
+## 2026-06-30
+
+- **ADDED** - Created the Master Stg Data Model AI eval prompt set in Omni with 25 prompts covering standard performance questions, Ritual and Apollo topic routing, and QA checks for unmatched packages, missing delivery, pacing issues, source reconciliation, manual overrides, QTD reach, and v3 metric-grain behavior.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+- **Since Jun 24** - Repair the pre-existing Ritual dashboard filter and missing-field issues
+
 ## 2026-06-24
 
 - **CHANGED** - Synchronized `client_access` for 26 active users from Ritual folder access, Apollo/Olipop/Ritual group membership, and confirmed organization-administrator status. Two users without a mapped access source intentionally remain unassigned.

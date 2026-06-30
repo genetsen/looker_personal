@@ -15,6 +15,8 @@
 |---|---|
 | Main local model definition | [create_master_stg_data_model.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql) |
 | Reporting mart definition | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) |
+| V3 evaluation table builder | [create_master_stg_data_model_v3.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v3.sql) |
+| Stored support table refresh | [run_master_data_model_clustered_advertiser_refresh.sh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) |
 | Manual editor folder | [manual_package_edits](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits) |
 | Interactive model map | [master-data-model-map.html](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) |
 | DCM cost model map | [dcm-cost-model-map.html](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html) |
@@ -74,6 +76,7 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false --dry_run 
 |---|---|
 | Model behavior or field lineage | [Data Models](./data-models.md), then inspect live BigQuery before claims. |
 | SQL architecture change | [Architecture](./architecture.md) and [Development Guide](./development-guide.md). |
+| V3 or clustered support-table freshness | [Development Guide](./development-guide.md), then run the stored support table refresh wrapper. |
 | Manual editor issue | [Manual Package Editor Workflow](./manual-package-editor-workflow.md), then [QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md). |
 | Folder orientation | [Source Tree Analysis](./source-tree-analysis.md). |
 | Component ownership | [Component Inventory](./component-inventory.md). |

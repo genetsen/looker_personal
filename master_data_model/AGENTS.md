@@ -2,9 +2,13 @@
 
 Project-local instructions for `master_data_model`.
 
+## Global BigQuery And Modeling Rules
+
+Apply the global [BigQuery, SQL, and data-modeling rules](/Users/eugenetsenter/.codex/BIGQUERY_SQL_DATA_MODELING_RULES.md) before any master-model warehouse, SQL, or modeling work. This file only adds master-model-specific overlays.
+
 ## Missing-Field Lineage Rule
 
-When investigating why a field is missing or unexpectedly blank in the master model, trace the field lineage before answering:
+When investigating why a field is missing or unexpectedly blank in the master model, apply the global missing-field rule, then trace the master-model lineage before answering:
 
 1. Identify the live source table and source column.
 2. Follow the field through the relevant CTEs, joins, aggregations, and final projection.
@@ -15,31 +19,29 @@ When investigating why a field is missing or unexpectedly blank in the master mo
 
 When the user names a versioned target such as `v2`, create sibling versioned files and BigQuery objects, and leave the existing unversioned production files/views untouched unless the user separately says to replace or overwrite them.
 
-## Lower-Grain Field Rule
+## Lean BigQuery Deployment Workflow
 
-When adding a field that exists at a lower grain than the current model row, such as creative, ad, line item, placement detail, or any one-to-many source field, do not silently collapse it into the existing row with `STRING_AGG`, `ARRAY_AGG`, first-value selection, or similar aggregation. First state the grain conflict and ask the user which representation they want, especially when they also ask to avoid row duplication. Acceptable options may include a separate detail view, a nested/array field, a deliberately expanded-grain v2, or an explicitly approved summary field.
+For a narrow, schema-preserving master-model change:
 
-## Collaborative Modeling Decision Rule
+1. Inspect the live object and verify local parity once.
+2. Edit the permanent SQL and create one isolated QA candidate.
+3. Use SQL Change Guard as the sole broad pre-deployment comparison owner. Before configuring it, confirm whether proposed keys are genuinely unique at the live model grain.
+4. Reuse the guard's passing schema, row-coverage, and package-level metric evidence. Run an additional query only for a named requirement the guard does not cover.
+5. Deploy after the guard passes, then run one focused live check covering the changed fields in the master model and reporting mart.
+6. Update required documentation, then delete and confirm removal of temporary artifacts in one cleanup pass.
 
-When a request can be satisfied multiple ways, especially in data modeling, do not choose the simplest technical implementation silently. Before implementing, identify the business question the user is trying to answer, the hidden modeling choices inside the request, and the tradeoffs between correctness, usability, row grain, downstream dashboard behavior, and implementation effort.
+Do not repeat pre-deployment reconciliation after deployment unless the focused live check conflicts with the validated candidate.
 
-Recommend the approach that is most analytically useful and correct, not the cheapest valid SQL. If the best representation is ambiguous, pause and ask the user to choose before implementing a summary, fallback, aggregation, null-fill, renamed proxy, expanded grain, separate view, or other modeling compromise.
+## Dependent Materialized Table Freshness Rule
 
-## No Silent Modeling Compromise Rule
+When a task changes `master_stg.data_model` or any base view that feeds a stored, clustered, reporting, QA, or dashboard-support table, refresh each dependent table in the same work session before claiming the base-view change is complete. If refresh is unsafe, blocked, or intentionally deferred, state that the dependent table is stale, name the table, and give the exact missing refresh proof.
 
-When preserving existing row counts, schema shape, or downstream compatibility conflicts with adding a requested field correctly, do not hide that conflict with a lossy workaround. State the conflict plainly and offer options such as keeping the current grain with an explicitly approved summary field, creating a separate detail view, creating a nested or array field, building a new expanded-grain model, or deferring the field until the correct source and grain are agreed.
+Current dependent tables:
 
-## Source Column Preservation Rule
-
-When building downstream tables, views, extracts, reports, or derived datasets from source data, never silently remove source columns from the downstream output. If a source column would be dropped, excluded, renamed away, aggregated away, or made unavailable to preserve grain, schema shape, performance, or dashboard compatibility, state the proposed column change and get explicit user approval before implementing it.
-
-## Read-Only BigQuery Permission Classification Rule
-
-Classify BigQuery work by the actual operation, not by generic platform approval wording. Schema inspection, table metadata reads, row counts, fill-rate checks, `SELECT` queries, `INFORMATION_SCHEMA` queries, dry runs, and MCP table/query inspection methods are read-only. Do not ask the user for permission for those operations, and do not describe them as modifications.
-
-Mutating work includes `CREATE`, `CREATE OR REPLACE`, `ALTER`, `DROP`, `DELETE`, `UPDATE`, `MERGE`, `INSERT`, table/view replacement, scheduled-query changes, and metadata writes. For those operations, follow the project versioning and approval rules.
-
-If a read-only MCP path is blocked or misclassified by an approval layer, switch to a safe read-only fallback such as `bq show`, a read-only `SELECT`, or the repo helper `scripts/use_sandbox_gcloud.sh`, but only after confirming the selected CLI auth/config path already has an active account. Do not retry through a fresh sandbox-writable `CLOUDSDK_CONFIG` that has not been authenticated; if that path has no active account, stop the CLI fallback and return to BigQuery MCP or another already-working read-only path.
+| Dependent table | Base object | Refresh owner | Freshness proof |
+|---|---|---|---|
+| [Clustered advertiser QA table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_clustered_by_advertiser_qa&page=table) | [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Scheduled query `master_data_model_clustered_advertiser_refresh`; universal runner step `Master Data Model Clustered Advertiser Refresh`; manual same-session refresh after base-view changes | Transfer run succeeds, table remains clustered by `_advertiser`, and row count is reconciled to the source view |
+| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) plus DCM and FPD source detail tables | Universal runner step `Master Data Model Clustered Advertiser Refresh`; manual same-session run of `create_master_stg_data_model_v3.sql` after base/source changes | Builder succeeds, table remains clustered by `_advertiser`, no `package_plan` rows exist, visible grain keys are unique, and each package/date has no more than one summable planned carrier |
 
 ## Documentation Hygiene
 
@@ -56,6 +58,8 @@ When verifying Google Sheet UX or formatting, distinguish rendered visual order 
 ## Manual Package Editor Formatting Preservation
 
 For the live Manual Data Editor Google Sheet, treat user-made formatting edits as the current source of truth. Do not run `manual_package_edits/setup_manual_package_editor_sheet.mjs` or any other formatting rebuild against the live sheet unless the user explicitly asks for a full formatting rebuild. Routine data refreshes should use the loader only. Before any future sheet-formatting change, take a read-only formatting snapshot of the live sheet and compare against the intended edit so user-made formatting is not silently overwritten.
+
+When changing Manual Data Editor headers, column order, visible/hidden column counts, or any field that conditional formatting references, verify and repair the live conditional-format formulas from the current header map before claiming completion. Completion proof must include the conditional-format rule count, sample formulas showing current baseline/manual-marker columns, and live visible-format evidence for the affected user-facing columns/rows. API schema, loader success, or header-value checks alone are not enough.
 
 ## Manual Package Editor Marker Debugging
 

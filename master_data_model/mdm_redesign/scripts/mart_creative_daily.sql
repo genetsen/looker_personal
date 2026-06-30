@@ -10,6 +10,8 @@ OPTIONS(
 )
 AS
 SELECT
+  -- LIVE VIEW NOTE: Creative/day reporting shortcut derived from the pilot
+  -- creative evidence view; package totals remain non-summable context.
   creative_name,
   creative_image,
   _package_id,
@@ -66,6 +68,8 @@ base AS (
   FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view` compat
 )
 SELECT
+  -- LIVE VIEW NOTE: Stable BI-facing evidence view with compact universal
+  -- fields and source-backed fill-blanks semantics.
   base.* EXCEPT (
     uni_placement_id_placeholder,
     uni_placement_available,
@@ -77,9 +81,9 @@ SELECT
 
   -- Placeholder dimensions
   CASE
-    WHEN base._creative_img IS NULL AND base.fpd_orig_creative IS NULL
+    WHEN base._creative_img IS NULL AND base.fpd_creative IS NULL
     THEN 'not_available_at_source'
-    ELSE COALESCE(base._creative_img, base.fpd_orig_creative, 'not_available_at_source')
+    ELSE COALESCE(base._creative_img, base.fpd_creative, 'not_available_at_source')
   END AS univ_creative_placeholder,
   'not_available_at_source' AS univ_dma_placeholder,
   COALESCE(base._placement_id, 'not_available_at_source') AS univ_placement_placeholder,

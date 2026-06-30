@@ -50,6 +50,7 @@ Instruction files policy:
 - MFT export and mart views (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft`), including DCM UTM lineage notes and Mass validation queries for `repo_stg.dcm_plus_utms`
 - Prisma supplier logo reload (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/reload_prisma_supplier_logos.sh`) to rebuild `looker-studio-pro-452620.landing.prisma_supplier_logos` from `Supplier_logos.xlsx` `Logos!A:C`
 - Prisma package-level actuals layering (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/prisma_processed_plusDCMFPD.sql`) to build the sibling view `looker-studio-pro-452620.Prisma.prisma_processed_plusDCMFPD` with package-level DCM and FPD rollups plus FPD-aware tracking status
+- Prisma digital-plus-linear planning view (`looker-studio-pro-452620.Prisma.prisma__stg__digital_plus_linear_view`) and its scheduled snapshot table expose `tracking_delivery_source` separately from `tracking_status`, so consumers can distinguish DCM-backed, FPD-backed, and DCM+FPD delivery evidence without changing the status label.
 - Basis UTM processing utilities (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms`) with active scripts in `essential/` and legacy assets in `archive/`
 - TV Gmail loaders (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md`) documenting the shared local and national estimate-ingestion flow into `landing.tv_local_estimates` and `landing.tv_national_estimates`
 

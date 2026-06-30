@@ -17,6 +17,7 @@ The important architecture split is simple:
 | Reporting mart | Apply reporting-only exclusions and recalculate dashboard rollups | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) |
 | Manual editor | Let users correct visible dashboard values in a controlled Sheet workflow | [manual_package_edits](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits) |
 | Versioned/detail views | Preserve compatibility and lower-grain delivery detail without changing the main package/date grain | [create_data_model_delivery_detail_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_data_model_delivery_detail_v2.sql) |
+| V3 lowest-grain evaluation table | Test the one-table natural-source-grain model with a deduced planned carrier per package/date | [create_master_stg_data_model_v3.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v3.sql) |
 
 ## Project Classification
 
@@ -37,6 +38,7 @@ The important architecture split is simple:
 | Reporting mart | Keeps the base model as evidence, then filters low-signal rows and recalculates rollups for reporting. |
 | Manual Package Editor | Lets users edit visible Sheet values, validates those edits, and writes auditable `man_*` evidence. |
 | Delivery-detail v2 | Preserves lower-grain creative and delivery detail in a sibling view instead of collapsing it into the package/date model. |
+| Master model v3 | Evaluates a one-table lowest-available-grain shape where natural source rows remain detailed and package/date planned metrics roll up from one deduced carrier row. |
 | Model maps | Provide interactive orientation for lineage, dependencies, outputs, and modeling risks. |
 
 ## Technology Stack Summary
@@ -58,6 +60,7 @@ The important architecture split is simple:
 | Manual edits are explicit evidence | Corrected values remain auditable through raw, daily, model, and mart layers. |
 | Sheet formatting is not loader-owned | Routine refreshes avoid overwriting user-made formatting changes. |
 | Live warehouse is the behavior source of truth | Local SQL files are definitions and deploy inputs, but current behavior must be checked in BigQuery before production claims. |
+| Stored support tables need same-session refresh | The clustered advertiser QA table and v3 evaluation table are refreshed together by the universal runner's `Master Data Model Clustered Advertiser Refresh` step. |
 
 ## Documentation Map
 
@@ -73,4 +76,3 @@ The important architecture split is simple:
 ## Important Boundary
 
 This documentation was generated from local repo files during a deep documentation scan. It summarizes project structure and intended behavior. For current warehouse state, row counts, schemas, freshness, and production behavior, inspect the live BigQuery objects before making or accepting a data claim.
-

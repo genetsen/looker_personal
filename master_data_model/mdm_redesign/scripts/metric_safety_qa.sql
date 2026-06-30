@@ -85,7 +85,7 @@ SELECT
 FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view`;
 
 -- ============================================================
--- Check 4: FPD metric duplication check
+-- Check 4: Consolidated FPD lineage check
 -- ============================================================
 INSERT INTO `looker-studio-pro-452620.mdm_qa.metric_safety_checks`
 SELECT
@@ -94,13 +94,19 @@ SELECT
   'fpd_impressions' AS metric_name,
   'package_date' AS grain,
   CASE
-    WHEN COUNTIF(fpd_impressions IS NOT NULL AND fpd_orig_impressions IS NOT NULL AND fpd_impressions != fpd_orig_impressions) > 0
+    WHEN COUNTIF(
+      (fpd_impressions IS NOT NULL OR fpd_spend IS NOT NULL)
+      AND fpd_source_name IS NULL
+    ) > 0
     THEN 'WARN'
     ELSE 'PASS'
   END AS status,
   FORMAT(
-    'FPD impressions: %d rows with orig value, %d rows with updated value.',
-    COUNT(fpd_orig_impressions),
-    COUNT(fpd_impressions)
+    'Consolidated FPD rows: %d with metrics, %d missing contributing-source lineage.',
+    COUNTIF(fpd_impressions IS NOT NULL OR fpd_spend IS NOT NULL),
+    COUNTIF(
+      (fpd_impressions IS NOT NULL OR fpd_spend IS NOT NULL)
+      AND fpd_source_name IS NULL
+    )
   ) AS detail
 FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view`;

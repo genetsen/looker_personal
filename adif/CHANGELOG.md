@@ -1,3 +1,16 @@
+## 2026-06-26
+
+### Changed
+- **ADIF instruction ownership cleanup**
+  What: Updated local ADIF agent rules to point general BigQuery, SQL, source-of-truth, and modeling decisions to the global rule document while keeping ADIF-specific Dataform notebook access, scheduled-query context, and validation metric defaults local.
+  Why: Prevents ADIF instructions from drifting from global warehouse behavior while preserving the project details needed to work safely in this folder.
+
+<details><summary>Paths - ADIF instruction ownership cleanup</summary>
+
+- [AGENTS.md](AGENTS.md)
+
+</details>
+
 ## 2026-04-29
 
 ### Added

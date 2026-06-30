@@ -14,6 +14,8 @@ OPTIONS(
 )
 AS
 SELECT
+  -- LIVE VIEW NOTE: Metric-status helper classifying availability and
+  -- summability for the universal package/date evidence layer.
   base.*,
 
   -- ============================================================
@@ -69,7 +71,7 @@ SELECT
   -- ============================================================
   CASE
     WHEN base.fpd_impressions IS NOT NULL THEN 'direct'
-    WHEN base.fpd_orig_impressions IS NOT NULL THEN 'direct'
+    WHEN base.fpd_impressions IS NOT NULL THEN 'direct'
     ELSE 'unavailable'
   END AS univ_fpd_impressions_value_status,
   'additive' AS univ_fpd_impressions_summability,

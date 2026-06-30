@@ -48,13 +48,13 @@ flowchart TD
 - Live behavior:
   - Builds a `social` branch from [the OLIPOP social summary](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_mart&t=olipop_MMM&page=table)
   - Builds non-social rows from [the master data model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table)
-  - Labels non-social rows by `qa_row_type`, so TV rows show as `tv`, standalone manual corrections show as `manual`, and digital rows stay `digital`
+  - Labels non-social rows by `qa_media_data_type`, so TV rows show as `tv`, standalone manual corrections show as `manual`, and digital rows stay `digital`
   - Aggregates non-social rows to package, tactic, data source, and Sunday-start week
   - Returns `data_source`, `package`, `Product`, `Tactic`, `date_week`, `impressions`, `clicks`, and `spend`
 - Important live filters:
   - The non-social master-model branch keeps rows where `_advertiser_short_name` contains `OLI`
   - The non-social master-model branch also keeps rows where `_campaign_name LIKE "%26%"`
-  - The non-social master-model branch currently includes `qa_row_type IN ("digital", "tv", "manual")`
+  - The non-social master-model branch currently includes `qa_media_data_type IN ("digital", "tv", "manual")`
 - Notes:
   - The `social` branch hardcodes `data_source = "social"` and `package = ""`
   - The non-social branch uses `_package_name` as `package` and `_supplier_name` as `Tactic`
@@ -152,7 +152,7 @@ select * from looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_t
   - Full outer joins delivery, manual, planning, social, TV, and related evidence by the master model's package/date logic
   - Creates final delivery metrics in `_impressions`, `_clicks`, and `_spend`
   - Adds package-level plan-vs-actual rollups and package-overdelivery flags
-  - Exposes QA/source labels such as `qa_row_type`, `qa_row_data_source_primary`, and `qa_row_data_issue_category`
+  - Exposes QA/source labels such as `qa_media_data_type`, `qa_row_data_source_primary`, and `qa_data_issues`
 
 ### 7. Leaf Dependencies
 

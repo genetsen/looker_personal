@@ -802,51 +802,51 @@ mart_packages AS (
     ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_end_date,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'tv' THEN `tv_net_cost`
-        WHEN `qa_row_type` = 'social' THEN `s_spend`
+        WHEN `qa_media_data_type` = 'tv' THEN `tv_net_cost`
+        WHEN `qa_media_data_type` = 'social' THEN `s_spend`
         WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
-          COALESCE(NULLIF(COALESCE(`fpd_orig_spend`, 0) + COALESCE(`fpd_updated_spend`, 0), 0), `dcm_daily_recalculated_cost`)
+          COALESCE(NULLIF(`fpd_spend`, 0), `dcm_daily_recalculated_cost`)
         ELSE NULL
       END,
       0
     )) AS current_spend,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'tv' THEN CAST(`tv_net_impressions` AS FLOAT64)
-        WHEN `qa_row_type` = 'social' THEN `s_impressions`
+        WHEN `qa_media_data_type` = 'tv' THEN CAST(`tv_net_impressions` AS FLOAT64)
+        WHEN `qa_media_data_type` = 'social' THEN `s_impressions`
         WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
-          COALESCE(NULLIF(COALESCE(`fpd_orig_impressions`, 0) + COALESCE(`fpd_updated_impressions`, 0), 0), CAST(`dcm_impressions` AS FLOAT64))
+          COALESCE(NULLIF(`fpd_impressions`, 0), CAST(`dcm_impressions` AS FLOAT64))
         ELSE NULL
       END,
       0
     )) AS current_impressions,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'tv' THEN `tv_net_cost`
-        WHEN `qa_row_type` = 'social' THEN `s_pacing_planned_spend`
+        WHEN `qa_media_data_type` = 'tv' THEN `tv_net_cost`
+        WHEN `qa_media_data_type` = 'social' THEN `s_pacing_planned_spend`
         ELSE NULL
       END,
       0
     )) AS current_planned_spend_fallback,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'tv' THEN CAST(`tv_net_impressions` AS FLOAT64)
+        WHEN `qa_media_data_type` = 'tv' THEN CAST(`tv_net_impressions` AS FLOAT64)
         ELSE NULL
       END,
       0
     )) AS current_planned_impressions_fallback,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'social' THEN `s_clicks`
+        WHEN `qa_media_data_type` = 'social' THEN `s_clicks`
         WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
-          COALESCE(`fpd_orig_clicks`, CAST(`dcm_clicks` AS FLOAT64))
+          COALESCE(`fpd_clicks`, CAST(`dcm_clicks` AS FLOAT64))
         ELSE NULL
       END,
       0
     )) AS current_clicks,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'social' THEN `s_video_plays`
+        WHEN `qa_media_data_type` = 'social' THEN `s_video_plays`
         WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
           CAST(`dcm_video_plays` AS FLOAT64)
         ELSE NULL
@@ -855,7 +855,7 @@ mart_packages AS (
     )) AS current_video_plays,
     SUM(COALESCE(
       CASE
-        WHEN `qa_row_type` = 'social' THEN `s_video_comps`
+        WHEN `qa_media_data_type` = 'social' THEN `s_video_comps`
         WHEN REGEXP_CONTAINS(COALESCE(`qa_row_data_sources_available`, ''), r'prisma') THEN
           CAST(`dcm_video_comps` AS FLOAT64)
         ELSE NULL

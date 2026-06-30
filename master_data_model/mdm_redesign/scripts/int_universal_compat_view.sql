@@ -31,10 +31,10 @@ base AS (
     CURRENT_DATE() AS univ_record_date,
 
     -- Legacy QA prefix fields
-    qa_row_type,
+    qa_media_data_type,
     qa_row_data_source_primary,
     qa_row_data_sources_available,
-    qa_row_data_issue_category,
+    qa_data_issues,
 
     -- Core identity fields
     _package_id,
@@ -108,36 +108,23 @@ base AS (
     dcm_total_delivered_imps,
     dcm_total_del_inflight_imps,
 
-    -- FPD original fields
-    fpd_orig_impressions,
-    fpd_orig_spend,
-    fpd_orig_clicks,
-    fpd_orig_sends,
-    fpd_orig_opens,
-    fpd_orig_benchmark,
-    fpd_orig_benchmark_metric,
-    fpd_orig_creative,
-    fpd_creative_img,
-    _creative_img,
-    man_creative_img,
-    fpd_orig_source_files,
-    fpd_orig_source_urls,
-    fpd_orig_source_modified_time,
-
-    -- FPD updated fields
-    fpd_updated_impressions,
-    fpd_updated_spend,
-    fpd_updated_suppliers,
-    fpd_updated_initiatives,
-    fpd_updated_data_timestamp,
-    fpd_updated_source_sheet_modified_time,
-
-    -- FPD final fields
+    -- Consolidated FPD fields
     fpd_impressions,
     fpd_spend,
     fpd_clicks,
     fpd_sends,
     fpd_opens,
+    fpd_benchmark,
+    fpd_benchmark_metric,
+    fpd_factor,
+    fpd_creative,
+    fpd_creative_img,
+    _creative_img,
+    man_creative_img,
+    fpd_source_name,
+    fpd_source_url,
+    fpd_source_content_modified_at,
+    fpd_data_timestamp,
 
     -- Final universal metrics
     _spend,
@@ -257,18 +244,11 @@ base AS (
     qa_pkg_act_spend_doNotSum,
     qa_pkg_act_impressions_doNotSum,
     qa_pkg_act_clicks_doNotSum,
-    qa_pkg_fpd_orig_impressions_doNotSum,
-    qa_pkg_fpd_orig_spend_doNotSum,
-    qa_pkg_fpd_updated_impressions_doNotSum,
-    qa_pkg_fpd_updated_spend_doNotSum,
-    qa_pkg_fpd_combined_impressions_doNotSum,
-    qa_pkg_fpd_combined_spend_doNotSum,
+    qa_pkg_fpd_impressions_doNotSum,
+    qa_pkg_fpd_spend_doNotSum,
 
     -- QA row metadata
-    qa_row_data_callouts,
-    qa_pkg_over_bool,
-    qa_pkg_over_flag,
-    qa_model_view_runtime_timestamp,
+    qa_package_spend_over_plan_flag,
     initiative
 
   FROM `looker-studio-pro-452620.master_stg.data_model`
@@ -277,6 +257,8 @@ base AS (
 -- Add placeholder semantics (Story 2.3)
 -- Unavailable lower-grain dimensions use clear placeholders
 SELECT
+  -- LIVE VIEW NOTE: Universal compatibility view over the canonical master
+  -- model, preserving the public schema and adding universal placeholders.
   base.*,
 
   -- Placeholder dimension fields

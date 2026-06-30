@@ -11,6 +11,7 @@
 | [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_mart) | Dashboard-ready package/date | Filters low-signal rows and recalculates reporting rollups | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) |
 | [Data model v2](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_v2) | Compatibility package/date | Wrapper over the main model for existing v2 consumers | [create_master_stg_data_model_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v2.sql) |
 | [Delivery detail v2](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_delivery_detail_v2) | Source/detail delivery grain | Preserves DCM and original FPD detail without collapsing creative into package/date rows | [create_data_model_delivery_detail_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_data_model_delivery_detail_v2.sql) |
+| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Natural source grain with one package/date planned carrier | Evaluation table for the one-table lowest-available-grain contract | [create_master_stg_data_model_v3.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v3.sql) |
 | [Manual raw edits](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_edits_raw) | One row per editor row | Stores validation status, replacement values, metadata overrides, and baselines | [create_manual_package_edit_tables.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_manual_package_edit_tables.sql) |
 | [Manual daily rows](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_daily) | Package/date for valid metric edits | Feeds date-bound manual metric values into the master model | [create_manual_package_edit_tables.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_manual_package_edit_tables.sql) |
 
@@ -47,6 +48,7 @@
 | Manual raw validation state | Manual raw landing table |
 | Manual daily metric allocations | Manual daily landing table |
 | Repeated package budget context on detail rows | `doNotSum` fields only |
+| One-table v3 planned metrics | Exactly one deduced natural row per package/date carries summable `_planned_*`; `qa_v3_package_planned_*_doNotSum` carries repeated planned context. |
 
 ## Validation Concepts
 
@@ -57,4 +59,3 @@
 | `man_*` fields | Auditable manual evidence fields, not hidden replacement magic. |
 | `doNotSum` fields | Repeated context fields that should not be summed across lower-grain rows. |
 | Synthetic keys | Generated package-like keys for sources that do not naturally share Prisma package IDs. |
-

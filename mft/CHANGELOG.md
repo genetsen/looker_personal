@@ -3,6 +3,20 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-06-26
+
+### Changed
+#### **MFT instruction ownership cleanup**
+What: updated local MFT agent rules to point general BigQuery, SQL, source-of-truth, read-only permission, field-lineage, and grain decisions to the global rule document while keeping MFT's stricter safe-query helper, row limits, cost caps, and DCM UTM validation defaults local.
+Why: prevents duplicated warehouse policy from drifting while preserving the MFT-specific guardrails that reduce expensive or overly broad data pulls.
+
+<details>
+<summary>Paths - MFT instruction ownership cleanup</summary>
+
+- [AGENTS.md](AGENTS.md)
+
+</details>
+
 ## 2026-03-13
 
 ### Added

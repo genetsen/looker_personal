@@ -14,6 +14,7 @@ flowchart TD
   F --> C
   C --> G["Reporting mart"]
   C --> H["Compatibility and detail views"]
+  C --> J["Stored support tables: clustered advertiser QA and v3"]
   G --> I["Dashboards and reporting consumers"]
 ```
 
@@ -27,6 +28,7 @@ flowchart TD
 | Manual editor loader | Detect edited Sheet cells, validate them, write raw/daily manual rows, and refresh visible values | [load_manual_package_edits.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) |
 | Manual editor UX tools | Manage Sheet formatting, filters, slicers, helper columns, and visual markers | [manual_package_edits](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits) |
 | Apps Script audit and request control | Stamp row-level manual-edit audit fields and send a refresh request without running the loader | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) |
+| Stored support table refresh | Refresh the clustered advertiser QA table and v3 evaluation table from current master/source inputs | [run_master_data_model_clustered_advertiser_refresh.sh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) |
 
 ## Model Layers
 
@@ -35,7 +37,8 @@ flowchart TD
 | Main evidence model | Package/date plus explicit synthetic rows for non-Prisma sources | Preserve evidence and issue labels before reporting filters. |
 | Reporting mart | Dashboard-ready package/date | Filter low-signal rows and recalculate rollups after filtering. |
 | Delivery detail v2 | Lower-grain DCM/FPD delivery detail | Preserve creative/detail without duplicating package/date metrics. |
-| One-table sample views | Mixed package/detail rows | Evaluation-only; consumers must filter row level before summing. |
+| V3 lowest-grain table | Natural source grain plus one planned carrier per package/date | Evaluation-only; proves whether one table can roll up planned and actual metrics without a user-selected grain. |
+| One-table sample views | Mixed package/detail rows | Historical comparison only; consumers must filter row level before summing. |
 
 ## Data Flow
 
@@ -67,3 +70,4 @@ flowchart TD
 | User Sheet formatting can be overwritten | Do not run setup/rebuild scripts unless a full rebuild is explicitly approved. |
 | Manual values can re-mark themselves if baselines use final fields | Loader uses source-derived baselines instead of manual-affected final dashboard fields. |
 | Row counts and source totals naturally fluctuate | Keep counts in run-specific proof notes, not durable docs. |
+| Stored evaluation tables can go stale after base changes | Run `Master Data Model Clustered Advertiser Refresh` or the v3 builder in the same work session and verify the live tables before claiming freshness. |

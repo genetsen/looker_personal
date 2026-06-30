@@ -14,8 +14,15 @@ This project does not have application UI components in the usual web-app sense.
 | Manual edit schemas | [create_manual_package_edit_tables.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_manual_package_edit_tables.sql) | Defines manual raw and daily landing tables. |
 | Compatibility wrappers | [create_master_stg_data_model_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v2.sql), [create_master_stg_data_model_mart_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart_v2.sql) | Keep existing v2 consumers pointed at current package/date shapes. |
 | Detail models | [create_data_model_delivery_detail_v2.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_data_model_delivery_detail_v2.sql) | Preserve lower-grain delivery detail safely. |
+| V3 evaluation table | [create_master_stg_data_model_v3.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v3.sql) | Builds the clustered one-table lowest-grain candidate with natural source rows and one summable planned carrier per package/date. |
 | Client-specific views | Ritual SQL files | Filter master outputs to Ritual-specific consumers. |
 | Sample models | `*_sample.sql` files | Compare alternate package/detail shapes without making them canonical. |
+
+## Refresh Components
+
+| Component | File | Responsibility |
+|---|---|---|
+| Master stored-table refresh wrapper | [run_master_data_model_clustered_advertiser_refresh.sh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) | Triggers the clustered advertiser QA scheduled query, verifies row-count parity, rebuilds `data_model_v3`, and verifies the v3 grain contract. |
 
 ## Manual Editor Components
 

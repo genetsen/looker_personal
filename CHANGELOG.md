@@ -2,6 +2,49 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-06-30
+
+- **ADDED** - Created a live Omni AI eval prompt set for the shared Master Stg Data Model so future AI-answer checks cover normal performance questions, Ritual and Apollo topic routing, and the highest-risk QA cases: unmatched packages, missing delivery, pacing issues, source reconciliation, manual overrides, QTD reach, and v3 metric-grain behavior.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
+## 2026-06-29
+
+- **ADDED** - Built the master data model v3 sibling table as a clustered, lowest-available-grain evaluation version. It keeps the stable production master model untouched while preserving natural source grain, carrying summable planned metrics on one deduced package/date row, expanding DCM/FPD actuals to detail grain, and applying manual delivery overrides as package/date replacement rows.
+- **CHANGED** - Added v3 package/date planned context fields with `doNotSum` names so rollups can reference planned spend and impressions while `_planned_*` sums remain correct without selecting a grain field.
+- **CHANGED** - Added the v3 table refresh to the universal runner's master data model clustered advertiser refresh step, so the stored clustered QA table and v3 evaluation table are refreshed and verified together.
+- **CHANGED** - Clarified the Prisma digital-plus-linear runbook so freshness checks follow the live view chain through processed Prisma, DCM, FPD, and TV sources instead of treating the final view as a self-refreshing table.
+- **ADDED** - Exposed delivery-source evidence as a separate field on the Prisma digital-plus-linear planning view and scheduled snapshot table, so rows can show whether `Tracking Delivery` is backed by DCM, FPD, or both without changing the existing status label.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
+## 2026-06-26
+
+- **ADDED** - Added a daily scheduled refresh and dedicated universal runner line for the master data model's clustered advertiser QA table, with project instructions requiring that dependent stored tables be refreshed whenever their base view changes.
+- **CHANGED** - Reduced duplicated BigQuery and data-modeling policy in repository instructions by pointing project rules to the global warehouse/modeling rule document and keeping only local proof ownership, QA isolation, and source-specific safeguards here.
+- **FIXED** - Standardized advertiser short codes in the live master data model so mapped clients keep the same short code across social, WP social, manual, digital, TV, and Amazon rows.
+- **REMOVED** - Filtered Highlights rows out of the live master data model and reporting mart.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
+## 2026-06-25
+
+- **ADDED** - Published package-level primary and available source fields to the master evidence model and reporting mart, with reporting labels recalculated after mart-only exclusions.
+- **VERIFIED** - Confirmed the change against Olipop data from March 1 through May 31 with unchanged row coverage and delivery metrics.
+- **CHANGED** - Published a simpler master-data-model schema with one consolidated FPD field family and clearer QA names, removing duplicate source totals, duplicate manual audit columns, and misleading query-runtime metadata.
+- **CHANGED** - Updated Ritual, OLIPOP, Manual Data Editor, and active redesign consumers to use the new master-model contract without changing reporting totals.
+- **FIXED** - Ensured explanatory comments are retained inside all affected live BigQuery view definitions by placing them directly under the outer query selection.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-06-24
 
 ### Changed
@@ -31,6 +74,34 @@ All notable changes to this repository are documented in this file.
 
   [Omni operations README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/README.md)
   [Omni changelog](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/CHANGELOG.md)
+
+  </details>
+
+- **BigQuery validation responsibility split**
+  What: Consolidated repeated warehouse instructions into one workflow: semantic layers choose the live object and grain, SQL Change Guard owns broad pre-deployment comparison, and one focused live check proves the deployed behavior.
+  Why: Prevents multiple skills and AGENTS rules from rerunning equivalent schema, key, and metric checks.
+  Control: Preserved isolated QA objects, approval before production mutation, source-column coverage, unmatched-row metric exclusion, and QA-object metadata requirements.
+
+  <details><summary>Paths - BigQuery validation responsibility split</summary>
+
+  [Repository agent rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/AGENTS.md)
+  [Master data model agent rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/AGENTS.md)
+
+  </details>
+
+### Added
+
+- **Master Model Canonical Creative Name**
+  What: Published `_creative_name` to the live package/date master model and reporting mart using original FPD creative, Amazon ad-name, and social creative fields.
+  Why: Gives reporting consumers one consistent creative-label column without silently collapsing DCM's multiple creative-level records into a package/date value.
+  Verification: Confirmed 80,639 populated live rows, zero precedence mismatches, and no changes to row count, spend, impressions, or clicks.
+  Boundary: DCM creative remains available through the delivery-detail model.
+
+  <details><summary>Paths - Master Model Canonical Creative Name</summary>
+
+  [Master model SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql)
+  [Master model README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md)
+  [Master model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html)
 
   </details>
 

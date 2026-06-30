@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-06-30
+
+- **CHANGED** - Added the v3 lowest-grain evaluation table refresh to the universal runner's master-model clustered advertiser refresh step, so a normal runner refresh now rebuilds both stored master-model support tables and checks v3's no-duplicate/no-extra-planned-carrier contract.
+
+## 2026-06-29
+
+- **ADDED** - Built the clustered `master_stg.data_model_v3` sibling table as a lowest-available-grain master-model candidate. Natural source rows stay at source grain, summable planned metrics are carried on one deduced package/date row, and manual delivery overrides suppress lower-grain final actuals for the same package/date.
+- **CHANGED** - Added `qa_v3_package_planned_spend_doNotSum` and `qa_v3_package_planned_impressions_doNotSum` to v3 rows so rollups can access package/date planned context while `_planned_*` sums remain correct without selecting a grain field.
+- **VERIFIED** - Compared June 2026 v3 totals against stable `master_stg.data_model`: package/date count stayed aligned, planned spend/impressions matched to floating-point noise, every package/date had at most one summable planned carrier, and the visible v3 grain key had zero duplicates.
+
+## 2026-06-26
+
+- **ADDED** - Created a daily scheduled refresh and a dedicated universal runner line for the clustered advertiser QA table, with a project rule that dependent stored tables must be refreshed whenever their base master view changes.
+- **CHANGED** - Simplified local master-model instructions so global BigQuery, SQL, grain, read-only permission, and modeling-compromise rules live in the global rule document, while this project keeps only master-specific overlays and field semantics.
+- **FIXED** - Standardized advertiser short codes across the live master evidence model and reporting mart so social, WP social, manual, digital, TV, and Amazon rows use the same mapped client code where one exists.
+- **REMOVED** - Filtered Highlights rows out of the live master evidence model and reporting mart.
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan - RECOMMENDED
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
+## 2026-06-25
+
+- **ADDED** - Published package-level source fields that identify the source populating final delivery metrics and list every source available to the package. Packages with different metric contributors are labeled `multiple`, while packages with no final actual source are labeled `none`.
+- **VERIFIED** - Validated the evidence model and reporting mart against Olipop data from March 1 through May 31, confirming unchanged rows and metrics, stable package labels, and mart-side recalculation after reporting filters.
+- **CHANGED** - Simplified the live master evidence model and reporting mart by removing duplicate QA columns, renaming ambiguous fields, standardizing healthy rows as `no_issues`, and keeping boolean indicators under the `_flag` suffix.
+- **CHANGED** - Replaced separate original/revised FPD reporting columns with one consolidated `fpd_*` family, including final metrics, benchmark, factor, creative, and contributing-source lineage.
+- **FIXED** - Moved purpose notes directly under each outer `SELECT` so BigQuery preserves the comments in all 14 affected live view definitions instead of stripping file-leading headers.
+- **VERIFIED** - Confirmed the live master, marts, Ritual views, redesign views, and OLIPOP downstream view all query successfully while row count and reporting metrics remain aligned with the validated baseline.
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan - RECOMMENDED
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
 ## 2026-06-24
 
 - **ADDED** - Published canonical source and freshness fields to the live master evidence model and reporting mart. Every row now identifies its driving source table and operational refresh time, while FPD and Manual Data Editor rows separately expose reliable source-content modification time.

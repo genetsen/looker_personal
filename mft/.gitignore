@@ -1,0 +1,7 @@
+# MFT Local Workspace Ignores
+#
+# Keeps generated scratch outputs out of baseline commits while leaving
+# source SQL, validation queries, and documentation visible to Git.
+
+.tmp/
+.tmp-current-work/

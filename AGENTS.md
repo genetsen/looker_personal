@@ -98,48 +98,19 @@ Primary docs: `mft/README.md` (pipeline overview and SQL references).
 
 TODO: Confirm if there is a preferred local entrypoint or run command for MFT beyond the SQL views documented in `mft/README.md`.
 
-## SQL QA Safety Protocol (Systemwide)
+## BigQuery Workflow Routing
 
-Applies to all SQL QA work in this workspace across all datasets/projects.
+- Apply the global [BigQuery, SQL, and data-modeling rules](/Users/eugenetsenter/.codex/BIGQUERY_SQL_DATA_MODELING_RULES.md) for live source-of-truth selection, read-only inspection, permission classification, field lineage, grain conflicts, and durable documentation boundaries.
+- Repo-specific proof ownership: use the relevant semantic-layer skill for orientation only, then use `sql-change-guard` as the sole broad pre-deployment comparison owner for SQL changes that feed downstream models, views, or reporting tables. Reuse its passing schema, key-coverage, and metric evidence instead of repeating equivalent queries.
+- Repo-specific deployment proof: after deployment, use one focused live check for the changed behavior and downstream surface. Do not rerun the pre-deployment baseline comparison unless live evidence conflicts.
+
+## SQL QA Safety Requirements
 
 1. Run QA in isolated `_qa` tables/views only.
-2. Provide proof before live changes (for example: query results, row counts, schema compatibility checks, and error diffs).
-3. Do not patch live scripts/configs/tables until explicit user approval after proof review.
-4. For new or replacement combined/master views, do a source-field coverage audit before proposing or deploying the output schema: inventory columns from every contributing live source, mark each as keep, rename, null-fill, aggregate, nested/preserved, or intentionally omit, and get approval for intentional omissions. Do not silently curate away user-facing planning/reporting fields such as package names, package-friendly labels, channel/grouping fields, supplier/site fields, or source lineage fields when they exist upstream.
-5. For `master_data_model`, allowing unmatched DCM/FPD delivery rows into a QA or production candidate means raw evidence visibility only unless the user explicitly approves metric inclusion. Rows without a matching Prisma package may preserve `d_*`, `fpd_*`, source labels, and issue labels, but must not populate `final_*` metrics or contribute to package actual rollups. Validate this explicitly before presenting the candidate as correct.
-
-## BigQuery Object Reference Default
-
-When the user mentions a BigQuery table or view path, treat the live warehouse object as the default source of truth unless the user explicitly asks for the local SQL file instead.
-
-For `master_data_model`, row counts, source mix counts, package-key counts, and media totals are live QA evidence, not documentation state. Do not update README, maps, or durable docs just to track fluctuating counts; recheck them live when needed and summarize them only in the run-specific handoff unless the user explicitly asks to preserve a snapshot.
-
-Before any BigQuery-backed data-model task, state the source-of-truth gate before tool use:
-
-- `SOURCE OF TRUTH`: live warehouse object, unless the user named a local file path.
-- `FIRST ORIENTATION`: repo Markdown docs may be read first for context, especially README/runbook notes, but only as orientation.
-- `FIRST EVIDENCE TOOL`: BigQuery MCP for live warehouse validation before relying on any repo takeaway.
-- `LOCAL FILE RULE`: read local SQL only after live inspection, when comparing local-vs-live drift, or when the user explicitly named the local file; validate Markdown doc takeaways against production before acting on them.
-
-Use this order:
-
-1. Optionally read narrow repo Markdown docs first to understand names, lineage, and intended workflow.
-2. Inspect the live production object with BigQuery MCP before treating any repo doc or SQL takeaway as true.
-3. If a likely local SQL file or documentation entry also exists, compare the local definition or description against production.
-4. Tell the user clearly if the repo doc or local SQL appears to drift from production, then work together to resolve the mismatch before relying on the local version for analysis or edits.
-5. If the user mentions a local file path, then work from the file directly instead of assuming the production object is the target.
-
-When referencing a BigQuery table or view in user-facing outputs, render it as a clickable deep link whenever the client supports one instead of plain text only.
-
-## BigQuery Access Default
-
-Use BigQuery MCP first for warehouse inspection work in this workspace.
-
-Use this order:
-
-1. Prefer BigQuery MCP for dataset discovery, schema inspection, and read-only query work.
-2. Use direct `gcloud` / `bq` command flows only when MCP is unavailable, when authentication needs repair, or when the task requires advanced access such as token-based Dataform notebook file reads.
-3. If a helper script exists for sandbox-safe auth in the current project, use that helper instead of raw home-folder `gcloud` config paths.
+2. Do not patch live scripts, configs, tables, or views until explicit user approval after proof review.
+3. Before configuring uniqueness checks, confirm the candidate keys are genuinely unique at the live model grain. Do not turn a known baseline condition into a false candidate failure.
+4. For new or replacement combined/master views, apply the global source-column preservation rule before excluding user-facing planning, reporting, or lineage fields.
+5. For `master_data_model`, unmatched DCM/FPD rows are raw evidence only unless metric inclusion is explicitly approved. They may preserve source fields and issue labels, but must not populate final metrics or package actual rollups.
 
 ## Shared BigQuery QA Object Hygiene
 

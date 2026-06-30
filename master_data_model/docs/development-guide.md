@@ -12,6 +12,7 @@
 | Manual editor loader changes | [load_manual_package_edits.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) and tests | Local tests plus live Sheet/raw/daily/model/mart proof if claiming end-to-end behavior. |
 | Sheet formatting changes | Read-only live formatting snapshot first | Rendered/pixel or visual proof for layout claims. |
 | Documentation changes | Existing README/runbook/model map | Link validation and clear boundary between durable semantics and fluctuating counts. |
+| Stored support table freshness | Universal runner wrapper or exact SQL builder | Live proof that clustered QA and v3 tables refreshed and still match their table-specific contracts. |
 
 ## Common Commands
 
@@ -41,6 +42,14 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false --dry_run 
   < master_data_model/create_master_stg_data_model.sql
 ```
 
+### Stored Support Table Refresh
+
+```bash
+/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh
+```
+
+This runner wrapper refreshes the clustered advertiser QA table, rebuilds `master_stg.data_model_v3`, and verifies the v3 grain contract.
+
 ## Deploy Order
 
 | Step | Script | Notes |
@@ -49,7 +58,8 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false --dry_run 
 | 2 | [create_master_data_model_upstream_tables_sched.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql) | Refreshes stored upstream table siblings. |
 | 3 | [create_master_stg_data_model.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql) | Replaces the main evidence view if deployed. |
 | 4 | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) | Replaces the reporting mart after the evidence model is current. |
-| 5 | v2/detail scripts | Refresh only the sibling objects needed for the task. |
+| 5 | [run_master_data_model_clustered_advertiser_refresh.sh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) | Refreshes stored support tables that depend on current master/source inputs: clustered advertiser QA and v3. |
+| 6 | v2/detail scripts | Refresh only the sibling objects needed for the task. |
 
 ## Testing Strategy
 

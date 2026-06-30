@@ -897,7 +897,7 @@
         notes: [
           "Known advertiser short names and source-name aliases map to one standardized value.",
           "Unmapped clients default to Prisma advertiser_name after trailing legal suffixes such as Inc, LLC, Corp, and Ltd are removed.",
-          "_advertiser_short_name remains unchanged for source lineage."
+          "_advertiser_short_name is the canonical advertiser code, so mapped clients keep the same short code across channels, platforms, and source systems."
         ],
         sources: [
           ["BigQuery: Advertiser mapping", bq("master_stg", "advertiser_mapping")],
@@ -939,7 +939,7 @@
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
-          "Original feeds fpd_orig_*; updated feeds fpd_updated_*."
+          "Original and revised FPD inputs are resolved into one public fpd_* family, including final metrics, factor, creative, benchmark, and contributing-source lineage."
         ],
         sources: [
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
@@ -1192,9 +1192,11 @@
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
-          "Calculates pkg_est_*, pkg_act_*, pkg_fpd_*, pkg_over_bool, and pkg_over_flag.",
+          "Calculates package planned, actual, consolidated FPD, and spend-over-plan QA fields.",
           "Runs in the same master SQL script after manual_existing_rows and manual_only_rows.",
           "Uses final fields after normal source precedence and valid manual replacements are applied.",
+          "Calculates qa_pkg_primary_data_source from the sources that actually populate final metrics, returning multiple when contributors differ across metrics or dates.",
+          "Combines every package source into qa_pkg_data_sources_available, including planning and pacing sources that do not populate final actuals.",
           "Carries qa_data_source, qa_data_source_refresh_at, and qa_data_source_content_modified_at into the package/date evidence output and reporting mart."
         ],
         sources: [
@@ -1221,8 +1223,9 @@
         callouts: { truth: "live", writes: false },
         notes: [
           "Contains digital, social, TV, WP, and manual-edit evidence in one shared schema.",
-          "Includes initiative, _video_views, _creative_name, _creative_img, man_* evidence, source issue labels, and row callouts.",
-          "_advertiser and _advertiser_name use the same standardized label from advertiser_mapping. New clients use a cleaned Prisma advertiser name by default.",
+          "Includes initiative, _video_views, _creative_name, _creative_img, consolidated fpd_* fields, man_* evidence, qa_data_issues, qa_pkg_primary_data_source, and qa_pkg_data_sources_available.",
+          "_advertiser and _advertiser_name use the same standardized label from advertiser_mapping. _advertiser_short_name uses that same mapping to publish the canonical client code across all mapped source rows. New clients use a cleaned Prisma advertiser name by default.",
+          "Excludes Highlights rows before final publication.",
           "Canonical _creative_name uses original FPD creative, Amazon ad name, then social creative. Amazon is checked before the shared social field because Amazon rows currently populate both fields. DCM creative stays in the delivery-detail view to preserve its lower grain."
         ],
         sources: [
@@ -1244,6 +1247,7 @@
         callouts: { truth: "live", writes: false },
         notes: [
           "Use this for reporting-ready totals when low-signal DCM rows should be excluded.",
+          "Recalculates package primary and available source fields after filtering so mart labels describe only reporting-visible evidence.",
           "Manual editor visible values use this mart as the dashboard snapshot."
         ],
         sources: [
@@ -1271,6 +1275,34 @@
           ["BigQuery: master_stg.data_model_v2", bq("master_stg", "data_model_v2")],
           ["BigQuery: master_stg.data_model_delivery_detail_v2", bq("master_stg", "data_model_delivery_detail_v2")],
           ["Delivery detail builder SQL", "../create_data_model_delivery_detail_v2.sql"]
+        ]
+      },
+      {
+        id: "v3-lowest-grain-output",
+        groupId: "master-output",
+        title: "V3 Lowest-Grain Table",
+        summary: "Clustered sibling table for one-table lowest-available-grain evaluation.",
+        truth: "Table: master_stg.data_model_v3.",
+        writes: "Stored table. Rebuild with create_master_stg_data_model_v3.sql or the universal runner step Master Data Model Clustered Advertiser Refresh after stable master inputs are current.",
+        freshness: "Current as of the last v3 builder run. The universal runner refreshes it immediately after the clustered advertiser QA table; production data_model is unchanged.",
+        risk: "high",
+        reviewReason: "Evaluation table: natural source rows, planned carrier rows, and manual override rows must keep package/date rollups correct without requiring a user-selected grain.",
+        kind: "output",
+        callouts: { truth: "live", writes: true },
+        notes: [
+          "Adds qa_v3_row_type, qa_v3_metric_grain, qa_v3_source_detail_type, qa_v3_ad_name, qa_v3_metric_behavior, and package planned doNotSum context before the stable master columns.",
+          "Source rows stay at their natural grain, including DCM placement/ad/creative and original FPD placement/factor/creative detail.",
+          "Summable _planned_* metrics are carried on one deduced natural row per package/date so package/date and higher rollups work without selecting a grain field.",
+          "qa_v3_package_planned_spend_doNotSum and qa_v3_package_planned_impressions_doNotSum keep package/date planned context available on detail rows without treating those context fields as summable metrics.",
+          "manual_delivery_override rows carry manual package/date actuals and suppress lower-grain final actuals for the same package/date.",
+          "DCM final impressions use source impressions; daily_recalculated_imps remains context only.",
+          "Refresh proof checks that the table is clustered by _advertiser, has no package_plan rows, has no duplicate visible grain keys, and has no package/date with more than one summable planned carrier."
+        ],
+        sources: [
+          ["BigQuery: master_stg.data_model_v3", bq("master_stg", "data_model_v3")],
+          ["V3 builder SQL", "../create_master_stg_data_model_v3.sql"],
+          ["Universal runner refresh wrapper", "file:///Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh"],
+          ["Stable master model", bq("master_stg", "data_model")]
         ]
       },
       {

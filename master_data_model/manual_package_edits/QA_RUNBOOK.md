@@ -48,7 +48,7 @@ This runbook is for checking the Manual Data Editor when a dashboard value, shee
 | Object | Grain | Role | Key QA Fields |
 |---|---|---|---|
 | [PRISMA expanded full](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2s20250327_data_model!3sprisma_expanded_full) | PRISMA package/day | Source for planned values, flight dates, and package metadata | `package_id`, `start_date`, `end_date`, `planned_amount`, `planned_impressions`, `package_name` |
-| [Reporting mart snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_mart) | Package/date reporting mart | Source for the visible current dashboard snapshot in the sheet | `_package_id`, `_spend`, `_impressions`, `_planned_spend`, `_planned_impressions`, `qa_row_data_issue_category` |
+| [Reporting mart snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model_mart) | Package/date reporting mart | Source for the visible current dashboard snapshot in the sheet | `_package_id`, `_spend`, `_impressions`, `_planned_spend`, `_planned_impressions`, `qa_data_issues` |
 | [Raw manual edits](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_edits_raw) | One row per editor row | Raw manual edit record, validation status, replacement values, metadata overrides, current baselines | `is_active`, `validation_status`, `validation_messages`, `replacement_*`, `man_*`, `current_*`, `manual_edit_*` |
 | [Daily manual rows](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2slanding!3smaster_data_model_manual_package_daily) | Package/date for active valid metric edits | Daily manual metric rows used by the model | `package_id`, `date`, `man_daily_*`, `man_total_*_doNotSum`, `manual_edit_*` |
 | [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_stg!3sdata_model) | Package/date evidence layer | Applies manual values before rollups and preserves `man_*` evidence | `_spend`, `_impressions`, `_planned_spend`, `_planned_impressions`, `man_daily_*`, `man_total_*`, `qa_manual_*` |
@@ -127,7 +127,7 @@ The model uses manual-priority behavior in the final fields. In plain English: i
 
 | Filter Or Rule | Where It Happens | Why It Matters |
 |---|---|---|
-| `low_signal_dcm` label | `master_stg.data_model` column `qa_row_data_issue_category` | Marks tiny DCM-only noise rows |
+| `low_signal_dcm` label | `master_stg.data_model` column `qa_data_issues` | Marks tiny DCM-only noise rows |
 | `low_signal_dcm` exclusion | `master_stg.data_model_mart` | Dashboard current values exclude those rows |
 | PRISMA package scope | Loader planned-total lookup | Planned package totals exclude `package_type = 'Child'`, require `start_date >= 2025-01-01`, and require a non-null package ID |
 | PRISMA package planned totals | Loader lookup | Planned package totals are not reduced by mart row filtering |
@@ -302,9 +302,9 @@ SELECT
   _video_plays,
   man_edit_id,
   qa_manual_edit_flag,
-  qa_manual_edit_at,
-  qa_manual_edit_by,
-  qa_manual_edit_published_at,
+  man_manual_edit_at,
+  man_manual_edit_by,
+  man_manual_edit_published_at,
   man_start_date,
   man_end_date,
   man_daily_spend,
@@ -323,12 +323,12 @@ LIMIT 200;
 ```sql
 SELECT
   'data_model' AS object_name,
-  COUNTIF(CONTAINS_SUBSTR(qa_row_data_issue_category, 'low_signal_dcm')) AS low_signal_rows
+  COUNTIF(CONTAINS_SUBSTR(qa_data_issues, 'low_signal_dcm')) AS low_signal_rows
 FROM `looker-studio-pro-452620.master_stg.data_model`
 UNION ALL
 SELECT
   'data_model_mart' AS object_name,
-  COUNTIF(CONTAINS_SUBSTR(qa_row_data_issue_category, 'low_signal_dcm')) AS low_signal_rows
+  COUNTIF(CONTAINS_SUBSTR(qa_data_issues, 'low_signal_dcm')) AS low_signal_rows
 FROM `looker-studio-pro-452620.master_stg.data_model_mart`;
 ```
 

@@ -16,10 +16,12 @@ OPTIONS(
 )
 AS
 SELECT
+  -- LIVE VIEW NOTE: Pilot creative-grain evidence view. Package totals remain
+  -- repeated context and must not be summed at the creative grain.
   -- Universal row contract
   'creative_date' AS univ_row_grain,
   'master_stg.data_model (DCM delivery slice)' AS univ_source_system,
-  FORMAT('%s|%s|%s', _package_id, SAFE_CAST(_date AS STRING), COALESCE(fpd_orig_creative, 'unknown')) AS univ_source_row_id,
+  FORMAT('%s|%s|%s', _package_id, SAFE_CAST(_date AS STRING), COALESCE(fpd_creative, 'unknown')) AS univ_source_row_id,
   'master_stg.data_model > mdm_int.int_pilot_dcm_creative_detail' AS univ_source_lineage,
   CURRENT_DATE() AS univ_record_date,
 
@@ -31,12 +33,12 @@ SELECT
   _package_name_friendly,
 
   -- Creative detail
-  COALESCE(fpd_orig_creative, 'not_available_at_source') AS creative_name,
+  COALESCE(fpd_creative, 'not_available_at_source') AS creative_name,
   COALESCE(fpd_creative_img, 'not_available_at_source') AS creative_image,
 
   -- Source metadata
-  fpd_orig_source_files,
-  fpd_orig_source_urls,
+  fpd_source_name,
+  fpd_source_url,
 
   -- ============================================================
   -- Additive metrics (safe to sum at creative/date grain)

@@ -30,6 +30,7 @@ receives both `APO` and `RTL`.
 | Topic access filter | Live | Published to the shared Master Stg Data Model topic |
 | Production model | Validated | No blocking model errors after merge |
 | Administrator bypass | Production-tested | A confirmed administrator returned all 12 advertiser short names |
+| Master model AI eval prompt set | Live | Created in Omni with 25 prompts and read back by prompt-set ID; payload retained in [Master Stg Data Model eval prompt set](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/eval_prompt_sets/master-stg-data-model-core-qa-regression.json) |
 
 The branch filter is:
 
@@ -65,3 +66,13 @@ access_filters:
 1. Open the current Apollo, Ritual, and Olipop dashboards in the browser during
    normal user activity and watch for unexpected tile errors.
 2. Repair the pre-existing Ritual dashboard filter and missing-field issues.
+
+## AI Eval Prompt Sets
+
+Omni AI eval prompt sets are live platform assets used to test whether Omni's
+AI chooses the right topic, fields, filters, and aggregation behavior for common
+business questions. The local files in [eval prompt sets](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/eval_prompt_sets/) are reviewable request payloads only; the live Omni platform is still the source of truth after creation.
+
+| Prompt set | Purpose | Local payload |
+|---|---|---|
+| Master Stg Data Model - Core QA Regression | Live prompt set with 25 prompts. Tests the shared master model's standard and QA topics plus Ritual and Apollo topic routing for source reconciliation, unmatched packages, missing delivery, pacing issues, manual overrides, QTD reach, and v3 metric-grain behavior. | [Payload](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/eval_prompt_sets/master-stg-data-model-core-qa-regression.json) |

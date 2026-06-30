@@ -1,0 +1,108 @@
+{
+  "model_id": "9979e3b3-a8a5-4d9c-a1f4-53e0ed991065",
+  "name": "Master Stg Data Model - Core QA Regression",
+  "slug": "master-stg-data-model-core-qa-regression",
+  "description": "Regression prompt set for Omni AI evals covering the Master Stg Data Model standard and QA topics, plus Ritual and Apollo topic routing, including source reconciliation, unmatched packages, missing delivery, pacing, and v3 metric-grain behavior.",
+  "prompts": [
+    {
+      "prompt_text": "For Olipop, show weekly spend, impressions, clicks, CPM, CPC, and CTR since March 1, 2026.",
+      "expectation": "Use the standard Master Stg Data Model topic. Prefer final reconciled metrics, not raw source-specific metrics. Group by week and sort oldest to newest."
+    },
+    {
+      "prompt_text": "Which suppliers drove the most Olipop impressions since March 1, 2026?",
+      "expectation": "Group by supplier, use final impressions, sort descending, and include spend if available."
+    },
+    {
+      "prompt_text": "Break down Olipop spend and impressions by channel group since March 1, 2026.",
+      "expectation": "Use reconciled final spend and impressions with channel grouping. Do not use QA-only fields unless needed to explain anomalies."
+    },
+    {
+      "prompt_text": "For Olipop, compare planned impressions to delivered impressions by package since March 1, 2026.",
+      "expectation": "Use planned metrics separately from final delivered metrics. Avoid summing package-level do-not-sum fields across daily rows."
+    },
+    {
+      "prompt_text": "Which Olipop packages are pacing behind plan on impressions or spend since March 1, 2026?",
+      "expectation": "Use the QA topic and package-level plan-versus-actual logic. Treat do-not-sum fields as repeated package totals and avoid daily double counting."
+    },
+    {
+      "prompt_text": "Which Olipop packages are pacing ahead of plan or over-delivering on spend or impressions?",
+      "expectation": "Use QA package pacing fields and over-plan flags where available. Return package, supplier, planned metric, actual metric, and variance direction."
+    },
+    {
+      "prompt_text": "Find Olipop packages that are in the plan but have no delivery yet.",
+      "expectation": "Identify planned packages with missing or zero delivered actuals. Use planned metrics and final/source actual metrics separately, and explain that these are missing-delivery candidates."
+    },
+    {
+      "prompt_text": "Find Olipop packages with delivery activity but no matching planned package.",
+      "expectation": "Identify unmatched delivery or actual-only rows. Use package/source context and do not hide the mismatch by aggregating only to supplier or channel."
+    },
+    {
+      "prompt_text": "Show unmatched Olipop packages by supplier and explain whether each unmatched package is missing plan data, missing delivery data, or source-only delivery.",
+      "expectation": "Use QA source and planned-versus-delivered fields. Classify each package into a clear mismatch type rather than returning only totals."
+    },
+    {
+      "prompt_text": "For Olipop, summarize which packages have DCM, FPD, manual, social, or TV data available.",
+      "expectation": "Use QA source coverage fields such as primary and available data sources. Answer as coverage, not final performance."
+    },
+    {
+      "prompt_text": "For Olipop packages with both DCM and FPD data, compare the source impressions to the final impressions.",
+      "expectation": "Use the QA topic. Distinguish raw source metrics from final reconciled metrics."
+    },
+    {
+      "prompt_text": "What are the most common data-quality issues for Olipop since March 1, 2026?",
+      "expectation": "Use QA issue fields. Summarize issue types and affected suppliers or packages. Do not treat QA flags as final performance metrics."
+    },
+    {
+      "prompt_text": "Are Olipop FPD source files fresh for the current campaign window?",
+      "expectation": "Use FPD or source freshness fields where available. Answer with latest modified or update dates by source or package."
+    },
+    {
+      "prompt_text": "Which Olipop packages have manual delivery overrides, and what metrics are affected?",
+      "expectation": "Use QA manual fields. Explain whether manual delivery overrides affect final spend, impressions, or clicks."
+    },
+    {
+      "prompt_text": "In the v3 QA topic, summarize Olipop metrics by row type and explain what each row type means.",
+      "expectation": "Use v3 row type and metric-grain concepts. Planned metrics should be isolated from source actual rows."
+    },
+    {
+      "prompt_text": "For Olipop v3 data, show impressions by supplier and metric grain since March 1, 2026.",
+      "expectation": "Include metric grain in the grouping so the answer does not mix package-date rows with source-detail rows without explanation."
+    },
+    {
+      "prompt_text": "Which v3 source detail types contribute actuals for Olipop, and how much spend and impressions come from each?",
+      "expectation": "Use v3 source detail fields. Identify source detail types, not only generic suppliers."
+    },
+    {
+      "prompt_text": "For Olipop, identify any packages where spend exists but impressions are zero or missing.",
+      "expectation": "Use the QA topic. Return package, supplier, and source context. Avoid claiming totals are complete if row limits are reached."
+    },
+    {
+      "prompt_text": "For Olipop, identify any packages where impressions exist but spend is zero or missing.",
+      "expectation": "Use the QA topic. Return package, supplier, data source, and whether the issue appears to be planned, delivered, or source-specific."
+    },
+    {
+      "prompt_text": "Show total spend and impressions by advertiser short name for the advertisers I can access.",
+      "expectation": "Use the standard topic and respect access filters. Do not imply inaccessible advertisers are absent from the warehouse."
+    },
+    {
+      "prompt_text": "For Ritual, show weekly spend, impressions, clicks, CPM, CPC, and CTR for the current 2026 campaign period.",
+      "expectation": "Use the Ritual topic rather than the generic cross-client topic when the prompt is clearly Ritual-specific. Prefer final reconciled metrics and group by week."
+    },
+    {
+      "prompt_text": "For Ritual, which suppliers are pacing behind plan on impressions or spend?",
+      "expectation": "Use Ritual planning and delivery fields. Compare planned metrics to delivered metrics without double-counting package-level repeated totals."
+    },
+    {
+      "prompt_text": "For Ritual, show QTD digital reach by site and date, and explain which sites have the highest reach.",
+      "expectation": "Route to the Ritual QTD Digital Reach topic when the question asks for QTD reach. Group by site and date or summarize by site if a ranked answer is requested."
+    },
+    {
+      "prompt_text": "For Apollo, show spend and impressions by supplier and channel for the current 2026 campaign period.",
+      "expectation": "Use the Apollo V2 topic when the prompt is clearly Apollo-specific. Group by supplier and channel, and use final performance metrics."
+    },
+    {
+      "prompt_text": "For Apollo, which packages are missing delivery or appear unmatched between plan and actuals?",
+      "expectation": "Use Apollo topic fields that support plan-versus-delivery checks. Return package and supplier context, and classify whether each issue is missing delivery, missing plan, or source-only delivery when possible."
+    }
+  ]
+}

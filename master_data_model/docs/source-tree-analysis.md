@@ -17,6 +17,7 @@ master_data_model/
 │                                             # Scheduled upstream table snapshots
 ├── create_manual_package_edit_tables.sql    # Manual edit raw/daily landing table schemas
 ├── create_*_v2.sql                          # Compatibility and delivery-detail v2 views
+├── create_master_stg_data_model_v3.sql      # V3 lowest-grain evaluation table builder
 ├── create_*_v3_sample.sql                   # Exploratory sample models
 ├── docs/
 │   ├── master-data-model-map.html           # Interactive model map
@@ -61,6 +62,7 @@ master_data_model/
 | [create_master_stg_data_model.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model.sql) | SQL model | Main evidence model deploy definition. |
 | [create_master_stg_data_model_mart.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_mart.sql) | SQL model | Reporting mart deploy definition. |
 | [create_master_data_model_upstream_tables_sched.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql) | SQL table refresh | Stored upstream source table refresh. |
+| [create_master_stg_data_model_v3.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_stg_data_model_v3.sql) | SQL table refresh | V3 lowest-grain evaluation table builder; normally refreshed by the universal runner's master-model clustered advertiser step. |
 | [load_manual_package_edits.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R) | R loader | Manual editor refresh, validation, and BigQuery write path. |
 | [Code.js](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/apps_script/Code.js) | Apps Script | Row-level manual-edit audit stamps plus request-refresh notification control. |
 

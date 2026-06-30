@@ -46,7 +46,7 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 | # | Query Name | Schedule | Status | Target Table(s) |
 |---|-----------|----------|--------|-----------------|
 | 1 | `mm_dcm_costmodel` | Every 4 hours | ✅ SUCCEEDED | `DCM.20250505_costModel_v5` |
-| 2 | `prisma__stg__digital_plus_linear` | Every 8 hours | ✅ SUCCEEDED | `Prisma.prisma__stg__digital_plus_linear_view` |
+| 2 | `prisma__stg__digital_plus_linear` | Every 8 hours | ✅ SUCCEEDED | `Prisma.stg__digital_plus_linear`; source view: `Prisma.prisma__stg__digital_plus_linear_view` |
 | 3 | `250813_crossplatform_dedupe_history` | Daily 05:00 UTC | ✅ SUCCEEDED | `repo_facebook.*`, `repo_google_ads.*`, `repo_tiktok.*` |
 | 4 | `process_prisma` | Daily 07:00 UTC | ✅ SUCCEEDED | `20250327_data_model.prisma_porcessed`, `*.prisma_porcessed_with_placements` |
 | 5 | `Prisma_expanded` | Mon-Fri 07:00 UTC | ✅ SUCCEEDED | `20250327_data_model.prisma_expanded_full`, `*.prisma_expanded_summary`, `Prisma.prismaExpanded_x_dcmDelivery` |
@@ -122,16 +122,65 @@ END AS flight_status_flag
 **Status**: ✅ SUCCEEDED
 
 #### Purpose
-Combines digital Prisma planning with linear (TV) estimates into a unified planning view.
+Combines digital Prisma planning and delivery-status fields with linear (TV) estimates into a unified planning surface.
 
-#### Target
+The scheduled query refreshes a stored snapshot table for consumers that need a stable physical table by rebuilding it from the source view. The source view itself does not store rows; each time it is queried, BigQuery recomputes it from the current upstream objects.
+
+#### Target And Source View
 ```
-looker-studio-pro-452620.Prisma.prisma__stg__digital_plus_linear_view
+Scheduled table: looker-studio-pro-452620.Prisma.stg__digital_plus_linear
+Source view:     looker-studio-pro-452620.Prisma.prisma__stg__digital_plus_linear_view
 ```
 
-#### Source Tables
-- Digital: `20250327_data_model.prisma_expanded_full`
-- Linear: `landing.tv_national_estimates`, `landing.tv_local_estimates`
+#### Delivery Source Field
+
+The source view exposes `tracking_delivery_source` as a separate field from `tracking_status`.
+For digital rows, this field comes from the package-level delivery evidence in `Prisma.prisma_processed_plusDCMimps` and can be `DCM`, `FPD`, or `DCM+FPD`.
+For linear TV rows, the field is `NULL` because that branch is planned TV estimate data rather than DCM/FPD delivery evidence.
+
+This keeps a status such as `Tracking Delivery` readable while still showing whether that status is backed by DCM delivery, FPD delivery, or both. The stored scheduled table includes the same field because it now rebuilds from the source view.
+
+#### Live View Dependency Chain
+
+| Branch | Live object | Object type | Refresh path | Notes |
+|---|---|---|---|---|
+| Digital planning and delivery status | [Prisma processed plus DCM imps](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=Prisma&t=prisma_processed_plusDCMimps&page=table) | View | Recomputed when queried | Reads processed Prisma planning, DCM delivery totals, and FPD delivery totals. |
+| Processed Prisma planning | [Prisma processed](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=20250327_data_model&t=prisma_porcessed&page=table) | Table | `process_prisma`, daily 07:00 UTC | Built from [Prisma master 2025](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=prisma_master_2025&page=table). If this scheduled query fails, the digital branch can stay stale even when raw Prisma landed. |
+| DCM delivery evidence | [DCM cost model v5](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=DCM&t=20250505_costModel_v5&page=table) | Table | `mm_dcm_costmodel`, every 4 hours | Supplies package-level DCM impressions and date range to the digital branch. |
+| FPD delivery evidence | [FPD ranged shortcuts folder](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=fpd_data_ranged_shortcutsFolder&page=table) | Table | Shortcut-aware FPD loader | FPD impressions, spend, clicks, or date evidence can mark a package as `Tracking Delivery` even when DCM impressions are missing. |
+| Linear TV rollup | [Prisma linear combined](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=Prisma&t=stg__linear_combined&page=table) | View | Recomputed when queried | Reads the combined TV estimates view. |
+| Combined TV estimates | [TV combined](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined&page=table) | View | Recomputed when queried | Unions local and national TV estimate tables, excluding rows with no media outlet. |
+| Local TV estimates | [TV local estimates](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_local_estimates&page=table) | Table | TV loader/load job | Feeds the linear branch. |
+| National TV estimates | [TV national estimates](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_national_estimates&page=table) | Table | TV loader/load job | Feeds the linear branch. |
+
+#### Tracking Status Rule
+
+`tracking_status` is calculated in the digital branch before the digital and linear rows are unioned. DCM delivery is not the only valid delivery signal:
+
+| Condition | Result |
+|---|---|
+| `report_date <= start_date` | `Pre-flight` |
+| DCM delivery exists | `Tracking Delivery`, except very-low DCM delivery can become `delayed` or `Tagged but not tracking delivery` depending on days since start. |
+| DCM delivery is missing, but FPD delivery exists | `Tracking Delivery` |
+| Both DCM and FPD delivery are missing after flight start | `Untagged - Needs FPD` |
+
+If a dashboard or sheet shows DCM impressions as `0`, confirm whether BigQuery actually returns `0` or `NULL`. In this view, a missing DCM match is usually `NULL`; downstream tools can display that as zero.
+
+#### Freshness Checks
+
+Use these checks when the view looks stale:
+
+| Question | Check |
+|---|---|
+| Did raw Prisma land? | Compare `MAX(report_date)` and `MAX(script_run_date)` on [Prisma master 2025](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=prisma_master_2025&page=table). |
+| Did processed Prisma refresh? | Compare the same dates on [Prisma processed](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=20250327_data_model&t=prisma_porcessed&page=table). |
+| Did the digital branch update? | Check [Prisma processed plus DCM imps](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=Prisma&t=prisma_processed_plusDCMimps&page=table) for the same max Prisma dates. |
+| Did the final view update? | Check [Prisma digital plus linear view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=Prisma&t=prisma__stg__digital_plus_linear_view&page=table) for row count and max Prisma dates. |
+| Did the stored snapshot update? | Check [Prisma digital plus linear table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=Prisma&t=stg__digital_plus_linear&page=table) and recent scheduled-query jobs for `prisma__stg__digital_plus_linear`. |
+
+#### Known Operational Caveat
+
+On 2026-06-29, raw Prisma data landed, but `process_prisma` failed in BigQuery Data Transfer Service before creating the BigQuery job that rebuilds `20250327_data_model.prisma_porcessed`. A manual rerun of the live `process_prisma` SQL refreshed the processed table and the final view to the 2026-06-29 Prisma data. If this recurs, inspect the `process_prisma` transfer run before assuming the final view logic is wrong.
 
 ---
 

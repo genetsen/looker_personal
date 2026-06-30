@@ -223,6 +223,7 @@ fpd_original_raw AS (
     f.opens,
     f.benchmark,
     f.benchmark_metric,
+    f.factor,
     f.partner_creative_name AS creative,
     f.creative_git_link,
     f.source_file,
@@ -248,6 +249,7 @@ fpd_original_daily AS (
     SAFE_CAST(ROUND(SUM(opens)) AS INT64) AS fpd_orig_opens,
     MAX(benchmark) AS fpd_orig_benchmark,
     SAFE_CAST(ROUND(MAX(benchmark_metric)) AS INT64) AS fpd_orig_benchmark_metric,
+    STRING_AGG(DISTINCT CAST(factor AS STRING), ' | ' ORDER BY CAST(factor AS STRING)) AS fpd_orig_factor,
     STRING_AGG(DISTINCT CAST(creative AS STRING), ' | ' ORDER BY CAST(creative AS STRING)) AS fpd_orig_creative,
     STRING_AGG(DISTINCT CAST(creative_git_link AS STRING), ' | ' ORDER BY CAST(creative_git_link AS STRING)) AS fpd_creative_img,
     STRING_AGG(DISTINCT CAST(source_file AS STRING), ' | ' ORDER BY CAST(source_file AS STRING)) AS fpd_orig_source_files,
@@ -484,12 +486,10 @@ digital_final AS (
   SELECT
     'digital' AS row_type,
     CASE
-      WHEN fpd_updated_impressions IS NOT NULL OR fpd_updated_spend IS NOT NULL THEN
-        CASE
-          WHEN fpd_orig_impressions IS NOT NULL OR fpd_orig_spend IS NOT NULL THEN 'fpd_combined'
-          ELSE 'fpd_updated_only'
-        END
-      WHEN fpd_orig_impressions IS NOT NULL OR fpd_orig_spend IS NOT NULL THEN 'fpd_original_only'
+      WHEN fpd_updated_impressions IS NOT NULL
+        OR fpd_updated_spend IS NOT NULL
+        OR fpd_orig_impressions IS NOT NULL
+        OR fpd_orig_spend IS NOT NULL THEN 'fpd'
       WHEN d_daily_recalculated_imps IS NOT NULL OR d_daily_recalculated_cost IS NOT NULL THEN 'dcm'
       ELSE 'planned_only'
     END AS row_data_source_primary,
@@ -502,9 +502,9 @@ digital_final AS (
         IF(d_daily_recalculated_imps IS NOT NULL
           OR d_daily_recalculated_cost IS NOT NULL, ['dcm'], []),
         IF(fpd_orig_impressions IS NOT NULL
-          OR fpd_orig_spend IS NOT NULL, ['fpd_original'], []),
-        IF(fpd_updated_impressions IS NOT NULL
-          OR fpd_updated_spend IS NOT NULL, ['fpd_updated'], [])
+          OR fpd_orig_spend IS NOT NULL
+          OR fpd_updated_impressions IS NOT NULL
+          OR fpd_updated_spend IS NOT NULL, ['fpd'], [])
       ), ' | '), ''),
       'none'
     ) AS row_data_sources_available,
@@ -582,7 +582,7 @@ digital_final AS (
             OR fpd_updated_spend IS NOT NULL
           ), ['missing_final_metrics'], [])
       ), ' | '), ''),
-      'ok'
+      'no_issues'
     ) AS row_data_issue_category,
     package_id_joined,
     date,
@@ -660,6 +660,7 @@ digital_final AS (
     fpd_orig_opens,
     fpd_orig_benchmark,
     fpd_orig_benchmark_metric,
+    fpd_orig_factor,
     fpd_orig_creative,
     fpd_creative_img,
     fpd_orig_source_files,
@@ -898,7 +899,7 @@ social_final AS (
         IF(planned_daily_spend IS NULL, ['missing_social_pacing'], []),
         IF(spend IS NULL AND impressions IS NULL AND clicks IS NULL, ['missing_final_metrics'], [])
       ), ' | '), ''),
-      'ok'
+      'no_issues'
     ) AS row_data_issue_category,
     CONCAT('social:', social_platform, ':', campaign_id, ':', ad_group_id) AS package_id_joined,
     date_day AS date,
@@ -964,6 +965,7 @@ social_final AS (
     CAST(NULL AS INT64) AS fpd_orig_opens,
     CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
     CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
+    CAST(NULL AS STRING) AS fpd_orig_factor,
     CAST(NULL AS STRING) AS fpd_orig_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
     CAST(NULL AS STRING) AS fpd_orig_source_files,
@@ -1146,7 +1148,7 @@ tv_final AS (
     'tv_combined' AS row_data_sources_available,
     CASE
       WHEN net_cost IS NULL AND net_impressions IS NULL THEN 'missing_final_metrics'
-      ELSE 'ok'
+      ELSE 'no_issues'
     END AS row_data_issue_category,
     package_id_joined,
     date,
@@ -1227,6 +1229,7 @@ tv_final AS (
     CAST(NULL AS INT64) AS fpd_orig_opens,
     CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
     CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
+    CAST(NULL AS STRING) AS fpd_orig_factor,
     CAST(NULL AS STRING) AS fpd_orig_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
     CAST(NULL AS STRING) AS fpd_orig_source_files,
@@ -1337,7 +1340,7 @@ amazon_final AS (
         AND SAFE_CAST(starts_video_ad AS FLOAT64) IS NULL
         AND SAFE_CAST(complete_views_video_ad AS FLOAT64) IS NULL
         THEN 'missing_final_metrics'
-      ELSE 'ok'
+      ELSE 'no_issues'
     END AS row_data_issue_category,
     CONCAT('amazon_ads:', campaign_id, ':', ad_group_id) AS package_id_joined,
     SAFE.PARSE_DATE('%b %e, %Y', date) AS date,
@@ -1395,6 +1398,7 @@ amazon_final AS (
     CAST(NULL AS INT64) AS fpd_orig_opens,
     CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
     CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
+    CAST(NULL AS STRING) AS fpd_orig_factor,
     CAST(NULL AS STRING) AS fpd_orig_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
     CAST(NULL AS STRING) AS fpd_orig_source_files,
@@ -1594,7 +1598,7 @@ manual_only_rows AS (
     'manual' AS row_type,
     'manual_package_edits' AS row_data_source_primary,
     'manual_package_edits' AS row_data_sources_available,
-    'ok' AS row_data_issue_category,
+    'no_issues' AS row_data_issue_category,
     m.package_id AS package_id_joined,
     m.date,
     COALESCE(pm.man_flight_start_date, m.man_start_date) AS package_start_date,
@@ -1651,6 +1655,7 @@ manual_only_rows AS (
     CAST(NULL AS INT64) AS fpd_orig_opens,
     CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
     CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
+    CAST(NULL AS STRING) AS fpd_orig_factor,
     CAST(NULL AS STRING) AS fpd_orig_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
     CAST(NULL AS STRING) AS fpd_orig_source_files,
@@ -1871,7 +1876,7 @@ row_callouts AS (
             []
           )
         ), ' | '), ''),
-        'ok'
+        'no_issues'
       ) AS row_data_issue_category
     )
   FROM planned_metric_backfills
@@ -1885,12 +1890,8 @@ with_rollups AS (
     SUM(COALESCE(final_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_act_spend,
     SUM(COALESCE(final_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_act_impressions,
     SUM(COALESCE(final_clicks, 0)) OVER (PARTITION BY package_id_joined) AS pkg_act_clicks,
-    SUM(COALESCE(fpd_orig_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_orig_impressions,
-    SUM(COALESCE(fpd_orig_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_orig_spend,
-    SUM(COALESCE(fpd_updated_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_updated_impressions,
-    SUM(COALESCE(fpd_updated_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_updated_spend,
-    SUM(COALESCE(fpd_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_impressions,
-    SUM(COALESCE(fpd_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_combined_spend
+    SUM(COALESCE(fpd_impressions, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_impressions,
+    SUM(COALESCE(fpd_spend, 0)) OVER (PARTITION BY package_id_joined) AS pkg_fpd_spend
   FROM row_callouts
 ),
 
@@ -1916,7 +1917,17 @@ advertiser_mapping AS (
   WHERE is_active
 ),
 
-with_standardized_advertiser AS (
+canonical_advertiser_short_names AS (
+  SELECT
+    standardized_advertiser_name,
+    ARRAY_AGG(normalized_match_value ORDER BY normalized_match_value LIMIT 1)[SAFE_OFFSET(0)]
+      AS canonical_advertiser_short_name
+  FROM advertiser_mapping
+  WHERE match_field = 'advertiser_short_name'
+  GROUP BY standardized_advertiser_name
+),
+
+with_standardized_advertiser_base AS (
   SELECT
     wi.*,
     COALESCE(
@@ -1937,12 +1948,27 @@ with_standardized_advertiser AS (
   LEFT JOIN advertiser_mapping AS name_map
     ON name_map.match_field = 'advertiser_name'
    AND UPPER(TRIM(wi.advertiser_name)) = name_map.normalized_match_value
-)
+),
 
+with_standardized_advertiser AS (
+  SELECT
+    base.*,
+    COALESCE(
+      canonical_short.canonical_advertiser_short_name,
+      NULLIF(TRIM(base.advertiser_short_name), '')
+    ) AS standardized_advertiser_short_name
+  FROM with_standardized_advertiser_base AS base
+  LEFT JOIN canonical_advertiser_short_names AS canonical_short
+    ON base.standardized_advertiser_name = canonical_short.standardized_advertiser_name
+),
+
+final_model_rows AS (
 SELECT
+  -- LIVE VIEW NOTE: Canonical package/date evidence model. Consolidates public
+  -- FPD fields and exposes the approved QA naming contract.
   -- Canonical package/date creative label: FPD first, then Amazon, then social.
   -- DCM creative remains in data_model_delivery_detail_v2 to preserve detail grain.
-  row_type AS `qa_row_type`,
+  row_type AS `qa_media_data_type`,
   row_data_source_primary AS `qa_row_data_source_primary`,
   CASE
     WHEN row_data_source_primary = 'manual_package_edits'
@@ -1957,10 +1983,26 @@ SELECT
           THEN 'looker-studio-pro-452620.landing.master_data_model_manual_package_daily'
         ELSE 'looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw'
       END
-    WHEN row_data_source_primary IN ('fpd_updated_only', 'fpd_combined')
-      THEN 'looker-studio-pro-452620.landing.adif_updated_fpd_daily'
-    WHEN row_data_source_primary = 'fpd_original_only'
-      THEN 'looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder'
+    WHEN row_data_source_primary = 'fpd'
+      THEN NULLIF(ARRAY_TO_STRING(
+        ARRAY(
+          SELECT source_table
+          FROM UNNEST([
+            IF(
+              fpd_orig_impressions IS NOT NULL OR fpd_orig_spend IS NOT NULL,
+              'looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder',
+              NULL
+            ),
+            IF(
+              fpd_updated_impressions IS NOT NULL OR fpd_updated_spend IS NOT NULL,
+              'looker-studio-pro-452620.landing.adif_updated_fpd_daily',
+              NULL
+            )
+          ]) AS source_table
+          WHERE source_table IS NOT NULL
+        ),
+        ' | '
+      ), '')
     WHEN row_data_source_primary = 'dcm'
       THEN 'giant-spoon-299605.data_model_2025.new_md'
     WHEN row_data_source_primary = 'planned_only'
@@ -1978,10 +2020,20 @@ SELECT
   CASE
     WHEN row_data_source_primary = 'manual_package_edits'
       THEN COALESCE(man_manual_edit_published_at, man_loaded_at)
-    WHEN row_data_source_primary IN ('fpd_updated_only', 'fpd_combined')
-      THEN refresh.fpd_updated_refresh_at
-    WHEN row_data_source_primary = 'fpd_original_only'
-      THEN refresh.fpd_original_refresh_at
+    WHEN row_data_source_primary = 'fpd'
+      THEN CASE
+        WHEN fpd_orig_impressions IS NOT NULL OR fpd_orig_spend IS NOT NULL
+          THEN CASE
+            WHEN fpd_updated_impressions IS NOT NULL OR fpd_updated_spend IS NOT NULL
+              THEN CASE
+                WHEN refresh.fpd_original_refresh_at IS NULL THEN refresh.fpd_updated_refresh_at
+                WHEN refresh.fpd_updated_refresh_at IS NULL THEN refresh.fpd_original_refresh_at
+                ELSE LEAST(refresh.fpd_original_refresh_at, refresh.fpd_updated_refresh_at)
+              END
+            ELSE refresh.fpd_original_refresh_at
+          END
+        ELSE refresh.fpd_updated_refresh_at
+      END
     WHEN row_data_source_primary = 'dcm'
       THEN CASE
         WHEN refresh.dcm_raw_refresh_at IS NULL THEN refresh.dcm_cost_model_refresh_at
@@ -2012,20 +2064,22 @@ SELECT
   CASE
     WHEN row_data_source_primary = 'manual_package_edits'
       THEN man_source_sheet_modified_time
-    WHEN row_data_source_primary IN ('fpd_updated_only', 'fpd_combined')
-      THEN fpd_updated_source_sheet_modified_time
-    WHEN row_data_source_primary = 'fpd_original_only'
-      THEN fpd_orig_source_modified_time
+    WHEN row_data_source_primary = 'fpd'
+      THEN COALESCE(
+        GREATEST(fpd_orig_source_modified_time, fpd_updated_source_sheet_modified_time),
+        fpd_orig_source_modified_time,
+        fpd_updated_source_sheet_modified_time
+      )
     ELSE NULL
   END AS `qa_data_source_content_modified_at`,
   row_data_sources_available AS `qa_row_data_sources_available`,
-  row_data_issue_category AS `qa_row_data_issue_category`,
+  row_data_issue_category AS `qa_data_issues`,
   package_id_joined AS `_package_id`,
   date AS `_date`,
   package_start_date AS `_start_date`,
   package_end_date AS `_end_date`,
   standardized_advertiser_name AS `_advertiser_name`,
-  advertiser_short_name AS `_advertiser_short_name`,
+  standardized_advertiser_short_name AS `_advertiser_short_name`,
   standardized_advertiser_name AS `_advertiser`,
   campaign_name AS `_campaign_name`,
   campaign_friendly AS `_campaign_friendly`,
@@ -2070,27 +2124,36 @@ SELECT
   d_daily_cpm AS `dcm_daily_cpm`,
   d_total_delivered_imps AS `dcm_total_delivered_imps`,
   d_total_del_inflight_imps AS `dcm_total_del_inflight_imps`,
-  fpd_orig_impressions AS `fpd_orig_impressions`,
-  fpd_orig_spend AS `fpd_orig_spend`,
-  fpd_orig_clicks AS `fpd_orig_clicks`,
-  fpd_orig_sends AS `fpd_orig_sends`,
-  fpd_orig_opens AS `fpd_orig_opens`,
-  fpd_orig_benchmark AS `fpd_orig_benchmark`,
-  fpd_orig_benchmark_metric AS `fpd_orig_benchmark_metric`,
-  fpd_orig_creative AS `fpd_orig_creative`,
+  fpd_orig_benchmark AS `fpd_benchmark`,
+  fpd_orig_benchmark_metric AS `fpd_benchmark_metric`,
+  fpd_orig_factor AS `fpd_factor`,
+  fpd_orig_creative AS `fpd_creative`,
   fpd_creative_img AS `fpd_creative_img`,
   COALESCE(fpd_orig_creative, amzn_ad_name, social_creative_name) AS `_creative_name`,
   COALESCE(fpd_creative_img, man_creative_img) AS `_creative_img`,
   man_creative_img AS `man_creative_img`,
-  fpd_orig_source_files AS `fpd_orig_source_files`,
-  fpd_orig_source_urls AS `fpd_orig_source_urls`,
-  fpd_orig_source_modified_time AS `fpd_orig_source_modified_time`,
-  fpd_updated_impressions AS `fpd_updated_impressions`,
-  fpd_updated_spend AS `fpd_updated_spend`,
-  fpd_updated_suppliers AS `fpd_updated_suppliers`,
-  fpd_updated_initiatives AS `fpd_updated_initiatives`,
-  fpd_updated_data_timestamp AS `fpd_updated_data_timestamp`,
-  fpd_updated_source_sheet_modified_time AS `fpd_updated_source_sheet_modified_time`,
+  NULLIF(ARRAY_TO_STRING(
+    ARRAY(
+      SELECT source_name
+      FROM UNNEST([
+        fpd_orig_source_files,
+        IF(
+          fpd_updated_impressions IS NOT NULL OR fpd_updated_spend IS NOT NULL,
+          'updated_fpd_sheet',
+          NULL
+        )
+      ]) AS source_name
+      WHERE source_name IS NOT NULL AND source_name != ''
+    ),
+    ' | '
+  ), '') AS `fpd_source_name`,
+  fpd_orig_source_urls AS `fpd_source_url`,
+  COALESCE(
+    GREATEST(fpd_orig_source_modified_time, fpd_updated_source_sheet_modified_time),
+    fpd_orig_source_modified_time,
+    fpd_updated_source_sheet_modified_time
+  ) AS `fpd_source_content_modified_at`,
+  fpd_updated_data_timestamp AS `fpd_data_timestamp`,
   fpd_impressions AS `fpd_impressions`,
   fpd_spend AS `fpd_spend`,
   fpd_clicks AS `fpd_clicks`,
@@ -2186,9 +2249,6 @@ SELECT
   man_manual_edit_by AS `man_manual_edit_by`,
   man_manual_edit_published_at AS `man_manual_edit_published_at`,
   man_edit_id IS NOT NULL AS `qa_manual_edit_flag`,
-  man_manual_edit_at AS `qa_manual_edit_at`,
-  man_manual_edit_by AS `qa_manual_edit_by`,
-  COALESCE(man_manual_edit_published_at, man_loaded_at) AS `qa_manual_edit_published_at`,
   man_start_date AS `man_start_date`,
   man_end_date AS `man_end_date`,
   man_daily_spend AS `man_daily_spend`,
@@ -2210,23 +2270,12 @@ SELECT
   pkg_act_spend AS `qa_pkg_act_spend_doNotSum`,
   pkg_act_impressions AS `qa_pkg_act_impressions_doNotSum`,
   pkg_act_clicks AS `qa_pkg_act_clicks_doNotSum`,
-  pkg_fpd_orig_impressions AS `qa_pkg_fpd_orig_impressions_doNotSum`,
-  pkg_fpd_orig_spend AS `qa_pkg_fpd_orig_spend_doNotSum`,
-  pkg_fpd_updated_impressions AS `qa_pkg_fpd_updated_impressions_doNotSum`,
-  pkg_fpd_updated_spend AS `qa_pkg_fpd_updated_spend_doNotSum`,
-  pkg_fpd_combined_impressions AS `qa_pkg_fpd_combined_impressions_doNotSum`,
-  pkg_fpd_combined_spend AS `qa_pkg_fpd_combined_spend_doNotSum`,
-  NULLIF(row_data_issue_category, 'ok') AS `qa_row_data_callouts`,
+  pkg_fpd_impressions AS `qa_pkg_fpd_impressions_doNotSum`,
+  pkg_fpd_spend AS `qa_pkg_fpd_spend_doNotSum`,
   CASE
     WHEN pkg_est_spend = 0 THEN NULL
     ELSE pkg_act_spend > pkg_est_spend
-  END AS `qa_pkg_over_bool`,
-  CASE
-    WHEN pkg_est_spend = 0 THEN NULL
-    WHEN pkg_act_spend > pkg_est_spend THEN 1
-    ELSE 0
-  END AS `qa_pkg_over_flag`,
-  CURRENT_TIMESTAMP() AS `qa_model_view_runtime_timestamp`,
+  END AS `qa_package_spend_over_plan_flag`,
   initiative AS `initiative`
 FROM with_standardized_advertiser
 CROSS JOIN source_refreshes AS refresh
@@ -2236,4 +2285,150 @@ LEFT JOIN social_source_by_final_row AS social_source
  AND social_platform = social_source.social_platform_key
  AND social_campaign_id = social_source.social_campaign_id_key
  AND social_ad_group_id = social_source.social_ad_group_id_key
- AND social_ad_id = social_source.social_ad_id_key;
+ AND social_ad_id = social_source.social_ad_id_key
+WHERE standardized_advertiser_name != 'Highlights'
+),
+
+row_source_contributors AS (
+  SELECT
+    final_model_rows.*,
+    ARRAY(
+      SELECT DISTINCT source_name
+      FROM UNNEST(ARRAY_CONCAT(
+        IF(`man_daily_spend` IS NOT NULL, ['manual_package_edits'], []),
+        IF(`man_daily_impressions` IS NOT NULL, ['manual_package_edits'], []),
+        IF(`man_daily_clicks` IS NOT NULL, ['manual_package_edits'], []),
+        IF(`man_daily_video_plays` IS NOT NULL, ['manual_package_edits'], []),
+        IF(`man_daily_video_comps` IS NOT NULL, ['manual_package_edits'], []),
+        IF(
+          `man_daily_spend` IS NULL AND `_spend` IS NOT NULL,
+          [CASE
+            WHEN `qa_media_data_type` = 'digital' AND NULLIF(`fpd_spend`, 0) IS NOT NULL THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND `dcm_daily_recalculated_cost` IS NOT NULL THEN 'dcm'
+            WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
+            WHEN `qa_media_data_type` = 'social' THEN 'social'
+            WHEN `qa_media_data_type` = 'tv' THEN 'tv_combined'
+            WHEN `qa_media_data_type` = 'amazon_ads' THEN 'amazon_ads'
+            ELSE NULL
+          END],
+          []
+        ),
+        IF(
+          `man_daily_impressions` IS NULL AND `_impressions` IS NOT NULL,
+          [CASE
+            WHEN `qa_media_data_type` = 'digital' AND NULLIF(`fpd_impressions`, 0) IS NOT NULL THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND `dcm_impressions` IS NOT NULL THEN 'dcm'
+            WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
+            WHEN `qa_media_data_type` = 'social' THEN 'social'
+            WHEN `qa_media_data_type` = 'tv' THEN 'tv_combined'
+            WHEN `qa_media_data_type` = 'amazon_ads' THEN 'amazon_ads'
+            ELSE NULL
+          END],
+          []
+        ),
+        IF(
+          `man_daily_clicks` IS NULL AND `_clicks` IS NOT NULL,
+          [CASE
+            WHEN `qa_media_data_type` = 'digital' AND `fpd_clicks` IS NOT NULL THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND `dcm_clicks` IS NOT NULL THEN 'dcm'
+            WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
+            WHEN `qa_media_data_type` = 'social' THEN 'social'
+            WHEN `qa_media_data_type` = 'amazon_ads' THEN 'amazon_ads'
+            ELSE NULL
+          END],
+          []
+        ),
+        IF(
+          `man_daily_video_plays` IS NULL AND `_video_plays` IS NOT NULL,
+          [CASE
+            WHEN `qa_media_data_type` = 'digital' AND `dcm_video_plays` IS NOT NULL THEN 'dcm'
+            WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
+            WHEN `qa_media_data_type` = 'social' THEN 'social'
+            WHEN `qa_media_data_type` = 'amazon_ads' THEN 'amazon_ads'
+            ELSE NULL
+          END],
+          []
+        ),
+        IF(
+          `_video_views` IS NOT NULL,
+          [CASE
+            WHEN `qa_media_data_type` = 'digital' AND `dcm_video_plays` IS NOT NULL THEN 'dcm'
+            WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
+            WHEN `qa_media_data_type` = 'social' THEN 'social'
+            WHEN `qa_media_data_type` = 'amazon_ads' THEN 'amazon_ads'
+            ELSE NULL
+          END],
+          []
+        ),
+        IF(
+          `man_daily_video_comps` IS NULL AND `_video_comps` IS NOT NULL,
+          [CASE
+            WHEN `qa_media_data_type` = 'digital' AND `dcm_video_comps` IS NOT NULL THEN 'dcm'
+            WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
+            WHEN `qa_media_data_type` = 'social' THEN 'social'
+            WHEN `qa_media_data_type` = 'amazon_ads' THEN 'amazon_ads'
+            ELSE NULL
+          END],
+          []
+        )
+      )) AS source_name
+      WHERE source_name IS NOT NULL
+      ORDER BY source_name
+    ) AS qa_internal_metric_source_contributors
+  FROM final_model_rows
+),
+
+package_list AS (
+  SELECT DISTINCT `_package_id`
+  FROM row_source_contributors
+),
+
+package_contributors AS (
+  SELECT
+    `_package_id`,
+    ARRAY_AGG(DISTINCT source_name ORDER BY source_name) AS contributing_sources
+  FROM row_source_contributors,
+  UNNEST(qa_internal_metric_source_contributors) AS source_name
+  GROUP BY `_package_id`
+),
+
+package_available_source_tokens AS (
+  SELECT DISTINCT
+    `_package_id`,
+    TRIM(source_name) AS source_name
+  FROM row_source_contributors,
+  UNNEST(SPLIT(COALESCE(`qa_row_data_sources_available`, ''), ' | ')) AS source_name
+  WHERE TRIM(source_name) NOT IN ('', 'none')
+),
+
+package_available_sources AS (
+  SELECT
+    `_package_id`,
+    STRING_AGG(source_name, ' | ' ORDER BY source_name) AS available_sources
+  FROM package_available_source_tokens
+  GROUP BY `_package_id`
+),
+
+package_qa AS (
+  SELECT
+    package_list.`_package_id`,
+    CASE
+      WHEN COALESCE(ARRAY_LENGTH(package_contributors.contributing_sources), 0) = 0 THEN 'none'
+      WHEN ARRAY_LENGTH(package_contributors.contributing_sources) = 1
+        THEN package_contributors.contributing_sources[SAFE_OFFSET(0)]
+      ELSE 'multiple'
+    END AS qa_pkg_primary_data_source,
+    COALESCE(package_available_sources.available_sources, 'none') AS qa_pkg_data_sources_available
+  FROM package_list
+  LEFT JOIN package_contributors USING (`_package_id`)
+  LEFT JOIN package_available_sources USING (`_package_id`)
+)
+
+SELECT
+  -- LIVE VIEW NOTE: Adds package-level actual-source attribution and the full
+  -- package source inventory without changing the package/date row grain.
+  row_source_contributors.* EXCEPT(qa_internal_metric_source_contributors),
+  package_qa.qa_pkg_primary_data_source,
+  package_qa.qa_pkg_data_sources_available
+FROM row_source_contributors
+LEFT JOIN package_qa USING (`_package_id`);

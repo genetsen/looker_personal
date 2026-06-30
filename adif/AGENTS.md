@@ -38,11 +38,10 @@ Older notebook copies still exist as historical artifacts, but they are not the 
 
 BigQuery notebooks in this project are exposed as Dataform repositories with `single-file-asset-type=notebook`.
 
-Default access preference for this project:
+Apply the global [BigQuery, SQL, and data-modeling rules](/Users/eugenetsenter/.codex/BIGQUERY_SQL_DATA_MODELING_RULES.md) for read-only inspection, permission classification, live source-of-truth selection, and SQL/modeling decisions. ADIF-specific notebook access adds these local details:
 
-1. Use BigQuery MCP first for dataset discovery, schema inspection, and read-only BigQuery query work.
-2. Keep the local `zsh scripts/use_sandbox_gcloud.sh ...` helper as the repair and advanced access path.
-3. Use the helper when authentication must be refreshed or when Dataform notebook file reads need a token for `queryDirectoryContents` / `readFile`.
+1. Keep the local `zsh scripts/use_sandbox_gcloud.sh ...` helper as the repair and advanced access path.
+2. Use the helper when authentication must be refreshed or when Dataform notebook file reads need a token for `queryDirectoryContents` / `readFile`.
 
 Permanent workspace for notebook access:
 
@@ -73,16 +72,13 @@ curl -s -G \
 
 ## Production SQL Verification (Required)
 
-Before approving or deploying any production SQL change, verify live BigQuery state with BigQuery MCP first, or with `bq` through the project helper when MCP is unavailable.
+Before approving or deploying any ADIF production SQL change, apply the global BigQuery source-of-truth and permission rules, then capture ADIF-specific verification evidence.
 
 Required checks:
 1. Confirm object exists and type is correct (`bq show project:dataset.object`).
 2. Confirm live schema (`bq show --schema ...` or `INFORMATION_SCHEMA`).
 3. Run a read-only sanity query (row counts/date range/null checks).
-4. If live BigQuery and local SQL/docs differ, treat live BigQuery as source of truth, document drift, then update local files.
-5. Do not deploy until verification evidence is captured in task notes/PR notes.
-
-When referencing a BigQuery table or view in user-facing outputs, render it as a clickable deep link whenever the client supports one instead of plain text only.
+4. Do not deploy until verification evidence is captured in task notes/PR notes.
 
 ## Validation Logic Defaults
 

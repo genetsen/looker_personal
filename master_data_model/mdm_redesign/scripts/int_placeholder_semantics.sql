@@ -13,13 +13,15 @@ OPTIONS(
 )
 AS
 SELECT
+  -- LIVE VIEW NOTE: Adds explicit placeholder semantics to the universal
+  -- compatibility layer without changing source metrics.
   base.*,
 
   -- Creative dimension: not available at package/date grain
   CASE
-    WHEN _creative_img IS NULL AND fpd_orig_creative IS NULL
+    WHEN _creative_img IS NULL AND fpd_creative IS NULL
     THEN 'not_available_at_source'
-    ELSE COALESCE(_creative_img, fpd_orig_creative, 'not_available_at_source')
+    ELSE COALESCE(_creative_img, fpd_creative, 'not_available_at_source')
   END AS univ_creative_placeholder,
 
   -- DMA dimension: not available at package/date grain

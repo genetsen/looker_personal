@@ -13,6 +13,8 @@ OPTIONS(
 )
 AS
 SELECT
+  -- LIVE VIEW NOTE: Package/day reporting shortcut derived from the universal
+  -- evidence layer at a stable package/date grain.
   _package_id,
   _date,
   _package_name,
@@ -42,5 +44,5 @@ SELECT
   p_planned_impressions_doNotSum,
   initiative,
   qa_row_data_source_primary,
-  qa_row_data_issue_category
+  qa_data_issues
 FROM `looker-studio-pro-452620.mdm_int.int_universal_compat_view`;

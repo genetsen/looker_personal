@@ -19,6 +19,7 @@ the files most useful for day-to-day navigation.
 - **[create_master_data_model_upstream_tables_sched.sql](./create_master_data_model_upstream_tables_sched.sql)** - Scheduled upstream table snapshots
 - **[create_master_stg_data_model.sql](./create_master_stg_data_model.sql)** - Main package/date evidence model
 - **[create_master_stg_data_model_mart.sql](./create_master_stg_data_model_mart.sql)** - Dashboard reporting mart model
+- **[create_master_stg_data_model_v3.sql](./create_master_stg_data_model_v3.sql)** - V3 lowest-grain evaluation table builder
 - **[create_manual_package_edit_tables.sql](./create_manual_package_edit_tables.sql)** - Manual edit landing schemas
 
 ## Versioned And Sample SQL

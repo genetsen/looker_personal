@@ -73,6 +73,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 ## BigQuery Guardrails
+- Apply the global [BigQuery, SQL, and data-modeling rules](/Users/eugenetsenter/.codex/BIGQUERY_SQL_DATA_MODELING_RULES.md) for live source-of-truth selection, read-only permission classification, field lineage, grain, and local-vs-live drift decisions. MFT adds the stricter output and cost guardrails below.
 - For BigQuery reads, use `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/bq-safe-query.sh` by default.
 - Do not run raw `bq query` for data pulls unless the user explicitly asks to bypass guardrails.
 - Apply the same guardrails when using MCP (`bigquery` server, `run_query` tool):
@@ -90,9 +91,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   - narrow explicit-column sample (`LIMIT 50`)
   - schema exploration via `INFORMATION_SCHEMA.COLUMNS`
 - When the user mentions a BigQuery object path like `project.dataset.table` instead of a local file path:
-  - inspect the live production object first
-  - if a matching local SQL file or lineage doc exists, compare it to production before trusting the local copy
-  - call out any local-versus-production drift clearly before using the local definition for QA or edits
+  - apply the global live-object-first and local-vs-live drift rules
+  - use the safe-query helper for any MFT read unless the user explicitly asks to bypass it
 - When the user mentions a local file path, work from the file directly instead of assuming the live object is the target.
 
 ## DCM UTM Validation Defaults
