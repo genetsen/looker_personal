@@ -9,6 +9,7 @@ the files most useful for day-to-day navigation.
 
 - **[AGENTS.md](./AGENTS.md)** - Project-local agent operating rules
 - **[CHANGELOG.md](./CHANGELOG.md)** - Durable model change history
+- **[Folder organization impact](./docs/folder-organization-impact.md)** - Safe-move matrix for docs, generated artifacts, SQL builders, loaders, and workflow folders
 - **[README.md](./README.md)** - Master data model overview
 
 ## Audit References

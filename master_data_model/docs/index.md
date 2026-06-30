@@ -33,6 +33,7 @@
 | [Development Guide](./development-guide.md) | Commands, validation approach, deploy order, and guardrails. |
 | [Component Inventory](./component-inventory.md) | SQL, loader, Sheet UX, test, and docs components. |
 | [Manual Package Editor Workflow](./manual-package-editor-workflow.md) | End-to-end correction workflow from Sheet to mart. |
+| [Folder Organization Impact](./folder-organization-impact.md) | Safe-move matrix for docs, generated artifacts, SQL builders, loaders, and workflow folders. |
 
 ## Existing Documentation
 
