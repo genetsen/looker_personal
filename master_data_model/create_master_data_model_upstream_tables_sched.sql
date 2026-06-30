@@ -15,7 +15,7 @@
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_int.crossplatform_pacing_tbl`
 OPTIONS (
-  description = "Stored master-model social pacing snapshot. Refreshed by the master upstream scheduled query from TikTok, Facebook, and Google Ads pacing logic; sibling view repo_int.crossplatform_pacing remains untouched."
+  description = "Stored master-model social pacing snapshot. Refreshed by the master upstream scheduled query from TikTok, Facebook, Google Ads, and Reddit pacing logic; sibling view repo_int.crossplatform_pacing remains untouched."
 ) AS
 WITH tt AS (
   SELECT
@@ -82,12 +82,55 @@ ga AS (
     final_budget AS final_budget,
     'google_ads' AS platform
   FROM `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
+),
+
+reddit AS (
+  SELECT
+    SAFE_CAST(NULL AS STRING) AS a_id,
+    SAFE_CAST(NULL AS STRING) AS ad_name,
+    SAFE_CAST(ad_group_id AS STRING) AS ag_id,
+    ad_group_name AS adgroup_name,
+    MIN(DATE(start_time_campaign)) AS ag_start_date,
+    CASE
+      WHEN MAX(DATE(end_time_campaign)) > MAX(date)
+        THEN DATE_SUB(MAX(DATE(end_time_campaign)), INTERVAL 1 DAY)
+      ELSE MAX(DATE(end_time_campaign))
+    END AS ag_end_date,
+    SAFE_CAST(NULL AS FLOAT64) AS ag_budget,
+    SAFE_CAST(campaign_id AS STRING) AS c_id,
+    campaign_name,
+    MIN(DATE(start_time_campaign)) AS c_start_date,
+    CASE
+      WHEN MAX(DATE(end_time_campaign)) > MAX(date)
+        THEN DATE_SUB(MAX(DATE(end_time_campaign)), INTERVAL 1 DAY)
+      ELSE MAX(DATE(end_time_campaign))
+    END AS c_end_date,
+    MIN(DATE(start_time_campaign)) AS start_date,
+    CASE
+      WHEN MAX(DATE(end_time_campaign)) > MAX(date)
+        THEN DATE_SUB(MAX(DATE(end_time_campaign)), INTERVAL 1 DAY)
+      ELSE MAX(DATE(end_time_campaign))
+    END AS end_date,
+    SAFE_CAST(MAX(budget_campaign) AS FLOAT64) AS c_budget,
+    SAFE_CAST(MAX(budget_campaign) AS FLOAT64) AS final_budget,
+    'reddit' AS platform
+  FROM `looker-studio-pro-452620.landing.reddit-ads-email`
+  WHERE budget_campaign IS NOT NULL
+    AND start_time_campaign IS NOT NULL
+    AND end_time_campaign IS NOT NULL
+  GROUP BY
+    SAFE_CAST(campaign_id AS STRING),
+    campaign_name,
+    SAFE_CAST(ad_group_id AS STRING),
+    ad_group_name
 )
 SELECT * FROM tt
 UNION ALL
 SELECT * FROM fb
 UNION ALL
-SELECT * FROM ga;
+SELECT * FROM ga
+UNION ALL
+SELECT * FROM reddit;
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.landing.tv_combined_tbl`
 OPTIONS (
