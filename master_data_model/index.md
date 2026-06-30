@@ -7,12 +7,15 @@ the files most useful for day-to-day navigation.
 
 ## Project Docs
 
-- **[ADIF_MASTER_MISSING_INFORMATION_AUDIT_2026-05-07.md](./ADIF_MASTER_MISSING_INFORMATION_AUDIT_2026-05-07.md)** - ADIF versus master schema audit
 - **[AGENTS.md](./AGENTS.md)** - Project-local agent operating rules
 - **[CHANGELOG.md](./CHANGELOG.md)** - Durable model change history
-- **[FULL_SOURCE_FIELD_AUDIT.md](./FULL_SOURCE_FIELD_AUDIT.md)** - Source field preservation audit
 - **[README.md](./README.md)** - Master data model overview
-- **[SCHEMA_AUDIT.md](./SCHEMA_AUDIT.md)** - Missing schema field audit
+
+## Audit References
+
+- **[ADIF master missing-information audit](./docs/audits/ADIF_MASTER_MISSING_INFORMATION_AUDIT_2026-05-07.md)** - ADIF versus master schema audit
+- **[Full source field audit](./docs/audits/FULL_SOURCE_FIELD_AUDIT.md)** - Source field preservation audit
+- **[Schema audit](./docs/audits/SCHEMA_AUDIT.md)** - Missing schema field audit
 
 ## Core SQL Models
 

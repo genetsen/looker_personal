@@ -42,9 +42,9 @@
 | [Root directory index](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/index.md) | Short docs-only navigation index for the project root. |
 | [Manual editor README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/README.md) | Manual editor workflow and user-facing rules. |
 | [Manual editor QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) | Operational proof path and troubleshooting queries. |
-| [Full source field audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/FULL_SOURCE_FIELD_AUDIT.md) | Source-field preservation audit. |
-| [Schema audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/SCHEMA_AUDIT.md) | Missing schema field audit. |
-| [ADIF comparison audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/ADIF_MASTER_MISSING_INFORMATION_AUDIT_2026-05-07.md) | ADIF versus master exact-name and concept comparison. |
+| [Full source field audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/audits/FULL_SOURCE_FIELD_AUDIT.md) | Source-field preservation audit. |
+| [Schema audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/audits/SCHEMA_AUDIT.md) | Missing schema field audit. |
+| [ADIF comparison audit](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/audits/ADIF_MASTER_MISSING_INFORMATION_AUDIT_2026-05-07.md) | ADIF versus master exact-name and concept comparison. |
 | [Interactive model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) | Clickable model lineage and warning map. |
 | [Interactive model map v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map-v2.html) | Versioned model lineage map. |
 | [DCM cost model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html) | Clickable DCM scheduled-query and cost-allocation map. |
