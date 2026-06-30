@@ -1055,10 +1055,12 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "Feeds social_pacing_planned_spend and planned_daily_spend_pk.",
+          "Reddit pacing comes from the Reddit landing table campaign budget and campaign flight dates.",
           "The sibling view repo_int.crossplatform_pacing remains available for lineage comparison."
         ],
         sources: [
           ["BigQuery: Social pacing table", bq("repo_int", "crossplatform_pacing_tbl")],
+          ["BigQuery: Reddit email landing", bq("landing", "reddit-ads-email")],
           ["BigQuery: Social pacing view", bq("repo_int", "crossplatform_pacing")],
           ["Scheduled refresh SQL", "../create_master_data_model_upstream_tables_sched.sql"]
         ]

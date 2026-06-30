@@ -6,4 +6,4 @@ This folder connects the model workspace to scheduler and runner workflows.
 |---|---|
 | [universal_runner](./universal_runner) | Symlink to the universal runner project that refreshes the clustered support table and current v3 final table. |
 
-Do not change runner target paths from this workspace until the copied model files are verified and the runner path update is intentional.
+Runner target paths now point at the organized workspace for the current final model and Manual Editor loader. Keep this folder current whenever runner-owned entrypoints move.
