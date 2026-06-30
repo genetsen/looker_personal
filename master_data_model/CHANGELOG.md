@@ -2,7 +2,7 @@
 
 ## 2026-06-30
 
-- **ADDED** - Created the organized `model/` workspace so current work can start from function and source-branch folders instead of the legacy root-level file pile, while keeping old paths in place for compatibility.
+- **ADDED** - Created the organized `model/` workspace so current work can start from function and source-branch folders instead of the legacy root-level file pile, with runner-used files now canonical there, WP Search and Reddit social assets copied under the same roof, and stale root docs/deprecated SQL removed from the active path.
 - **CHANGED** - Added the v3 lowest-grain evaluation table refresh to the universal runner's master-model clustered advertiser refresh step, so a normal runner refresh now rebuilds both stored master-model support tables and checks v3's no-duplicate/no-extra-planned-carrier contract.
 - **FIXED** - Deployed Reddit social-row ingestion through the master-model mapping path, including Reddit source lineage, refresh timestamps, platform normalization, and the Olipop Reddit advertiser alias. Verified the master model, reporting mart, clustered QA table, and v3 table all retain 654 Reddit rows with Olipop advertiser mapping.
 - **FIXED** - Made the WP social QA builders runnable without a missing scratch input table by pointing the QA candidate at the maintained WP staging table.

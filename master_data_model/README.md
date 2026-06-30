@@ -10,7 +10,7 @@ It was split out of the ADIF workspace because the model intentionally removes A
 
 Start in [model](./model/) for current work. It organizes the project by function and source branch: current final model, stable base, Manual Editor, mappings, source branches, rollups, reporting outputs, automation, and reference maps.
 
-The legacy root-level files remain in place while the organized workspace is adopted, so existing runner paths and older docs do not break during the transition.
+The organized workspace is now the canonical local surface for runner-used master-model files. Legacy root-level files remain only where they are still needed for compatibility or history.
 
 Interactive orientation:
 
