@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DCM Cost Model Interactive Map</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --paper: #fffdf8;
+      --ink: #1c2730;
+      --muted: #64727d;
+      --line: #d9d1c3;
+      --source: #0f766e;
+      --join: #3563a8;
+      --logic: #7c3f58;
+      --write: #b7791f;
+      --risk: #b84a3f;
+      --ok: #4f7d35;
+      --soft-source: rgba(15, 118, 110, 0.08);
+      --soft-join: rgba(53, 99, 168, 0.08);
+      --soft-logic: rgba(124, 63, 88, 0.09);
+      --soft-write: rgba(183, 121, 31, 0.1);
+      --soft-risk: rgba(184, 74, 63, 0.09);
+      --shadow: 0 18px 48px rgba(28, 37, 46, 0.12);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 7px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 840px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.86);
+      color: var(--join);
+      text-decoration: none;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .back-link:hover,
+    .back-link:focus-visible {
+      border-color: var(--join);
+      outline: none;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .map-area {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(230px, 290px);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .map-panel,
+    .legend-panel,
+    .inspector {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .map-panel {
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .context-banner {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(15, 118, 110, 0.28);
+      border-radius: 8px;
+      background: var(--soft-source);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .context-banner strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .context-banner code {
+      color: var(--source);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    .flow-map {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 10px;
+      min-height: 430px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.8);
+    }
+
+    .stage[data-tone="source"] { background: var(--soft-source); }
+    .stage[data-tone="join"] { background: var(--soft-join); }
+    .stage[data-tone="logic"] { background: var(--soft-logic); }
+    .stage[data-tone="write"] { background: var(--soft-write); }
+    .stage[data-tone="risk"] { background: var(--soft-risk); }
+
+    .stage-button {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .stage-button:focus-visible {
+      outline: 2px solid var(--join);
+      outline-offset: 4px;
+      border-radius: 6px;
+    }
+
+    .stage h2 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .stage p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .node-list {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .node {
+      display: grid;
+      gap: 7px;
+      width: 100%;
+      min-height: 96px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.92);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .node:hover,
+    .node:focus-visible,
+    .node[aria-pressed="true"] {
+      border-color: var(--node-accent, var(--join));
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(53, 99, 168, 0.12);
+    }
+
+    .node-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .node-summary {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.38;
+    }
+
+    .callout-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 22px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .pip {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .pip.source { background: var(--source); }
+    .pip.join { background: var(--join); }
+    .pip.logic { background: var(--logic); }
+    .pip.write { background: var(--write); }
+    .pip.risk { background: var(--risk); }
+    .pip.ok { background: var(--ok); }
+
+    .legend-panel {
+      padding: 14px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .legend-panel h2 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .legend-panel p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .legend-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      min-height: 36px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.86);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .legend-item strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .inspector {
+      padding: 16px;
+    }
+
+    .inspector-eyebrow {
+      margin: 0 0 4px;
+      color: var(--logic);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .inspector h2 {
+      margin: 0 0 8px;
+      font-size: clamp(21px, 3vw, 30px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .inspector-summary {
+      max-width: 980px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .detail-box {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbf7ef;
+    }
+
+    .detail-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .detail-box span {
+      display: block;
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .section-title {
+      margin: 14px 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .note-list,
+    .source-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .source-list a {
+      color: var(--join);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(53, 99, 168, 0.25);
+    }
+
+    .source-list a:hover,
+    .source-list a:focus-visible {
+      border-bottom-color: var(--join);
+      outline: none;
+    }
+
+    footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1180px) {
+      .map-area {
+        grid-template-columns: 1fr;
+      }
+
+      .legend-panel {
+        position: static;
+      }
+
+      .legend-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 920px) {
+      header {
+        display: grid;
+      }
+
+      .flow-map {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-grid,
+      .legend-list {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        padding: 14px;
+      }
+
+      .detail-grid,
+      .legend-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>DCM Cost Model Map</h1>
+        <p class="subtitle">A clickable guide to the live `mm_dcm_costmodel` scheduled query: raw DCM rows join Prisma metadata, package buckets are calculated, cost rules allocate money, and the table feeds the Master Model.</p>
+      </div>
+      <a class="back-link" href="./master-data-model-map.html">Back to Master Model Map</a>
+    </header>
+
+    <section class="workspace">
+      <div class="map-area">
+        <section class="map-panel" aria-label="Clickable DCM cost model flow">
+          <div class="context-banner">
+            <strong>The pricing math is row-level, but the budget bucket is package-level.</strong>
+            <span>Click nodes to see which step reads source rows, which step groups by package, and where the creative-safe join key uses `ad + creative`.</span>
+          </div>
+          <div class="flow-map" id="flowMap"></div>
+        </section>
+
+        <aside class="legend-panel" aria-label="Map legend">
+          <h2>Callouts</h2>
+          <p>Each dot explains what to watch out for when reading the node.</p>
+          <div class="legend-list">
+            <div class="legend-item"><span class="pip source"></span><span><strong>Source of truth</strong>Live table, live scheduled query, or synced builder SQL.</span></div>
+            <div class="legend-item"><span class="pip write"></span><span><strong>Writes data</strong>This step creates or refreshes stored warehouse data.</span></div>
+            <div class="legend-item"><span class="pip risk"></span><span><strong>Grain warning</strong>Package totals meet lower-grain delivery rows, so repeated package fields need careful reading.</span></div>
+            <div class="legend-item"><span class="pip ok"></span><span><strong>Protected join</strong>The live SQL uses the detailed join key needed to avoid a known row-match problem.</span></div>
+            <div class="legend-item"><span class="pip logic"></span><span><strong>Business logic</strong>Rules decide cost, flags, or metric allocation.</span></div>
+            <div class="legend-item"><span class="pip join"></span><span><strong>Feeds Master</strong>This DCM table is an upstream input to the Master Model.</span></div>
+          </div>
+        </aside>
+      </div>
+
+      <aside class="inspector" aria-live="polite" aria-label="Selected DCM map detail">
+        <p class="inspector-eyebrow" id="detailGroup">Select a node</p>
+        <h2 id="detailTitle">Start with the scheduled query</h2>
+        <p class="inspector-summary" id="detailSummary">Click a node or phase to see what it reads, what it produces, and whether it is package-grain or delivery-detail-grain.</p>
+        <div class="detail-grid">
+          <div class="detail-box"><strong>Reads</strong><span id="detailReads">Live DCM delivery and Prisma metadata.</span></div>
+          <div class="detail-box"><strong>Produces</strong><span id="detailProduces">A refreshed DCM cost table.</span></div>
+          <div class="detail-box"><strong>Grain</strong><span id="detailGrain">Detailed DCM rows with package-level allocation fields.</span></div>
+          <div class="detail-box"><strong>Warning</strong><span id="detailRisk">Click a node for the specific warning.</span></div>
+        </div>
+        <p class="section-title">Notes</p>
+        <ul class="note-list" id="detailNotes"></ul>
+        <p class="section-title">Sources</p>
+        <ul class="source-list" id="detailSources"></ul>
+      </aside>
+    </section>
+
+    <footer>
+      Counts are intentionally omitted because the DCM source refreshes. Recheck live BigQuery before making row-count or metric-total claims.
+    </footer>
+  </main>
+
+  <script>
+    const bq = (project, dataset, table) =>
+      `https://console.cloud.google.com/bigquery?project=${project}&p=${project}&d=${dataset}&t=${table}&page=table`;
+
+    const repo = (path, line) =>
+      `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/${path}${line ? `#L${line}` : ""}`;
+
+    const groups = [
+      {
+        id: "schedule",
+        label: "Refresh",
+        summary: "The scheduled query replaces the stored DCM cost table every four hours.",
+        tone: "write",
+        reads: "Live scheduled-query config plus raw DCM and Prisma sources.",
+        produces: "Stored table: DCM.20250505_costModel_v5.",
+        grain: "Refresh job, not analytical row grain.",
+        risk: "Warning: safe to inspect, but the table only changes when the scheduled query actually runs.",
+        notes: [
+          "The local SQL file was synced from this live scheduled query on 2026-06-16.",
+          "Use the live scheduled query as production truth if local and live ever drift again."
+        ],
+        sources: [
+          ["Scheduled-query runbook", repo("docs/SCHEDULED_QUERIES.md#1-mm_dcm_costmodel")],
+          ["Local synced SQL", repo("sql/base/dcm/20250505_costModel_v5.sql", 1)]
+        ]
+      },
+      {
+        id: "source",
+        label: "Source Rows",
+        summary: "Raw DCM delivery rows plus Prisma package metadata enter the builder.",
+        tone: "source",
+        reads: "Raw DCM delivery rows and Prisma processed package metadata.",
+        produces: "A joined base row with delivery fields and p_* package fields.",
+        grain: "DCM delivery detail: package/date/placement/ad/creative.",
+        risk: "Warning: zero-impression source rows do not enter this cost model because the logic filters to impressions > 0.",
+        notes: [
+          "This is where advertiser, site, campaign, package, placement, ad, creative, impressions, clicks, media cost, and conversions are selected.",
+          "Prisma supplies cost method, package dates, planned cost, planned impressions, and channel metadata."
+        ],
+        sources: [
+          ["Raw DCM delivery table", bq("giant-spoon-299605", "data_model_2025", "new_md")],
+          ["Prisma processed metadata", bq("looker-studio-pro-452620", "20250327_data_model", "prisma_porcessed")],
+          ["Base CTE in SQL", repo("sql/base/dcm/20250505_costModel_v5.sql", 10)]
+        ]
+      },
+      {
+        id: "package",
+        label: "Package Buckets",
+        summary: "The query builds package-level totals used to allocate cost back down.",
+        tone: "join",
+        reads: "Joined DCM + Prisma rows from base_delivery_metadata.",
+        produces: "Package totals, flight min/max dates, active-day totals, and placement counts.",
+        grain: "Package grain: one rollup bucket per package_id.",
+        risk: "Warning: this is where the logic stops being fully grain-agnostic because delivery rows inherit package totals.",
+        notes: [
+          "The CTE groups by package_id.",
+          "Fields like pkg_total_imps and total_inflight_impressions are repeated later on lower-grain rows."
+        ],
+        sources: [
+          ["delivery_rollups CTE", repo("sql/base/dcm/20250505_costModel_v5.sql", 83)]
+        ]
+      },
+      {
+        id: "pricing",
+        label: "Pricing Engine",
+        summary: "CPM, CPC, CPA, Flat, and out-of-flight rules calculate row-level cost.",
+        tone: "logic",
+        reads: "Delivery rows plus package rollups and rate fields.",
+        produces: "daily_recalculated_cost, daily_recalculated_cost_flag, and daily_recalculated_imps.",
+        grain: "Row-level pricing using package allocation context.",
+        risk: "Warning: the formula is reusable, but flat and overdelivery rules still depend on package-level buckets.",
+        notes: [
+          "CPM can use rate * impressions, or planned package cost divided across overdelivered impressions.",
+          "Flat cost is distributed by impression share of the package's in-flight delivery."
+        ],
+        sources: [
+          ["cost_model CTE", repo("sql/base/dcm/20250505_costModel_v5.sql", 220)]
+        ]
+      },
+      {
+        id: "output",
+        label: "Output",
+        summary: "The calculated costs are joined back to the original detailed rows and feed Master.",
+        tone: "risk",
+        reads: "calculated_fields and cost_model CTEs.",
+        produces: "The stored DCM.20250505_costModel_v5 table used by master_stg.data_model.",
+        grain: "Detailed DCM rows protected by package_id + placement_id + ad + creative + date.",
+        risk: "Warning: stale SQL without ad + creative can multiply rows; the live SQL uses the creative-safe join key.",
+        notes: [
+          "The final join includes ad and creative because package + placement + date is not always unique.",
+          "The Master Model reads this table and maps DCM metrics into d_* fields."
+        ],
+        sources: [
+          ["DCM cost model table", bq("looker-studio-pro-452620", "DCM", "20250505_costModel_v5")],
+          ["Final output join", repo("sql/base/dcm/20250505_costModel_v5.sql", 299)],
+          ["Master Model DCM read", repo("master_data_model/create_master_stg_data_model.sql", 44)],
+          ["Master Model Map", "./master-data-model-map.html"]
+        ]
+      }
+    ];
+
+    const nodes = [
+      {
+        id: "scheduled-query",
+        groupId: "schedule",
+        title: "mm_dcm_costmodel",
+        summary: "Scheduled query that rebuilds the production DCM cost table.",
+        callouts: ["source", "write"],
+        reads: "BigQuery scheduled-query config.",
+        produces: "CREATE OR REPLACE TABLE for DCM.20250505_costModel_v5.",
+        grain: "Operational refresh.",
+        risk: "Warning: changing this query changes production output on the next run.",
+        notes: [
+          "Runs every four hours.",
+          "The live query includes the Dec. 16, 2025 creative-key update."
+        ],
+        sources: [
+          ["Scheduled-query runbook", repo("docs/SCHEDULED_QUERIES.md#1-mm_dcm_costmodel")],
+          ["Local synced SQL", repo("sql/base/dcm/20250505_costModel_v5.sql", 1)]
+        ]
+      },
+      {
+        id: "raw-dcm",
+        groupId: "source",
+        title: "Raw DCM Delivery",
+        summary: "Delivery rows with package, placement, ad, creative, impressions, clicks, and cost.",
+        callouts: ["source", "risk"],
+        reads: "giant-spoon-299605.data_model_2025.new_md.",
+        produces: "Delivery fields in base_delivery_metadata.",
+        grain: "Package/date/placement/ad/creative detail.",
+        risk: "Warning: multiple creatives can share one package + placement + date.",
+        notes: [
+          "This source is lower-grain than package/date.",
+          "Rows with impressions <= 0 are filtered out by the builder."
+        ],
+        sources: [
+          ["Raw DCM delivery table", bq("giant-spoon-299605", "data_model_2025", "new_md")],
+          ["Raw DCM select fields", repo("sql/base/dcm/20250505_costModel_v5.sql", 20)]
+        ]
+      },
+      {
+        id: "prisma-metadata",
+        groupId: "source",
+        title: "Prisma Metadata",
+        summary: "Package-level dates, planned cost, planned impressions, and cost method.",
+        callouts: ["source"],
+        reads: "looker-studio-pro-452620.20250327_data_model.prisma_porcessed.",
+        produces: "p_* package context fields.",
+        grain: "Package metadata joined to detailed delivery rows.",
+        risk: "Warning: package metadata repeats on every matching delivery row.",
+        notes: [
+          "Email packages get a 60-day end-date extension.",
+          "The join key is package_id."
+        ],
+        sources: [
+          ["Prisma processed metadata", bq("looker-studio-pro-452620", "20250327_data_model", "prisma_porcessed")],
+          ["Prisma join", repo("sql/base/dcm/20250505_costModel_v5.sql", 72)]
+        ]
+      },
+      {
+        id: "base-cte",
+        groupId: "source",
+        title: "base_delivery_metadata",
+        summary: "Creates one enriched delivery row before any package rollups.",
+        callouts: ["logic"],
+        reads: "Raw DCM delivery and Prisma package metadata.",
+        produces: "Delivery row with p_cost_method, p_start_date, p_end_date, rate_raw, and flight flags.",
+        grain: "Still delivery detail.",
+        risk: "Warning: this step is mostly grain-safe because it enriches rows instead of summing them.",
+        notes: [
+          "This is the cleanest part to reuse for future source-normalization work.",
+          "It marks out-of-flight rows before the pricing engine runs."
+        ],
+        sources: [
+          ["base_delivery_metadata CTE", repo("sql/base/dcm/20250505_costModel_v5.sql", 10)]
+        ]
+      },
+      {
+        id: "package-rollups",
+        groupId: "package",
+        title: "delivery_rollups",
+        summary: "Groups rows by package_id and calculates the package bucket.",
+        callouts: ["logic", "risk"],
+        reads: "base_delivery_metadata.",
+        produces: "d_min_date, d_max_date, total_impressions, n_of_placements, total_inflight_impressions.",
+        grain: "Package-level rollup.",
+        risk: "Warning: package totals get copied back onto lower-grain delivery rows later.",
+        notes: [
+          "This is the main package-specific section.",
+          "It is useful, but it should be named as package allocation logic rather than generic row logic."
+        ],
+        sources: [
+          ["delivery_rollups CTE", repo("sql/base/dcm/20250505_costModel_v5.sql", 83)]
+        ]
+      },
+      {
+        id: "calculated-fields",
+        groupId: "package",
+        title: "calculated_fields",
+        summary: "Adds package totals, daily shares, prorated planned values, and flags.",
+        callouts: ["logic", "risk"],
+        reads: "base_delivery_metadata plus delivery_rollups.",
+        produces: "pkg_daily_imps, pkg_total_imps_perc, prorated planned cost, and overdelivery flags.",
+        grain: "Detailed row plus package-level context.",
+        risk: "Warning: a detailed row now carries repeated package metrics, so downstream users must not sum repeated context fields blindly.",
+        notes: [
+          "The daily share partitions by package_id and date.",
+          "The full-package share divides each row by package-level totals."
+        ],
+        sources: [
+          ["calculated_fields CTE", repo("sql/base/dcm/20250505_costModel_v5.sql", 115)]
+        ]
+      },
+      {
+        id: "price-rules",
+        groupId: "pricing",
+        title: "Cost Rules",
+        summary: "Calculates cost differently for CPM, CPC, CPA, Flat, and out-of-flight rows.",
+        callouts: ["logic"],
+        reads: "calculated_fields.",
+        produces: "daily_recalculated_cost.",
+        grain: "Detailed row, using package allocation inputs.",
+        risk: "Warning: the math is flexible, but the allocation choice is still a business rule.",
+        notes: [
+          "CPM standard uses rate_raw * impressions / 1000.",
+          "Flat uses impression share to spread package planned cost."
+        ],
+        sources: [
+          ["Pricing CASE expression", repo("sql/base/dcm/20250505_costModel_v5.sql", 244)]
+        ]
+      },
+      {
+        id: "cost-flags",
+        groupId: "pricing",
+        title: "Cost Flags",
+        summary: "Labels how each row was priced for QA and debugging.",
+        callouts: ["logic"],
+        reads: "p_cost_method, flight_date_flag, pkg_total_imps, and planned impressions.",
+        produces: "daily_recalculated_cost_flag.",
+        grain: "Detailed row.",
+        risk: "Warning: the label is only as accurate as the upstream package method and flight-window logic.",
+        notes: [
+          "Useful values include CPM_STANDARD, CPM_OVERDELIVERY, FLAT_DAILY, FLAT_RATIO, OUT_OF_FLIGHT, and UNKNOWN.",
+          "CPC and CPA logic exists, but the current live data may not contain those rows at inspection time."
+        ],
+        sources: [
+          ["Cost flag CASE expression", repo("sql/base/dcm/20250505_costModel_v5.sql", 276)]
+        ]
+      },
+      {
+        id: "creative-safe-join-key",
+        groupId: "output",
+        title: "Creative-Safe Join Key",
+        summary: "Joins costs back with package, placement, ad, creative, and date.",
+        callouts: ["ok", "risk"],
+        reads: "calculated_fields and cost_model.",
+        produces: "One cost result matched back to the same detailed delivery row.",
+        grain: "Package/date/placement/ad/creative detail.",
+        risk: "Warning: this join key is the production fix for the package+placement+date non-unique key problem.",
+        notes: [
+          "The live SQL joins on package_id, placement_id, ad, creative, and date.",
+          "Do not remove ad or creative unless the upstream grain is intentionally changed."
+        ],
+        sources: [
+          ["Final join in SQL", repo("sql/base/dcm/20250505_costModel_v5.sql", 306)]
+        ]
+      },
+      {
+        id: "dcm-output",
+        groupId: "output",
+        title: "DCM Cost Table",
+        summary: "Stored table consumed by the Master Model digital branch.",
+        callouts: ["source", "write", "join"],
+        reads: "Final SELECT from the DCM builder.",
+        produces: "looker-studio-pro-452620.DCM.20250505_costModel_v5.",
+        grain: "Detailed DCM rows with package allocation fields.",
+        risk: "Warning: safe for detail inspection, but package-level context fields require careful summing.",
+        notes: [
+          "The Master Model reads this table and maps DCM values into d_* fields.",
+          "Use package/date Master views for package rollups, and detail views for creative-level questions."
+        ],
+        sources: [
+          ["DCM cost model table", bq("looker-studio-pro-452620", "DCM", "20250505_costModel_v5")],
+          ["Master Model DCM read", repo("master_data_model/create_master_stg_data_model.sql", 44)],
+          ["Master Model Map", "./master-data-model-map.html"]
+        ]
+      }
+    ];
+
+    const groupById = new Map(groups.map((group) => [group.id, group]));
+    const detail = {
+      group: document.getElementById("detailGroup"),
+      title: document.getElementById("detailTitle"),
+      summary: document.getElementById("detailSummary"),
+      reads: document.getElementById("detailReads"),
+      produces: document.getElementById("detailProduces"),
+      grain: document.getElementById("detailGrain"),
+      risk: document.getElementById("detailRisk"),
+      notes: document.getElementById("detailNotes"),
+      sources: document.getElementById("detailSources")
+    };
+
+    function chipHtml(callout) {
+      const labels = {
+        source: "truth",
+        write: "writes",
+        risk: "warning",
+        ok: "protected",
+        logic: "logic",
+        join: "feeds master"
+      };
+      return `<span class="chip"><span class="pip ${callout}"></span>${labels[callout]}</span>`;
+    }
+
+    function selectDetail(item, group) {
+      detail.group.textContent = group.label;
+      detail.title.textContent = item.title || item.label;
+      detail.summary.textContent = item.summary;
+      detail.reads.textContent = item.reads;
+      detail.produces.textContent = item.produces;
+      detail.grain.textContent = item.grain;
+      detail.risk.textContent = item.risk;
+      detail.notes.innerHTML = item.notes.map((note) => `<li>${note}</li>`).join("");
+      detail.sources.innerHTML = item.sources.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join("");
+
+      document.querySelectorAll(".node").forEach((node) => {
+        node.setAttribute("aria-pressed", String(node.dataset.nodeId === item.id));
+      });
+    }
+
+    function render() {
+      const flow = document.getElementById("flowMap");
+      flow.innerHTML = groups.map((group) => `
+        <section class="stage" data-tone="${group.tone}" data-group-id="${group.id}">
+          <button class="stage-button" type="button" data-group-button="${group.id}">
+            <h2>${group.label}</h2>
+            <p>${group.summary}</p>
+          </button>
+          <div class="node-list">
+            ${nodes.filter((node) => node.groupId === group.id).map((node) => `
+              <button class="node" type="button" data-node-id="${node.id}" style="--node-accent: var(--${group.tone});" aria-pressed="false">
+                <span class="node-title">${node.title}</span>
+                <span class="node-summary">${node.summary}</span>
+                <span class="callout-row">${node.callouts.map(chipHtml).join("")}</span>
+              </button>
+            `).join("")}
+          </div>
+        </section>
+      `).join("");
+
+      document.querySelectorAll("[data-group-button]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const group = groupById.get(button.dataset.groupButton);
+          selectDetail({ ...group, title: group.label, id: group.id }, group);
+        });
+      });
+
+      document.querySelectorAll("[data-node-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const node = nodes.find((candidate) => candidate.id === button.dataset.nodeId);
+          selectDetail(node, groupById.get(node.groupId));
+        });
+      });
+
+      selectDetail(nodes[0], groupById.get(nodes[0].groupId));
+    }
+
+    render();
+  </script>
+</body>
+</html>

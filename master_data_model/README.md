@@ -6,6 +6,12 @@ This project owns the generalized cross-client package/date view:
 
 It was split out of the ADIF workspace because the model intentionally removes ADIF-only filters and is meant to support broader analysis across clients.
 
+## Current Workspace
+
+Start in [model](./model/) for current work. It organizes the project by function and source branch: current final model, stable base, Manual Editor, mappings, source branches, rollups, reporting outputs, automation, and reference maps.
+
+The legacy root-level files remain in place while the organized workspace is adopted, so existing runner paths and older docs do not break during the transition.
+
 Interactive orientation:
 
 - [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
