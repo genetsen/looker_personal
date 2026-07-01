@@ -3,6 +3,15 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-07-01
+
+- **CHANGED** - Documented the client-shared MFT Basis dependency risk: the live MFT Basis branch reads `landing.basis_master`, not the newly migrated `repo_stg.basis_master2` path, and a direct candidate swap would remove 2026 Basis delivery from the client-facing MFT output.
+
+### Pending Next Actions
+
+- **Since Jul 1** - Build a Looker-owned replacement refresh for `landing.basis_master` before attempting an MFT Basis cutover - BLOCKER
+- **Since Jul 1** - Create an isolated QA version of the MFT Basis branch and compare it to the current client-facing output before approval - RECOMMENDED
+
 ## 2026-06-26
 
 ### Changed

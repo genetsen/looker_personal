@@ -11,7 +11,7 @@ The final reporting endpoint is `looker-studio-pro-452620.mass_mutual_mft_ext.mf
 │                              BASE DATA SOURCES                                 │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │ DCM: DCM.20250505_costModel_v5                                                 │
-│ BASIS: giant-spoon-299605.data_model_2025.basis_master2                       │
+│ BASIS: looker-studio-pro-452620.landing.basis_master                          │
 │ UTM: landing.adswerve_utms, b_sup_pivt_unioned_tab, dcm_plus_utms_upload      │
 └─────────────────────────────────────┬───────────────────────────────────────────┘
                                       │
@@ -59,7 +59,7 @@ flowchart TD
     %% Sources
     subgraph S["0) Base Data Sources"]
         DCM0["DCM.20250505_costModel_v5<br/>Raw DCM delivery + cost model fields"]
-        BASIS0["giant-spoon-299605.data_model_2025.basis_master2<br/>Raw Basis delivery"]
+        BASIS0["looker-studio-pro-452620.landing.basis_master<br/>Raw Basis delivery"]
         UTM1["landing.adswerve_utms<br/>Active DCM UTM reference"]
         UTM2["utm_scrap.b_sup_pivt_unioned_tab<br/>Basis trafficking-sheet UTM extracts"]
         UTM3["repo_stg.dcm_plus_utms_upload<br/>Manual UTM corrections"]
@@ -138,6 +138,34 @@ flowchart TD
 
 ## Data Sources
 
+### Client-Shared Basis Dependency Audit
+
+`repo_mart.mft_clean_view` is a client-shared reporting view. Treat any change to its upstream Basis branch as a client-impacting migration, even when the change only touches staging tables.
+
+| Area | Current verified state | Migration rule |
+|------|------------------------|----------------|
+| Client-facing view | [`repo_mart.mft_clean_view`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_mart&t=mft_clean_view&page=table) reads [`repo_mart.mft_view`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_mart&t=mft_view&page=table). | Do not change without comparing the full downstream reporting slice. |
+| Active Basis source for MFT | [`repo_stg.basis_delivery`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_delivery&page=table) reads [`landing.basis_master`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_master&page=table). | This is separate from the Looker-owned [`repo_stg.basis_master2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table) refresh path. |
+| Giant Spoon dependency | [`landing.basis_master`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_master&page=table) is a Looker-project base table, but recent load jobs are run by `big-query-api@giant-spoon-299605.iam.gserviceaccount.com`. | Migrating MFT requires replacing that load path, not just repointing the view to [`repo_stg.basis_master2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table). |
+| Direct migrated-table dependency | Live MFT view definitions did not reference [`repo_stg.basis_master2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table), [`repo_stg.basis_gsheet2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_gsheet2&page=table), [`20250327_data_model.basis_utms_stg`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=20250327_data_model&t=basis_utms_stg&page=table), or [`utm_scrap.basis_utms_0519`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=basis_utms_0519&page=table). | Do not assume the earlier Basis migration changed MFT output. Verify lineage and metrics directly. |
+
+Verification snapshot from 2026-07-01:
+
+| Candidate path | Rows after MFT filters | Date range | Spend | Impressions | Clicks | Result |
+|----------------|-----------------------:|------------|------:|------------:|-------:|--------|
+| Current MFT Basis branch from [`landing.basis_master`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_master&page=table) | 129,249 | 2025-03-24 to 2026-06-02 | 2,375,039.02 | 93,537,044 | 42,687 | Active client path |
+| Candidate branch from [`repo_stg.basis_master2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table) | 42,704 | 2025-03-24 to 2025-09-28 | 1,132,512.80 | 58,792,005 | 36,525 | Not safe for direct cutover |
+
+The direct [`repo_stg.basis_master2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table) candidate is not a valid replacement for MFT today because it has no 2026 Basis rows and materially different 2025 totals.
+
+Before any MFT Basis migration:
+
+1. Build a Looker-owned replacement for [`landing.basis_master`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_master&page=table) at the same table grain and freshness.
+2. Recreate the full Basis branch in an isolated QA object, not by changing [`repo_stg.basis_delivery`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_delivery&page=table) in place.
+3. Compare the current and candidate Basis branches by date, campaign, placement, creative, UTM fields, spend, impressions, and clicks.
+4. Compare the full [`repo_mart.mft_view`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_mart&t=mft_view&page=table) output and the client-facing [`repo_mart.mft_clean_view`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_mart&t=mft_clean_view&page=table) aggregation before approval.
+5. Keep the current live path unchanged until the candidate proves metric parity or the approved differences are documented.
+
 ### DCM Data
 
 #### DCM Cost Model
@@ -167,19 +195,19 @@ flowchart TD
 ### Basis Data
 
 #### Basis Master (Delivery)
-**Table**: `giant-spoon-299605.data_model_2025.basis_master2`
+**Table**: [`looker-studio-pro-452620.landing.basis_master`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_master&page=table)
 
 | Attribute | Value |
 |-----------|-------|
-| **Rows** | 132,915 |
-| **Purpose** | Programmatic ad delivery from Basis DSP |
-| **Update Frequency** | Daily |
-| **Last Updated** | Jan 12, 2026 (12:01) |
+| **Rows** | 215,813 |
+| **Purpose** | Programmatic ad delivery from Basis DSP for the MFT Basis branch |
+| **Update Frequency** | Loaded repeatedly by a Giant Spoon service account |
+| **Last Verified** | Jul 1, 2026 |
 
 **Key Fields**:
 - `date` - Delivery date
 - `campaign` - Campaign name
-- `package_roadblock` - Package identifier
+- `package` - Package identifier
 - `tactic` - Media tactic
 - `placement` - Placement name (includes CP_XXXXX ID)
 - `creative_name` - Creative asset name
@@ -187,7 +215,7 @@ flowchart TD
 - `clicks` - Click events
 - `media_cost` - Spend
 
-**Note**: Also accessible via `looker-studio-pro-452620.landing.basis_master` (160,638 rows - includes additional campaigns)
+**Migration note**: [`repo_stg.basis_master2`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table) is not currently the live MFT Basis source. A direct replacement would drop 2026 Basis delivery from the MFT branch, so it is not approved for client-facing cutover without a separate replacement-source migration and validation.
 
 ---
 
@@ -351,7 +379,7 @@ SELECT * FROM `looker-studio-pro-452620.landing.adswerve_utms`
 
 #### View: `repo_stg.basis_delivery`
 **Location**: Defined in `sql/base/basis/stg__basis__delivery.sql`
-**Purpose**: Adds join helper fields to basis_master2
+**Purpose**: Adds join helper fields to [`landing.basis_master`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_master&page=table)
 
 **Key Transformations**:
 
@@ -789,7 +817,7 @@ ROW_NUMBER() OVER (
 |-----------|-----------|--------------|
 | MFT Endpoint (`mass_mutual_mft_ext.mft_data`) | Daily scheduled query | Feb 11, 2026 10:00 UTC |
 | DCM Cost Model | Daily | Jan 9, 2026 |
-| Basis Master | Daily | Jan 12, 2026 |
+| Basis Master | Loaded repeatedly by Giant Spoon service account | Jul 1, 2026 17:38 UTC |
 | MM UTMs Snapshot | Daily | Jan 12, 2026 |
 | UTM Pivot Table | As needed | Jan 12, 2026 |
 
