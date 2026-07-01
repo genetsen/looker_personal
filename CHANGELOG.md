@@ -4,6 +4,7 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-07-01
 
+- **FIXED** - Repaired the Basis UTM scratch view chain so `basis_utms_0519` reads from Looker-owned Basis and UTM staging objects instead of Giant Spoon or a missing `final_views` wrapper, while documenting its detail-grain row multiplication risk.
 - **CHANGED** - Migrated the active Basis delivery refresh and main Looker Basis views away from Giant Spoon master-table reads. The Looker scheduled query now sources the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2` and refreshes `repo_stg.basis_master2` without reading Giant Spoon Basis tables.
 
 ### Pending Next Actions

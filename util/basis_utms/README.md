@@ -27,6 +27,13 @@ Organized workspace for MassMutual Basis UTM extraction, validation, and support
 - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/stg__basis__utms.sql`
   - Parses UTM parameters from `landing.basis_utms_unioned` into the staging view used by downstream Basis+UTM joins.
 
+## Live Compatibility Views
+
+| View | Reads from | Notes |
+|---|---|---|
+| `looker-studio-pro-452620.20250327_data_model.basis_utms_stg` | `looker-studio-pro-452620.repo_stg.basis_utms` | Compatibility wrapper for older views expecting the 9-column UTM staging contract. |
+| `looker-studio-pro-452620.utm_scrap.basis_utms_0519` | `looker-studio-pro-452620.repo_stg.basis_master2` and `looker-studio-pro-452620.20250327_data_model.basis_utms_stg` | Scratch/detail join that no longer reads Giant Spoon Basis tables. It can multiply delivery rows because multiple UTM rows can share the same `id`; do not use summed delivery metrics from this view without accounting for that join grain. |
+
 ## Archive Contents
 
 Archive includes older R script variants, ad hoc SQL scratchpads, and legacy notebook/diagram artifacts:
