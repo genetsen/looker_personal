@@ -2,6 +2,14 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-01
+
+- **CHANGED** - Migrated the active Basis delivery refresh and main Looker Basis views away from Giant Spoon master-table reads. The Looker scheduled query now sources the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2` and refreshes `repo_stg.basis_master2` without reading Giant Spoon Basis tables.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-06-30
 
 - **ADDED** - Created a live Omni AI eval prompt set for the shared Master Stg Data Model so future AI-answer checks cover normal performance questions, Ritual and Apollo topic routing, and the highest-risk QA cases: unmatched packages, missing delivery, pacing issues, source reconciliation, manual overrides, QTD reach, and v3 metric-grain behavior.

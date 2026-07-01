@@ -467,7 +467,7 @@ The live SQL is a single-pass V2 rebuild, not the older two-step notebook insert
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: Nov 19, 2025
+**Last Updated**: Jul 1, 2026
 
 #### Purpose
 MERGE (UPSERT) operation to synchronize Basis delivery data from Google Sheets.
@@ -479,10 +479,13 @@ looker-studio-pro-452620.repo_stg.basis_master2
 
 #### Source
 ```
-giant-spoon-299605.data_model_2025.basis_gsheet2
+looker-studio-pro-452620.repo_stg.basis_gsheet2
 WHERE latest_record = 1
   AND day >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
 ```
+
+#### Sunset Migration Note
+The scheduled query now reads the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2` instead of the Giant Spoon external Google Sheets table. The main Looker Basis views also read `repo_stg.basis_master2`, not `giant-spoon-299605.data_model_2025.basis_master2`.
 
 #### MERGE Logic
 ```sql

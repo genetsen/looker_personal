@@ -52,6 +52,7 @@ Instruction files policy:
 - Prisma package-level actuals layering (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/Prisma/prisma_processed_plusDCMFPD.sql`) to build the sibling view `looker-studio-pro-452620.Prisma.prisma_processed_plusDCMFPD` with package-level DCM and FPD rollups plus FPD-aware tracking status
 - Prisma digital-plus-linear planning view (`looker-studio-pro-452620.Prisma.prisma__stg__digital_plus_linear_view`) and its scheduled snapshot table expose `tracking_delivery_source` separately from `tracking_status`, so consumers can distinguish DCM-backed, FPD-backed, and DCM+FPD delivery evidence without changing the status label.
 - Basis UTM processing utilities (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms`) with active scripts in `essential/` and legacy assets in `archive/`
+- Basis delivery now refreshes the Looker-owned `repo_stg.basis_master2` table from the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2`; the main Looker Basis views read `repo_stg.basis_master2` instead of the sunset-risk Giant Spoon master table.
 - TV Gmail loaders (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md`) documenting the shared local and national estimate-ingestion flow into `landing.tv_local_estimates` and `landing.tv_national_estimates`
 
 TV national Gmail loader note:
