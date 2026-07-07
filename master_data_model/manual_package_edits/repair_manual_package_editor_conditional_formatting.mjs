@@ -313,6 +313,10 @@ function buildConditionalFormatRequests(sheetId, rowCount, existingDataEndRowInd
   }
 
   if (existingDataEndRowIndex > dataStartRowIndex) {
+    const plannedSpendMarkerColumn = columnLetter(colIndex["Manual Marker Planned Spend"]);
+    const plannedImpressionsMarkerColumn = columnLetter(colIndex["Manual Marker Planned Impressions"]);
+    const baselinePlannedSpendColumn = columnLetter(colIndex["Baseline Planned Spend"]);
+    const baselinePlannedImpressionsColumn = columnLetter(colIndex["Baseline Planned Impressions"]);
     requests.push({
       addConditionalFormatRule: {
         rule: {
@@ -321,7 +325,7 @@ function buildConditionalFormatRequests(sheetId, rowCount, existingDataEndRowInd
             condition: {
               type: "CUSTOM_FORMULA",
               values: [{
-                userEnteredValue: `=AND(OR($F${firstDataRow}<>$AC${firstDataRow},$G${firstDataRow}<>$AD${firstDataRow}),OR($M${firstDataRow}<>$AJ${firstDataRow},$N${firstDataRow}<>$AK${firstDataRow}))`,
+                userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR($F${firstDataRow}<>$${baselinePlannedSpendColumn}${firstDataRow},$G${firstDataRow}<>$${baselinePlannedImpressionsColumn}${firstDataRow}),OR($M${firstDataRow}<>$D${firstDataRow},$N${firstDataRow}<>$E${firstDataRow}))`,
               }],
             },
             format: {

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-07-06
+
+- **ADDED** - Added and refreshed the v3 digital conversion outcome path so Ritual conversion rows can be evaluated at package/date/site/creative/activity grain without changing package/date delivery metrics.
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
+## 2026-07-02
+
+- **REVERTED** - Rolled back the automatic FPD metric wrapper because it made the public master view too expensive to plan for routine queries. The master model is back to the static view shape while a leaner downstream metric-onboarding design is reconsidered.
+- **FIXED** - Updated the live shared-social scheduled query config so the daily social staging refresh includes the Reddit staging union instead of overwriting the shared social table from the older WP-only SQL.
+- **FIXED** - Moved the Manual Data Editor package lookup into a stored BigQuery table so loader runs download a ready package snapshot instead of forcing the reporting mart to plan another complex package rollup.
+- **FIXED** - Corrected the Manual Data Editor planned-cell color rule so valid full-flight planned manual rows stay purple instead of showing a misleading red warning.
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
+## 2026-07-01
+
+- **ADDED** - Created a v2 master-model README in the MFT pipeline documentation style, with a visual pipeline overview, source inventory, output map, operational scripts, verification guidance, and troubleshooting path.
+- **ADDED** - Documented the DCM branch boundary so Basis delivery, the joined DCM/Basis reporting view, DCM cost-model evidence, and package/date master-model rows are easier to debug without mixing their source paths.
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan - RECOMMENDED
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
 ## 2026-06-30
 
 - **ADDED** - Created the organized `model/` workspace so current work can start from function and source-branch folders instead of the legacy root-level file pile, with runner-used files now canonical there, WP Search and Reddit social assets copied under the same roof, and stale root docs/deprecated SQL removed from the active path.

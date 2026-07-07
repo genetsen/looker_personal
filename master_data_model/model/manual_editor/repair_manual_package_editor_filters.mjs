@@ -267,7 +267,7 @@ function buildConditionalFormatRequests(sheet, sheetId, headerMap, rowCount, vis
 
   addRule(
     dataColumnRange(sheetId, rowCount, headerMap["Planned Spend"], headerMap["Planned Impressions"] + 1),
-    `=AND(OR($F${firstDataRow}<>$${columnLetter(headerMap["Baseline Planned Spend"])}${firstDataRow},$G${firstDataRow}<>$${columnLetter(headerMap["Baseline Planned Impressions"])}${firstDataRow}),OR($M${firstDataRow}<>$${columnLetter(headerMap["Baseline Delivery Start Date"])}${firstDataRow},$N${firstDataRow}<>$${columnLetter(headerMap["Baseline Delivery End Date"])}${firstDataRow}))`,
+    `=AND($${columnLetter(headerMap["Manual Marker Planned Spend"])}${firstDataRow}<>TRUE,$${columnLetter(headerMap["Manual Marker Planned Impressions"])}${firstDataRow}<>TRUE,OR($F${firstDataRow}<>$${columnLetter(headerMap["Baseline Planned Spend"])}${firstDataRow},$G${firstDataRow}<>$${columnLetter(headerMap["Baseline Planned Impressions"])}${firstDataRow}),OR($M${firstDataRow}<>$D${firstDataRow},$N${firstDataRow}<>$E${firstDataRow}))`,
     strongRedFormat,
   );
 

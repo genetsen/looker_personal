@@ -17,8 +17,8 @@ flowchart LR
   end
 
   subgraph MFT["MassMutual (MFT)"]
-    MFT_I["Ingestion<br/>DCM + Basis + UTM sheets/uploads"] --> MFT_BQ["BigQuery<br/>DCM cost model / basis_master / mm_utms_snapshot / utm_scrap"]
-    MFT_BQ --> MFT_DBT["dbt/SQL Models<br/>final_views.dcm<br/>final_views.utms_view<br/>repo_stg.dcm_plus_utms<br/>repo_mart.mft_view"]
+    MFT_I["Ingestion<br/>DCM + Looker-owned Basis + UTM sheets/uploads"] --> MFT_BQ["BigQuery<br/>DCM cost model / repo_stg.basis_master2 / mm_utms_snapshot / utm_scrap"]
+    MFT_BQ --> MFT_DBT["dbt/SQL Models<br/>final_views.dcm<br/>final_views.joined_dcmBasis<br/>repo_stg.dcm_plus_utms<br/>repo_mart.mft_view"]
     MFT_DBT --> MFT_DASH["Dashboards<br/>Looker Studio / BI"]
   end
 
@@ -39,3 +39,4 @@ flowchart LR
 - OLI model names are based on SQL files in `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/stg` and `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/marts/olipop`.
 - MFT model and source names are based on `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md`.
 - ADIF source/model names are based on `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README - ADIF TV & Digital Data Pipeline.md` and `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README_Updated_FPD_Integration.md`.
+- The focused Basis/DCM/master-model handoff is documented in [Basis, DCM, and master data model pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/BASIS_DCM_MASTER_DATA_MODEL_PIPELINE.md).

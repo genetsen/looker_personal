@@ -487,6 +487,16 @@ WHERE latest_record = 1
 #### Sunset Migration Note
 The scheduled query now reads the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2` instead of the Giant Spoon external Google Sheets table. The main Looker Basis views also read `repo_stg.basis_master2`, not `giant-spoon-299605.data_model_2025.basis_master2`.
 
+#### Downstream Handoff
+
+| Surface | Reads Basis? | Reads DCM? | Purpose |
+|---|---|---|---|
+| [Basis delivery master](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table) | Yes | No | Scheduled-query target for Looker-owned Basis delivery. |
+| [Joined DCM and Basis view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=final_views&t=joined_dcmBasis&page=table) | Yes | Yes | Union surface for combined DCM and Basis reporting. |
+| [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | No direct Basis read | Yes | Package/date master model. DCM comes from the DCM cost model rather than the joined DCM/Basis view. |
+
+See [Basis, DCM, and master data model pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/BASIS_DCM_MASTER_DATA_MODEL_PIPELINE.md) for the end-to-end handoff and debugging boundaries.
+
 #### MERGE Logic
 ```sql
 MERGE INTO basis_master2 AS TARGET
@@ -513,7 +523,7 @@ WHEN NOT MATCHED THEN INSERT (all_columns)
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: May 29, 2026
+**Last Updated**: July 2, 2026
 
 #### Purpose
 Builds `repo_stg.stg__olipop__crossplatform_raw_tbl`, which is the raw social fact table that eventually feeds the Olipop social branch of `Olipop.MMM_crossplatform`.
@@ -526,6 +536,7 @@ More specifically, the live scheduled query:
 - merges Apollo rows from [WP normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily&page=table), with WP nonblank values primary and standard rows/fields as fallback
 - carries transformed WP creative image URLs in `wp_creative_img`
 - retains cross-campaign Apollo ad-ID rows with visible `publish_pending_source_owner_review` provenance pending source-owner clarification
+- appends Reddit delivery rows from [Reddit shared-social staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop_reddit_crossplatform&page=table)
 - writes the finished result into `repo_stg.stg__olipop__crossplatform_raw_tbl`
 
 The two delivery-source options are:
@@ -543,7 +554,7 @@ Why it appears to do this:
 
 Which version is out of date:
 
-- the live production scheduled query is newer and should be treated as correct for current operations
+- the live production scheduled query was refreshed on July 2, 2026 from the production builder and should be treated as correct for current operations
 - the stale copy is the local repo SQL in [`sql/marts/olipop/mart__olipop__crossplatform.sql`](../sql/marts/olipop/mart__olipop__crossplatform.sql), which still hardcodes `ad_reporting_transformed.ad_reporting__ad_report` and does not include the runtime source-selection block
 
 #### Target
@@ -558,6 +569,7 @@ looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl
 - `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report` (delivery candidate)
 - `repo_stg.stg__olipop_videoviews_crossplatform` (video metrics)
 - `repo_stg.stg__wp__search_data_template_daily` (controlled WP production Sheet snapshot)
+- `repo_stg.stg__olipop_reddit_crossplatform` (Reddit delivery rows)
 
 #### WP Production Rule
 

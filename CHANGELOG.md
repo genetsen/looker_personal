@@ -2,10 +2,28 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-06
+
+- **ADDED** - Added and refreshed a master-model v3 conversion outcome path so Ritual conversion activity can be evaluated at package/date/site/creative/activity grain without changing package/date delivery metrics.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
+## 2026-07-02
+
+- **REVERTED** - Rolled back the automatic FPD metric pass-through experiment because the dynamic master-model wrapper made routine queries too expensive to plan. Existing unrelated work remains intact while the FPD metric-onboarding design is reconsidered.
+- **FIXED** - Updated the live shared-social scheduled query config so `stg__olipop__crossplatform_raw_tbl_sched` uses the Reddit-aware production builder and appends Reddit staging rows on future scheduled runs.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-07-01
 
 - **FIXED** - Repaired the Basis UTM scratch view chain so `basis_utms_0519` reads from Looker-owned Basis and UTM staging objects instead of Giant Spoon or a missing `final_views` wrapper, while documenting its detail-grain row multiplication risk.
 - **CHANGED** - Migrated the active Basis delivery refresh and main Looker Basis views away from Giant Spoon master-table reads. The Looker scheduled query now sources the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2` and refreshes `repo_stg.basis_master2` without reading Giant Spoon Basis tables.
+- **ADDED** - Documented the Basis, DCM, and master data model handoff so the Looker-owned Basis refresh, combined DCM/Basis reporting view, and master-model DCM branch have one shared troubleshooting map.
 
 ### Pending Next Actions
 

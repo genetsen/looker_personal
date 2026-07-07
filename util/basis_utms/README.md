@@ -34,6 +34,12 @@ Organized workspace for MassMutual Basis UTM extraction, validation, and support
 | `looker-studio-pro-452620.20250327_data_model.basis_utms_stg` | `looker-studio-pro-452620.repo_stg.basis_utms` | Compatibility wrapper for older views expecting the 9-column UTM staging contract. |
 | `looker-studio-pro-452620.utm_scrap.basis_utms_0519` | `looker-studio-pro-452620.repo_stg.basis_master2` and `looker-studio-pro-452620.20250327_data_model.basis_utms_stg` | Scratch/detail join that no longer reads Giant Spoon Basis tables. It can multiply delivery rows because multiple UTM rows can share the same `id`; do not use summed delivery metrics from this view without accounting for that join grain. |
 
+## Basis Delivery Handoff
+
+Basis delivery now starts from the Looker-owned external Google Sheets table [Basis Google Sheet external table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_gsheet2&page=table), then `basis_update` merges recent latest-record rows into [Basis delivery master](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_master2&page=table). Combined DCM/Basis reporting reads that target through [Joined DCM and Basis view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=final_views&t=joined_dcmBasis&page=table).
+
+For the broader DCM and master data model boundary, use [Basis, DCM, and master data model pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/BASIS_DCM_MASTER_DATA_MODEL_PIPELINE.md).
+
 ## Archive Contents
 
 Archive includes older R script variants, ad hoc SQL scratchpads, and legacy notebook/diagram artifacts:

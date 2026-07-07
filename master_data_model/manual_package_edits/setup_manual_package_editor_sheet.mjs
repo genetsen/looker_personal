@@ -901,8 +901,8 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     const firstDataRow = dataStartRowIndex + 1;
     const baselinePlannedSpendColumn = columnLetter(colIndex["Baseline Planned Spend"]);
     const baselinePlannedImpressionsColumn = columnLetter(colIndex["Baseline Planned Impressions"]);
-    const baselineDeliveryStartColumn = columnLetter(colIndex["Baseline Delivery Start Date"]);
-    const baselineDeliveryEndColumn = columnLetter(colIndex["Baseline Delivery End Date"]);
+    const plannedSpendMarkerColumn = columnLetter(colIndex["Manual Marker Planned Spend"]);
+    const plannedImpressionsMarkerColumn = columnLetter(colIndex["Manual Marker Planned Impressions"]);
     requests.push({
       addConditionalFormatRule: {
         rule: {
@@ -912,7 +912,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
               type: "CUSTOM_FORMULA",
               values: [
                 {
-                  userEnteredValue: `=AND(OR($F${firstDataRow}<>$${baselinePlannedSpendColumn}${firstDataRow},$G${firstDataRow}<>$${baselinePlannedImpressionsColumn}${firstDataRow}),OR($M${firstDataRow}<>$${baselineDeliveryStartColumn}${firstDataRow},$N${firstDataRow}<>$${baselineDeliveryEndColumn}${firstDataRow}))`,
+                  userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR($F${firstDataRow}<>$${baselinePlannedSpendColumn}${firstDataRow},$G${firstDataRow}<>$${baselinePlannedImpressionsColumn}${firstDataRow}),OR($M${firstDataRow}<>$D${firstDataRow},$N${firstDataRow}<>$E${firstDataRow}))`,
                 },
               ],
             },

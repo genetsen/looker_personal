@@ -24,7 +24,7 @@ The loader compares edited cells to source-derived baselines and the last loader
 
 If users need a refresh but do not run the loader themselves, they can use the `Request refresh` checkbox-style control at the top of the sheet. It sends Gene an email. If the bound Apps Script has a `MANUAL_EDITOR_SLACK_WEBHOOK_URL` script property, it also posts the same request to Slack. This checkbox is only a notification; it does not validate rows, run the loader, or write to the warehouse by itself.
 
-Started new rows turn red when required fields are missing or dates are invalid. Values that are already backed by validated manual updates turn purple. The loader also blocks invalid rows backend-side, so red frontend feedback is a warning to fix the row before requesting a refresh.
+Started new rows turn red when required fields are missing or dates are invalid. Planned cells turn red only when a planned edit uses a partial date range instead of the full visible flight dates. Values that are already backed by validated manual updates turn purple. The loader also blocks invalid rows backend-side, so red frontend feedback is a warning to fix the row before requesting a refresh.
 
 The top filter controls are native Google Sheets slicers. They are intentionally not powered by Apps Script, because users need browsing to feel responsive while editing the real source rows.
 
@@ -85,6 +85,7 @@ Planned metrics are flight-level only.
 
 - `Planned Spend` and `Planned Impressions` must be edited only when the row covers the full flight.
 - Partial-week or day-level planned edits are blocked by the loader.
+- In the sheet, planned cells should not stay red when `Delivery Override Start Date` and `Delivery Override End Date` match the visible `Flight Start Date` and `Flight End Date`.
 - The sheet displays planned values as full-flight totals, not daily prorated values.
 - Planned package totals are compared against PRISMA package totals, not filtered mart row sums, so low-signal row filtering cannot create false manual planned markers.
 - The final model keeps package-level planned totals aligned with the manual replacement total.
@@ -146,12 +147,13 @@ Common blockers: missing `Package ID`, invalid dates, no changed metric/date val
 
 ## Scripts
 
-- `load_manual_package_edits.R` refreshes the editor from the live reporting mart, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges plus narrow column visibility/protection settings after header shifts. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
+- `create_manual_package_editor_package_lookup.sql` refreshes the package-level lookup table that the loader downloads. It builds the lookup from the materialized master support table with the same reporting-only low-signal DCM exclusion, then joins PRISMA package totals.
+- `load_manual_package_edits.R` refreshes the package-level lookup table, downloads it into the editor, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes filter/slicer ranges plus narrow column visibility/protection settings after header shifts. When called from the universal script runner, it resolves sibling helper scripts from this folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
 - The production Manual Data Editor sheet is the loader default. Use `MASTER_MANUAL_EDIT_SHEET_ID=...` only when intentionally testing another sheet copy.
 - `setup_manual_package_editor_sheet.mjs` is a rebuild tool for Google Sheet formatting, the `Instructions` tab, visible metadata columns, hidden internal baseline/manual-marker columns, native slicers, notes, warnings, widths, and colors. Do not run it against the live sheet after user-made manual formatting edits unless the user explicitly asks for a full formatting rebuild. The script is guarded and now requires `MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD=YES` to run.
 - `repair_manual_package_editor_filters.mjs` is a narrow sheet-geometry repair tool. It preserves existing slicer titles, positions, filter choices, formatting, and widths while expanding ranges to the full current sheet grid, keeping user-facing audit/status columns visible, and keeping backend baseline/marker/helper columns hidden and protected. The `Edited Rows` slicer must point to the hidden `Edited Row Filter` helper, not to an individual manual-marker column.
 - `apps_script/Code.js` is the bound Apps Script for the update-request notification control and row-level manual-edit audit stamps. Filtering should stay native through Google Sheets slicers.
-- The universal script runner entrypoint is `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`.
+- The universal script runner entrypoint is `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`. It launches this loader, and the loader refreshes the lookup table before reading package rows.
 
 R should stay focused on data loading. The current live sheet formatting is the source of truth once users have made manual formatting edits. Before future formatting work, take a read-only formatting snapshot and preserve user-made changes unless a full rebuild is explicitly requested.
 
