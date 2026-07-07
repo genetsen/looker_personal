@@ -234,7 +234,8 @@ Load or refresh the Google Sheet manual-edit path:
 Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R
 ```
 
-The production Manual Data Editor sheet is the loader default. Set `MASTER_MANUAL_EDIT_SHEET_ID` only when intentionally running against a different sheet copy.
+The production Manual Data Editor sheet is the new Google Drive version. Set `MASTER_MANUAL_EDIT_SHEET_ID` only when intentionally running against a different sheet copy.
+By default, the loader authenticates through the active `gcloud` access token so non-interactive runs use the current Google account instead of falling back to an older R OAuth cache. Set `MASTER_MANUAL_EDIT_USE_GCLOUD_TOKEN=false` only when intentionally testing cached R credentials.
 
 Refresh the master view:
 

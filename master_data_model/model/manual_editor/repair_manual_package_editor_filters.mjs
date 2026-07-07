@@ -11,7 +11,7 @@
 
 import { execFileSync } from "node:child_process";
 
-const SHEET_ID = process.env.MASTER_MANUAL_EDIT_SHEET_ID || "1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo";
+const SHEET_ID = process.env.MASTER_MANUAL_EDIT_SHEET_ID || "1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E";
 const TAB_NAME = process.env.MASTER_MANUAL_EDIT_TAB || "Package Editor";
 const AUTH_ACCOUNT = process.env.MASTER_MANUAL_EDIT_AUTH_EMAIL || "gene.tsenter@giantspoon.com";
 const HEADER_ROW_INDEX = 3;

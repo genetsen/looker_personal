@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
   library(googledrive)
   library(googlesheets4)
   library(bigrquery)
+  library(httr)
   library(dplyr)
   library(tidyr)
   library(lubridate)
@@ -25,9 +26,14 @@ DAILY_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_DAILY_TABLE", "master_data_model_m
 MART_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_MART_TABLE", "looker-studio-pro-452620.master_stg.data_model_mart")
 PRISMA_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_PRISMA_TABLE", "looker-studio-pro-452620.20250327_data_model.prisma_expanded_full")
 LOOKUP_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_LOOKUP_TABLE", "looker-studio-pro-452620.master_stg.manual_package_editor_package_lookup")
-DEFAULT_SHEET_ID <- "1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo"
+DEFAULT_SHEET_ID <- "1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E"
 SHEET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_SHEET_ID", unset = DEFAULT_SHEET_ID)
 AUTH_EMAIL <- Sys.getenv("MASTER_MANUAL_EDIT_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
+AUTH_CACHE_PATH <- Sys.getenv(
+  "MASTER_MANUAL_EDIT_AUTH_CACHE",
+  "/Users/eugenetsenter/.R/gargle_oauth_cache_giantspoon_manual_editor"
+)
+USE_GCLOUD_TOKEN <- tolower(Sys.getenv("MASTER_MANUAL_EDIT_USE_GCLOUD_TOKEN", "true")) %in% c("true", "1", "yes")
 LOADER_FILENAME <- "load_manual_package_edits.R"
 DEFAULT_SCRIPT_DIR <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits"
 
@@ -92,9 +98,51 @@ cat("\n========================================\n")
 cat("MASTER DATA MODEL PACKAGE EDITOR\n")
 cat("========================================\n\n")
 
-gs4_auth(email = AUTH_EMAIL)
-drive_auth(email = AUTH_EMAIL)
-bq_auth(email = AUTH_EMAIL)
+auth_manual_editor <- function() {
+  if (USE_GCLOUD_TOKEN) {
+    access_token <- tryCatch(
+      system2("gcloud", c("auth", "print-access-token"), stdout = TRUE, stderr = FALSE),
+      error = function(err) character()
+    )
+    access_token <- access_token[nzchar(access_token)]
+
+    if (length(access_token) > 0) {
+      token <- Token2.0$new(
+        endpoint = oauth_endpoints("google"),
+        app = oauth_app("gcloud-cli", key = "gcloud-cli", secret = ""),
+        credentials = list(
+          access_token = access_token[[1]],
+          token_type = "Bearer",
+          expires_in = 3600,
+          scope = paste(
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/bigquery",
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/userinfo.email"
+          )
+        ),
+        params = list(as_header = TRUE),
+        cache = FALSE
+      )
+      gs4_auth(token = token)
+      drive_auth(token = token)
+      bq_auth(token = token)
+      cat("Authenticated with gcloud access token for Google Sheets, Drive, and BigQuery.\n")
+      return(invisible(token))
+    }
+
+    warning("gcloud access token was unavailable; falling back to gargle cache auth.")
+  }
+
+  gs4_auth(email = AUTH_EMAIL, cache = AUTH_CACHE_PATH)
+  drive_auth(email = AUTH_EMAIL, cache = AUTH_CACHE_PATH)
+  bq_auth(email = AUTH_EMAIL, cache = AUTH_CACHE_PATH)
+  cat("Authenticated with gargle cache: ", AUTH_CACHE_PATH, "\n", sep = "")
+  invisible(NULL)
+}
+
+auth_manual_editor()
 
 loaded_at <- Sys.time()
 

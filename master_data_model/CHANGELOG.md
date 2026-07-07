@@ -3,7 +3,8 @@
 ## 2026-07-07
 
 - **CHANGED** - Clarified that current master-model work should start in the organized `model/` workspace, keeping legacy root-level SQL and docs as compatibility or history unless explicitly requested.
-- **CHANGED** - Kept Manual Data Editor script authentication pointed at the newer Google account and documented the Sheet-access requirement needed to finish moving refresh repairs off the legacy account.
+- **CHANGED** - Kept Manual Data Editor script authentication pointed at the newer Google account and added a `gcloud` token bridge so non-interactive refreshes do not fall back to the legacy R OAuth cache.
+- **CHANGED** - Pointed the Manual Data Editor loader and repair helpers at the new Google Drive workbook so normal refreshes no longer default to the legacy copy.
 
 ### Pending Next Actions
 
