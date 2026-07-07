@@ -3,6 +3,7 @@
 ## 2026-07-07
 
 - **CHANGED** - Clarified that current master-model work should start in the organized `model/` workspace, keeping legacy root-level SQL and docs as compatibility or history unless explicitly requested.
+- **CHANGED** - Kept Manual Data Editor script authentication pointed at the newer Google account and documented the Sheet-access requirement needed to finish moving refresh repairs off the legacy account.
 
 ### Pending Next Actions
 
