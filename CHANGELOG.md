@@ -2,6 +2,14 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-07
+
+- **CHANGED** - Added a Campaign Manager 360 starter workflow note so future DCM API work starts from the documented read-only profile-list smoke test and existing Python environment.
+
+### Pending Next Actions
+
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-07-06
 
 - **ADDED** - Added and refreshed a master-model v3 conversion outcome path so Ritual conversion activity can be evaluated at package/date/site/creative/activity grain without changing package/date delivery metrics.

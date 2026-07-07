@@ -19,6 +19,10 @@ When investigating why a field is missing or unexpectedly blank in the master mo
 
 When the user names a versioned target such as `v2`, create sibling versioned files and BigQuery objects, and leave the existing unversioned production files/views untouched unless the user separately says to replace or overwrite them.
 
+## Local Entrypoint Rule
+
+For current master-model work, start in `model/` and its function/source folders. Treat legacy root-level SQL and docs as compatibility or history unless the user explicitly names them.
+
 ## Lean BigQuery Deployment Workflow
 
 For a narrow, schema-preserving master-model change:

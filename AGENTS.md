@@ -4,6 +4,12 @@ Operational notes for looker_personal repo, grounded in the documented pipelines
 
 ## Key Workflows
 
+### Campaign Manager 360 API Starter (DCM_API/)
+
+Primary docs: `DCM_API/README.md`.
+
+For `DCM_API/`, read the README first. Use the existing Python environment at `/Users/eugenetsenter/virtenvi-2025/bin/python`. Start with the package import check and `python -m scripts.list_profiles`. If authentication scopes fail, refresh application-default credentials with the Campaign Manager scope before using browser OAuth. Current scripts read metadata only unless the user asks for write behavior.
+
 ### ADIF Updated FPD Integration (adif/)
 Primary docs: `adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md` and `adif/projects/updated_fpd_integration/DEPLOYMENT_CHECKLIST.md`.
 

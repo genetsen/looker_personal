@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-07
+
+- **CHANGED** - Clarified that current master-model work should start in the organized `model/` workspace, keeping legacy root-level SQL and docs as compatibility or history unless explicitly requested.
+
+### Pending Next Actions
+
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
 ## 2026-07-06
 
 - **ADDED** - Added and refreshed the v3 digital conversion outcome path so Ritual conversion rows can be evaluated at package/date/site/creative/activity grain without changing package/date delivery metrics.
