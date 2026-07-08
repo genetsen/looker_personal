@@ -65,7 +65,7 @@ The package list starts at `Config!B18`. It is driven by the `Validation` tab an
 | `DCM Impressions [to date]` | Current DCM impression evidence where available. | Looks up DCM impressions in `Validations_table`; blank is expected for untagged or unavailable rows. |
 | `Full Package name` | Full package key used for matching and lineage. | Spills from `Validation!K2:K`. |
 | `Package names from data sheet` | Partner-entered or generated package names not found in the configured package list. | Uses `UNIQUE(FILTER(..., ISNA(MATCH(...))))` to identify mapping gaps. |
-| `GS package name` | Giant Spoon package name to map unmatched partner names back to. | Shows `mapping required` when an unmatched package name is detected. |
+| `GS package name` | Giant Spoon package name to map unmatched partner names back to. | Shows `mapping required` when an unmatched package name is detected. In the temp-copy prototype, this becomes a stable mapping target: partner label to `Campaign - Initiative - Package ID` plus a resolved full package key. |
 
 The current live workbook generated a `data` requested-package row count of `9`, which matches nine checked packages in the selected APO/NYTIME scope.
 
@@ -112,6 +112,7 @@ To avoid touching the source template, a temporary copy was created for experime
 | Select a package row | Entered `DealBook` in `data!J62`. | Context columns populated for client, channel, site, and full package key. | Partner rows are dropdown-driven; they are not fully prefilled until a package/placement is selected. |
 | Force one extra package into the request | Set a previously `FALSE` package checkbox to `TRUE` on `Config`. | The right-side requested-package row count changed from `9` to `10`. | The checkbox column is the request-list control. |
 | Prototype duplicate-name fix | Changed the temp copy's requested-package dropdown source to `Campaign - Initiative - Package ID`, backed by a hidden full-package-key helper column, then selected two `DealBook` rows. | The selected rows showed `Newsletters2026 - DealBook - P3FCQTS` and `Newsletters2026 - DealBook - P3CGHZG`, and resolved to distinct full package keys. | The simplest safe fix is to make the visible dropdown readable and unique while formulas resolve from a stable package key, not from the duplicated short label. |
+| Prototype mapping-table fix | Changed the temp copy's mapping table to detect only partner-entered labels that are not already in the generated dropdown list, then map those labels to `Campaign - Initiative - Package ID` and a resolved full package key. | Test value `Partner DealBook Alias` mapped to `Newsletters2026 - DealBook - P3CGHZ4`, and the data row resolved to package ID `P3CGHZ4`. | Partner naming exceptions should map to a stable generated label/full key, not to a short package name or row position. |
 
 ## Helper Tabs
 
