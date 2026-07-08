@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-08
+
+- **CHANGED** - Documented the FPD partner template mapping-table correction so duplicate package labels and partner aliases resolve through a dynamic stable-label block instead of the old typed-table dropdown.
+
+### Pending Next Actions
+
+- **Since Jul 7** - Resolve the separate v3 visible-key duplicate QA failure found after the `1000heads` exclusion refresh
+- **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
 ## 2026-07-07
 
 - **FIXED** - Added a planned-metric fallback for TV, Print, OOH, and dOOH package rows so package/date outputs can use planned cost and impressions when delivered metrics are unavailable and planned impressions exist, without replacing real delivered values.
