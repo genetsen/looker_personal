@@ -114,6 +114,43 @@ To avoid touching the source template, a temporary copy was created for experime
 | Prototype duplicate-name fix | Changed the temp copy's requested-package dropdown source to `Campaign - Initiative - Package ID`, backed by a hidden full-package-key helper column, then selected two `DealBook` rows. | The selected rows showed `Newsletters2026 - DealBook - P3FCQTS` and `Newsletters2026 - DealBook - P3CGHZG`, and resolved to distinct full package keys. | The simplest safe fix is to make the visible dropdown readable and unique while formulas resolve from a stable package key, not from the duplicated short label. |
 | Prototype mapping-table fix | Changed the temp copy's mapping table to detect only partner-entered labels that are not already in the generated dropdown list, then map those labels to `Campaign - Initiative - Package ID` and a resolved full package key. | Test value `Partner DealBook Alias` mapped to `Newsletters2026 - DealBook - P3CGHZ4`, and the data row resolved to package ID `P3CGHZ4`. | Partner naming exceptions should map to a stable generated label/full key, not to a short package name or row position. |
 
+## Implementation Note For Stable Package Mapping
+
+Use this pattern when carrying the temp-copy fix back into the source template. The goal is to make the partner-facing selector readable, while keeping the actual lookup keyed by the full package key.
+
+| Target | Formula shape | Purpose |
+|---|---|---|
+| `data!AB62` | Spill formula | Builds the visible dropdown label and hidden full package key from the same checked package rows. |
+| `Config!H19` | Spill formula | Lists partner-entered labels that are not already valid generated dropdown labels. |
+| `Config!J19:J` | Row formula | Resolves each mapped dropdown label to the hidden full package key. |
+| `data!D62:D500` | Row formula | Resolves selected labels directly first, then falls back to the mapping table for partner aliases. |
+
+Dropdown helper, entered once in `data!AB62`:
+
+```gs
+=FILTER({IFERROR(REGEXEXTRACT(Config!F19:F,"^Package_[^_]+_[^_]+_([^_]+)_"),Config!C19:C)&" - "&Config!C19:C&" - "&IFERROR(REGEXEXTRACT(Config!F19:F,"\|([^_]+)_"),Config!F19:F),Config!F19:F},Config!B19:B=TRUE)
+```
+
+Unmapped partner-label detector, entered once in `Config!H19`:
+
+```gs
+=UNIQUE(FILTER(data!J62:J500,data!J62:J500<>"",ISNA(MATCH(data!J62:J500,data!AB62:AB,0))))
+```
+
+Mapping resolver, filled down from `Config!J19`:
+
+```gs
+=IF(I19="","",XLOOKUP(I19,data!AB$62:AB,data!AC$62:AC,""))
+```
+
+Data-row package resolver, filled down from `data!D62`:
+
+```gs
+=IF($J62="", "", IFNA(XLOOKUP($J62,$AB$62:$AB,$AC$62:$AC), IFNA(XLOOKUP($J62,Config!$H$19:$H,Config!$J$19:$J), "")))
+```
+
+Important formula detail: leave the first `XLOOKUP` in `data!D62:D500` without a blank missing-value argument. If it uses `XLOOKUP(...,"")`, the direct lookup returns blank instead of erroring, so the mapping-table fallback never runs.
+
 ## Helper Tabs
 
 | Helper tab | What it feeds | Maintenance note |
