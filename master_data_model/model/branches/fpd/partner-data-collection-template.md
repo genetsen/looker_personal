@@ -15,7 +15,7 @@ The template is intentionally named `Dupe before using`. The expected operating 
 | Tab | Visible? | Main audience | Purpose | Key ranges |
 |---|---:|---|---|---|
 | `Instructions for GS` | Yes | Giant Spoon setup owner | Internal setup checklist plus partner-facing data-entry rules. | `B2:D10`, `B19:C24` |
-| `Config` | Yes | Giant Spoon setup owner | Selects scope, report settings, package inclusion, and package-name mappings. | `C4:C14`, `B18:N134`, `H5:AB10` |
+| `Config` | Yes | Giant Spoon setup owner | Selects scope, report settings, package inclusion, and package-name mappings. | `C4:C14`, `B18:J134`, `H5:AB10` |
 | `data` | Yes | Partner | Final data-entry surface generated from `Config`; includes a requested-package list plus a dropdown-driven entry table. | `I55:K60`, `A61:AB500` |
 | `simple_template` | Hidden | Maintainer | Static example table showing a simple partner data format. | `A1:L5` |
 | `Validation` | Yes | Maintainer | Helper lists for dropdowns, filtered package lists, dates, tracking status, DCM impressions, and package IDs. | `A1:AF80` |
@@ -33,7 +33,7 @@ The template is intentionally named `Dupe before using`. The expected operating 
 | 3 | Giant Spoon | `Config!C4:C7` | Select client, partner, campaign, and channel. Campaign and channel can be left blank to keep the scope broader. | These controls filter the package list to the right request scope. |
 | 4 | Giant Spoon or partner | `Config!C9:C13` | Confirm dates, date grain, extra dimensions, and extra metrics. | These settings create the column layout on `data`. |
 | 5 | Giant Spoon | `Config!B19:B134` | Review or override the `First Party Data Needed` checkboxes. | Only checked packages flow into the partner request. |
-| 6 | Giant Spoon | `Config!L:N` | Add package-name mappings when partner names do not match Giant Spoon names. | The `data` tab can translate partner-provided package labels back to the expected package names without relying on row position. |
+| 6 | Giant Spoon | `Config!H:J` | Add package-name mappings when partner names do not match Giant Spoon names. | The `data` tab can translate partner-provided package labels back to the expected package names without relying on row position. |
 | 7 | Giant Spoon | `data` | Review generated instructions, requested-package row count, package dropdown behavior, and columns before sending. | Prevents sending a partner a broken or incomplete request. |
 | 8 | Giant Spoon | Workbook tabs | Hide internal/helper tabs before partner handoff. | Reduces partner confusion and lowers formula-break risk. |
 | 9 | Partner | `data` | Enter delivery data in the generated table without adding, deleting, reordering, or renaming columns/tabs. | Preserves the loader-friendly structure. |
@@ -112,7 +112,7 @@ To avoid touching the source template, a temporary copy was created for experime
 | Select a package row | Entered `DealBook` in `data!J62`. | Context columns populated for client, channel, site, and full package key. | Partner rows are dropdown-driven; they are not fully prefilled until a package/placement is selected. |
 | Force one extra package into the request | Set a previously `FALSE` package checkbox to `TRUE` on `Config`. | The right-side requested-package row count changed from `9` to `10`. | The checkbox column is the request-list control. |
 | Prototype duplicate-name fix | Changed the temp copy's requested-package dropdown source to `Campaign - Initiative - Package ID`, backed by a hidden full-package-key helper column, then selected two `DealBook` rows. | The selected rows showed `Newsletters2026 - DealBook - P3FCQTS` and `Newsletters2026 - DealBook - P3CGHZG`, and resolved to distinct full package keys. | The simplest safe fix is to make the visible dropdown readable and unique while formulas resolve from a stable package key, not from the duplicated short label. |
-| Prototype mapping-table fix | Changed the temp copy's mapping table to detect only partner-entered labels that are not already in the generated dropdown list, then map those labels to `Campaign - Initiative - Package ID` and a resolved full package key. The working prototype uses `Config!L:N`; the old typed table in `Config!H:J` is marked deprecated because its dropdown column cannot use a dynamic range-backed list. | Test value `Partner DealBook Alias` mapped to `Newsletters2026 - DealBook - P3CGHZ4`, and the data row resolved to package ID `P3CGHZ4`. | Partner naming exceptions should map to a stable generated label/full key, not to a short package name or row position. |
+| Prototype mapping-table fix | Changed the temp copy's mapping table to detect only partner-entered labels that are not already in the generated dropdown list, then map those labels to `Campaign - Initiative - Package ID` and a resolved full package key. The working prototype was moved back into `Config!H:J`; however, the existing typed-table dropdown in column `I` still rejects a dynamic range-backed validation rule. | Test value `Partner DealBook Alias` mapped to `Newsletters2026 - DealBook - P3CGHZ4`, and the data row resolved to package ID `P3CGHZ4`. | Partner naming exceptions should map to a stable generated label/full key, not to a short package name or row position. To make the column-`I` dropdown dynamic, first convert/remove the typed table behavior. |
 
 ## Implementation Note For Stable Package Mapping
 
@@ -121,9 +121,9 @@ Use this pattern when carrying the temp-copy fix back into the source template. 
 | Target | Formula shape | Purpose |
 |---|---|---|
 | `data!AB62` | Spill formula | Builds the visible dropdown label and hidden full package key from the same checked package rows. |
-| `Config!L19` | Spill formula | Lists partner-entered labels that are not already valid generated dropdown labels. |
-| `Config!M19:M` | Range-backed dropdown | Lets the maintainer choose the matching `Campaign - Initiative - Package ID` label from `data!AB62:AB`. |
-| `Config!N19:N` | Row formula | Resolves each mapped dropdown label to the hidden full package key. |
+| `Config!H19` | Spill formula | Lists partner-entered labels that are not already valid generated dropdown labels. |
+| `Config!I19:I` | Intended range-backed dropdown | Lets the maintainer choose the matching `Campaign - Initiative - Package ID` label from `data!AB62:AB`. In the current temp copy, this dynamic validation is blocked by the typed-table column. |
+| `Config!J19:J` | Row formula | Resolves each mapped dropdown label to the hidden full package key. |
 | `data!D62:D500` | Row formula | Resolves selected labels directly first, then falls back to the mapping table for partner aliases. |
 
 Dropdown helper, entered once in `data!AB62`:
@@ -132,33 +132,43 @@ Dropdown helper, entered once in `data!AB62`:
 =FILTER({IFERROR(REGEXEXTRACT(Config!F19:F,"^Package_[^_]+_[^_]+_([^_]+)_"),Config!C19:C)&" - "&Config!C19:C&" - "&IFERROR(REGEXEXTRACT(Config!F19:F,"\|([^_]+)_"),Config!F19:F),Config!F19:F},Config!B19:B=TRUE)
 ```
 
-Unmapped partner-label detector, entered once in `Config!L19`:
+Unmapped partner-label detector, entered once in `Config!H19`:
 
 ```gs
 =UNIQUE(FILTER(data!J62:J500,data!J62:J500<>"",ISNA(MATCH(data!J62:J500,data!AB62:AB,0))))
 ```
 
-Mapping target dropdown, applied to `Config!M19:M500`:
+Mapping target dropdown, intended for `Config!I19:I500` after removing or converting the typed-table column:
 
 ```gs
 =data!$AB$62:$AB
 ```
 
-Mapping resolver, filled down from `Config!N19`:
+Mapping resolver, filled down from `Config!J19`:
 
 ```gs
-=IF(M19="","",XLOOKUP(M19,data!AB$62:AB,data!AC$62:AC,""))
+=IF(I19="","",XLOOKUP(I19,data!AB$62:AB,data!AC$62:AC,""))
 ```
 
 Data-row package resolver, filled down from `data!D62`:
 
 ```gs
-=IF($J62="", "", IFNA(XLOOKUP($J62,$AB$62:$AB,$AC$62:$AC), IFNA(XLOOKUP($J62,Config!$L$19:$L,Config!$N$19:$N), "")))
+=IF($J62="", "", IFNA(XLOOKUP($J62,$AB$62:$AB,$AC$62:$AC), IFNA(XLOOKUP($J62,Config!$H$19:$H,Config!$J$19:$J), "")))
 ```
 
 Important formula detail: leave the first `XLOOKUP` in `data!D62:D500` without a blank missing-value argument. If it uses `XLOOKUP(...,"")`, the direct lookup returns blank instead of erroring, so the mapping-table fallback never runs.
 
-Important table detail: do not put the mapping target dropdown inside a Google Sheets typed table column. Table dropdown columns are static list columns, so a dynamic range-backed validation like `data!$AB$62:$AB` is rejected. Keep the editable mapping block in a normal range such as `Config!L:N`, or change the table column type before applying normal validation.
+Important table detail: the current temp copy has the formulas moved into `Config!H:J`, but `Config!I19:I500` still cannot receive the dynamic dropdown while column `I` is a Google Sheets typed-table column. Table dropdown columns are static list columns, so a dynamic range-backed validation like `data!$AB$62:$AB` is rejected. Convert or remove the typed table behavior before applying normal validation in `H:J`; otherwise, keep the formula path and type/paste mapping targets manually.
+
+## Potential Failure Paths Found After The H:J Move
+
+| Failure path | Live evidence in temp copy | Why it matters | Simple fix direction |
+|---|---|---|---|
+| Column `I` cannot use the dynamic mapping dropdown yet. | `setDataValidation` on `Config!I19:I500` failed with `This operation is not allowed on cells in typed columns.` | The formulas now work in `H:J`, but the maintainer dropdown does not dynamically list new packages. | Convert/remove the typed table column first, then apply `=data!$AB$62:$AB` as normal range validation. |
+| Nonstandard package keys create awkward generated labels. | `data!AB70` shows `New York Times - New York Times - New York Times`; `data!AB69` repeats `New York Times Cover Wrap, NY DMA` three times. | The label formula assumes a Prisma-style full package key and falls back by repeating the short package name when parsing fails. | Add a formula branch: if `Config!F` is not a Prisma-style key, use `Config!C` or the raw full key once. |
+| Partner-facing request instructions still list short package names. | `data!J56` lists short names such as `DealBook`, `HPTOMobile`, and `PKG`, while the data-entry dropdown uses stable labels. | A partner may read the request list and type a short/ambiguous package name instead of selecting the stable dropdown label. | Change the instruction list to use the same stable label list as `data!AB62:AB`, or display both short name and package ID. |
+| Alias rows are outside the normal package dropdown source. | `data!J64` contains `Partner DealBook Alias`, while the validation source remains `=zxc[Please provide data for:]`. | If validation is later tightened to reject invalid values, partner aliases cannot be typed and the mapping table will never detect them. | Keep validation as warning-only for partner-entered package labels, or provide a separate alias-entry column/workflow. |
+| The editable data area is capped at row 500 for alias detection and package resolution. | Mapping detector uses `data!J62:J500`; package resolver is filled through `data!D62:D500`. | A partner with more than 439 data rows can create unresolved rows below the formula/alias-detection range. | Extend the formulas and validation to a larger fixed range, or use an array formula that covers the intended table height. |
 
 ## Helper Tabs
 

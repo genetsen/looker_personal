@@ -3,6 +3,7 @@
 ## 2026-07-08
 
 - **CHANGED** - Documented the FPD partner template mapping-table correction so duplicate package labels and partner aliases resolve through a dynamic stable-label block instead of the old typed-table dropdown.
+- **CHANGED** - Updated the FPD partner template notes after moving the temp-copy mapping prototype back to `Config!H:J`, including the typed-table dropdown blocker and the next likely formula/validation failure paths.
 
 ### Pending Next Actions
 
