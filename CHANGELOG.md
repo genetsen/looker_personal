@@ -5,6 +5,7 @@ All notable changes to this repository are documented in this file.
 ## 2026-07-08
 
 - **ADDED** - Added Manual Data Editor benchmark metadata so users can edit Benchmark KPI as text and Benchmark Value as a number, with manual values feeding the master-model benchmark reporting fields before FPD benchmark fallbacks.
+- **ADDED** - Added a plain-English Manual Data Editor two-tab operating note that tells users to search in `Package Editor` and enter durable corrections in `Manual Edits`.
 - **CHANGED** - Added the Manual Data Editor split-input design contract and routed loader input toward a user-owned `Manual Edits` tab while keeping `Package Editor` as the refreshed package lookup/preview surface.
 - **FIXED** - Added a Manual Data Editor fallback so trusted prior manual-only dates, metrics, and metadata survive blank sheet reads when no live source baseline exists.
 

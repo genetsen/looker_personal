@@ -4,6 +4,8 @@ This folder owns the manual package editor for the master data model. The goal i
 
 For deep QA, troubleshooting, scripts, tables, filters, and package-trace queries, use `QA_RUNBOOK.md`.
 
+For the day-to-day two-tab workflow, use [Manual Data Editor Two-Tab Operating Note](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/TWO_TAB_OPERATING_NOTE.md>).
+
 For the safety contract behind the split input/preview design, use [Manual Data Editor Design Contract](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/DESIGN_CONTRACT.md>).
 
 ## Sheet Workflow
