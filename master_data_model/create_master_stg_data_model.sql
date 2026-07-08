@@ -300,6 +300,8 @@ manual_package_daily AS (
     DATE(date) AS date,
     man_start_date,
     man_end_date,
+    man_benchmark_kpi,
+    man_benchmark_value,
     man_daily_spend,
     man_daily_impressions,
     man_daily_planned_spend,
@@ -382,6 +384,8 @@ manual_package_metadata AS (
     ARRAY_AGG(man_channel IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel,
     ARRAY_AGG(man_channel IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS channel_group,
     ARRAY_AGG(man_package_type IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS media_name,
+    ARRAY_AGG(man_benchmark_kpi IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS man_benchmark_kpi,
+    ARRAY_AGG(man_benchmark_value IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS man_benchmark_value,
     ARRAY_AGG(man_initiative IGNORE NULLS ORDER BY loaded_at DESC, edit_id DESC LIMIT 1)[SAFE_OFFSET(0)] AS initiative
   FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw`
   WHERE is_active = TRUE
@@ -400,6 +404,8 @@ manual_package_metadata AS (
       OR man_supplier_name IS NOT NULL
       OR man_channel IS NOT NULL
       OR man_initiative IS NOT NULL
+      OR man_benchmark_kpi IS NOT NULL
+      OR man_benchmark_value IS NOT NULL
     )
   GROUP BY package_id
 ),
@@ -649,6 +655,7 @@ digital_final AS (
     planned_units,
     unit_type,
     payable_rate,
+    kpi AS prisma_kpi,
     planned_daily_spend_pk,
     planned_daily_impressions_pk,
     planned_clicks AS prisma_planned_clicks,
@@ -956,6 +963,7 @@ social_final AS (
     CAST(NULL AS INT64) AS planned_units,
     CAST(NULL AS STRING) AS unit_type,
     CAST(NULL AS FLOAT64) AS payable_rate,
+    CAST(NULL AS STRING) AS prisma_kpi,
     SAFE_DIVIDE(planned_daily_spend, NULLIF(ad_rows_in_group_day, 0)) AS planned_daily_spend_pk,
     CAST(NULL AS FLOAT64) AS planned_daily_impressions_pk,
     CAST(NULL AS INT64) AS prisma_planned_clicks,
@@ -1217,6 +1225,7 @@ tv_final AS (
     CAST(NULL AS INT64) AS planned_units,
     CAST(NULL AS STRING) AS unit_type,
     CAST(NULL AS FLOAT64) AS payable_rate,
+    CAST(NULL AS STRING) AS prisma_kpi,
     -- CHANGE 2026-05-08: Linear TV net cost/impressions now populate planned
     -- daily fields so `_planned_spend` and `_planned_impressions` match the
     -- TV values already carried in `_spend`, `_impressions`, and `tv_*`.
@@ -1389,6 +1398,7 @@ amazon_final AS (
     CAST(NULL AS INT64) AS planned_units,
     CAST(NULL AS STRING) AS unit_type,
     SAFE_CAST(NULL AS FLOAT64) AS payable_rate,
+    CAST(NULL AS STRING) AS prisma_kpi,
     CAST(NULL AS FLOAT64) AS planned_daily_spend_pk,
     CAST(NULL AS FLOAT64) AS planned_daily_impressions_pk,
     CAST(NULL AS INT64) AS prisma_planned_clicks,
@@ -1600,7 +1610,9 @@ manual_existing_rows AS (
     m.man_total_planned_impressions_doNotSum,
     m.man_total_clicks_doNotSum,
     m.man_total_video_plays_doNotSum,
-    m.man_total_video_comps_doNotSum
+    m.man_total_video_comps_doNotSum,
+    COALESCE(m.man_benchmark_kpi, pm.man_benchmark_kpi) AS man_benchmark_kpi,
+    COALESCE(m.man_benchmark_value, pm.man_benchmark_value) AS man_benchmark_value
   FROM all_rows AS r
   LEFT JOIN manual_package_daily AS m
     ON r.package_id_joined = m.package_id
@@ -1646,6 +1658,7 @@ manual_only_rows AS (
     SAFE_CAST(ROUND(m.p_planned_units_doNotSum) AS INT64) AS planned_units,
     m.p_unit_type AS unit_type,
     m.p_rate AS payable_rate,
+    CAST(NULL AS STRING) AS prisma_kpi,
     m.man_daily_planned_spend AS planned_daily_spend_pk,
     m.man_daily_planned_impressions AS planned_daily_impressions_pk,
     CAST(NULL AS INT64) AS prisma_planned_clicks,
@@ -1792,7 +1805,9 @@ manual_only_rows AS (
     m.man_total_planned_impressions_doNotSum,
     m.man_total_clicks_doNotSum,
     m.man_total_video_plays_doNotSum,
-    m.man_total_video_comps_doNotSum
+    m.man_total_video_comps_doNotSum,
+    COALESCE(m.man_benchmark_kpi, pm.man_benchmark_kpi) AS man_benchmark_kpi,
+    COALESCE(m.man_benchmark_value, pm.man_benchmark_value) AS man_benchmark_value
   FROM manual_package_daily AS m
   LEFT JOIN (
     SELECT DISTINCT package_id_joined, date
@@ -2173,6 +2188,15 @@ SELECT
   d_total_del_inflight_imps AS `dcm_total_del_inflight_imps`,
   fpd_orig_benchmark AS `fpd_benchmark`,
   fpd_orig_benchmark_metric AS `fpd_benchmark_metric`,
+  -- Benchmark contract: manual KPI is text. The current FPD benchmark metric
+  -- is numeric and presently uses zero placeholders, so only nonzero values
+  -- become string KPI fallbacks before package-level Prisma KPI.
+  COALESCE(
+    man_benchmark_kpi,
+    SAFE_CAST(NULLIF(fpd_orig_benchmark_metric, 0) AS STRING),
+    NULLIF(TRIM(prisma_kpi), '')
+  ) AS `_benchmark_kpi`,
+  COALESCE(man_benchmark_value, fpd_orig_benchmark) AS `_benchmark_value`,
   fpd_orig_factor AS `fpd_factor`,
   fpd_orig_creative AS `fpd_creative`,
   fpd_creative_img AS `fpd_creative_img`,
@@ -2305,6 +2329,8 @@ SELECT
   man_daily_clicks AS `man_daily_clicks`,
   man_daily_video_plays AS `man_daily_video_plays`,
   man_daily_video_comps AS `man_daily_video_comps`,
+  man_benchmark_kpi AS `man_benchmark_kpi`,
+  man_benchmark_value AS `man_benchmark_value`,
   man_total_spend_doNotSum AS `man_total_spend_doNotSum`,
   man_total_impressions_doNotSum AS `man_total_impressions_doNotSum`,
   man_total_planned_spend_doNotSum AS `man_total_planned_spend_doNotSum`,
@@ -2347,6 +2373,7 @@ row_source_contributors AS (
         IF(`man_daily_clicks` IS NOT NULL, ['manual_package_edits'], []),
         IF(`man_daily_video_plays` IS NOT NULL, ['manual_package_edits'], []),
         IF(`man_daily_video_comps` IS NOT NULL, ['manual_package_edits'], []),
+        IF(`man_benchmark_kpi` IS NOT NULL OR `man_benchmark_value` IS NOT NULL, ['manual_package_edits'], []),
         IF(
           `man_daily_spend` IS NULL AND `_spend` IS NOT NULL,
           [CASE

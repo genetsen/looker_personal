@@ -19,7 +19,6 @@ const AUTH_CONFIG_BY_ACCOUNT = {
 const AUTH_CONFIG = process.env.CLOUDSDK_CONFIG || process.env.MASTER_MANUAL_EDIT_GCLOUD_CONFIG || AUTH_CONFIG_BY_ACCOUNT[AUTH_ACCOUNT];
 
 const columns = [
-  "Advertiser",
   "Package ID",
   "Site",
   "Package Friendly Name",
@@ -34,6 +33,7 @@ const columns = [
   "Video Completions",
   "Delivery Override Start Date",
   "Delivery Override End Date",
+  "Advertiser",
   "Package Type",
   "Channel",
   "Campaign",
@@ -42,6 +42,12 @@ const columns = [
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Benchmark KPI",
+  "Benchmark Value",
+  "Manually Edited?",
+  "Manual Edit At",
+  "Manual Edit By",
+  "Manual Edit Published At",
   "Primary Row Data Source",
   "Validation Status",
   "Validation Reason",
@@ -66,6 +72,8 @@ const columns = [
   "Baseline Package Name",
   "Baseline Package Friendly Name",
   "Baseline GS Channel",
+  "Baseline Benchmark KPI",
+  "Baseline Benchmark Value",
   "Manual Marker Flight Start Date",
   "Manual Marker Flight End Date",
   "Manual Marker Planned Spend",
@@ -87,6 +95,8 @@ const columns = [
   "Manual Marker Package Name",
   "Manual Marker Package Friendly Name",
   "Manual Marker GS Channel",
+  "Manual Marker Benchmark KPI",
+  "Manual Marker Benchmark Value",
   "Edited Row Filter",
 ];
 
@@ -99,6 +109,7 @@ const markerNames = [
   "Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions",
   "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Start Date", "Delivery End Date",
   "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "Package Friendly Name", "GS Channel",
+  "Benchmark KPI", "Benchmark Value",
 ];
 const editMarkerPairs = [
   { editedName: "Flight Start Date", baselineName: "Baseline Flight Start Date" },
@@ -122,6 +133,8 @@ const editMarkerPairs = [
   { editedName: "Package Name", baselineName: "Baseline Package Name" },
   { editedName: "Package Friendly Name", baselineName: "Baseline Package Friendly Name" },
   { editedName: "GS Channel", baselineName: "Baseline GS Channel" },
+  { editedName: "Benchmark KPI", baselineName: "Baseline Benchmark KPI" },
+  { editedName: "Benchmark Value", baselineName: "Baseline Benchmark Value" },
 ].map((pair) => ({
   editedIndex: colIndex[pair.editedName],
   baselineIndex: colIndex[pair.baselineName],
@@ -207,7 +220,7 @@ async function getSheet() {
 
 async function getExistingDataEndRowIndex() {
   const response = await sheetsFetch(
-    `/values/${encodeURIComponent(`${TAB_NAME}!A${dataStartRowIndex + 1}:W`)}?valueRenderOption=UNFORMATTED_VALUE`,
+    `/values/${encodeURIComponent(`${TAB_NAME}!A${dataStartRowIndex + 1}:Y`)}?valueRenderOption=UNFORMATTED_VALUE`,
   );
   const rows = response.values || [];
   let lastNonEmptyRowOffset = -1;

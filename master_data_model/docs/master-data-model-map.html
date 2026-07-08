@@ -1166,7 +1166,7 @@
         id: "manual-edits",
         groupId: "union-rollups",
         title: "Manual Edits",
-        summary: "Separate tables joined into main rows, with audit fields for manual-edit status, edit time, editor, and publish time.",
+        summary: "Separate tables joined into main rows, with audit fields for manual-edit status, edit time, editor, publish time, and package-level benchmark edits.",
         truth: "Tables: landing.master_data_model_manual_package_edits_raw and landing.master_data_model_manual_package_daily.",
         writes: "Refresh: manual package edit loader, then rebuild master view and mart.",
         freshness: "Current after the manual loader writes valid active rows.",
@@ -1179,6 +1179,7 @@
           "In create_master_stg_data_model.sql, manual_package_daily and manual_package_metadata are read before with_rollups.",
           "manual_existing_rows left-joins those tables onto the unioned rows, while manual_only_rows can add valid manual-only packages.",
           "Then with_rollups sums the manual-prioritized final fields.",
+          "Manual benchmark edits publish man_benchmark_kpi as text and man_benchmark_value as a number. The final _benchmark_kpi and _benchmark_value fields use manual benchmark evidence before source-backed benchmark fallbacks.",
           "The model exposes friendly qa_manual_* fields so readers can see whether a row used manual evidence, when the user edited it when available, who edited it when Google exposes the identity, and when the loader accepted it into BigQuery."
         ],
         sources: [
@@ -1232,10 +1233,11 @@
         callouts: { truth: "live", writes: false },
         notes: [
           "Contains digital, social, TV, WP, and manual-edit evidence in one shared schema.",
-          "Includes initiative, _video_views, _creative_name, _creative_img, consolidated fpd_* fields, man_* evidence, qa_data_issues, qa_pkg_primary_data_source, and qa_pkg_data_sources_available.",
+          "Includes initiative, _video_views, _creative_name, _creative_img, _benchmark_kpi, _benchmark_value, consolidated fpd_* fields, man_* evidence, qa_data_issues, qa_pkg_primary_data_source, and qa_pkg_data_sources_available.",
           "_advertiser and _advertiser_name use the same standardized label from advertiser_mapping. _advertiser_short_name uses that same mapping to publish the canonical client code across all mapped source rows. New clients use a cleaned Prisma advertiser name by default.",
           "Excludes Highlights rows before final publication.",
-          "Canonical _creative_name uses original FPD creative, Amazon ad name, then social creative. Amazon is checked before the shared social field because Amazon rows currently populate both fields. DCM creative stays in the delivery-detail view to preserve its lower grain."
+          "Canonical _creative_name uses original FPD creative, Amazon ad name, then social creative. Amazon is checked before the shared social field because Amazon rows currently populate both fields. DCM creative stays in the delivery-detail view to preserve its lower grain.",
+          "Final benchmark fields use manual benchmark edits first. _benchmark_value then falls back to FPD benchmark value, while _benchmark_kpi can use a nonzero FPD benchmark metric as text before package-level KPI."
         ],
         sources: [
           ["BigQuery: master_stg.data_model", bq("master_stg", "data_model")],

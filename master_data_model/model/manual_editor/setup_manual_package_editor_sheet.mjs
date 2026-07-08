@@ -49,6 +49,8 @@ const columns = [
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Benchmark KPI",
+  "Benchmark Value",
   "Manually Edited?",
   "Manual Edit At",
   "Manual Edit By",
@@ -77,6 +79,8 @@ const columns = [
   "Baseline Package Name",
   "Baseline Package Friendly Name",
   "Baseline GS Channel",
+  "Baseline Benchmark KPI",
+  "Baseline Benchmark Value",
   "Manual Marker Flight Start Date",
   "Manual Marker Flight End Date",
   "Manual Marker Planned Spend",
@@ -98,6 +102,8 @@ const columns = [
   "Manual Marker Package Name",
   "Manual Marker Package Friendly Name",
   "Manual Marker GS Channel",
+  "Manual Marker Benchmark KPI",
+  "Manual Marker Benchmark Value",
   "Edited Row Filter",
 ];
 
@@ -111,7 +117,7 @@ const markerStartIndex = colIndex["Manual Marker Flight Start Date"];
 const editableColumnIndexes = new Set([
   "Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions",
   "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Override Start Date", "Delivery Override End Date",
-  "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel",
+  "Package Friendly Name", "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel", "Benchmark KPI", "Benchmark Value",
 ].map((name) => colIndex[name]));
 const diagnosticColumnIndexes = new Set([
   "Manually Edited?", "Manual Edit At", "Manual Edit By", "Manual Edit Published At",
@@ -120,12 +126,13 @@ const diagnosticColumnIndexes = new Set([
 const deliveredMetricColumnIndexes = new Set(["Spend", "Impressions", "Clicks", "Video Plays", "Video Completions"].map((name) => colIndex[name]));
 const plannedMetricColumnIndexes = new Set(["Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions"].map((name) => colIndex[name]));
 const packageFriendlyNameColumnIndexes = new Set(["Package Friendly Name"].map((name) => colIndex[name]));
-const metadataColumnIndexes = new Set(["Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel"].map((name) => colIndex[name]));
+const metadataColumnIndexes = new Set(["Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "GS Channel", "Benchmark KPI", "Benchmark Value"].map((name) => colIndex[name]));
 const hiddenColumnIndexes = new Set(columns.map((_, index) => index).filter((index) => index >= visibleColumnCount));
 const markerNames = [
   "Flight Start Date", "Flight End Date", "Planned Spend", "Planned Impressions",
   "Spend", "Impressions", "Clicks", "Video Plays", "Video Completions", "Delivery Start Date", "Delivery End Date",
   "Advertiser", "Package Type", "Channel", "Campaign", "Initiative", "Supplier Code", "Supplier Name", "Package Name", "Package Friendly Name", "GS Channel",
+  "Benchmark KPI", "Benchmark Value",
 ];
 const editMarkerPairs = [
   { editedName: "Flight Start Date", baselineName: "Baseline Flight Start Date" },
@@ -149,6 +156,8 @@ const editMarkerPairs = [
   { editedName: "Package Name", baselineName: "Baseline Package Name" },
   { editedName: "Package Friendly Name", baselineName: "Baseline Package Friendly Name" },
   { editedName: "GS Channel", baselineName: "Baseline GS Channel" },
+  { editedName: "Benchmark KPI", baselineName: "Baseline Benchmark KPI" },
+  { editedName: "Benchmark Value", baselineName: "Baseline Benchmark Value" },
 ].map((pair) => ({
   editedIndex: colIndex[pair.editedName],
   baselineIndex: colIndex[pair.baselineName],
@@ -160,7 +169,7 @@ const manualMarkerPairs = markerNames.map((name) => ({
 const widths = [
   105, 135, 720, 112, 112, 125, 140, 105, 120, 90,
   110, 130, 132, 132, 140, 110, 105, 150, 115, 90,
-  140, 220, 120, 120, 145, 220, 170, 150, 120, 240,
+  140, 220, 120, 135, 135, 120, 145, 220, 170, 150, 120, 240,
   ...Array(colCount - 30).fill(100),
 ];
 
@@ -244,7 +253,7 @@ async function getSpreadsheet() {
 
 async function getExistingDataEndRowIndex() {
   const response = await sheetsFetch(
-    `/values/${encodeURIComponent(`${TAB_NAME}!A${dataStartRowIndex + 1}:U`)}?valueRenderOption=UNFORMATTED_VALUE`,
+    `/values/${encodeURIComponent(`${TAB_NAME}!A${dataStartRowIndex + 1}:Y`)}?valueRenderOption=UNFORMATTED_VALUE`,
   );
   const rows = response.values || [];
   let lastNonEmptyRowOffset = -1;
@@ -302,8 +311,8 @@ async function writeInstructions() {
   values[2][3] = "Editable planned values: Flight Start, Flight End, Planned Spend, Planned Impressions.";
   values[2][7] = "Editable delivered metrics: Spend, Impressions, Clicks, Video Plays, Video Completions.";
   values[2][12] = "Editable delivery window: Delivery Override Start/End controls metric edit dates.";
-  values[2][14] = "Editable metadata: Advertiser, Package Type, Channel, Campaign, Initiative, Supplier, Package Name, GS Channel.";
-  values[2][23] = "Read-only diagnostics: source, validation status, reason.";
+  values[2][14] = "Editable metadata: Advertiser, Package Type, Channel, Campaign, Initiative, Supplier, Package Name, GS Channel, Benchmark KPI, Benchmark Value.";
+  values[2][25] = "Read-only diagnostics: source, validation status, reason.";
 
   const lastVisibleColumn = columnLetter(visibleColumnCount - 1);
   await sheetsFetch(`/values/${encodeURIComponent(`${TAB_NAME}!A1:${lastVisibleColumn}3`)}?valueInputOption=USER_ENTERED`, {
@@ -1149,7 +1158,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       repeatCell: {
         range: gridRange(sheetId, 0, 3, 0, visibleColumnCount),
         cell: {
-          note: "Use the column header filters for Advertiser, Package ID, Initiative, Channel, Campaign, and Site to find the package row. Existing Package ID and Site values are locked; Package Friendly Name and metadata fields are editable. Planned values apply to the package. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red cells must be fixed before load.",
+          note: "Use the column header filters for Advertiser, Package ID, Initiative, Channel, Campaign, and Site to find the package row. Existing Package ID and Site values are locked; Package Friendly Name and metadata fields are editable. Benchmark KPI is text; Benchmark Value is numeric. Planned values apply to the package. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red cells must be fixed before load.",
         },
         fields: "note",
       },
@@ -1221,7 +1230,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       repeatCell: {
         range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Advertiser"], colIndex["Primary Row Data Source"]),
         cell: {
-          note: "Metadata fields. Keep existing values unless you are adding a new package or correcting package metadata. New manual packages need Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel completed. Hidden columns to the right are internal comparison and manual-marker fields used only for formatting.",
+          note: "Metadata fields. Keep existing values unless you are adding a new package or correcting package metadata. New manual packages need Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel completed. Benchmark KPI and Benchmark Value are optional package metadata corrections. Hidden columns to the right are internal comparison and manual-marker fields used only for formatting.",
         },
         fields: "note",
       },
@@ -1305,7 +1314,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
         repeatCell: {
           range: gridRange(sheetId, firstBlankRow, rowCount, 0, visibleColumnCount),
           cell: {
-            note: "Add new manual-only rows in this blank area. Required fields: Package ID, Site, Package Friendly Name, Flight Start/End, Delivery Override Start/End, at least one metric, Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. Package metadata changes apply to all dates for that Package ID; delivery metrics apply only to the delivery override dates.",
+            note: "Add new manual-only rows in this blank area. Required fields: Package ID, Site, Package Friendly Name, Flight Start/End, Delivery Override Start/End, at least one metric, Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel. Benchmark KPI and Benchmark Value are optional. Package metadata changes apply to all dates for that Package ID; delivery metrics apply only to the delivery override dates.",
           },
           fields: "note",
         },
@@ -1774,7 +1783,7 @@ async function writeInstructionsTab() {
     ["Quick workflow", "", "", "", "", "", "", ""],
     ["1. Open the editor", "", "Go to the Package Editor tab and use the column header filters to narrow by Advertiser, Package ID, Initiative, Channel, Campaign, and Site. You are filtering the real editable rows, not a copy.", "", "", "", "", ""],
     ["2. Find the package", "", "Use Package ID, Site, and Package Friendly Name first. Campaign and metadata fields are visible at the far right if you need more context. Package ID and hidden internal fields are locked so row identity and loader helpers do not get changed by accident.", "", "", "", "", ""],
-    ["3. Edit the value", "", "Edit the visible field that needs to change. Flight Start/End and metadata corrections apply to the whole package. Delivered metric edits use Delivery Override Start/End. Planned Spend and Planned Impressions are full-flight only.", "", "", "", "", ""],
+    ["3. Edit the value", "", "Edit the visible field that needs to change. Flight Start/End, Benchmark KPI, Benchmark Value, and metadata corrections apply to the whole package. Benchmark KPI is text; Benchmark Value is numeric. Delivered metric edits use Delivery Override Start/End. Planned Spend and Planned Impressions are full-flight only.", "", "", "", "", ""],
     ["4. Check markers", "", "Orange means the value is different from the current dashboard value. Purple means the value is already coming from a validated manual update. Red means the row needs fixing before it can load.", "", "", "", "", ""],
     ["5. Request refresh", "", "Check Request refresh on the Package Editor tab when edits are ready. This only notifies Gene to review or run the loader; it does not publish or write to the warehouse by itself.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
@@ -1795,7 +1804,7 @@ async function writeInstructionsTab() {
     ["Where the displayed data comes from", "", "", "", "", "", "", ""],
     ["Planned Values", "", "Planned spend, planned impressions, rates, and flight date information come from PRISMA.", "", "", "", "", ""],
     ["Delivered values", "", "Delivered spend, impressions, clicks, video plays, and video completions come from ad server, platform, or partner-specific First Party Data sheets.", "", "", "", "", ""],
-    ["Package metadata", "", "Advertiser, campaign, channel, supplier, site, package name, initiative, and classification fields come from PRISMA.", "", "", "", "", ""],
+    ["Package metadata", "", "Advertiser, campaign, channel, supplier, site, package name, initiative, and classification fields come from PRISMA. Benchmark Value falls back to FPD benchmark when no manual value is active.", "", "", "", "", ""],
     ["Current dashboard values", "", "The editor refreshes from the same combined reporting data used by the dashboards, so the visible values are the current reporting snapshot before manual edits.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["How the data model works", "", "", "", "", "", "", ""],
@@ -1809,7 +1818,7 @@ async function writeInstructionsTab() {
     ["White / blue cells", "", "Package identity and lookup context. Existing package IDs are locked; blank new rows below the current package list can be filled when adding a manual-only package.", "", "", "", "", ""],
     ["Yellow cells", "", "Actual delivery values and dates. These can be edited for the date range you are correcting.", "", "", "", "", ""],
     ["Green cells", "", "Planned flight totals. Edit only for full-flight planned corrections.", "", "", "", "", ""],
-    ["Gray cells", "", "Package metadata. Edit these when a package-level metadata correction is needed, or fill them on new manual-only rows.", "", "", "", "", ""],
+    ["Gray cells", "", "Package metadata. Edit these when a package-level metadata correction is needed, or fill required metadata on new manual-only rows. Benchmark KPI and Benchmark Value are optional metadata corrections.", "", "", "", "", ""],
     ["Orange / purple / red cells", "", "Orange means an edited value differs from the current dashboard value. Purple means a value is already using a validated manual update. Red marks the specific started-row cells that are missing required values, have invalid dates, or need fixing before the row can load.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["What not to edit", "", "", "", "", "", "", ""],

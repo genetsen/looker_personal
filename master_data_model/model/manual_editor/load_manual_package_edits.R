@@ -2,10 +2,11 @@
 #### LOAD MASTER DATA MODEL MANUAL PACKAGE EDITS
 ################################################################################
 # Purpose:
-#   Maintain a single Google Sheet tab where users edit dashboard values in-place.
-#   The loader compares those cells to the live reporting mart and last loader
-#   run, writes changed values to manual BigQuery tables, and refreshes the
-#   visible data values. Sheet formatting and UX setup are managed separately.
+#   Maintain separate Manual Data Editor surfaces: a user-owned Manual Edits tab
+#   for durable input and a script-refreshed Package Editor tab for lookup and
+#   preview context. The loader validates user-owned edits, writes manual
+#   BigQuery tables, and refreshes the preview without using preview rewrites as
+#   evidence that a user deleted an edit.
 ################################################################################
 
 suppressPackageStartupMessages({
@@ -90,17 +91,18 @@ EXCLUDED_SOCIAL_CAMPAIGN_PATTERN <- Sys.getenv(
   "1000heads"
 )
 
-TAB_EDITOR <- "Package Editor"
+TAB_EDITOR <- Sys.getenv("MASTER_MANUAL_EDIT_PREVIEW_TAB", "Package Editor")
+TAB_MANUAL_INPUT <- Sys.getenv("MASTER_MANUAL_EDIT_INPUT_TAB", "Manual Edits")
 EDITOR_HEADER_ROW <- 4
 EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
 EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
 REQUEST_STATUS_CELL <- "F2"
-EDITOR_VISIBLE_LAST_COLUMN <- "AY"
-MANUAL_MARKER_START_COLUMN <- "AZ"
-FILTER_HELPER_START_COLUMN <- "BU"
-EDITOR_LAST_COLUMN <- "BU"
+EDITOR_VISIBLE_LAST_COLUMN <- "BC"
+MANUAL_MARKER_START_COLUMN <- "BD"
+FILTER_HELPER_START_COLUMN <- "CA"
+EDITOR_LAST_COLUMN <- "CA"
 LEGACY_TABS <- c(
-  "Sheet1", "Package Lookup", "Start Here", "Manual Package Edits",
+  "Sheet1", "Package Lookup", "Start Here",
   "Validation Preview", "Daily Proof", "Publish Status", "Change History"
 )
 
@@ -161,6 +163,8 @@ display_columns <- c(
   "Supplier Name",
   "Package Name",
   "GS Channel",
+  "Benchmark KPI",
+  "Benchmark Value",
   "Manually Edited?",
   "Manual Edit At",
   "Manual Edit By",
@@ -188,7 +192,9 @@ display_columns <- c(
   "Baseline Supplier Name",
   "Baseline Package Name",
   "Baseline Package Friendly Name",
-  "Baseline GS Channel"
+  "Baseline GS Channel",
+  "Baseline Benchmark KPI",
+  "Baseline Benchmark Value"
 )
 
 manual_marker_columns <- c(
@@ -212,7 +218,9 @@ manual_marker_columns <- c(
   "Manual Marker Supplier Name",
   "Manual Marker Package Name",
   "Manual Marker Package Friendly Name",
-  "Manual Marker GS Channel"
+  "Manual Marker GS Channel",
+  "Manual Marker Benchmark KPI",
+  "Manual Marker Benchmark Value"
 )
 
 filter_helper_columns <- c(
@@ -235,17 +243,19 @@ whole_number_metric_names <- c("impressions", "planned_impressions", "clicks", "
 daily_total_proof_tolerance <- 0.01
 
 metadata_specs <- tibble::tribble(
-  ~display_col, ~value_key, ~current_col, ~manual_col,
-  "Advertiser", "advertiser_name", "current_advertiser_name", "man_advertiser_name",
-  "Package Type", "package_type", "current_package_type", "man_package_type",
-  "Channel", "channel", "current_channel", "man_channel",
-  "Campaign", "campaign_name", "current_campaign_name", "man_campaign_name",
-  "Initiative", "initiative", "current_initiative", "man_initiative",
-  "Supplier Code", "supplier_code", "current_supplier_code", "man_supplier_code",
-  "Supplier Name", "supplier_name", "current_supplier_name", "man_supplier_name",
-  "Package Name", "package_name", "current_package_name", "man_package_name",
-  "Package Friendly Name", "package_name_friendly", "current_package_name_friendly", "man_package_name_friendly",
-  "GS Channel", "ADIF_channel", "current_ADIF_channel", "man_ADIF_channel"
+  ~display_col, ~value_key, ~current_col, ~manual_col, ~value_type,
+  "Advertiser", "advertiser_name", "current_advertiser_name", "man_advertiser_name", "text",
+  "Package Type", "package_type", "current_package_type", "man_package_type", "text",
+  "Channel", "channel", "current_channel", "man_channel", "text",
+  "Campaign", "campaign_name", "current_campaign_name", "man_campaign_name", "text",
+  "Initiative", "initiative", "current_initiative", "man_initiative", "text",
+  "Supplier Code", "supplier_code", "current_supplier_code", "man_supplier_code", "text",
+  "Supplier Name", "supplier_name", "current_supplier_name", "man_supplier_name", "text",
+  "Package Name", "package_name", "current_package_name", "man_package_name", "text",
+  "Package Friendly Name", "package_name_friendly", "current_package_name_friendly", "man_package_name_friendly", "text",
+  "GS Channel", "ADIF_channel", "current_ADIF_channel", "man_ADIF_channel", "text",
+  "Benchmark KPI", "benchmark_kpi", "current_benchmark_kpi", "man_benchmark_kpi", "text",
+  "Benchmark Value", "benchmark_value", "current_benchmark_value", "man_benchmark_value", "numeric"
 )
 
 raw_columns <- c(
@@ -459,7 +469,7 @@ prepare_editor_write_data <- function(data) {
 
 write_editor_tab <- function(sheet_id, tab_name, data) {
   ensure_tab(sheet_id, tab_name)
-  sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
+  sheet_resize(sheet_id, sheet = tab_name, ncol = 79)
   range_clear(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
   data <- prepare_editor_write_data(data)
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0("A", EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
@@ -473,7 +483,7 @@ write_manual_marker_columns <- function(sheet_id, tab_name, data) {
 
 write_filter_helper_columns <- function(sheet_id, tab_name, data) {
   ensure_tab(sheet_id, tab_name)
-  sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
+  sheet_resize(sheet_id, sheet = tab_name, ncol = 79)
   range_clear(sheet_id, range = paste0("'", tab_name, "'!", FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0(FILTER_HELPER_START_COLUMN, EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
 }
@@ -599,6 +609,36 @@ pick_existing_col <- function(data, names, default = NA_character_) {
   rep(default, nrow(data))
 }
 
+empty_existing_editor <- function() {
+  tibble::tibble(
+    package_id = character(),
+    package_name = character(),
+    package_name_friendly = character(),
+    supplier_code = character(),
+    supplier_name = character(),
+    channel = character(),
+    flight_start_date = as.Date(character()),
+    flight_end_date = as.Date(character()),
+    delivery_start_date = as.Date(character()),
+    delivery_end_date = as.Date(character()),
+    campaign_name = character(),
+    initiative = character(),
+    advertiser_name = character(),
+    package_type = character(),
+    media_name = character(),
+    ADIF_channel = character(),
+    benchmark_kpi = character(),
+    benchmark_value = numeric(),
+    channel_group = character(),
+    manual_edit_at = as.POSIXct(character()),
+    manual_edit_by = character(),
+    manual_edit_published_at = as.POSIXct(character()),
+    manually_edited = character(),
+    validation_status = character(),
+    validation_reason = character()
+  )
+}
+
 coalesce_existing_metric <- function(data, display_name, replacement_name, current_name) {
   if (display_name %in% names(data)) {
     return(parse_num(data[[display_name]]))
@@ -610,7 +650,7 @@ coalesce_existing_metric <- function(data, display_name, replacement_name, curre
 
 normalize_existing_editor <- function(data) {
   if (nrow(data) == 0) {
-    return(tibble::tibble())
+    return(empty_existing_editor())
   }
 
   out <- tibble::tibble(
@@ -630,6 +670,8 @@ normalize_existing_editor <- function(data) {
     package_type = as_trimmed_character(pick_existing_col(data, c("Package Type", "Media Type", "package_type"))),
     media_name = as_trimmed_character(pick_existing_col(data, c("Media", "media_name"))),
     ADIF_channel = as_trimmed_character(pick_existing_col(data, c("GS Channel", "ADIF Channel", "ADIF_channel"))),
+    benchmark_kpi = as_trimmed_character(pick_existing_col(data, c("Benchmark KPI", "benchmark_kpi", "man_benchmark_kpi", "current_benchmark_kpi"))),
+    benchmark_value = parse_num(pick_existing_col(data, c("Benchmark Value", "benchmark_value", "man_benchmark_value", "current_benchmark_value"))),
     channel_group = as_trimmed_character(pick_existing_col(data, c("Channel Group", "channel_group"))),
     manual_edit_at = parse_timestamp(pick_existing_col(data, c("Manual Edit At", "manual_edit_at"))),
     manual_edit_by = as_trimmed_character(pick_existing_col(data, c("Manual Edit By", "manual_edit_by"))),
@@ -653,15 +695,67 @@ normalize_existing_editor <- function(data) {
     )
 }
 
+manual_input_display_data <- function(data) {
+  if (nrow(data) == 0) {
+    return(tibble::as_tibble(setNames(rep(list(character()), 32), display_columns[1:32])))
+  }
+
+  pick <- function(col, default = NA) {
+    if (col %in% names(data)) {
+      data[[col]]
+    } else {
+      rep(default, nrow(data))
+    }
+  }
+
+  tibble::tibble(
+    `Package ID` = pick("package_id"),
+    Site = pick("supplier_name"),
+    `Package Friendly Name` = dplyr::coalesce(pick("package_name_friendly"), pick("package_name")),
+    `Flight Start Date` = pick("flight_start_date"),
+    `Flight End Date` = pick("flight_end_date"),
+    `Planned Spend` = pick("planned_spend", NA_real_),
+    `Planned Impressions` = pick("planned_impressions", NA_real_),
+    Spend = pick("spend", NA_real_),
+    Impressions = pick("impressions", NA_real_),
+    Clicks = pick("clicks", NA_real_),
+    `Video Plays` = pick("video_plays", NA_real_),
+    `Video Completions` = pick("video_comps", NA_real_),
+    `Delivery Override Start Date` = pick("delivery_start_date"),
+    `Delivery Override End Date` = pick("delivery_end_date"),
+    Advertiser = pick("advertiser_name"),
+    `Package Type` = pick("package_type"),
+    Channel = pick("channel"),
+    Campaign = pick("campaign_name"),
+    Initiative = pick("initiative"),
+    `Supplier Code` = pick("supplier_code"),
+    `Supplier Name` = pick("supplier_name"),
+    `Package Name` = pick("package_name"),
+    `GS Channel` = pick("ADIF_channel"),
+    `Benchmark KPI` = pick("benchmark_kpi"),
+    `Benchmark Value` = pick("benchmark_value", NA_real_),
+    `Manually Edited?` = pick("manually_edited"),
+    `Manual Edit At` = pick("manual_edit_at"),
+    `Manual Edit By` = pick("manual_edit_by"),
+    `Manual Edit Published At` = pick("manual_edit_published_at"),
+    `Primary Row Data Source` = NA_character_,
+    `Validation Status` = pick("validation_status"),
+    `Validation Reason` = pick("validation_reason")
+  )
+}
+
 download_previous_raw <- function() {
   raw_ref <- bq_table(PROJECT_ID, DATASET_ID, RAW_TABLE)
   out <- tryCatch(
     bq_table_download(raw_ref),
-    error = function(e) tibble::tibble()
+    error = function(e) {
+      warning("Could not download previous raw manual edits: ", conditionMessage(e))
+      tibble::tibble()
+    }
   )
 
   if (nrow(out) == 0) {
-    return(tibble::tibble())
+    return(tibble::as_tibble(setNames(rep(list(logical()), length(raw_columns)), raw_columns))[0, ])
   }
 
   missing_cols <- setdiff(raw_columns, names(out))
@@ -680,6 +774,11 @@ download_previous_raw <- function() {
   out$current_flight_end_date <- parse_date(out$current_flight_end_date)
   out$replacement_flight_start_date <- parse_date(out$replacement_flight_start_date)
   out$replacement_flight_end_date <- parse_date(out$replacement_flight_end_date)
+  numeric_metadata_cols <- metadata_specs$current_col[metadata_specs$value_type == "numeric"]
+  numeric_metadata_cols <- c(numeric_metadata_cols, metadata_specs$manual_col[metadata_specs$value_type == "numeric"])
+  for (col in intersect(numeric_metadata_cols, names(out))) {
+    out[[col]] <- parse_num(out[[col]])
+  }
   out$manual_edit_at <- parse_timestamp(out$manual_edit_at)
   out$manual_edit_published_at <- parse_timestamp(out$manual_edit_published_at)
   out$is_active <- out$is_active %in% TRUE
@@ -687,8 +786,105 @@ download_previous_raw <- function() {
     filter(!is.na(package_id))
 }
 
+is_trusted_previous_manual_row <- function(data) {
+  if (nrow(data) == 0) {
+    return(logical())
+  }
+
+  (data$is_active %in% TRUE) & (
+    as_trimmed_character(data$validation_status) %in% "valid" |
+      !is.na(parse_timestamp(data$manual_edit_at)) |
+      !is.na(as_trimmed_character(data$manual_edit_by)) |
+      !is.na(parse_timestamp(data$manual_edit_published_at))
+  )
+}
+
+previous_raw_to_editor_rows <- function(previous_raw) {
+  if (nrow(previous_raw) == 0) {
+    return(tibble::tibble())
+  }
+
+  previous_raw %>%
+    filter(is_trusted_previous_manual_row(.)) %>%
+    transmute(
+      package_id,
+      package_name = coalesce(man_package_name, current_package_name, package_name),
+      package_name_friendly = coalesce(man_package_name_friendly, current_package_name_friendly, package_name_friendly, man_package_name, current_package_name, package_name),
+      supplier_code = coalesce(man_supplier_code, current_supplier_code, supplier_code),
+      supplier_name = coalesce(man_supplier_name, current_supplier_name, supplier_name),
+      channel = coalesce(man_channel, current_channel, channel),
+      flight_start_date = coalesce(replacement_flight_start_date, man_flight_start_date, man_start_date),
+      flight_end_date = coalesce(replacement_flight_end_date, man_flight_end_date, man_end_date),
+      planned_spend = coalesce(replacement_planned_spend, current_planned_spend),
+      planned_impressions = coalesce(replacement_planned_impressions, current_planned_impressions),
+      spend = coalesce(replacement_spend, current_spend),
+      impressions = coalesce(replacement_impressions, current_impressions),
+      clicks = coalesce(replacement_clicks, current_clicks),
+      video_plays = coalesce(replacement_video_plays, current_video_plays),
+      video_comps = coalesce(replacement_video_comps, current_video_comps),
+      delivery_start_date = man_start_date,
+      delivery_end_date = man_end_date,
+      campaign_name = coalesce(man_campaign_name, current_campaign_name, campaign_name),
+      initiative = coalesce(man_initiative, current_initiative),
+      advertiser_name = coalesce(man_advertiser_name, current_advertiser_name, advertiser_name),
+      package_type = coalesce(man_package_type, current_package_type, package_type),
+      media_name,
+      ADIF_channel = coalesce(man_ADIF_channel, current_ADIF_channel, ADIF_channel),
+      benchmark_kpi = coalesce(man_benchmark_kpi, current_benchmark_kpi),
+      benchmark_value = coalesce(man_benchmark_value, current_benchmark_value),
+      channel_group,
+      manual_edit_at,
+      manual_edit_by,
+      manual_edit_published_at,
+      manually_edited = "Yes",
+      validation_status,
+      validation_reason = validation_messages
+    )
+}
+
+has_editor_manual_evidence <- function(editor_rows) {
+  if (nrow(editor_rows) == 0) {
+    return(logical())
+  }
+
+  pick <- function(col) {
+    if (col %in% names(editor_rows)) {
+      editor_rows[[col]]
+    } else {
+      rep(NA_character_, nrow(editor_rows))
+    }
+  }
+
+  edited_label <- as_trimmed_character(pick("manually_edited"))
+  validation_status <- as_trimmed_character(pick("validation_status"))
+  manual_edit_by <- as_trimmed_character(pick("manual_edit_by"))
+
+  edited_label %in% c("Yes", "Blocked") |
+    validation_status %in% c("valid", "blocked") |
+    !is.na(parse_timestamp(pick("manual_edit_at"))) |
+    !is.na(manual_edit_by) |
+    !is.na(parse_timestamp(pick("manual_edit_published_at")))
+}
+
+merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows) {
+  if (nrow(previous_editor_rows) == 0) {
+    return(editor_rows)
+  }
+  if (nrow(editor_rows) == 0) {
+    return(previous_editor_rows)
+  }
+
+  editor_keys <- manual_row_key(editor_rows$package_id, editor_rows$delivery_start_date, editor_rows$delivery_end_date)
+  editor_keys_with_evidence <- editor_keys[has_editor_manual_evidence(editor_rows)]
+  previous_keys <- manual_row_key(previous_editor_rows$package_id, previous_editor_rows$delivery_start_date, previous_editor_rows$delivery_end_date)
+  bind_rows(editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
+}
+
 choose_metric_value <- function(sheet_value, live_value, prior_current, prior_replacement, prior_replacement_trusted = TRUE) {
   if (is.na(sheet_value)) {
+    if (isTRUE(prior_replacement_trusted) && !is.na(prior_replacement) && is.na(live_value) && is.na(prior_current)) {
+      return(list(value = prior_replacement, edited = TRUE))
+    }
     return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_replacement) && same_num(sheet_value, prior_replacement)) {
@@ -699,6 +895,9 @@ choose_metric_value <- function(sheet_value, live_value, prior_current, prior_re
       return(list(value = live_value, edited = FALSE))
     }
     return(list(value = sheet_value, edited = TRUE))
+  }
+  if (is.na(live_value) && !is.na(prior_current) && same_num(sheet_value, prior_current)) {
+    return(list(value = prior_current, edited = FALSE))
   }
   if (same_num(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
@@ -731,6 +930,9 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
   prior_replacement <- if (length(prior_replacement) == 0) NA_character_ else prior_replacement[[1]]
 
   if (is.na(sheet_value)) {
+    if (isTRUE(prior_replacement_trusted) && !is.na(prior_replacement) && is.na(live_value) && is.na(prior_current)) {
+      return(list(value = prior_replacement, edited = TRUE))
+    }
     return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_replacement) && same_text(sheet_value, prior_replacement)) {
@@ -742,6 +944,9 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
     }
     return(list(value = sheet_value, edited = TRUE))
   }
+  if (is.na(live_value) && !is.na(prior_current) && same_text(sheet_value, prior_current)) {
+    return(list(value = prior_current, edited = FALSE))
+  }
   if (same_text(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
   }
@@ -749,13 +954,16 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
     return(list(value = live_value, edited = FALSE))
   }
   if (is.na(live_value) && is.na(prior_current) && is.na(prior_replacement)) {
-    return(list(value = sheet_value, edited = FALSE))
+    return(list(value = sheet_value, edited = TRUE))
   }
   list(value = sheet_value, edited = TRUE)
 }
 
 choose_date_value <- function(sheet_value, live_value, prior_current, prior_manual, prior_active, prior_replacement_trusted = TRUE) {
   if (is.na(sheet_value)) {
+    if (isTRUE(prior_replacement_trusted) && prior_active && !is.na(prior_manual) && is.na(live_value) && is.na(prior_current)) {
+      return(list(value = prior_manual, edited = TRUE))
+    }
     return(list(value = live_value, edited = FALSE))
   }
   if (prior_active && !same_date(prior_manual, prior_current) && same_date(sheet_value, prior_manual)) {
@@ -766,6 +974,9 @@ choose_date_value <- function(sheet_value, live_value, prior_current, prior_manu
       return(list(value = live_value, edited = FALSE))
     }
     return(list(value = sheet_value, edited = TRUE))
+  }
+  if (is.na(live_value) && !is.na(prior_current) && same_date(sheet_value, prior_current)) {
+    return(list(value = prior_current, edited = FALSE))
   }
   if (same_date(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
@@ -950,12 +1161,33 @@ live_packages <- live_packages %>%
     current_supplier_name = supplier_name,
     current_package_name = coalesce(package_name, package_name_friendly),
     current_package_name_friendly = coalesce(package_name_friendly, package_name),
-    current_ADIF_channel = ADIF_channel
+    current_ADIF_channel = ADIF_channel,
+    current_benchmark_kpi = benchmark_kpi,
+    current_benchmark_value = benchmark_value
   )
 
-existing_editor <- read_first_existing_tab(SHEET_ID, c(TAB_EDITOR, "Manual Package Edits"))
-existing_editor <- normalize_existing_editor(existing_editor)
 previous_raw <- download_previous_raw()
+existing_editor_raw <- read_first_existing_tab(SHEET_ID, c(TAB_MANUAL_INPUT))
+existing_editor <- normalize_existing_editor(existing_editor_raw)
+manual_input_seeded_from_raw <- FALSE
+if (nrow(existing_editor) == 0 && nrow(previous_raw) > 0) {
+  existing_editor <- previous_raw_to_editor_rows(previous_raw)
+  manual_input_seeded_from_raw <- nrow(existing_editor) > 0
+  if (manual_input_seeded_from_raw) {
+    cat(
+      "Manual input tab '", TAB_MANUAL_INPUT,
+      "' is missing or empty; seeding it from trusted prior raw manual evidence.\n",
+      sep = ""
+    )
+  }
+}
+if (nrow(existing_editor) == 0 && nrow(previous_raw) == 0) {
+  stop(
+    "Manual input tab '", TAB_MANUAL_INPUT,
+    "' is missing or empty, and trusted previous raw manual evidence could not be downloaded. Refusing to run.",
+    call. = FALSE
+  )
+}
 
 excluded_package_ids <- unique(c(
   live_packages$package_id[is_excluded_social_campaign(live_packages$campaign_name)],
@@ -972,6 +1204,9 @@ existing_editor <- existing_editor %>%
   filter(!package_id %in% excluded_package_ids, !is_excluded_social_campaign(campaign_name))
 previous_raw <- previous_raw %>%
   filter(!package_id %in% excluded_package_ids, !is_excluded_social_campaign(campaign_name))
+if (manual_input_seeded_from_raw && nrow(existing_editor) > 0) {
+  write_editor_tab(SHEET_ID, TAB_MANUAL_INPUT, manual_input_display_data(existing_editor))
+}
 if (length(excluded_package_ids) > 0) {
   cat(
     "Excluded ", length(excluded_package_ids),
@@ -1001,6 +1236,8 @@ if (nrow(existing_editor) > 0) {
     filter(!is.na(package_id)) %>%
     transmute(package_id)
 }
+
+editor_rows <- merge_previous_manual_editor_rows(editor_rows, previous_raw_to_editor_rows(previous_raw))
 
 display_rows <- list()
 raw_rows <- list()
@@ -1087,13 +1324,23 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   metadata_choices <- list()
   for (metadata_idx in seq_len(nrow(metadata_specs))) {
     spec <- metadata_specs[metadata_idx, ]
-    metadata_choices[[spec$value_key]] <- choose_text_value(
-      sheet_value(spec$value_key),
-      live_value(spec$current_col),
-      prior_value(spec$current_col),
-      prior_value(spec$manual_col),
-      prior_replacement_trusted
-    )
+    if (identical(spec$value_type[[1]], "numeric")) {
+      metadata_choices[[spec$value_key]] <- choose_metric_value(
+        sheet_value(spec$value_key),
+        live_value(spec$current_col),
+        prior_value(spec$current_col),
+        prior_value(spec$manual_col),
+        prior_replacement_trusted
+      )
+    } else {
+      metadata_choices[[spec$value_key]] <- choose_text_value(
+        sheet_value(spec$value_key),
+        live_value(spec$current_col),
+        prior_value(spec$current_col),
+        prior_value(spec$manual_col),
+        prior_replacement_trusted
+      )
+    }
   }
 
   metric_choices <- list()
@@ -1132,6 +1379,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `Supplier Name` = metadata_choices$supplier_name$value,
       `Package Name` = metadata_choices$package_name$value,
       `GS Channel` = metadata_choices$ADIF_channel$value,
+      `Benchmark KPI` = metadata_choices$benchmark_kpi$value,
+      `Benchmark Value` = metadata_choices$benchmark_value$value,
       `Manually Edited?` = "",
       `Manual Edit At` = manual_edit_at,
       `Manual Edit By` = manual_edit_by,
@@ -1159,7 +1408,9 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `Baseline Supplier Name` = live_value("current_supplier_name"),
       `Baseline Package Name` = live_value("current_package_name"),
       `Baseline Package Friendly Name` = live_value("current_package_name_friendly"),
-      `Baseline GS Channel` = live_value("current_ADIF_channel")
+      `Baseline GS Channel` = live_value("current_ADIF_channel"),
+      `Baseline Benchmark KPI` = live_value("current_benchmark_kpi"),
+      `Baseline Benchmark Value` = live_value("current_benchmark_value")
     )
   display_rows[[length(display_rows) + 1]] <- display
 
@@ -1290,6 +1541,11 @@ for (col in metric_specs$current_col) {
   raw_upload[[col]] <- parse_num(raw_upload[[col]])
 }
 for (col in metric_specs$replacement_col) {
+  raw_upload[[col]] <- parse_num(raw_upload[[col]])
+}
+numeric_metadata_cols <- metadata_specs$current_col[metadata_specs$value_type == "numeric"]
+numeric_metadata_cols <- c(numeric_metadata_cols, metadata_specs$manual_col[metadata_specs$value_type == "numeric"])
+for (col in intersect(numeric_metadata_cols, names(raw_upload))) {
   raw_upload[[col]] <- parse_num(raw_upload[[col]])
 }
 raw_upload$man_start_date <- parse_date(raw_upload$man_start_date)
@@ -1501,7 +1757,7 @@ if (nrow(valid_publish_edits) > 0) {
       "channel_group", "media_name", "p_cost_method", "p_planned_amount_doNotSum",
       "p_planned_impressions_doNotSum", "p_planned_units_doNotSum", "p_unit_type",
       "p_rate", "edit_reason", "editor_email", "manual_edit_at", "manual_edit_by",
-      "manual_edit_published_at"
+      "manual_edit_published_at", "man_benchmark_kpi", "man_benchmark_value"
     )
     for (col in passthrough_cols) {
       daily[[col]] <- row[[col]]
@@ -1536,6 +1792,8 @@ if (length(daily_rows) == 0) {
     man_total_clicks_doNotSum = numeric(),
     man_total_video_plays_doNotSum = numeric(),
     man_total_video_comps_doNotSum = numeric(),
+    man_benchmark_kpi = character(),
+    man_benchmark_value = numeric(),
     advertiser_name = character(),
     advertiser_short_name = character(),
     campaign_name = character(),
@@ -1638,7 +1896,7 @@ current_tabs <- tryCatch(
 )
 if (length(current_tabs) > 0) {
   for (tab_name in LEGACY_TABS) {
-    if (tab_name %in% current_tabs && tab_name != TAB_EDITOR) {
+    if (tab_name %in% current_tabs && !tab_name %in% c(TAB_EDITOR, TAB_MANUAL_INPUT)) {
       try(sheet_delete(SHEET_ID, sheet = tab_name), silent = TRUE)
     }
   }

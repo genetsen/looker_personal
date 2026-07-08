@@ -49,6 +49,8 @@ const EDIT_MARKER_PAIRS = [
   ["Package Name", "Baseline Package Name"],
   ["Package Friendly Name", "Baseline Package Friendly Name"],
   ["GS Channel", "Baseline GS Channel"],
+  ["Benchmark KPI", "Baseline Benchmark KPI"],
+  ["Benchmark Value", "Baseline Benchmark Value"],
 ];
 const MARKER_NAMES = [
   "Flight Start Date",
@@ -72,6 +74,8 @@ const MARKER_NAMES = [
   "Package Name",
   "Package Friendly Name",
   "GS Channel",
+  "Benchmark KPI",
+  "Benchmark Value",
 ];
 
 function token() {
@@ -127,7 +131,7 @@ async function getHeaderMap() {
 
 async function getExistingDataEndRowIndex() {
   const response = await sheetsFetch(
-    `/values/${encodeURIComponent(`${TAB_NAME}!A${DATA_START_ROW_INDEX + 1}:W`)}?valueRenderOption=UNFORMATTED_VALUE`,
+    `/values/${encodeURIComponent(`${TAB_NAME}!A${DATA_START_ROW_INDEX + 1}:Y`)}?valueRenderOption=UNFORMATTED_VALUE`,
   );
   const rows = response.values || [];
   let lastNonEmptyRowOffset = -1;

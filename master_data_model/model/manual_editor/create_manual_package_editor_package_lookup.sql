@@ -51,6 +51,8 @@ mart_packages AS (
     ARRAY_AGG(`_package_type` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_type,
     ARRAY_AGG(`_package_name` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name,
     ARRAY_AGG(`_package_name_friendly` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS package_name_friendly,
+    ARRAY_AGG(`_benchmark_kpi` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS benchmark_kpi,
+    ARRAY_AGG(`_benchmark_value` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS benchmark_value,
     ARRAY_AGG(`initiative` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS initiative,
     ARRAY_AGG(`ADIF_channel` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS ADIF_channel,
     ARRAY_AGG(`_placement_id` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS placement_id,

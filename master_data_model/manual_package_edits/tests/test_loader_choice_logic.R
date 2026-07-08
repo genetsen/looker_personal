@@ -93,6 +93,7 @@ is_publishable_manual_row <- function(data) {
     "replacement_planned_spend", "replacement_planned_impressions",
     "replacement_clicks", "replacement_video_plays", "replacement_video_comps",
     "man_campaign_name", "man_package_name",
+    "man_benchmark_kpi", "man_benchmark_value",
     "replacement_flight_start_date", "replacement_flight_end_date"
   )
   apply(!is.na(data[, publish_cols, drop = FALSE]), 1, any)
@@ -124,6 +125,9 @@ same_date <- function(a, b) {
 
 choose_metric_value <- function(sheet_value, live_value, prior_current, prior_replacement, prior_replacement_trusted = TRUE) {
   if (is.na(sheet_value)) {
+    if (isTRUE(prior_replacement_trusted) && !is.na(prior_replacement) && is.na(live_value) && is.na(prior_current)) {
+      return(list(value = prior_replacement, edited = TRUE))
+    }
     return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_replacement) && same_num(sheet_value, prior_replacement)) {
@@ -134,6 +138,9 @@ choose_metric_value <- function(sheet_value, live_value, prior_current, prior_re
       return(list(value = live_value, edited = FALSE))
     }
     return(list(value = sheet_value, edited = TRUE))
+  }
+  if (is.na(live_value) && !is.na(prior_current) && same_num(sheet_value, prior_current)) {
+    return(list(value = prior_current, edited = FALSE))
   }
   if (same_num(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
@@ -156,6 +163,9 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
   prior_replacement <- if (length(prior_replacement) == 0) NA_character_ else prior_replacement[[1]]
 
   if (is.na(sheet_value)) {
+    if (isTRUE(prior_replacement_trusted) && !is.na(prior_replacement) && is.na(live_value) && is.na(prior_current)) {
+      return(list(value = prior_replacement, edited = TRUE))
+    }
     return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_replacement) && same_text(sheet_value, prior_replacement)) {
@@ -167,6 +177,9 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
     }
     return(list(value = sheet_value, edited = TRUE))
   }
+  if (is.na(live_value) && !is.na(prior_current) && same_text(sheet_value, prior_current)) {
+    return(list(value = prior_current, edited = FALSE))
+  }
   if (same_text(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
   }
@@ -174,13 +187,16 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
     return(list(value = live_value, edited = FALSE))
   }
   if (is.na(live_value) && is.na(prior_current) && is.na(prior_replacement)) {
-    return(list(value = sheet_value, edited = FALSE))
+    return(list(value = sheet_value, edited = TRUE))
   }
   list(value = sheet_value, edited = TRUE)
 }
 
 choose_date_value <- function(sheet_value, live_value, prior_current, prior_manual, prior_active, prior_replacement_trusted = TRUE) {
   if (is.na(sheet_value)) {
+    if (isTRUE(prior_replacement_trusted) && prior_active && !is.na(prior_manual) && is.na(live_value) && is.na(prior_current)) {
+      return(list(value = prior_manual, edited = TRUE))
+    }
     return(list(value = live_value, edited = FALSE))
   }
   if (prior_active && !same_date(prior_manual, prior_current) && same_date(sheet_value, prior_manual)) {
@@ -191,6 +207,9 @@ choose_date_value <- function(sheet_value, live_value, prior_current, prior_manu
       return(list(value = live_value, edited = FALSE))
     }
     return(list(value = sheet_value, edited = TRUE))
+  }
+  if (is.na(live_value) && !is.na(prior_current) && same_date(sheet_value, prior_current)) {
+    return(list(value = prior_current, edited = FALSE))
   }
   if (same_date(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
@@ -248,6 +267,110 @@ apply_manual_only_flight_date_fallback <- function(raw_upload, display_data) {
   }
 
   list(raw_upload = raw_upload, display_data = display_data)
+}
+
+is_trusted_previous_manual_row <- function(data) {
+  if (nrow(data) == 0) {
+    return(logical())
+  }
+
+  (data$is_active %in% TRUE) & (
+    as_trimmed_character(data$validation_status) %in% "valid" |
+      !is.na(parse_timestamp(data$manual_edit_at)) |
+      !is.na(as_trimmed_character(data$manual_edit_by)) |
+      !is.na(parse_timestamp(data$manual_edit_published_at))
+  )
+}
+
+format_date_key <- function(x) {
+  dates <- parse_date(x)
+  out <- rep("", length(dates))
+  out[!is.na(dates)] <- format(dates[!is.na(dates)], "%Y-%m-%d")
+  out
+}
+
+manual_row_key <- function(package_id, start_date, end_date) {
+  paste(as.character(package_id), format_date_key(start_date), format_date_key(end_date), sep = "\001")
+}
+
+previous_raw_to_editor_rows <- function(previous_raw) {
+  if (nrow(previous_raw) == 0) {
+    return(tibble::tibble())
+  }
+
+  dplyr::transmute(
+    dplyr::filter(previous_raw, is_trusted_previous_manual_row(previous_raw)),
+      package_id,
+      package_name = dplyr::coalesce(man_package_name, current_package_name, package_name),
+      package_name_friendly = dplyr::coalesce(man_package_name_friendly, current_package_name_friendly, package_name_friendly, man_package_name, current_package_name, package_name),
+      supplier_code = dplyr::coalesce(man_supplier_code, current_supplier_code, supplier_code),
+      supplier_name = dplyr::coalesce(man_supplier_name, current_supplier_name, supplier_name),
+      channel = dplyr::coalesce(man_channel, current_channel, channel),
+      flight_start_date = dplyr::coalesce(replacement_flight_start_date, man_flight_start_date, man_start_date),
+      flight_end_date = dplyr::coalesce(replacement_flight_end_date, man_flight_end_date, man_end_date),
+      planned_spend = dplyr::coalesce(replacement_planned_spend, current_planned_spend),
+      planned_impressions = dplyr::coalesce(replacement_planned_impressions, current_planned_impressions),
+      spend = dplyr::coalesce(replacement_spend, current_spend),
+      impressions = dplyr::coalesce(replacement_impressions, current_impressions),
+      clicks = dplyr::coalesce(replacement_clicks, current_clicks),
+      video_plays = dplyr::coalesce(replacement_video_plays, current_video_plays),
+      video_comps = dplyr::coalesce(replacement_video_comps, current_video_comps),
+      delivery_start_date = man_start_date,
+      delivery_end_date = man_end_date,
+      campaign_name = dplyr::coalesce(man_campaign_name, current_campaign_name, campaign_name),
+      initiative = dplyr::coalesce(man_initiative, current_initiative),
+      advertiser_name = dplyr::coalesce(man_advertiser_name, current_advertiser_name, advertiser_name),
+      package_type = dplyr::coalesce(man_package_type, current_package_type, package_type),
+      media_name,
+      ADIF_channel = dplyr::coalesce(man_ADIF_channel, current_ADIF_channel, ADIF_channel),
+      benchmark_kpi = dplyr::coalesce(man_benchmark_kpi, current_benchmark_kpi),
+      benchmark_value = dplyr::coalesce(man_benchmark_value, current_benchmark_value),
+      channel_group,
+      manual_edit_at,
+      manual_edit_by,
+      manual_edit_published_at,
+      manually_edited = "Yes",
+      validation_status,
+      validation_reason = validation_messages
+  )
+}
+
+has_editor_manual_evidence <- function(editor_rows) {
+  if (nrow(editor_rows) == 0) {
+    return(logical())
+  }
+
+  pick <- function(col) {
+    if (col %in% names(editor_rows)) {
+      editor_rows[[col]]
+    } else {
+      rep(NA_character_, nrow(editor_rows))
+    }
+  }
+
+  edited_label <- as_trimmed_character(pick("manually_edited"))
+  validation_status <- as_trimmed_character(pick("validation_status"))
+  manual_edit_by <- as_trimmed_character(pick("manual_edit_by"))
+
+  edited_label %in% c("Yes", "Blocked") |
+    validation_status %in% c("valid", "blocked") |
+    !is.na(parse_timestamp(pick("manual_edit_at"))) |
+    !is.na(manual_edit_by) |
+    !is.na(parse_timestamp(pick("manual_edit_published_at")))
+}
+
+merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows) {
+  if (nrow(previous_editor_rows) == 0) {
+    return(editor_rows)
+  }
+  if (nrow(editor_rows) == 0) {
+    return(previous_editor_rows)
+  }
+
+  editor_keys <- manual_row_key(editor_rows$package_id, editor_rows$delivery_start_date, editor_rows$delivery_end_date)
+  editor_keys_with_evidence <- editor_keys[has_editor_manual_evidence(editor_rows)]
+  previous_keys <- manual_row_key(previous_editor_rows$package_id, previous_editor_rows$delivery_start_date, previous_editor_rows$delivery_end_date)
+  dplyr::bind_rows(editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
 }
 
 expect_choice <- function(label, actual, expected_value, expected_edited) {
@@ -334,12 +457,35 @@ publish_probe <- tibble::tibble(
   replacement_video_comps = NA_real_,
   man_campaign_name = NA_character_,
   man_package_name = NA_character_,
+  man_benchmark_kpi = NA_character_,
+  man_benchmark_value = NA_real_,
   replacement_flight_start_date = as.Date(NA),
   replacement_flight_end_date = as.Date("2026-08-02")
 )
 expect_sheet_value(
   "valid flight-only manual rows remain publishable",
   as.logical(is_publishable_manual_row(publish_probe)[[1]]),
+  TRUE
+)
+
+publish_probe_benchmark <- tibble::tibble(
+  replacement_spend = NA_real_,
+  replacement_impressions = NA_real_,
+  replacement_planned_spend = NA_real_,
+  replacement_planned_impressions = NA_real_,
+  replacement_clicks = NA_real_,
+  replacement_video_plays = NA_real_,
+  replacement_video_comps = NA_real_,
+  man_campaign_name = NA_character_,
+  man_package_name = NA_character_,
+  man_benchmark_kpi = "CTR",
+  man_benchmark_value = 0.0025,
+  replacement_flight_start_date = as.Date(NA),
+  replacement_flight_end_date = as.Date(NA)
+)
+expect_sheet_value(
+  "valid benchmark-only manual metadata rows remain publishable",
+  as.logical(is_publishable_manual_row(publish_probe_benchmark)[[1]]),
   TRUE
 )
 
@@ -364,6 +510,126 @@ expect_date_parse(
   "manual-only fallback creates replacement flight start evidence",
   fallback_probe$raw_upload$replacement_flight_start_date[[1]],
   as.Date("2026-06-08")
+)
+
+prior_editor_probe <- merge_previous_manual_editor_rows(
+  tibble::tibble(
+    package_id = "P37S8VV",
+    delivery_start_date = as.Date(NA),
+    delivery_end_date = as.Date(NA)
+  ),
+  previous_raw_to_editor_rows(tibble::tibble(
+    is_active = TRUE,
+    validation_status = "valid",
+    package_id = "P37S8VV",
+    man_start_date = as.Date("2025-10-20"),
+    man_end_date = as.Date("2025-12-31"),
+    man_flight_start_date = as.Date(NA),
+    man_flight_end_date = as.Date(NA),
+    replacement_flight_start_date = as.Date(NA),
+    replacement_flight_end_date = as.Date(NA),
+    replacement_planned_spend = 100,
+    current_planned_spend = NA_real_,
+    replacement_planned_impressions = NA_real_,
+    current_planned_impressions = NA_real_,
+    replacement_spend = NA_real_,
+    current_spend = NA_real_,
+    replacement_impressions = NA_real_,
+    current_impressions = NA_real_,
+    replacement_clicks = NA_real_,
+    current_clicks = NA_real_,
+    replacement_video_plays = NA_real_,
+    current_video_plays = NA_real_,
+    replacement_video_comps = NA_real_,
+    current_video_comps = NA_real_,
+    man_package_name = "Manual Package",
+    current_package_name = NA_character_,
+    package_name = NA_character_,
+    man_package_name_friendly = NA_character_,
+    current_package_name_friendly = NA_character_,
+    package_name_friendly = NA_character_,
+    man_supplier_code = NA_character_,
+    current_supplier_code = NA_character_,
+    supplier_code = NA_character_,
+    man_supplier_name = "Publisher",
+    current_supplier_name = NA_character_,
+    supplier_name = NA_character_,
+    man_channel = "Digital",
+    current_channel = NA_character_,
+    channel = NA_character_,
+    man_campaign_name = "Campaign",
+    current_campaign_name = NA_character_,
+    campaign_name = NA_character_,
+    man_initiative = NA_character_,
+    current_initiative = NA_character_,
+    man_advertiser_name = "Advertiser",
+    current_advertiser_name = NA_character_,
+    advertiser_name = NA_character_,
+    man_package_type = "Display",
+    current_package_type = NA_character_,
+    package_type = NA_character_,
+    media_name = "Display",
+    man_ADIF_channel = "Display",
+    current_ADIF_channel = NA_character_,
+    ADIF_channel = NA_character_,
+    man_benchmark_kpi = "CTR",
+    current_benchmark_kpi = NA_character_,
+    man_benchmark_value = 0.0025,
+    current_benchmark_value = NA_real_,
+    channel_group = "Digital",
+    manual_edit_at = as.POSIXct(NA),
+    manual_edit_by = NA_character_,
+    manual_edit_published_at = as.POSIXct("2026-07-08 15:00:00", tz = "UTC"),
+    validation_messages = ""
+  ))
+)
+expect_sheet_value(
+  "previous valid manual row is appended beside blank same-package sheet row",
+  nrow(prior_editor_probe),
+  2L
+)
+prior_restored_row <- prior_editor_probe[nrow(prior_editor_probe), , drop = FALSE]
+expect_sheet_value(
+  "previous valid manual row restores one publishable prior row",
+  nrow(prior_restored_row),
+  1L
+)
+expect_date_parse(
+  "previous valid manual row restores delivery start date",
+  prior_restored_row$delivery_start_date[[1]],
+  as.Date("2025-10-20")
+)
+expect_sheet_value(
+  "previous valid manual row restores metric edits",
+  prior_restored_row$planned_spend[[1]],
+  100
+)
+expect_sheet_value(
+  "previous valid manual row restores benchmark KPI",
+  prior_restored_row$benchmark_kpi[[1]],
+  "CTR"
+)
+
+same_key_no_evidence_probe <- merge_previous_manual_editor_rows(
+  tibble::tibble(
+    package_id = "P37S8VV",
+    delivery_start_date = as.Date("2025-10-20"),
+    delivery_end_date = as.Date("2025-12-31"),
+    manually_edited = "No",
+    validation_status = "inactive",
+    validation_reason = "not edited"
+  ),
+  prior_restored_row
+)
+expect_sheet_value(
+  "previous valid manual row is appended beside same-key no-evidence sheet row",
+  nrow(same_key_no_evidence_probe),
+  2L
+)
+expect_sheet_value(
+  "same-key no-evidence append restores metric edits",
+  same_key_no_evidence_probe$planned_spend[[2]],
+  100
 )
 
 expect_choice(
@@ -421,6 +687,12 @@ expect_choice(
   FALSE
 )
 expect_choice(
+  "blank manual-only metric preserves trusted prior value when no live baseline exists",
+  choose_metric_value(NA_real_, NA_real_, NA_real_, 999),
+  999,
+  TRUE
+)
+expect_choice(
   "zero metric is captured as a real override when current baseline is nonzero",
   choose_metric_value(0, 123, 100, NA_real_),
   0,
@@ -442,6 +714,18 @@ expect_choice(
   "text override persists when live baseline still differs",
   choose_text_value("Corrected Channel", "Old Channel", "Old Channel", "Corrected Channel"),
   "Corrected Channel",
+  TRUE
+)
+expect_choice(
+  "text entered into blank baseline is captured as a new edit",
+  choose_text_value("CTR", NA_character_, NA_character_, NA_character_),
+  "CTR",
+  TRUE
+)
+expect_choice(
+  "blank manual-only text preserves trusted prior value when no live baseline exists",
+  choose_text_value(NA_character_, NA_character_, NA_character_, "Purely Elizabeth"),
+  "Purely Elizabeth",
   TRUE
 )
 expect_choice(
@@ -497,6 +781,12 @@ expect_choice(
   choose_date_value(as.Date(NA), as.Date("2025-10-01"), as.Date("2025-09-30"), as.Date("2025-10-02"), TRUE),
   as.Date("2025-10-01"),
   FALSE
+)
+expect_choice(
+  "blank manual-only date preserves trusted prior value when no live baseline exists",
+  choose_date_value(as.Date(NA), as.Date(NA), as.Date(NA), as.Date("2026-06-08"), TRUE),
+  as.Date("2026-06-08"),
+  TRUE
 )
 
 expect_guard <- function(label, actual, expected) {

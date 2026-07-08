@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-08
+
+- **ADDED** - Added Manual Data Editor benchmark metadata so users can edit Benchmark KPI as text and Benchmark Value as a number, with manual values feeding the master-model benchmark reporting fields before FPD benchmark fallbacks.
+- **CHANGED** - Added the Manual Data Editor split-input design contract and routed loader input toward a user-owned `Manual Edits` tab while keeping `Package Editor` as the refreshed package lookup/preview surface.
+- **FIXED** - Added a Manual Data Editor fallback so trusted prior manual-only dates, metrics, and metadata survive blank sheet reads when no live source baseline exists.
+
+### Pending Next Actions
+
+- **Since Jul 7** - Update the saved `stg__olipop__crossplatform_raw_tbl_sched` transfer config with owner-account credentials so future scheduled runs keep excluding `1000heads` campaigns
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-07-07
 
 - **FIXED** - Added a planned-metric fallback for master-model TV, Print, OOH, and dOOH package rows so reporting can use planned cost and impressions when delivered metrics are unavailable and planned impressions exist, without replacing real delivered values.
