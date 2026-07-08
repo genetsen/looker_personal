@@ -1,6 +1,6 @@
 # Master Data Model Pipeline
 
-Complete documentation of the master data model pipeline that unifies planning, digital delivery, partner-reported delivery, social, TV, Amazon Ads, and manual package edits into one cross-client evidence layer.
+Complete documentation of the master data model pipeline that unifies planning, digital delivery, partner-reported delivery, digital conversion outcomes, social, TV, Amazon Ads, and manual package edits into one cross-client evidence layer.
 
 The main reporting endpoint is [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table).
 
@@ -17,6 +17,7 @@ This v2 README follows the MFT pipeline README format: start with the shape of t
 │ SOCIAL: shared cross-platform raw staging, Reddit email landing, WP Apollo Sheet    │
 │ TV: combined local/national TV estimate source                                     │
 │ AMAZON: Ritual Amazon Ads daily report                                             │
+│ CONVERSIONS: Ritual conversion report outcome rows                                 │
 │ MANUAL: Manual Package Editor raw and daily correction tables                       │
 └──────────────────────────────────────┬─────────────────────────────────────────────┘
                                        │
@@ -32,7 +33,7 @@ This v2 README follows the MFT pipeline README format: start with the shape of t
 ┌────────────────────────────────────────────────────────────────────────────────────┐
 │                              FINAL MODEL BUILDER                                   │
 │ model/final_model/create_master_stg_data_model_v3.sql                              │
-│ Adds source precedence, manual overrides, QA fields, source freshness, and rollups  │
+│ Adds source precedence, manual overrides, conversion outcomes, QA fields, rollups   │
 └──────────────────────────────────────┬─────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -64,6 +65,7 @@ flowchart TD
         SOCIAL["Shared social sources<br/>cross-platform staging, Reddit, WP Apollo"]
         TV["TV combined source<br/>local and national estimate rows"]
         AMAZON["Ritual Amazon Ads landing table<br/>daily Amazon delivery report"]
+        CONV["Ritual conversion report<br/>package/date/site/creative/activity outcomes"]
         MANUAL["Manual Package Editor<br/>raw edit rows and allocated daily rows"]
         MAPS["Advertiser mapping<br/>canonical names and short codes"]
     end
@@ -103,6 +105,7 @@ flowchart TD
     SOCIAL --> BRANCHES
     TV --> BRANCHES
     AMAZON --> BRANCHES
+    CONV --> BRANCHES
     MANUAL --> MANUAL_TABLES
     MAPS --> FINAL
     STABLE --> FINAL
@@ -157,6 +160,7 @@ flowchart TD
 | WP Apollo | [WP normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily&page=table) | Controlled Apollo delivery and creative metadata | Candidate campaign/ad-group/ad/date | WP-first values are used where the controlled Sheet supplies production data. |
 | TV | [TV combined table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined_tbl&page=table) | Local and national TV estimates | TV outlet/program/market/date | TV rows use synthetic package and placement keys. |
 | Amazon Ads | [Ritual Amazon Ads landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rit_amzn_report_daily&page=table) | Ritual Amazon Ads media delivery | Amazon campaign/ad/date | Maps Amazon supply cost into spend; sales remain Amazon-specific outcome fields. |
+| Digital conversions | [Ritual conversion report](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) | Ritual post-media conversion outcomes | Package/date/site/creative/activity | Feeds v3 conversion outcome rows through the digital branch. Conversion source impressions/clicks stay in `conv_*` fields and do not populate delivery metrics. |
 | Advertiser mapping | [Advertiser mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=advertiser_mapping&page=table) | Canonical advertiser names and short codes | Source name or short-code variant | Keeps mapped clients consistent across digital, social, TV, Amazon, and manual rows. |
 | Manual edits | [Manual package raw edits](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=master_data_model_manual_package_edits_raw&page=table) and [Manual package daily edits](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=master_data_model_manual_package_daily&page=table) | User-approved package metadata and metric corrections | Package-level and package/date | Valid manual values override source-derived values before final package rollups. |
 
@@ -230,7 +234,7 @@ Start in [model workspace](/Users/eugenetsenter/Looker_clonedRepo/looker_persona
 | [Compatibility v2 view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v2&page=table) | Compatibility wrapper over the main evidence model. | Keeps existing v2 consumers alive without making v2 the source of truth. |
 | [Delivery detail v2](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_delivery_detail_v2&page=table) | Lower-grain creative/detail sibling. | Preserves DCM and original FPD creative/detail structure. |
 | [Detail/master sample](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_detail_master_v2_sample&page=table) | One-table comparison sample. | Must be filtered by row level or metric grain before summing metrics. |
-| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Lowest-available-grain evaluation table. | Keeps production `data_model` untouched while testing lower-grain reporting behavior. |
+| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Lowest-available-grain evaluation table. | Keeps production `data_model` untouched while testing lower-grain reporting behavior. Adds digital conversion outcome rows at package/date/site/creative/activity grain with delivery metrics intentionally blank. |
 | [Clustered advertiser QA table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_clustered_by_advertiser_qa&page=table) | Stored QA/support table clustered by advertiser. | Refreshed with the same runner path as v3 support work. |
 
 ---
@@ -324,6 +328,7 @@ Use [Master evidence model](https://console.cloud.google.com/bigquery?project=lo
 | `s_*` | Social source evidence. |
 | `tv_*` | TV source evidence. |
 | `amzn_*` | Amazon source evidence. |
+| `conv_*` | Digital conversion outcome evidence. |
 | `man_*` | Manual Package Editor evidence. |
 | final `_` fields | Normalized reporting fields after source precedence and manual overrides. |
 
@@ -339,7 +344,15 @@ Manual package edits are applied after normal source rows are assembled and befo
 
 Fields ending in `_doNotSum` are repeated context fields. They can be useful for labels, checks, or package context, but summing them across rows can double-count.
 
-### 6. Freshness vs Content Modified Time
+### 6. Conversion Outcomes
+
+Digital conversion rows live in [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) with `qa_v3_source_detail_type = 'conversion_activity'`. They preserve package/date/site/creative/activity detail in `conv_*` fields.
+
+Conversion source impressions and clicks are source evidence only. They do not populate `_impressions` or `_clicks`, so delivery totals do not change when conversion rows are added.
+
+If a conversion date exists after the package's delivery dates, v3 keeps the conversion row, uses nearest package context, and marks it with `conversion_date_without_delivery_row`.
+
+### 7. Freshness vs Content Modified Time
 
 `qa_data_source_refresh_at` describes when represented data reached the table the model consumes. `qa_data_source_content_modified_at` describes when the original source content changed, but only where that source has a reliable content timestamp.
 
@@ -365,6 +378,7 @@ Fields ending in `_doNotSum` are repeated context fields. They can be useful for
 | Row counts change as source tables refresh. | Keep volatile counts in run notes, not as durable README state. |
 | v2 is a compatibility wrapper, not the current model source of truth. | Make new model behavior changes in the current final builder unless the user explicitly asks for a v2 sibling. |
 | Detail rows can double-count package metrics. | Use package/date outputs for package totals, or filter detail/sample outputs by grain before summing. |
+| Conversion rows are outcome rows, not delivery rows. | Use `conv_total_conversions` for conversions and keep `_impressions`/`_clicks` delivery totals separate from `conv_source_impressions`/`conv_source_clicks`. |
 | Manual editor formatting is live-user-owned. | Snapshot and compare formatting before changing it; do not run formatting setup scripts casually. |
 | Basis/DCM reporting lineage is adjacent but separate. | Do not treat Basis as a direct package/date master-model source. |
 

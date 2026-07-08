@@ -8,6 +8,9 @@
 -- @safety:      Production replacement. Deploy only after QA candidate review.
 -- @decision:    Campaign-separated WP ad IDs are included for now and remain
 --               flagged publish_pending_source_owner_review until clarified.
+-- @exclusion:   Campaigns containing "1000heads" are agency-side social rows
+--               that must be excluded before shared-social staging reaches the
+--               master data model.
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
 OPTIONS (
@@ -38,12 +41,14 @@ delivery_source AS (
   SELECT *
   FROM `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report`
   WHERE (SELECT source_name FROM source_choice) = 'transformed'
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
 
   UNION ALL
 
   SELECT *
   FROM `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report`
   WHERE (SELECT source_name FROM source_choice) = 'reports'
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
 ),
 video_metrics AS (
   SELECT *
@@ -99,6 +104,7 @@ wp_publishable AS (
   SELECT *
   FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
   WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
 ),
 merged_apollo AS (
   SELECT
@@ -168,15 +174,24 @@ merged_apollo AS (
    AND LOWER(s.platform) = LOWER(a.platform)
    AND CAST(s.ad_id AS STRING) = CAST(a.ad_id AS STRING)
    AND LOWER(TRIM(COALESCE(s.campaign_name, ''))) = LOWER(TRIM(COALESCE(a.campaign_name, '')))
+),
+combined_social AS (
+  SELECT *
+  FROM standard_non_apollo
+
+  UNION ALL
+
+  SELECT *
+  FROM merged_apollo
+
+  UNION ALL
+
+  SELECT *
+  FROM `looker-studio-pro-452620.repo_stg.stg__olipop_reddit_crossplatform`
 )
 SELECT *
-FROM standard_non_apollo
-UNION ALL
-SELECT *
-FROM merged_apollo
-UNION ALL
-SELECT *
-FROM `looker-studio-pro-452620.repo_stg.stg__olipop_reddit_crossplatform`;
+FROM combined_social
+WHERE NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads');
 
 -- Preserve the existing video-metric refresh in the live scheduled build.
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop_videoviews_crossplatform_tbl` AS

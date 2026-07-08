@@ -1815,6 +1815,37 @@ planned_metric_backfills AS (
   SELECT
     * REPLACE (
       CASE
+        -- CHANGE 2026-07-08: TV, Print, OOH, and dOOH package rows can have
+        -- planned cost/impressions but no delivered source metric. Use planned
+        -- delivery as the final metric fallback only when planned impressions
+        -- are available, while preserving any real delivered value that is
+        -- already present.
+        WHEN final_spend IS NULL
+          AND planned_daily_spend_pk IS NOT NULL
+          AND NULLIF(planned_daily_impressions_pk, 0) IS NOT NULL
+          AND (
+            row_type = 'tv'
+            OR channel_group IN ('linear', 'print', 'ooh')
+            OR channel IN ('linear_tv', 'print', 'ooh', 'ooh_d')
+            OR LOWER(COALESCE(media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')
+          )
+          THEN planned_daily_spend_pk
+        ELSE final_spend
+      END AS final_spend,
+      CASE
+        WHEN final_impressions IS NULL
+          AND planned_daily_impressions_pk IS NOT NULL
+          AND NULLIF(planned_daily_impressions_pk, 0) IS NOT NULL
+          AND (
+            row_type = 'tv'
+            OR channel_group IN ('linear', 'print', 'ooh')
+            OR channel IN ('linear_tv', 'print', 'ooh', 'ooh_d')
+            OR LOWER(COALESCE(media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')
+          )
+          THEN planned_daily_impressions_pk
+        ELSE final_impressions
+      END AS final_impressions,
+      CASE
         -- CHANGE 2026-05-08: If a row clearly delivered media and had planned
         -- spend, but planned impressions are zero or missing, use final
         -- impressions as the planned-impressions fallback. This preserves the

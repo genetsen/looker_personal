@@ -4,7 +4,7 @@
  * Repairs the lightweight sheet geometry that can drift after the Manual Data
  * Editor loader writes a new header shape. It preserves existing slicers,
  * slicer positions, slicer column choices, current basic-filter criteria,
- * formatting, and widths; it only updates filter/slicer ranges, column
+ * formatting, and widths; it only updates filter ranges, removes slicers, column
  * visibility, the protected ranges affected by visible/hidden column changes,
  * and the system-owned conditional-format rules that depend on column letters.
  */
@@ -14,11 +14,17 @@ import { execFileSync } from "node:child_process";
 const SHEET_ID = process.env.MASTER_MANUAL_EDIT_SHEET_ID || "1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E";
 const TAB_NAME = process.env.MASTER_MANUAL_EDIT_TAB || "Package Editor";
 const AUTH_ACCOUNT = process.env.MASTER_MANUAL_EDIT_AUTH_EMAIL || "gene.tsenter@giantspoon.com";
+const AUTH_CONFIG_BY_ACCOUNT = {
+  "gene.tsenter@giantspoon.com": "/Users/eugenetsenter/.config/gcloud-giantspoon",
+  "gene.tsenter@old.giantspoon.com": "/Users/eugenetsenter/.config/gcloud-old-giantspoon",
+};
+const AUTH_CONFIG = process.env.CLOUDSDK_CONFIG || process.env.MASTER_MANUAL_EDIT_GCLOUD_CONFIG || AUTH_CONFIG_BY_ACCOUNT[AUTH_ACCOUNT];
 const HEADER_ROW_INDEX = 3;
 const DATA_START_ROW_INDEX = HEADER_ROW_INDEX + 1;
 const EDITED_ROW_FILTER_HEADER = "Edited Row Filter";
 const BASELINE_START_HEADER = "Baseline Flight Start Date";
 const AUDIT_STATUS_START_HEADER = "Manually Edited?";
+const EXISTING_PACKAGE_IDENTITY_PROTECTION_DESCRIPTION = "Manual editor UX: lock existing package identity columns";
 const HIDDEN_BASELINE_PROTECTION_DESCRIPTION = "Manual editor UX: lock hidden baseline columns";
 const AUDIT_STATUS_PROTECTION_DESCRIPTION = "Manual editor UX: lock audit and status columns";
 const EDIT_MARKER_PAIRS = [
@@ -69,10 +75,19 @@ const MARKER_NAMES = [
 ];
 
 function token() {
+  if (!AUTH_CONFIG) {
+    throw new Error(`No account-specific Google auth config is defined for ${AUTH_ACCOUNT}.`);
+  }
   return execFileSync(
     "gcloud",
-    ["auth", "print-access-token", "--account", AUTH_ACCOUNT],
-    { encoding: "utf8" },
+    ["auth", "application-default", "print-access-token"],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CLOUDSDK_CONFIG: AUTH_CONFIG,
+      },
+    },
   ).trim();
 }
 
@@ -110,6 +125,24 @@ async function getHeaderMap() {
   return Object.fromEntries(headers.map((header, index) => [String(header).trim(), index]));
 }
 
+async function getExistingDataEndRowIndex() {
+  const response = await sheetsFetch(
+    `/values/${encodeURIComponent(`${TAB_NAME}!A${DATA_START_ROW_INDEX + 1}:W`)}?valueRenderOption=UNFORMATTED_VALUE`,
+  );
+  const rows = response.values || [];
+  let lastNonEmptyRowOffset = -1;
+
+  rows.forEach((row, index) => {
+    if (row.some((value) => value !== null && value !== undefined && String(value).trim() !== "")) {
+      lastNonEmptyRowOffset = index;
+    }
+  });
+
+  return lastNonEmptyRowOffset >= 0
+    ? DATA_START_ROW_INDEX + lastNonEmptyRowOffset + 1
+    : DATA_START_ROW_INDEX;
+}
+
 function rangeFor(sheetId, endRowIndex, endColumnIndex) {
   return {
     sheetId,
@@ -139,6 +172,18 @@ function columnLetter(index) {
     value = Math.floor((value - remainder - 1) / 26);
   }
   return out;
+}
+
+function absoluteCell(headerMap, headerName, sheetRowNumber) {
+  const index = headerMap[headerName];
+  if (index === undefined) {
+    throw new Error(`Missing required header for formula: ${headerName}`);
+  }
+  return `$${columnLetter(index)}${sheetRowNumber}`;
+}
+
+function rowRange(headerMap, startHeaderName, endHeaderName, sheetRowNumber) {
+  return `${absoluteCell(headerMap, startHeaderName, sheetRowNumber)}:${absoluteCell(headerMap, endHeaderName, sheetRowNumber)}`;
 }
 
 function color(red, green, blue) {
@@ -259,15 +304,64 @@ function buildConditionalFormatRequests(sheet, sheetId, headerMap, rowCount, vis
 
   const validationStatusColumn = columnLetter(headerMap["Validation Status"]);
   const baselineFlightStartColumn = columnLetter(headerMap["Baseline Flight Start Date"]);
+  const visibleRowRange = rowRange(headerMap, "Advertiser", "Validation Reason", firstDataRow);
+  const metricRowRange = rowRange(headerMap, "Planned Spend", "Video Completions", firstDataRow);
+  const newRowStartedFormula = `AND($${baselineFlightStartColumn}${firstDataRow}="",COUNTA(${visibleRowRange})>0)`;
   addRule(
     dataColumnRange(sheetId, rowCount, 0, visibleColumnCount),
-    `=OR($${validationStatusColumn}${firstDataRow}="blocked",AND($A${firstDataRow}<>"",$${baselineFlightStartColumn}${firstDataRow}="",COUNTA($A${firstDataRow}:$W${firstDataRow})>0,OR($A${firstDataRow}="",$B${firstDataRow}="",$C${firstDataRow}="",$M${firstDataRow}="",$N${firstDataRow}="",COUNTA($F${firstDataRow}:$L${firstDataRow})=0,$O${firstDataRow}="",$P${firstDataRow}="",$Q${firstDataRow}="",$R${firstDataRow}="",$V${firstDataRow}="",$W${firstDataRow}="",$M${firstDataRow}>$N${firstDataRow},AND($D${firstDataRow}<>"",$E${firstDataRow}<>"",$D${firstDataRow}>$E${firstDataRow}))))`,
+    `=$${validationStatusColumn}${firstDataRow}="blocked"`,
     redFormat,
+  );
+
+  const requiredHeaders = [
+    "Advertiser",
+    "Package ID",
+    "Site",
+    "Package Friendly Name",
+    "Flight Start Date",
+    "Flight End Date",
+    "Delivery Override Start Date",
+    "Delivery Override End Date",
+    "Package Type",
+    "Channel",
+    "Campaign",
+    "Package Name",
+    "GS Channel",
+  ];
+
+  for (const headerName of requiredHeaders) {
+    const index = headerMap[headerName];
+    if (index === undefined) {
+      throw new Error(`Missing required new-row header: ${headerName}`);
+    }
+    addRule(
+      dataColumnRange(sheetId, rowCount, index, index + 1),
+      `=AND(${newRowStartedFormula},${absoluteCell(headerMap, headerName, firstDataRow)}="")`,
+      strongRedFormat,
+    );
+  }
+
+  addRule(
+    dataColumnRange(sheetId, rowCount, headerMap["Planned Spend"], headerMap["Video Completions"] + 1),
+    `=AND(${newRowStartedFormula},COUNTA(${metricRowRange})=0)`,
+    strongRedFormat,
+  );
+
+  addRule(
+    dataColumnRange(sheetId, rowCount, headerMap["Flight Start Date"], headerMap["Flight End Date"] + 1),
+    `=AND(${absoluteCell(headerMap, "Flight Start Date", firstDataRow)}<>"",${absoluteCell(headerMap, "Flight End Date", firstDataRow)}<>"",${absoluteCell(headerMap, "Flight Start Date", firstDataRow)}>${absoluteCell(headerMap, "Flight End Date", firstDataRow)})`,
+    strongRedFormat,
+  );
+
+  addRule(
+    dataColumnRange(sheetId, rowCount, headerMap["Delivery Override Start Date"], headerMap["Delivery Override End Date"] + 1),
+    `=AND(${absoluteCell(headerMap, "Delivery Override Start Date", firstDataRow)}<>"",${absoluteCell(headerMap, "Delivery Override End Date", firstDataRow)}<>"",${absoluteCell(headerMap, "Delivery Override Start Date", firstDataRow)}>${absoluteCell(headerMap, "Delivery Override End Date", firstDataRow)})`,
+    strongRedFormat,
   );
 
   addRule(
     dataColumnRange(sheetId, rowCount, headerMap["Planned Spend"], headerMap["Planned Impressions"] + 1),
-    `=AND($${columnLetter(headerMap["Manual Marker Planned Spend"])}${firstDataRow}<>TRUE,$${columnLetter(headerMap["Manual Marker Planned Impressions"])}${firstDataRow}<>TRUE,OR($F${firstDataRow}<>$${columnLetter(headerMap["Baseline Planned Spend"])}${firstDataRow},$G${firstDataRow}<>$${columnLetter(headerMap["Baseline Planned Impressions"])}${firstDataRow}),OR($M${firstDataRow}<>$D${firstDataRow},$N${firstDataRow}<>$E${firstDataRow}))`,
+    `=AND($${columnLetter(headerMap["Manual Marker Planned Spend"])}${firstDataRow}<>TRUE,$${columnLetter(headerMap["Manual Marker Planned Impressions"])}${firstDataRow}<>TRUE,OR(${absoluteCell(headerMap, "Planned Spend", firstDataRow)}<>${absoluteCell(headerMap, "Baseline Planned Spend", firstDataRow)},${absoluteCell(headerMap, "Planned Impressions", firstDataRow)}<>${absoluteCell(headerMap, "Baseline Planned Impressions", firstDataRow)}),OR(${absoluteCell(headerMap, "Delivery Override Start Date", firstDataRow)}<>${absoluteCell(headerMap, "Flight Start Date", firstDataRow)},${absoluteCell(headerMap, "Delivery Override End Date", firstDataRow)}<>${absoluteCell(headerMap, "Flight End Date", firstDataRow)}))`,
     strongRedFormat,
   );
 
@@ -293,6 +387,7 @@ async function main() {
     throw new Error(`Missing required header: ${AUDIT_STATUS_START_HEADER}`);
   }
   const endRowIndex = rowCount;
+  const existingDataEndRowIndex = await getExistingDataEndRowIndex();
   const tableRange = rangeFor(sheetId, endRowIndex, columnCount);
   const requests = [];
 
@@ -326,6 +421,11 @@ async function main() {
   requests.push(
     ...buildProtectedRangeRequests(
       sheet,
+      EXISTING_PACKAGE_IDENTITY_PROTECTION_DESCRIPTION,
+      dataColumnRange(sheetId, existingDataEndRowIndex, headerMap["Package ID"], headerMap["Site"] + 1),
+    ),
+    ...buildProtectedRangeRequests(
+      sheet,
       HIDDEN_BASELINE_PROTECTION_DESCRIPTION,
       dataColumnRange(sheetId, endRowIndex, visibleColumnCount, columnCount),
     ),
@@ -338,11 +438,30 @@ async function main() {
   requests.push(...buildConditionalFormatRequests(sheet, sheetId, headerMap, endRowIndex, visibleColumnCount));
 
   requests.push({
+    repeatCell: {
+      range: {
+        sheetId,
+        startRowIndex: HEADER_ROW_INDEX,
+        endRowIndex: HEADER_ROW_INDEX + 1,
+        startColumnIndex: 0,
+        endColumnIndex: 1,
+      },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: color(0, 0, 0),
+          textFormat: { foregroundColor: color(1, 1, 1), bold: true },
+        },
+      },
+      fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.foregroundColor,userEnteredFormat.textFormat.bold",
+    },
+  });
+
+  requests.push({
     setBasicFilter: {
       filter: {
         range: tableRange,
-        criteria: sheet.basicFilter?.criteria || {},
-        sortSpecs: sheet.basicFilter?.sortSpecs || [],
+        criteria: {},
+        sortSpecs: [],
       },
     },
   });
@@ -355,24 +474,6 @@ async function main() {
     });
   }
 
-  for (const slicer of sheet.slicers || []) {
-    const columnIndex = slicer.spec?.title === "Edited Rows"
-      ? editedRowFilterColumnIndex
-      : slicer.spec?.columnIndex;
-    requests.push({
-      addSlicer: {
-        slicer: {
-          spec: {
-            ...slicer.spec,
-            columnIndex,
-            dataRange: tableRange,
-          },
-          position: slicer.position,
-        },
-      },
-    });
-  }
-
   await sheetsFetch(":batchUpdate", {
     method: "POST",
     body: JSON.stringify({ requests }),
@@ -381,13 +482,11 @@ async function main() {
   console.log(JSON.stringify({
     sheet: TAB_NAME,
     updatedBasicFilter: true,
-    updatedSlicers: (sheet.slicers || []).map((slicer) => ({
-      title: slicer.spec?.title,
-      columnIndex: slicer.spec?.title === "Edited Rows" ? editedRowFilterColumnIndex : slicer.spec?.columnIndex,
-    })),
+    removedSlicers: (sheet.slicers || []).map((slicer) => slicer.spec?.title || slicer.slicerId),
     editedRowFilterColumnIndex,
     visibleColumnCount,
     auditStatusStartColumnIndex,
+    existingDataEndRowIndex,
     updatedColumnVisibility: true,
     updatedProtectedRanges: [
       HIDDEN_BASELINE_PROTECTION_DESCRIPTION,

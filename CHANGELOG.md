@@ -4,10 +4,15 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-07-07
 
+- **FIXED** - Added a planned-metric fallback for master-model TV, Print, OOH, and dOOH package rows so reporting can use planned cost and impressions when delivered metrics are unavailable and planned impressions exist, without replacing real delivered values.
+- **FIXED** - Stopped Manual Data Editor refreshes from clearing user-owned manual values when refreshed baselines match the manual replacement, including planned-only rows, manual-only rows, stale no-edit source rows, and date-serial readbacks that previously could turn modern flight dates into 1950s dates.
+- **FIXED** - Hardened the Manual Data Editor refresh against feedback-loop deletion by excluding manual-applied rows from lookup baselines, publishing valid user-owned rows with metric, metadata, or flight-date evidence, reading editor cells as text, writing editor dates back as ISO text, falling back from manual-only delivery dates to missing package flight dates, and replacing the duplicate root loader implementation with a launcher to the canonical model/manual_editor loader.
+- **FIXED** - Excluded `1000heads` campaigns from the shared-social source path before those rows can enter the master data model.
 - **CHANGED** - Added a Campaign Manager 360 starter workflow note so future DCM API work starts from the documented read-only profile-list smoke test and existing Python environment.
 
 ### Pending Next Actions
 
+- **Since Jul 7** - Update the saved `stg__olipop__crossplatform_raw_tbl_sched` transfer config with owner-account credentials so future scheduled runs keep excluding `1000heads` campaigns
 - **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
 
 ## 2026-07-06

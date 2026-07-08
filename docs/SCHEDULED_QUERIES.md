@@ -523,21 +523,25 @@ WHEN NOT MATCHED THEN INSERT (all_columns)
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: July 2, 2026
+**Last Updated**: July 7, 2026 local SQL and live table refresh; saved transfer-config SQL still needs owner credential update
 
 #### Purpose
 Builds `repo_stg.stg__olipop__crossplatform_raw_tbl`, which is the raw social fact table that eventually feeds the Olipop social branch of `Olipop.MMM_crossplatform`.
 
-More specifically, the live scheduled query:
+More specifically, the production SQL should:
 
 - picks one of two candidate ad-delivery tables at runtime
 - uses the most recently updated candidate as the delivery source for that run
+- excludes campaign names containing `1000heads` before rows can enter shared-social staging or the master model
 - left joins cross-platform video metrics from `repo_stg.stg__olipop_videoviews_crossplatform`
 - merges Apollo rows from [WP normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily&page=table), with WP nonblank values primary and standard rows/fields as fallback
 - carries transformed WP creative image URLs in `wp_creative_img`
 - retains cross-campaign Apollo ad-ID rows with visible `publish_pending_source_owner_review` provenance pending source-owner clarification
 - appends Reddit delivery rows from [Reddit shared-social staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop_reddit_crossplatform&page=table)
+- applies the same `1000heads` campaign exclusion to the final shared-social union as a defensive guard
 - writes the finished result into `repo_stg.stg__olipop__crossplatform_raw_tbl`
+
+> Current owner-action note, July 7, 2026: the live table was manually rebuilt from the corrected production SQL, but the saved transfer config is still owned by `gene.tsenter@old.giantspoon.com`. Updating the saved recurring SQL requires owner-account credential approval so the next scheduled run cannot restore the older query.
 
 The two delivery-source options are:
 

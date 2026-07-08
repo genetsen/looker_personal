@@ -11,7 +11,7 @@
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.master_stg.manual_package_editor_package_lookup`
 OPTIONS (
-  description = 'Package-level lookup snapshot for the Manual Data Editor loader. Built from the materialized master model support table with reporting-mart low-signal DCM exclusions, then joined to PRISMA package totals. Safe to refresh before each manual editor load.'
+  description = 'Package-level source-baseline lookup snapshot for the Manual Data Editor loader. Built from non-manual rows in the materialized master model support table with reporting-mart low-signal DCM and excluded social campaign removals, then joined to PRISMA package totals. Safe to refresh before each manual editor load.'
 ) AS
 WITH
 prisma_package_totals AS (
@@ -33,6 +33,9 @@ mart_source AS (
   SELECT *
   FROM `looker-studio-pro-452620.master_stg.data_model_clustered_by_advertiser_qa`
   WHERE NOT CONTAINS_SUBSTR(COALESCE(`qa_data_issues`, ''), 'low_signal_dcm')
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(`_campaign_name`, '')), r'1000heads')
+    AND COALESCE(`qa_manual_edit_flag`, FALSE) = FALSE
+    AND COALESCE(`qa_row_data_source_primary`, '') != 'manual_package_edits'
     AND `_package_id` IS NOT NULL
 ),
 
@@ -71,8 +74,18 @@ mart_packages AS (
     COUNT(*) AS current_row_count,
     MIN(`_date`) AS current_first_date,
     MAX(`_date`) AS current_last_date,
-    ARRAY_AGG(`_start_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_start_date,
-    ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] AS current_flight_end_date,
+    CASE
+      WHEN LOGICAL_OR(`qa_media_data_type` = 'social')
+        AND ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] IS NULL
+        THEN CAST(NULL AS DATE)
+      ELSE ARRAY_AGG(`_start_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)]
+    END AS current_flight_start_date,
+    CASE
+      WHEN LOGICAL_OR(`qa_media_data_type` = 'social')
+        AND ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)] IS NULL
+        THEN CAST(NULL AS DATE)
+      ELSE ARRAY_AGG(`_end_date` IGNORE NULLS ORDER BY `_date` DESC LIMIT 1)[SAFE_OFFSET(0)]
+    END AS current_flight_end_date,
     SUM(COALESCE(
       CASE
         WHEN `qa_media_data_type` = 'tv' THEN `tv_net_cost`
@@ -140,9 +153,9 @@ mart_packages AS (
 )
 
 SELECT
-  -- LIVE TABLE NOTE: Package-level lookup for the Manual Data Editor. It uses
-  -- the materialized master support table to avoid re-planning the reporting
-  -- mart view during each Sheet loader run.
+  -- LIVE TABLE NOTE: Package-level source-baseline lookup for the Manual Data
+  -- Editor. It excludes rows already produced by manual package edits so user
+  -- edits cannot feed back as the next refresh baseline.
   m.* EXCEPT(
     mart_p_planned_amount_doNotSum,
     mart_p_planned_impressions_doNotSum,

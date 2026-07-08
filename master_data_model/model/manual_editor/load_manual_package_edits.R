@@ -12,7 +12,6 @@ suppressPackageStartupMessages({
   library(googledrive)
   library(googlesheets4)
   library(bigrquery)
-  library(httr)
   library(dplyr)
   library(tidyr)
   library(lubridate)
@@ -29,11 +28,22 @@ LOOKUP_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_LOOKUP_TABLE", "looker-studio-pro
 DEFAULT_SHEET_ID <- "1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E"
 SHEET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_SHEET_ID", unset = DEFAULT_SHEET_ID)
 AUTH_EMAIL <- Sys.getenv("MASTER_MANUAL_EDIT_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
-AUTH_CACHE_PATH <- Sys.getenv(
-  "MASTER_MANUAL_EDIT_AUTH_CACHE",
-  "/Users/eugenetsenter/.R/gargle_oauth_cache_giantspoon_manual_editor"
+AUTH_CONFIG_BY_ACCOUNT <- c(
+  "gene.tsenter@giantspoon.com" = "/Users/eugenetsenter/.config/gcloud-giantspoon",
+  "gene.tsenter@old.giantspoon.com" = "/Users/eugenetsenter/.config/gcloud-old-giantspoon"
 )
-USE_GCLOUD_TOKEN <- tolower(Sys.getenv("MASTER_MANUAL_EDIT_USE_GCLOUD_TOKEN", "true")) %in% c("true", "1", "yes")
+AUTH_CONFIG_PATH <- Sys.getenv(
+  "MASTER_MANUAL_EDIT_GCLOUD_CONFIG",
+  Sys.getenv(
+    "CLOUDSDK_CONFIG",
+    unname(AUTH_CONFIG_BY_ACCOUNT[[AUTH_EMAIL]])
+  )
+)
+GOOGLE_AUTH_SCOPES <- c(
+  "https://www.googleapis.com/auth/cloud-platform",
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/spreadsheets"
+)
 LOADER_FILENAME <- "load_manual_package_edits.R"
 DEFAULT_SCRIPT_DIR <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits"
 
@@ -75,6 +85,10 @@ LOOKUP_REFRESH_SQL <- Sys.getenv(
   "MASTER_MANUAL_EDIT_LOOKUP_REFRESH_SQL",
   file.path(SCRIPT_DIR, "create_manual_package_editor_package_lookup.sql")
 )
+EXCLUDED_SOCIAL_CAMPAIGN_PATTERN <- Sys.getenv(
+  "MASTER_MANUAL_EDIT_EXCLUDED_SOCIAL_CAMPAIGN_PATTERN",
+  "1000heads"
+)
 
 TAB_EDITOR <- "Package Editor"
 EDITOR_HEADER_ROW <- 4
@@ -99,47 +113,24 @@ cat("MASTER DATA MODEL PACKAGE EDITOR\n")
 cat("========================================\n\n")
 
 auth_manual_editor <- function() {
-  if (USE_GCLOUD_TOKEN) {
-    access_token <- tryCatch(
-      system2("gcloud", c("auth", "print-access-token"), stdout = TRUE, stderr = FALSE),
-      error = function(err) character()
-    )
-    access_token <- access_token[nzchar(access_token)]
-
-    if (length(access_token) > 0) {
-      token <- Token2.0$new(
-        endpoint = oauth_endpoints("google"),
-        app = oauth_app("gcloud-cli", key = "gcloud-cli", secret = ""),
-        credentials = list(
-          access_token = access_token[[1]],
-          token_type = "Bearer",
-          expires_in = 3600,
-          scope = paste(
-            "https://www.googleapis.com/auth/drive",
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/bigquery",
-            "https://www.googleapis.com/auth/cloud-platform",
-            "https://www.googleapis.com/auth/userinfo.email"
-          )
-        ),
-        params = list(as_header = TRUE),
-        cache = FALSE
-      )
-      gs4_auth(token = token)
-      drive_auth(token = token)
-      bq_auth(token = token)
-      cat("Authenticated with gcloud access token for Google Sheets, Drive, and BigQuery.\n")
-      return(invisible(token))
-    }
-
-    warning("gcloud access token was unavailable; falling back to gargle cache auth.")
+  if (is.na(AUTH_CONFIG_PATH) || AUTH_CONFIG_PATH == "") {
+    stop("No account-specific Google auth config is defined for ", AUTH_EMAIL, call. = FALSE)
   }
 
-  gs4_auth(email = AUTH_EMAIL, cache = AUTH_CACHE_PATH)
-  drive_auth(email = AUTH_EMAIL, cache = AUTH_CACHE_PATH)
-  bq_auth(email = AUTH_EMAIL, cache = AUTH_CACHE_PATH)
-  cat("Authenticated with gargle cache: ", AUTH_CACHE_PATH, "\n", sep = "")
-  invisible(NULL)
+  auth_file <- file.path(AUTH_CONFIG_PATH, "application_default_credentials.json")
+  if (!file.exists(auth_file)) {
+    stop("Missing account-specific Google ADC file: ", auth_file, call. = FALSE)
+  }
+
+  token <- gargle::credentials_app_default(
+    scopes = GOOGLE_AUTH_SCOPES,
+    path = auth_file
+  )
+  gs4_auth(token = token)
+  drive_auth(token = token)
+  bq_auth(token = token)
+  cat("Authenticated with account-specific ADC: ", auth_file, "\n", sep = "")
+  invisible(token)
 }
 
 auth_manual_editor()
@@ -323,6 +314,11 @@ as_trimmed_character <- function(x) {
   out
 }
 
+is_excluded_social_campaign <- function(campaign_name) {
+  campaign_name <- coalesce(as_trimmed_character(campaign_name), "")
+  str_detect(str_to_lower(campaign_name), fixed(str_to_lower(EXCLUDED_SOCIAL_CAMPAIGN_PATTERN)))
+}
+
 parse_num <- function(x) {
   y <- str_replace_all(as.character(x), "[,$% ]", "")
   y[y == "" | str_to_lower(y) %in% c("na", "nan", "null")] <- NA_character_
@@ -336,15 +332,31 @@ parse_date <- function(x) {
   if (inherits(x, "POSIXt")) {
     return(as.Date(x))
   }
+  choose_serial_date <- function(serial_value) {
+    sheet_date <- as.Date(serial_value, origin = "1899-12-30")
+    r_date <- as.Date(serial_value, origin = "1970-01-01")
+    use_r_date <- !is.na(r_date) &
+      r_date >= as.Date("2000-01-01") &
+      r_date <= as.Date("2100-12-31") &
+      (is.na(sheet_date) | sheet_date < as.Date("2000-01-01"))
+    sheet_date[use_r_date] <- r_date[use_r_date]
+    sheet_date
+  }
   if (is.numeric(x)) {
-    return(as.Date(x, origin = "1899-12-30"))
+    return(choose_serial_date(x))
   }
   y <- str_trim(as.character(x))
   y[y == "" | str_to_lower(y) %in% c("na", "nan", "null")] <- NA_character_
-  parsed <- suppressWarnings(as.Date(y))
+  parsed <- suppressWarnings(as.Date(
+    y,
+    tryFormats = c("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d", "%b %d, %Y", "%B %d, %Y"),
+    optional = TRUE
+  ))
   serial_date <- suppressWarnings(as.numeric(y))
   serial_date[is.na(serial_date)] <- NA_real_
-  dplyr::coalesce(parsed, as.Date(serial_date, origin = "1899-12-30"))
+  out <- dplyr::coalesce(parsed, choose_serial_date(serial_date))
+  out[!is.na(out) & (out < as.Date("1900-01-01") | out > as.Date("2100-12-31"))] <- as.Date(NA)
+  out
 }
 
 parse_timestamp <- function(x) {
@@ -412,10 +424,44 @@ write_tab <- function(sheet_id, tab_name, data) {
   range_write(sheet_id, data = data, sheet = tab_name, range = "A1", col_names = TRUE)
 }
 
+format_date_for_sheet <- function(x) {
+  dates <- parse_date(x)
+  out <- rep(NA_character_, length(dates))
+  out[!is.na(dates)] <- format(dates[!is.na(dates)], "%Y-%m-%d")
+  out
+}
+
+format_timestamp_for_sheet <- function(x) {
+  timestamps <- parse_timestamp(x)
+  out <- rep(NA_character_, length(timestamps))
+  out[!is.na(timestamps)] <- format(timestamps[!is.na(timestamps)], "%Y-%m-%d %H:%M:%S")
+  out
+}
+
+prepare_editor_write_data <- function(data) {
+  date_cols <- c(
+    "Flight Start Date", "Flight End Date",
+    "Delivery Override Start Date", "Delivery Override End Date",
+    "Baseline Flight Start Date", "Baseline Flight End Date",
+    "Baseline Delivery Start Date", "Baseline Delivery End Date"
+  )
+  for (col in intersect(date_cols, names(data))) {
+    data[[col]] <- format_date_for_sheet(data[[col]])
+  }
+
+  timestamp_cols <- c("Manual Edit At", "Manual Edit Published At")
+  for (col in intersect(timestamp_cols, names(data))) {
+    data[[col]] <- format_timestamp_for_sheet(data[[col]])
+  }
+
+  data
+}
+
 write_editor_tab <- function(sheet_id, tab_name, data) {
   ensure_tab(sheet_id, tab_name)
   sheet_resize(sheet_id, sheet = tab_name, ncol = 73)
   range_clear(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
+  data <- prepare_editor_write_data(data)
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0("A", EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
 }
 
@@ -523,20 +569,20 @@ read_first_existing_tab <- function(sheet_id, candidates) {
     if (tab_name %in% existing_names) {
       if (tab_name == TAB_EDITOR) {
         return(tryCatch(
-          read_sheet(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_VISIBLE_LAST_COLUMN), col_names = TRUE),
+          read_sheet(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_VISIBLE_LAST_COLUMN), col_names = TRUE, col_types = "c"),
           error = function(e) tibble::tibble()
         ))
       }
 
       first_read <- tryCatch(
-        read_sheet(sheet_id, sheet = tab_name, col_names = TRUE),
+        read_sheet(sheet_id, sheet = tab_name, col_names = TRUE, col_types = "c"),
         error = function(e) tibble::tibble()
       )
       if ("Package ID" %in% names(first_read)) {
         return(first_read)
       }
       return(tryCatch(
-        read_sheet(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":ZZ"), col_names = TRUE),
+        read_sheet(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":ZZ"), col_names = TRUE, col_types = "c"),
         error = function(e) tibble::tibble()
       ))
     }
@@ -587,7 +633,10 @@ normalize_existing_editor <- function(data) {
     channel_group = as_trimmed_character(pick_existing_col(data, c("Channel Group", "channel_group"))),
     manual_edit_at = parse_timestamp(pick_existing_col(data, c("Manual Edit At", "manual_edit_at"))),
     manual_edit_by = as_trimmed_character(pick_existing_col(data, c("Manual Edit By", "manual_edit_by"))),
-    manual_edit_published_at = parse_timestamp(pick_existing_col(data, c("Manual Edit Published At", "manual_edit_published_at")))
+    manual_edit_published_at = parse_timestamp(pick_existing_col(data, c("Manual Edit Published At", "manual_edit_published_at"))),
+    manually_edited = as_trimmed_character(pick_existing_col(data, c("Manually Edited?", "manually_edited"))),
+    validation_status = as_trimmed_character(pick_existing_col(data, c("Validation Status", "validation_status"))),
+    validation_reason = as_trimmed_character(pick_existing_col(data, c("Validation Reason", "validation_messages")))
   )
 
   for (idx in seq_len(nrow(metric_specs))) {
@@ -638,18 +687,24 @@ download_previous_raw <- function() {
     filter(!is.na(package_id))
 }
 
-choose_metric_value <- function(sheet_value, live_value, prior_current, prior_replacement) {
+choose_metric_value <- function(sheet_value, live_value, prior_current, prior_replacement, prior_replacement_trusted = TRUE) {
   if (is.na(sheet_value)) {
     return(list(value = live_value, edited = FALSE))
+  }
+  if (!is.na(prior_replacement) && same_num(sheet_value, prior_replacement)) {
+    if (!isTRUE(prior_replacement_trusted)) {
+      if (is.na(live_value) && is.na(prior_current)) {
+        return(list(value = sheet_value, edited = TRUE))
+      }
+      return(list(value = live_value, edited = FALSE))
+    }
+    return(list(value = sheet_value, edited = TRUE))
   }
   if (same_num(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_current) && same_num(sheet_value, prior_current)) {
     return(list(value = live_value, edited = FALSE))
-  }
-  if (!is.na(prior_replacement) && same_num(sheet_value, prior_replacement)) {
-    return(list(value = sheet_value, edited = TRUE))
   }
   list(value = sheet_value, edited = TRUE)
 }
@@ -664,7 +719,7 @@ same_text <- function(a, b) {
   a[[1]] == b[[1]]
 }
 
-choose_text_value <- function(sheet_value, live_value, prior_current, prior_replacement) {
+choose_text_value <- function(sheet_value, live_value, prior_current, prior_replacement, prior_replacement_trusted = TRUE) {
   sheet_value <- as_trimmed_character(sheet_value)
   live_value <- as_trimmed_character(live_value)
   prior_current <- as_trimmed_character(prior_current)
@@ -678,14 +733,20 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
   if (is.na(sheet_value)) {
     return(list(value = live_value, edited = FALSE))
   }
+  if (!is.na(prior_replacement) && same_text(sheet_value, prior_replacement)) {
+    if (!isTRUE(prior_replacement_trusted)) {
+      if (is.na(live_value) && is.na(prior_current)) {
+        return(list(value = sheet_value, edited = TRUE))
+      }
+      return(list(value = live_value, edited = FALSE))
+    }
+    return(list(value = sheet_value, edited = TRUE))
+  }
   if (same_text(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
   }
   if (!is.na(prior_current) && same_text(sheet_value, prior_current)) {
     return(list(value = live_value, edited = FALSE))
-  }
-  if (!is.na(prior_replacement) && !is.na(prior_current) && same_text(sheet_value, prior_replacement)) {
-    return(list(value = sheet_value, edited = TRUE))
   }
   if (is.na(live_value) && is.na(prior_current) && is.na(prior_replacement)) {
     return(list(value = sheet_value, edited = FALSE))
@@ -693,9 +754,18 @@ choose_text_value <- function(sheet_value, live_value, prior_current, prior_repl
   list(value = sheet_value, edited = TRUE)
 }
 
-choose_date_value <- function(sheet_value, live_value, prior_current, prior_manual, prior_active) {
+choose_date_value <- function(sheet_value, live_value, prior_current, prior_manual, prior_active, prior_replacement_trusted = TRUE) {
   if (is.na(sheet_value)) {
     return(list(value = live_value, edited = FALSE))
+  }
+  if (prior_active && !same_date(prior_manual, prior_current) && same_date(sheet_value, prior_manual)) {
+    if (!isTRUE(prior_replacement_trusted)) {
+      if (is.na(live_value) && is.na(prior_current)) {
+        return(list(value = sheet_value, edited = TRUE))
+      }
+      return(list(value = live_value, edited = FALSE))
+    }
+    return(list(value = sheet_value, edited = TRUE))
   }
   if (same_date(sheet_value, live_value)) {
     return(list(value = live_value, edited = FALSE))
@@ -703,10 +773,56 @@ choose_date_value <- function(sheet_value, live_value, prior_current, prior_manu
   if (!is.na(prior_current) && same_date(sheet_value, prior_current)) {
     return(list(value = live_value, edited = FALSE))
   }
-  if (prior_active && !same_date(prior_manual, prior_current) && same_date(sheet_value, prior_manual)) {
-    return(list(value = sheet_value, edited = TRUE))
-  }
   list(value = sheet_value, edited = TRUE)
+}
+
+should_stop_manual_only_inactive <- function(
+    is_manual_only,
+    is_active,
+    package_id,
+    has_replacement,
+    has_metadata_replacement,
+    has_flight_replacement,
+    manual_edit_at,
+    manual_edit_by,
+    manual_edit_published_at,
+    prior_current_row_count,
+    sheet_no_edit_status) {
+  manual_evidence <- !is.na(parse_timestamp(manual_edit_at)) |
+    !is.na(as_trimmed_character(manual_edit_by)) |
+    !is.na(parse_timestamp(manual_edit_published_at))
+  prior_count <- suppressWarnings(as.numeric(prior_current_row_count))
+  prior_count[is.na(prior_count)] <- 0
+  stale_source_no_edit <- (prior_count > 0 | sheet_no_edit_status) &
+    !has_replacement &
+    !has_metadata_replacement &
+    !has_flight_replacement &
+    !manual_evidence
+
+  is_manual_only &
+    !is_active &
+    !is.na(as_trimmed_character(package_id)) &
+    !stale_source_no_edit
+}
+
+apply_manual_only_flight_date_fallback <- function(raw_upload, display_data) {
+  manual_only_rows <- coalesce(raw_upload$current_row_count, 0) == 0
+  fill_start <- manual_only_rows & is.na(raw_upload$man_flight_start_date) & !is.na(raw_upload$man_start_date)
+  fill_end <- manual_only_rows & is.na(raw_upload$man_flight_end_date) & !is.na(raw_upload$man_end_date)
+
+  raw_upload$man_flight_start_date[fill_start] <- raw_upload$man_start_date[fill_start]
+  raw_upload$replacement_flight_start_date[fill_start & is.na(raw_upload$replacement_flight_start_date)] <-
+    raw_upload$man_start_date[fill_start & is.na(raw_upload$replacement_flight_start_date)]
+  raw_upload$man_flight_end_date[fill_end] <- raw_upload$man_end_date[fill_end]
+  raw_upload$replacement_flight_end_date[fill_end & is.na(raw_upload$replacement_flight_end_date)] <-
+    raw_upload$man_end_date[fill_end & is.na(raw_upload$replacement_flight_end_date)]
+
+  if (!is.null(display_data) && nrow(display_data) == nrow(raw_upload)) {
+    display_data$`Flight Start Date`[fill_start] <- raw_upload$man_flight_start_date[fill_start]
+    display_data$`Flight End Date`[fill_end] <- raw_upload$man_flight_end_date[fill_end]
+  }
+
+  list(raw_upload = raw_upload, display_data = display_data)
 }
 
 build_daily_total_proof <- function(daily_data) {
@@ -806,26 +922,15 @@ refresh_package_lookup <- function(sql_path) {
   }
 
   cat("Refreshing package lookup table from ", sql_path, "...\n", sep = "")
-  output <- system2(
-    "bq",
-    c("query", paste0("--project_id=", PROJECT_ID), "--use_legacy_sql=false"),
-    stdin = sql_path,
-    stdout = TRUE,
-    stderr = TRUE
-  )
-  if (length(output)) {
-    cat(paste(output, collapse = "\n"), "\n")
-  }
-
-  exit_code <- attr(output, "status") %pick% 0
-  if (!identical(as.integer(exit_code), 0L)) {
-    stop("Manual package lookup refresh failed with status ", exit_code, call. = FALSE)
-  }
+  sql <- paste(readLines(sql_path, warn = FALSE), collapse = "\n")
+  invisible(bq_project_query(PROJECT_ID, sql))
+  cat("Manual package lookup refresh finished.\n")
 }
 
 package_lookup_query <- sprintf("
 SELECT *
 FROM `%s`
+WHERE NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
 ORDER BY advertiser_name, package_type, channel, campaign_name, initiative, supplier_code, supplier_name, package_name, package_id
 ", LOOKUP_TABLE)
 
@@ -834,6 +939,7 @@ cat("Refreshing package editor from ", LOOKUP_TABLE, "...\n", sep = "")
 live_packages <- bq_table_download(bq_project_query(PROJECT_ID, package_lookup_query))
 live_packages$package_id <- as_trimmed_character(live_packages$package_id)
 live_packages <- live_packages %>%
+  filter(!is_excluded_social_campaign(campaign_name)) %>%
   mutate(
     current_advertiser_name = advertiser_name,
     current_package_type = package_type,
@@ -850,6 +956,29 @@ live_packages <- live_packages %>%
 existing_editor <- read_first_existing_tab(SHEET_ID, c(TAB_EDITOR, "Manual Package Edits"))
 existing_editor <- normalize_existing_editor(existing_editor)
 previous_raw <- download_previous_raw()
+
+excluded_package_ids <- unique(c(
+  live_packages$package_id[is_excluded_social_campaign(live_packages$campaign_name)],
+  existing_editor$package_id[is_excluded_social_campaign(existing_editor$campaign_name)],
+  previous_raw$package_id[
+    is_excluded_social_campaign(previous_raw$campaign_name) |
+      is_excluded_social_campaign(previous_raw$current_campaign_name) |
+      is_excluded_social_campaign(previous_raw$man_campaign_name)
+  ]
+))
+excluded_package_ids <- excluded_package_ids[!is.na(excluded_package_ids)]
+
+existing_editor <- existing_editor %>%
+  filter(!package_id %in% excluded_package_ids, !is_excluded_social_campaign(campaign_name))
+previous_raw <- previous_raw %>%
+  filter(!package_id %in% excluded_package_ids, !is_excluded_social_campaign(campaign_name))
+if (length(excluded_package_ids) > 0) {
+  cat(
+    "Excluded ", length(excluded_package_ids),
+    " manual-editor package id(s) from the 1000heads social source guard.\n",
+    sep = ""
+  )
+}
 
 live_by_package <- split(live_packages, live_packages$package_id)
 previous_by_row_key <- if (nrow(previous_raw) > 0) {
@@ -876,6 +1005,8 @@ if (nrow(existing_editor) > 0) {
 display_rows <- list()
 raw_rows <- list()
 edited_cells <- list()
+raw_prior_current_row_counts <- list()
+raw_sheet_no_edit_statuses <- list()
 
 for (row_idx in seq_len(nrow(editor_rows))) {
   sheet <- editor_rows[row_idx, ]
@@ -910,34 +1041,47 @@ for (row_idx in seq_len(nrow(editor_rows))) {
   }
   manual_edit_at <- sheet_value("manual_edit_at") %pick% prior_value("manual_edit_at")
   manual_edit_by <- sheet_value("manual_edit_by") %pick% prior_value("manual_edit_by")
+  sheet_no_edit_status <- same_text(sheet_value("manually_edited"), "No") &&
+    same_text(sheet_value("validation_status"), "inactive") &&
+    same_text(sheet_value("validation_reason"), "not edited")
+  prior_replacement_trusted <- has_prior && (
+    same_text(prior_value("validation_status"), "valid") ||
+      !is.na(parse_timestamp(prior_value("manual_edit_at"))) ||
+      !is.na(as_trimmed_character(prior_value("manual_edit_by"))[[1]]) ||
+      !is.na(parse_timestamp(prior_value("manual_edit_published_at")))
+  )
 
   flight_start_choice <- choose_date_value(
     sheet_value("flight_start_date"),
     live_value("current_flight_start_date"),
     prior_value("current_flight_start_date"),
     prior_value("replacement_flight_start_date"),
-    has_prior && prior_value("is_active") %in% TRUE
+    has_prior && prior_value("is_active") %in% TRUE,
+    prior_replacement_trusted
   )
   flight_end_choice <- choose_date_value(
     sheet_value("flight_end_date"),
     live_value("current_flight_end_date"),
     prior_value("current_flight_end_date"),
     prior_value("replacement_flight_end_date"),
-    has_prior && prior_value("is_active") %in% TRUE
+    has_prior && prior_value("is_active") %in% TRUE,
+    prior_replacement_trusted
   )
   delivery_start_choice <- choose_date_value(
     sheet_value("delivery_start_date"),
     live_value("current_first_date"),
     prior_value("current_first_date"),
     prior_value("man_start_date"),
-    has_prior && prior_value("is_active") %in% TRUE
+    has_prior && prior_value("is_active") %in% TRUE,
+    prior_replacement_trusted
   )
   delivery_end_choice <- choose_date_value(
     sheet_value("delivery_end_date"),
     live_value("current_last_date"),
     prior_value("current_last_date"),
     prior_value("man_end_date"),
-    has_prior && prior_value("is_active") %in% TRUE
+    has_prior && prior_value("is_active") %in% TRUE,
+    prior_replacement_trusted
   )
 
   metadata_choices <- list()
@@ -947,7 +1091,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       sheet_value(spec$value_key),
       live_value(spec$current_col),
       prior_value(spec$current_col),
-      prior_value(spec$manual_col)
+      prior_value(spec$manual_col),
+      prior_replacement_trusted
     )
   }
 
@@ -958,7 +1103,8 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       sheet_value(spec$value_key),
       live_value(spec$current_col),
       prior_value(spec$current_col),
-      prior_value(spec$replacement_col)
+      prior_value(spec$replacement_col),
+      prior_replacement_trusted
     )
   }
 
@@ -1121,14 +1267,20 @@ for (row_idx in seq_len(nrow(editor_rows))) {
 
   raw$is_active <- flight_date_edited || metadata_edited || metric_edited
   raw_rows[[length(raw_rows) + 1]] <- tibble::as_tibble(raw)
+  raw_prior_current_row_counts[[length(raw_rows)]] <- parse_num(prior_value("current_row_count"))[[1]]
+  raw_sheet_no_edit_statuses[[length(raw_rows)]] <- sheet_no_edit_status
 }
 
 if (length(display_rows) == 0) {
   display_data <- tibble::as_tibble(setNames(rep(list(character()), length(display_columns)), display_columns))
   raw_upload <- tibble::as_tibble(setNames(rep(list(character()), length(raw_columns)), raw_columns))
+  prior_current_row_count <- numeric()
+  sheet_no_edit_status <- logical()
 } else {
   display_data <- bind_rows(display_rows)
   raw_upload <- bind_rows(raw_rows)
+  prior_current_row_count <- unlist(raw_prior_current_row_counts, use.names = FALSE)
+  sheet_no_edit_status <- unlist(raw_sheet_no_edit_statuses, use.names = FALSE)
 }
 
 raw_ref <- bq_table(PROJECT_ID, DATASET_ID, RAW_TABLE)
@@ -1153,6 +1305,10 @@ raw_upload$replacement_flight_end_date <- parse_date(raw_upload$replacement_flig
 raw_upload$current_row_count <- parse_num(raw_upload$current_row_count)
 raw_upload$manual_edit_at <- parse_timestamp(raw_upload$manual_edit_at)
 raw_upload$manual_edit_by <- as_trimmed_character(raw_upload$manual_edit_by)
+
+manual_only_fallback <- apply_manual_only_flight_date_fallback(raw_upload, display_data)
+raw_upload <- manual_only_fallback$raw_upload
+display_data <- manual_only_fallback$display_data
 
 has_replacement <- apply(!is.na(raw_upload[, metric_specs$replacement_col, drop = FALSE]), 1, any)
 has_metadata_replacement <- apply(!is.na(raw_upload[, metadata_specs$manual_col, drop = FALSE]), 1, any)
@@ -1231,6 +1387,31 @@ raw_upload$validation_status <- dplyr::case_when(
   TRUE ~ "blocked"
 )
 raw_upload$validation_messages <- unlist(validation_messages)
+
+# A manual-only package has no live model baseline to rebuild from. If a row
+# like this is read as blank, rewriting the editor would erase the user's draft.
+manual_only_inactive <- should_stop_manual_only_inactive(
+  is_manual_only = manual_only,
+  is_active = raw_upload$is_active,
+  package_id = raw_upload$package_id,
+  has_replacement = has_replacement,
+  has_metadata_replacement = has_metadata_replacement,
+  has_flight_replacement = has_flight_replacement,
+  manual_edit_at = raw_upload$manual_edit_at,
+  manual_edit_by = raw_upload$manual_edit_by,
+  manual_edit_published_at = raw_upload$manual_edit_published_at,
+  prior_current_row_count = prior_current_row_count,
+  sheet_no_edit_status = sheet_no_edit_status
+)
+if (any(manual_only_inactive, na.rm = TRUE)) {
+  stop(
+    "Refusing to rewrite manual-only package rows as inactive/not edited: ",
+    paste(raw_upload$package_id[manual_only_inactive], collapse = ", "),
+    ". Restore or delete these draft rows before rerunning the loader.",
+    call. = FALSE
+  )
+}
+
 raw_upload$manual_edit_published_at <- dplyr::if_else(
   raw_upload$is_active & raw_upload$validation_status == "valid",
   loaded_at,
@@ -1277,14 +1458,25 @@ bq_table_upload(raw_ref, raw_upload, write_disposition = "WRITE_TRUNCATE")
 
 valid_edits <- raw_upload %>%
   filter(is_active, validation_status == "valid")
-valid_metric_edits <- valid_edits %>%
-  filter(apply(!is.na(.[, metric_specs$replacement_col, drop = FALSE]), 1, any))
+valid_publish_edits <- valid_edits %>%
+  filter(
+    apply(
+      !is.na(.[, c(metric_specs$replacement_col, metadata_specs$manual_col, "replacement_flight_start_date", "replacement_flight_end_date"), drop = FALSE]),
+      1,
+      any
+    )
+  )
 
 daily_rows <- list()
-if (nrow(valid_metric_edits) > 0) {
-  for (i in seq_len(nrow(valid_metric_edits))) {
-    row <- valid_metric_edits[i, ]
-    days <- seq(row$man_start_date, row$man_end_date, by = "day")
+if (nrow(valid_publish_edits) > 0) {
+  for (i in seq_len(nrow(valid_publish_edits))) {
+    row <- valid_publish_edits[i, ]
+    publish_start_date <- row$man_start_date %pick% row$current_first_date %pick% row$man_flight_start_date
+    publish_end_date <- row$man_end_date %pick% row$current_last_date %pick% row$man_flight_end_date
+    if (is.na(publish_start_date) || is.na(publish_end_date) || publish_end_date < publish_start_date) {
+      next
+    }
+    days <- seq(publish_start_date, publish_end_date, by = "day")
     day_count <- length(days)
     daily <- tibble::tibble(
       is_active = TRUE,
@@ -1292,8 +1484,8 @@ if (nrow(valid_metric_edits) > 0) {
       edit_id = row$edit_id,
       package_id = row$package_id,
       date = days,
-      man_start_date = row$man_start_date,
-      man_end_date = row$man_end_date
+      man_start_date = publish_start_date,
+      man_end_date = publish_end_date
     )
     for (metric_idx in seq_len(nrow(metric_specs))) {
       spec <- metric_specs[metric_idx, ]
@@ -1437,14 +1629,29 @@ write_filter_helper_columns(SHEET_ID, TAB_EDITOR, filter_helper_data)
 write_refresh_status(SHEET_ID, TAB_EDITOR, loaded_at)
 repair_filter_ranges(SHEET_ID, TAB_EDITOR)
 
-for (tab_name in LEGACY_TABS) {
-  if (tab_name %in% sheet_names(SHEET_ID) && tab_name != TAB_EDITOR) {
-    try(sheet_delete(SHEET_ID, sheet = tab_name), silent = TRUE)
+current_tabs <- tryCatch(
+  sheet_names(SHEET_ID),
+  error = function(e) {
+    warning("Skipping legacy tab cleanup because sheet metadata could not be read after data refresh: ", conditionMessage(e))
+    character()
   }
-}
-remaining_tabs <- sheet_names(SHEET_ID)
-if (length(remaining_tabs) > 0 && remaining_tabs[[1]] != TAB_EDITOR) {
-  sheet_relocate(SHEET_ID, sheet = TAB_EDITOR, .before = 1)
+)
+if (length(current_tabs) > 0) {
+  for (tab_name in LEGACY_TABS) {
+    if (tab_name %in% current_tabs && tab_name != TAB_EDITOR) {
+      try(sheet_delete(SHEET_ID, sheet = tab_name), silent = TRUE)
+    }
+  }
+  remaining_tabs <- tryCatch(
+    sheet_names(SHEET_ID),
+    error = function(e) {
+      warning("Skipping tab relocation check because sheet metadata could not be read after legacy cleanup: ", conditionMessage(e))
+      character()
+    }
+  )
+  if (length(remaining_tabs) > 0 && remaining_tabs[[1]] != TAB_EDITOR) {
+    try(sheet_relocate(SHEET_ID, sheet = TAB_EDITOR, .before = 1), silent = TRUE)
+  }
 }
 
 status <- tibble::tibble(

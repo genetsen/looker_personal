@@ -13,6 +13,7 @@ In plain English: WP is now the first source for Apollo social/search/video deli
 | Final production model | [Master data model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) exposes WP/social fields through the `s_` provenance columns and final `_` reporting fields. | The QA-only social final view can be rebuilt, but it is not currently live. |
 | WP precedence | For matching Apollo campaign/ad rows, WP nonblank values win; numeric zeroes are treated as real values, not blanks. | Existing shared-social values fill fields WP does not provide, such as conversions and some video-percentile fields. |
 | Channel rules | `_Search_` in campaign names maps to Paid Search; `_YT_` maps to Online Video; otherwise the Sheet channel is used as fallback. | Rows with both markers are excluded as ambiguous. |
+| Agency campaign exclusion | Campaign names containing `1000heads`, case-insensitive, are removed in the shared-social production builder before the rows can feed the master model. | This is a source exclusion, not a dashboard filter or zeroed-out row. |
 | Pending source-owner clarification | Cross-campaign records sharing date/platform/ad ID are included and flagged `publish_pending_source_owner_review`. | Keep the flag visible until the source owner confirms the correct ownership rule. |
 | Dates | Uses `Report Start Date` as the reporting date. | Placeholder flight-date fields are intentionally ignored. |
 
@@ -24,7 +25,7 @@ In plain English: WP is now the first source for Apollo social/search/video deli
 | [load_wp_search_data_template.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/load_wp_search_data_template.R) | Loader | Keep | Reads Sheets, normalizes rows, and optionally uploads to BigQuery. |
 | [wp_search_social_logic.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/wp_search_social_logic.R) | Business rules | Keep | Holds pure normalization, classification, and precedence logic. |
 | [test_wp_search_social_logic.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/tests/test_wp_search_social_logic.R) | Tests | Keep | Proves the rules without touching Sheets or BigQuery. |
-| [create_stg_crossplatform_wp_primary_production.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_production.sql) | Production builder | Keep | Builds the live shared-social staging table with WP precedence. |
+| [create_stg_crossplatform_wp_primary_production.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_production.sql) | Production builder | Keep | Builds the live shared-social staging table with WP precedence and the `1000heads` campaign exclusion. |
 | [rollback_stg_crossplatform_pre_wp_production.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/rollback_stg_crossplatform_pre_wp_production.sql) | Rollback builder | Keep | Restores the pre-WP shared-social logic if a rollback is approved. |
 | [create_stg_crossplatform_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_qa.sql) | QA builder | Keep | Rebuilds the WP-first shared-social candidate without touching production, using the maintained WP production staging input. |
 | [create_data_model_social_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_data_model_social_wp_primary_qa.sql) | QA final-shape builder | Keep | Rebuilds a social-only final-data candidate for review. |
@@ -41,7 +42,7 @@ This matrix shows how workbook values move into staging and then into final repo
 | `Report Start Date` | `date_day` | `date_day` | `_date` | The visible report date becomes the reporting date. Flight-date placeholders are ignored. |
 | `Platform` | `platform`, `source_relation` | `platform`, `source_relation` | `s_platform`, plus `_supplier_code` and `_supplier_name` | Platform text is normalized, for example Google becomes `google_ads` and LinkedIn becomes `linkedin_ads`. |
 | `Client` | `account_name`, `account_id` | `account_name`, `account_id` | `_advertiser`, `s_account_name` | Apollo workbook rows are normalized to Apollo reporting identity downstream. |
-| `Campaign` | `campaign_name`, synthetic `campaign_id` | `campaign_name`, `campaign_id` | `_campaign_name`, `_package_id` | WP campaign names are preserved. Campaign IDs are generated when the workbook does not provide source campaign IDs. |
+| `Campaign` | `campaign_name`, synthetic `campaign_id` | `campaign_name`, `campaign_id` | `_campaign_name`, `_package_id` | WP campaign names are preserved unless they contain `1000heads`, which is excluded before shared-social staging is written. Campaign IDs are generated when the workbook does not provide source campaign IDs. |
 | `Ad Group` | `ad_group_name`, `ad_group_id` | `ad_group_name`, `ad_group_id` | `_package_name`, `_package_id`, `s_ad_group_id` | The `Import` tab ad-group ID is used when available; otherwise a readable synthetic ID is generated. |
 | `Ad ID` | `ad_id`, `wp_row_key` | `ad_id`, `wp_row_key` | `_placement_id`, `s_ad_id`, `s_wp_row_key` | Ad ID stays text so large IDs are not rounded. `wp_row_key` preserves the campaign/ad-group/ad grain. |
 | `Ad Name` | `ad_name` | `ad_name` | `_placement_name`, `s_creative_name` | Ad name becomes the final placement name and social creative label. |
@@ -61,7 +62,7 @@ This matrix shows how workbook values move into staging and then into final repo
 | Object | Purpose | Current note |
 | --- | --- | --- |
 | [WP normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily&page=table) | Production daily-ad input from the workbook. | Live table verified on 2026-06-05. |
-| [Shared cross-platform raw staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_raw_tbl&page=table) | Production shared-social staging with WP-first Apollo behavior. | Live table verified on 2026-06-05. |
+| [Shared cross-platform raw staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_raw_tbl&page=table) | Production shared-social staging with WP-first Apollo behavior. | Excludes campaign names containing `1000heads` at source before the master model reads social rows. |
 | [Master data model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Final reporting model. | Live view verified on 2026-06-05. |
 | [WP-primary cross-platform QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__crossplatform_wp_primary_qa&page=table) | Rebuildable QA merge candidate. | Created only when the QA SQL command runs. |
 | [WP-primary social reporting QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_social_wp_primary_qa&page=table) | Rebuildable final-shape social QA view. | Not live during the 2026-06-05 cleanup check; rebuild before using. |
@@ -83,7 +84,7 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < master_data_model/create_master_stg_data_model.sql
 ```
 
-The daily shared-social scheduled query already runs the production builder SQL. The controlled loader command is required only when the source Sheet should be re-read into staging.
+The daily shared-social scheduled query already runs the production builder SQL. The controlled loader command is required only when the source Sheet should be re-read into staging. After changing this SQL, update the saved scheduled-query config too; BigQuery does not automatically copy local file edits into the scheduled query.
 
 ## Safe QA Run Order
 

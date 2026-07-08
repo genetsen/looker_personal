@@ -12,8 +12,14 @@ import { execFileSync } from "node:child_process";
 const SHEET_ID = process.env.MASTER_MANUAL_EDIT_SHEET_ID || "1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E";
 const TAB_NAME = process.env.MASTER_MANUAL_EDIT_TAB || "Package Editor";
 const AUTH_ACCOUNT = process.env.MASTER_MANUAL_EDIT_AUTH_EMAIL || "gene.tsenter@giantspoon.com";
+const AUTH_CONFIG_BY_ACCOUNT = {
+  "gene.tsenter@giantspoon.com": "/Users/eugenetsenter/.config/gcloud-giantspoon",
+  "gene.tsenter@old.giantspoon.com": "/Users/eugenetsenter/.config/gcloud-old-giantspoon",
+};
+const AUTH_CONFIG = process.env.CLOUDSDK_CONFIG || process.env.MASTER_MANUAL_EDIT_GCLOUD_CONFIG || AUTH_CONFIG_BY_ACCOUNT[AUTH_ACCOUNT];
 
 const columns = [
+  "Advertiser",
   "Package ID",
   "Site",
   "Package Friendly Name",
@@ -28,7 +34,6 @@ const columns = [
   "Video Completions",
   "Delivery Override Start Date",
   "Delivery Override End Date",
-  "Advertiser",
   "Package Type",
   "Channel",
   "Campaign",
@@ -141,15 +146,36 @@ function columnLetter(index) {
   return out;
 }
 
+function absoluteCell(headerName, sheetRowNumber) {
+  const index = colIndex[headerName];
+  if (index === undefined) {
+    throw new Error(`Missing required header for formula: ${headerName}`);
+  }
+  return `$${columnLetter(index)}${sheetRowNumber}`;
+}
+
+function rowRange(startHeaderName, endHeaderName, sheetRowNumber) {
+  return `${absoluteCell(startHeaderName, sheetRowNumber)}:${absoluteCell(endHeaderName, sheetRowNumber)}`;
+}
+
 function gridRange(sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex) {
   return { sheetId, startRowIndex, endRowIndex, startColumnIndex, endColumnIndex };
 }
 
 function token() {
+  if (!AUTH_CONFIG) {
+    throw new Error(`No account-specific Google auth config is defined for ${AUTH_ACCOUNT}.`);
+  }
   return execFileSync(
     "gcloud",
-    ["auth", "print-access-token", "--account", AUTH_ACCOUNT],
-    { encoding: "utf8" },
+    ["auth", "application-default", "print-access-token"],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CLOUDSDK_CONFIG: AUTH_CONFIG,
+      },
+    },
   ).trim();
 }
 
@@ -259,64 +285,75 @@ function buildConditionalFormatRequests(sheetId, rowCount, existingDataEndRowInd
     rowCount,
     0,
     visibleColumnCount,
-    `=OR($Y${firstDataRow}="blocked",AND($A${firstDataRow}<>"",$AA${firstDataRow}="",COUNTA($A${firstDataRow}:$W${firstDataRow})>0,OR($A${firstDataRow}="",$B${firstDataRow}="",$C${firstDataRow}="",$M${firstDataRow}="",$N${firstDataRow}="",COUNTA($F${firstDataRow}:$L${firstDataRow})=0,$O${firstDataRow}="",$P${firstDataRow}="",$Q${firstDataRow}="",$R${firstDataRow}="",$V${firstDataRow}="",$W${firstDataRow}="",$M${firstDataRow}>$N${firstDataRow},AND($D${firstDataRow}<>"",$E${firstDataRow}<>"",$D${firstDataRow}>$E${firstDataRow}))))`,
+    `=${absoluteCell("Validation Status", firstDataRow)}="blocked"`,
     color(1.00, 0.86, 0.84),
     color(0.43, 0.06, 0.04),
   ));
 
-  if (existingDataEndRowIndex < rowCount) {
-    const firstBlankSheetRow = existingDataEndRowIndex + 1;
-    requests.push({
-      addConditionalFormatRule: {
-        rule: {
-          ranges: [gridRange(sheetId, existingDataEndRowIndex, rowCount, 0, visibleColumnCount)],
-          booleanRule: {
-            condition: {
-              type: "CUSTOM_FORMULA",
-              values: [{
-                userEnteredValue: `=AND(COUNTA($A${firstBlankSheetRow}:$W${firstBlankSheetRow})>0,OR($A${firstBlankSheetRow}="",$B${firstBlankSheetRow}="",$C${firstBlankSheetRow}="",$M${firstBlankSheetRow}="",$N${firstBlankSheetRow}="",COUNTA($F${firstBlankSheetRow}:$L${firstBlankSheetRow})=0,$O${firstBlankSheetRow}="",$P${firstBlankSheetRow}="",$Q${firstBlankSheetRow}="",$R${firstBlankSheetRow}="",$V${firstBlankSheetRow}="",$W${firstBlankSheetRow}=""))`,
-              }],
-            },
-            format: {
-              backgroundColor: color(1.00, 0.86, 0.84),
-              textFormat: {
-                foregroundColor: color(0.43, 0.06, 0.04),
-                bold: true,
-              },
-            },
-          },
-        },
-        index: 0,
-      },
-    });
-    requests.push({
-      addConditionalFormatRule: {
-        rule: {
-          ranges: [gridRange(sheetId, existingDataEndRowIndex, rowCount, colIndex["Delivery Override Start Date"], colIndex["Delivery Override End Date"] + 1)],
-          booleanRule: {
-            condition: {
-              type: "CUSTOM_FORMULA",
-              values: [{ userEnteredValue: `=AND($M${firstBlankSheetRow}<>"",$N${firstBlankSheetRow}<>"",$M${firstBlankSheetRow}>$N${firstBlankSheetRow})` }],
-            },
-            format: {
-              backgroundColor: color(1.00, 0.74, 0.70),
-              textFormat: {
-                foregroundColor: color(0.43, 0.06, 0.04),
-                bold: true,
-              },
-            },
-          },
-        },
-        index: 0,
-      },
-    });
+  const visibleRowRange = rowRange("Advertiser", "Validation Reason", firstDataRow);
+  const metricRowRange = rowRange("Planned Spend", "Video Completions", firstDataRow);
+  const newRowStartedFormula = `AND(${absoluteCell("Baseline Flight Start Date", firstDataRow)}="",COUNTA(${visibleRowRange})>0)`;
+  const requiredHeaders = [
+    "Advertiser",
+    "Package ID",
+    "Site",
+    "Package Friendly Name",
+    "Flight Start Date",
+    "Flight End Date",
+    "Delivery Override Start Date",
+    "Delivery Override End Date",
+    "Package Type",
+    "Channel",
+    "Campaign",
+    "Package Name",
+    "GS Channel",
+  ];
+
+  for (const headerName of requiredHeaders) {
+    requests.push(conditionalRule(
+      sheetId,
+      rowCount,
+      colIndex[headerName],
+      colIndex[headerName] + 1,
+      `=AND(${newRowStartedFormula},${absoluteCell(headerName, firstDataRow)}="")`,
+      color(1.00, 0.74, 0.70),
+      color(0.43, 0.06, 0.04),
+    ));
   }
+
+  requests.push(conditionalRule(
+    sheetId,
+    rowCount,
+    colIndex["Planned Spend"],
+    colIndex["Video Completions"] + 1,
+    `=AND(${newRowStartedFormula},COUNTA(${metricRowRange})=0)`,
+    color(1.00, 0.74, 0.70),
+    color(0.43, 0.06, 0.04),
+  ));
+
+  requests.push(conditionalRule(
+    sheetId,
+    rowCount,
+    colIndex["Flight Start Date"],
+    colIndex["Flight End Date"] + 1,
+    `=AND(${absoluteCell("Flight Start Date", firstDataRow)}<>"",${absoluteCell("Flight End Date", firstDataRow)}<>"",${absoluteCell("Flight Start Date", firstDataRow)}>${absoluteCell("Flight End Date", firstDataRow)})`,
+    color(1.00, 0.74, 0.70),
+    color(0.43, 0.06, 0.04),
+  ));
+
+  requests.push(conditionalRule(
+    sheetId,
+    rowCount,
+    colIndex["Delivery Override Start Date"],
+    colIndex["Delivery Override End Date"] + 1,
+    `=AND(${absoluteCell("Delivery Override Start Date", firstDataRow)}<>"",${absoluteCell("Delivery Override End Date", firstDataRow)}<>"",${absoluteCell("Delivery Override Start Date", firstDataRow)}>${absoluteCell("Delivery Override End Date", firstDataRow)})`,
+    color(1.00, 0.74, 0.70),
+    color(0.43, 0.06, 0.04),
+  ));
 
   if (existingDataEndRowIndex > dataStartRowIndex) {
     const plannedSpendMarkerColumn = columnLetter(colIndex["Manual Marker Planned Spend"]);
     const plannedImpressionsMarkerColumn = columnLetter(colIndex["Manual Marker Planned Impressions"]);
-    const baselinePlannedSpendColumn = columnLetter(colIndex["Baseline Planned Spend"]);
-    const baselinePlannedImpressionsColumn = columnLetter(colIndex["Baseline Planned Impressions"]);
     requests.push({
       addConditionalFormatRule: {
         rule: {
@@ -325,7 +362,7 @@ function buildConditionalFormatRequests(sheetId, rowCount, existingDataEndRowInd
             condition: {
               type: "CUSTOM_FORMULA",
               values: [{
-                userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR($F${firstDataRow}<>$${baselinePlannedSpendColumn}${firstDataRow},$G${firstDataRow}<>$${baselinePlannedImpressionsColumn}${firstDataRow}),OR($M${firstDataRow}<>$D${firstDataRow},$N${firstDataRow}<>$E${firstDataRow}))`,
+                userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR(${absoluteCell("Planned Spend", firstDataRow)}<>${absoluteCell("Baseline Planned Spend", firstDataRow)},${absoluteCell("Planned Impressions", firstDataRow)}<>${absoluteCell("Baseline Planned Impressions", firstDataRow)}),OR(${absoluteCell("Delivery Override Start Date", firstDataRow)}<>${absoluteCell("Flight Start Date", firstDataRow)},${absoluteCell("Delivery Override End Date", firstDataRow)}<>${absoluteCell("Flight End Date", firstDataRow)}))`,
               }],
             },
             format: {

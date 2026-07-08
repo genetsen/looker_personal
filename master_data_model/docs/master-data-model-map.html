@@ -984,6 +984,7 @@
         callouts: { truth: "logic", writes: false },
         notes: [
           "Sets row_data_source_primary plus final_spend, final_impressions, final_clicks, final_video_plays, and final_video_comps.",
+          "For TV, Print, OOH, and dOOH package rows, planned cost and impressions can fill final_spend/final_impressions only when delivered metrics are unavailable and planned impressions are available.",
           "Exposes qa_data_source for the actual driving table and qa_data_source_refresh_at for the operational refresh included in the model.",
           "Keeps qa_data_source_content_modified_at separate for reliable FPD and Manual Data Editor source-content timestamps."
         ],
@@ -1129,7 +1130,8 @@
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
-          "Synthetic keys keep TV rows usable in the shared model."
+          "Synthetic keys keep TV rows usable in the shared model.",
+          "TV net cost and impressions already populate the planned daily fields, so missing delivered TV metrics fall back to the same planned daily values."
         ],
         sources: [
           ["BigQuery: TV combined table", bq("landing", "tv_combined_tbl")]
@@ -1201,7 +1203,7 @@
         notes: [
           "Calculates package planned, actual, consolidated FPD, and spend-over-plan QA fields.",
           "Runs in the same master SQL script after manual_existing_rows and manual_only_rows.",
-          "Uses final fields after normal source precedence and valid manual replacements are applied.",
+          "Uses final fields after normal source precedence, valid manual replacements, and the TV/Print/OOH/dOOH planned-metric fallback are applied.",
           "Calculates qa_pkg_primary_data_source from the sources that actually populate final metrics, returning multiple when contributors differ across metrics or dates.",
           "Combines every package source into qa_pkg_data_sources_available, including planning and pacing sources that do not populate final actuals.",
           "Carries qa_data_source, qa_data_source_refresh_at, and qa_data_source_content_modified_at into the package/date evidence output and reporting mart."

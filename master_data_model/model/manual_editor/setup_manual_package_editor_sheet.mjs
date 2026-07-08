@@ -7,6 +7,11 @@ const SPREADSHEET_TITLE = process.env.MASTER_MANUAL_EDIT_SPREADSHEET_TITLE || "M
 const TAB_NAME = process.env.MASTER_MANUAL_EDIT_TAB || "Package Editor";
 const INSTRUCTIONS_TAB_NAME = process.env.MASTER_MANUAL_EDIT_INSTRUCTIONS_TAB || "Instructions";
 const AUTH_ACCOUNT = process.env.MASTER_MANUAL_EDIT_AUTH_EMAIL || "gene.tsenter@giantspoon.com";
+const AUTH_CONFIG_BY_ACCOUNT = {
+  "gene.tsenter@giantspoon.com": "/Users/eugenetsenter/.config/gcloud-giantspoon",
+  "gene.tsenter@old.giantspoon.com": "/Users/eugenetsenter/.config/gcloud-old-giantspoon",
+};
+const AUTH_CONFIG = process.env.CLOUDSDK_CONFIG || process.env.MASTER_MANUAL_EDIT_GCLOUD_CONFIG || AUTH_CONFIG_BY_ACCOUNT[AUTH_ACCOUNT];
 const ALLOW_FORMAT_REBUILD = process.env.MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD === "YES";
 
 if (!SHEET_ID) {
@@ -152,15 +157,6 @@ const manualMarkerPairs = markerNames.map((name) => ({
   editedIndex: colIndex[name === "Delivery Start Date" ? "Delivery Override Start Date" : name === "Delivery End Date" ? "Delivery Override End Date" : name],
   markerIndex: colIndex[`Manual Marker ${name}`],
 })).filter((pair) => pair.editedIndex !== undefined && pair.markerIndex !== undefined);
-const slicers = [
-  { title: "Advertiser", columnIndex: colIndex["Advertiser"], offsetXPixels: 0, widthPixels: 210, heightPixels: 58 },
-  { title: "Package ID", columnIndex: colIndex["Package ID"], offsetXPixels: 220, widthPixels: 210, heightPixels: 58 },
-  { title: "Initiative", columnIndex: colIndex["Initiative"], offsetXPixels: 440, widthPixels: 210, heightPixels: 58 },
-  { title: "Channel", columnIndex: colIndex["Channel"], offsetXPixels: 660, widthPixels: 210, heightPixels: 58 },
-  { title: "Campaign", columnIndex: colIndex["Campaign"], offsetXPixels: 880, widthPixels: 210, heightPixels: 58 },
-  { title: "Site", columnIndex: colIndex["Site"], offsetXPixels: 1100, widthPixels: 210, heightPixels: 58 },
-  { title: "Edited Rows", columnIndex: colIndex["Edited Row Filter"], offsetXPixels: 1320, widthPixels: 210, heightPixels: 58 },
-];
 const widths = [
   105, 135, 720, 112, 112, 125, 140, 105, 120, 90,
   110, 130, 132, 132, 140, 110, 105, 150, 115, 90,
@@ -187,11 +183,32 @@ function columnLetter(index) {
   return out;
 }
 
+function absoluteCell(headerName, sheetRowNumber) {
+  const index = colIndex[headerName];
+  if (index === undefined) {
+    throw new Error(`Missing required header for formula: ${headerName}`);
+  }
+  return `$${columnLetter(index)}${sheetRowNumber}`;
+}
+
+function rowRange(startHeaderName, endHeaderName, sheetRowNumber) {
+  return `${absoluteCell(startHeaderName, sheetRowNumber)}:${absoluteCell(endHeaderName, sheetRowNumber)}`;
+}
+
 function token() {
+  if (!AUTH_CONFIG) {
+    throw new Error(`No account-specific Google auth config is defined for ${AUTH_ACCOUNT}.`);
+  }
   return execFileSync(
     "gcloud",
-    ["auth", "print-access-token", "--account", AUTH_ACCOUNT],
-    { encoding: "utf8" },
+    ["auth", "application-default", "print-access-token"],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CLOUDSDK_CONFIG: AUTH_CONFIG,
+      },
+    },
   ).trim();
 }
 
@@ -276,7 +293,7 @@ async function ensureInstructionsSheet(spreadsheet) {
 
 async function writeInstructions() {
   const values = Array.from({ length: 3 }, () => Array(visibleColumnCount).fill(""));
-  values[1][0] = "Use slicers above to find the package, then edit the visible value that needs correction.";
+  values[1][0] = "Use the column header filters to find the package, then edit the visible value that needs correction.";
   values[1][3] = "Request refresh";
   values[1][4] = false;
   values[1][5] = "Notification only. Check this when edits are ready; Gene still needs to review or run the loader before dashboards update.";
@@ -491,39 +508,6 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       },
     },
   );
-
-  for (const slicer of slicers) {
-    requests.push({
-      addSlicer: {
-        slicer: {
-          spec: {
-            dataRange: gridRange(sheetId, headerRowIndex, rowCount, 0, colCount),
-            columnIndex: slicer.columnIndex,
-            title: slicer.title,
-            textFormat: {
-              foregroundColor: color(1, 1, 1),
-              bold: true,
-            },
-            backgroundColor: color(0.09, 0.20, 0.34),
-            horizontalAlignment: "LEFT",
-          },
-          position: {
-            overlayPosition: {
-              anchorCell: {
-                sheetId,
-                rowIndex: 0,
-                columnIndex: 0,
-              },
-              offsetXPixels: slicer.offsetXPixels,
-              offsetYPixels: 0,
-              widthPixels: slicer.widthPixels,
-              heightPixels: slicer.heightPixels,
-            },
-          },
-        },
-      },
-    });
-  }
 
   for (let index = 0; index < colCount; index += 1) {
     requests.push({
@@ -815,10 +799,12 @@ function buildRequests(sheet, existingDataEndRowIndex) {
   }
 
   const firstBlankRow = existingDataEndRowIndex;
-  const firstBlankSheetRow = firstBlankRow + 1;
   const firstDataSheetRow = dataStartRowIndex + 1;
   const validationStatusColumn = columnLetter(colIndex["Validation Status"]);
   const baselineFlightStartColumn = columnLetter(colIndex["Baseline Flight Start Date"]);
+  const visibleRowRange = rowRange("Advertiser", "Validation Reason", firstDataSheetRow);
+  const metricRowRange = rowRange("Planned Spend", "Video Completions", firstDataSheetRow);
+  const newRowStartedFormula = `AND($${baselineFlightStartColumn}${firstDataSheetRow}="",COUNTA(${visibleRowRange})>0)`;
   requests.push({
     addConditionalFormatRule: {
       rule: {
@@ -828,7 +814,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
             type: "CUSTOM_FORMULA",
             values: [
               {
-                userEnteredValue: `=OR($${validationStatusColumn}${firstDataSheetRow}="blocked",AND($A${firstDataSheetRow}<>"",$${baselineFlightStartColumn}${firstDataSheetRow}="",COUNTA($A${firstDataSheetRow}:$W${firstDataSheetRow})>0,OR($A${firstDataSheetRow}="",$B${firstDataSheetRow}="",$C${firstDataSheetRow}="",$M${firstDataSheetRow}="",$N${firstDataSheetRow}="",COUNTA($F${firstDataSheetRow}:$L${firstDataSheetRow})=0,$O${firstDataSheetRow}="",$P${firstDataSheetRow}="",$Q${firstDataSheetRow}="",$R${firstDataSheetRow}="",$V${firstDataSheetRow}="",$W${firstDataSheetRow}="",$M${firstDataSheetRow}>$N${firstDataSheetRow},AND($D${firstDataSheetRow}<>"",$E${firstDataSheetRow}<>"",$D${firstDataSheetRow}>$E${firstDataSheetRow}))))`,
+                userEnteredValue: `=$${validationStatusColumn}${firstDataSheetRow}="blocked"`,
               },
             ],
           },
@@ -844,63 +830,102 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       index: 0,
     },
   });
-  if (firstBlankRow < rowCount) {
-    requests.push(
-      {
-        addConditionalFormatRule: {
-          rule: {
-            ranges: [gridRange(sheetId, firstBlankRow, rowCount, 0, visibleColumnCount)],
-            booleanRule: {
-              condition: {
-                type: "CUSTOM_FORMULA",
-                values: [
-                  {
-                    userEnteredValue: `=AND(COUNTA($A${firstBlankSheetRow}:$W${firstBlankSheetRow})>0,OR($A${firstBlankSheetRow}="",$B${firstBlankSheetRow}="",$C${firstBlankSheetRow}="",$M${firstBlankSheetRow}="",$N${firstBlankSheetRow}="",COUNTA($F${firstBlankSheetRow}:$L${firstBlankSheetRow})=0,$O${firstBlankSheetRow}="",$P${firstBlankSheetRow}="",$Q${firstBlankSheetRow}="",$R${firstBlankSheetRow}="",$V${firstBlankSheetRow}="",$W${firstBlankSheetRow}=""))`,
-                  },
-                ],
-              },
-              format: {
-                backgroundColor: color(1.00, 0.86, 0.84),
-                textFormat: {
-                  foregroundColor: color(0.43, 0.06, 0.04),
-                  bold: true,
-                },
-              },
+  const requiredHeaders = [
+    "Advertiser",
+    "Package ID",
+    "Site",
+    "Package Friendly Name",
+    "Flight Start Date",
+    "Flight End Date",
+    "Delivery Override Start Date",
+    "Delivery Override End Date",
+    "Package Type",
+    "Channel",
+    "Campaign",
+    "Package Name",
+    "GS Channel",
+  ];
+
+  for (const headerName of requiredHeaders) {
+    requests.push({
+      addConditionalFormatRule: {
+        rule: {
+          ranges: [gridRange(sheetId, dataStartRowIndex, rowCount, colIndex[headerName], colIndex[headerName] + 1)],
+          booleanRule: {
+            condition: {
+              type: "CUSTOM_FORMULA",
+              values: [{ userEnteredValue: `=AND(${newRowStartedFormula},${absoluteCell(headerName, firstDataSheetRow)}="")` }],
+            },
+            format: {
+              backgroundColor: color(1.00, 0.74, 0.70),
+              textFormat: { foregroundColor: color(0.43, 0.06, 0.04), bold: true },
             },
           },
-          index: 0,
         },
+        index: 0,
       },
-      {
-        addConditionalFormatRule: {
-          rule: {
-            ranges: [gridRange(sheetId, firstBlankRow, rowCount, colIndex["Delivery Override Start Date"], colIndex["Delivery Override End Date"] + 1)],
-            booleanRule: {
-              condition: {
-                type: "CUSTOM_FORMULA",
-                values: [
-                  { userEnteredValue: `=AND($M${firstBlankSheetRow}<>"",$N${firstBlankSheetRow}<>"",$M${firstBlankSheetRow}>$N${firstBlankSheetRow})` },
-                ],
-              },
-              format: {
-                backgroundColor: color(1.00, 0.74, 0.70),
-                textFormat: {
-                  foregroundColor: color(0.43, 0.06, 0.04),
-                  bold: true,
-                },
-              },
-            },
-          },
-          index: 0,
-        },
-      },
-    );
+    });
   }
+
+  requests.push({
+    addConditionalFormatRule: {
+      rule: {
+        ranges: [gridRange(sheetId, dataStartRowIndex, rowCount, colIndex["Planned Spend"], colIndex["Video Completions"] + 1)],
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [{ userEnteredValue: `=AND(${newRowStartedFormula},COUNTA(${metricRowRange})=0)` }],
+          },
+          format: {
+            backgroundColor: color(1.00, 0.74, 0.70),
+            textFormat: { foregroundColor: color(0.43, 0.06, 0.04), bold: true },
+          },
+        },
+      },
+      index: 0,
+    },
+  });
+
+  requests.push({
+    addConditionalFormatRule: {
+      rule: {
+        ranges: [gridRange(sheetId, dataStartRowIndex, rowCount, colIndex["Flight Start Date"], colIndex["Flight End Date"] + 1)],
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [{ userEnteredValue: `=AND(${absoluteCell("Flight Start Date", firstDataSheetRow)}<>"",${absoluteCell("Flight End Date", firstDataSheetRow)}<>"",${absoluteCell("Flight Start Date", firstDataSheetRow)}>${absoluteCell("Flight End Date", firstDataSheetRow)})` }],
+          },
+          format: {
+            backgroundColor: color(1.00, 0.74, 0.70),
+            textFormat: { foregroundColor: color(0.43, 0.06, 0.04), bold: true },
+          },
+        },
+      },
+      index: 0,
+    },
+  });
+
+  requests.push({
+    addConditionalFormatRule: {
+      rule: {
+        ranges: [gridRange(sheetId, dataStartRowIndex, rowCount, colIndex["Delivery Override Start Date"], colIndex["Delivery Override End Date"] + 1)],
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [{ userEnteredValue: `=AND(${absoluteCell("Delivery Override Start Date", firstDataSheetRow)}<>"",${absoluteCell("Delivery Override End Date", firstDataSheetRow)}<>"",${absoluteCell("Delivery Override Start Date", firstDataSheetRow)}>${absoluteCell("Delivery Override End Date", firstDataSheetRow)})` }],
+          },
+          format: {
+            backgroundColor: color(1.00, 0.74, 0.70),
+            textFormat: { foregroundColor: color(0.43, 0.06, 0.04), bold: true },
+          },
+        },
+      },
+      index: 0,
+    },
+  });
 
   if (existingDataEndRowIndex > dataStartRowIndex) {
     const firstDataRow = dataStartRowIndex + 1;
-    const baselinePlannedSpendColumn = columnLetter(colIndex["Baseline Planned Spend"]);
-    const baselinePlannedImpressionsColumn = columnLetter(colIndex["Baseline Planned Impressions"]);
     const plannedSpendMarkerColumn = columnLetter(colIndex["Manual Marker Planned Spend"]);
     const plannedImpressionsMarkerColumn = columnLetter(colIndex["Manual Marker Planned Impressions"]);
     requests.push({
@@ -912,7 +937,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
               type: "CUSTOM_FORMULA",
               values: [
                 {
-                  userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR($F${firstDataRow}<>$${baselinePlannedSpendColumn}${firstDataRow},$G${firstDataRow}<>$${baselinePlannedImpressionsColumn}${firstDataRow}),OR($M${firstDataRow}<>$D${firstDataRow},$N${firstDataRow}<>$E${firstDataRow}))`,
+                  userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR(${absoluteCell("Planned Spend", firstDataRow)}<>${absoluteCell("Baseline Planned Spend", firstDataRow)},${absoluteCell("Planned Impressions", firstDataRow)}<>${absoluteCell("Baseline Planned Impressions", firstDataRow)}),OR(${absoluteCell("Delivery Override Start Date", firstDataRow)}<>${absoluteCell("Flight Start Date", firstDataRow)},${absoluteCell("Delivery Override End Date", firstDataRow)}<>${absoluteCell("Flight End Date", firstDataRow)}))`,
                 },
               ],
             },
@@ -1124,7 +1149,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       repeatCell: {
         range: gridRange(sheetId, 0, 3, 0, visibleColumnCount),
         cell: {
-          note: "Use the slicers for Advertiser, Package ID, Initiative, Channel, Campaign, and Site to find the package row. Existing Package ID and Site values are locked; Package Friendly Name and metadata fields are editable. Planned values apply to the package. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red rows must be fixed before load.",
+          note: "Use the column header filters for Advertiser, Package ID, Initiative, Channel, Campaign, and Site to find the package row. Existing Package ID and Site values are locked; Package Friendly Name and metadata fields are editable. Planned values apply to the package. Delivered metric edits apply only to Delivery Override Start/End. Changed cells turn orange, live manual cells turn purple, and red cells must be fixed before load.",
         },
         fields: "note",
       },
@@ -1140,7 +1165,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
     },
     {
       repeatCell: {
-        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, 0, 1),
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Package ID"], colIndex["Package ID"] + 1),
         cell: {
           note: "Existing package: keep this ID. New package: enter a new unique package ID and complete the required metadata columns at the far right before the loader runs.",
         },
@@ -1199,6 +1224,18 @@ function buildRequests(sheet, existingDataEndRowIndex) {
           note: "Metadata fields. Keep existing values unless you are adding a new package or correcting package metadata. New manual packages need Advertiser, Package Type, Channel, Campaign, Package Name, and GS Channel completed. Hidden columns to the right are internal comparison and manual-marker fields used only for formatting.",
         },
         fields: "note",
+      },
+    },
+    {
+      repeatCell: {
+        range: gridRange(sheetId, headerRowIndex, headerRowIndex + 1, colIndex["Advertiser"], colIndex["Advertiser"] + 1),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: color(0, 0, 0),
+            textFormat: { foregroundColor: color(1, 1, 1), bold: true },
+          },
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.foregroundColor,userEnteredFormat.textFormat.bold",
       },
     },
     {
@@ -1291,7 +1328,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       addProtectedRange: {
         protectedRange: {
           range: gridRange(sheetId, 0, 1, 0, visibleColumnCount),
-          description: "Manual editor UX: lock slicer help row",
+          description: "Manual editor UX: lock filter help row",
           warningOnly: false,
         },
       },
@@ -1300,7 +1337,7 @@ function buildRequests(sheet, existingDataEndRowIndex) {
       addProtectedRange: {
         protectedRange: {
           range: gridRange(sheetId, 1, 2, 0, 3),
-          description: "Manual editor UX: lock slicer instructions",
+          description: "Manual editor UX: lock filter instructions",
           warningOnly: false,
         },
       },
@@ -1735,7 +1772,7 @@ async function writeInstructionsTab() {
     ["Manual Package Editor - How to Use", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["Quick workflow", "", "", "", "", "", "", ""],
-    ["1. Open the editor", "", "Go to the Package Editor tab and use the slicers at the top to narrow by Advertiser, Package ID, Initiative, Channel, Campaign, and Site. You are filtering the real editable rows, not a copy.", "", "", "", "", ""],
+    ["1. Open the editor", "", "Go to the Package Editor tab and use the column header filters to narrow by Advertiser, Package ID, Initiative, Channel, Campaign, and Site. You are filtering the real editable rows, not a copy.", "", "", "", "", ""],
     ["2. Find the package", "", "Use Package ID, Site, and Package Friendly Name first. Campaign and metadata fields are visible at the far right if you need more context. Package ID and hidden internal fields are locked so row identity and loader helpers do not get changed by accident.", "", "", "", "", ""],
     ["3. Edit the value", "", "Edit the visible field that needs to change. Flight Start/End and metadata corrections apply to the whole package. Delivered metric edits use Delivery Override Start/End. Planned Spend and Planned Impressions are full-flight only.", "", "", "", "", ""],
     ["4. Check markers", "", "Orange means the value is different from the current dashboard value. Purple means the value is already coming from a validated manual update. Red means the row needs fixing before it can load.", "", "", "", "", ""],
@@ -1773,12 +1810,12 @@ async function writeInstructionsTab() {
     ["Yellow cells", "", "Actual delivery values and dates. These can be edited for the date range you are correcting.", "", "", "", "", ""],
     ["Green cells", "", "Planned flight totals. Edit only for full-flight planned corrections.", "", "", "", "", ""],
     ["Gray cells", "", "Package metadata. Edit these when a package-level metadata correction is needed, or fill them on new manual-only rows.", "", "", "", "", ""],
-    ["Orange / purple / red cells", "", "Orange means an edited value differs from the current dashboard value. Purple means a value is already using a validated manual update. Red means a started new row is missing required fields, has invalid dates, or needs fixing before it can load.", "", "", "", "", ""],
+    ["Orange / purple / red cells", "", "Orange means an edited value differs from the current dashboard value. Purple means a value is already using a validated manual update. Red marks the specific started-row cells that are missing required values, have invalid dates, or need fixing before the row can load.", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["What not to edit", "", "", "", "", "", "", ""],
     ["Internal columns", "", "Baseline comparison columns are hidden because they are only used by the loader to detect changed cells.", "", "", "", "", ""],
     ["Existing metadata", "", "Metadata edits are allowed, but they apply to the full package. If you only mean to correct one week of delivery, change the delivery dates and metric cells instead.", "", "", "", "", ""],
-    ["Filtered-out rows", "", "If a row disappears after using slicers, clear or adjust the slicer selections. The row has not been deleted.", "", "", "", "", ""],
+    ["Filtered-out rows", "", "If a row disappears after using filters, clear or adjust the column header filter selections. The row has not been deleted.", "", "", "", "", ""],
   ];
 
   await sheetsFetch(`/values/${encodeURIComponent(`${INSTRUCTIONS_TAB_NAME}!A1:H80`)}:clear`, {

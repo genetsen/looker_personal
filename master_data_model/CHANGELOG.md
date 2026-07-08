@@ -2,12 +2,21 @@
 
 ## 2026-07-07
 
+- **FIXED** - Added a planned-metric fallback for TV, Print, OOH, and dOOH package rows so package/date outputs can use planned cost and impressions when delivered metrics are unavailable and planned impressions exist, without replacing real delivered values.
+- **FIXED** - Stopped Manual Data Editor refreshes from clearing user-owned manual values when refreshed baselines match the manual replacement, including planned-only rows, manual-only rows, stale no-edit source rows, and date-serial readbacks that previously could turn modern flight dates into 1950s dates.
+- **FIXED** - Hardened the Manual Data Editor refresh against feedback-loop deletion by excluding manual-applied rows from lookup baselines, publishing valid user-owned rows with metric, metadata, or flight-date evidence, reading editor cells as text, writing editor dates back as ISO text, falling back from manual-only delivery dates to missing package flight dates, and replacing the duplicate root loader implementation with a launcher to the canonical model/manual_editor loader.
+- **FIXED** - Excluded `1000heads` campaigns from the shared-social source path before those rows can enter the master model, with the Manual Data Editor loader also dropping stale manual rows tied to those excluded social packages.
+- **CHANGED** - Updated the Manual Data Editor sheet workflow to use standard column header filters, show Advertiser as the first visible column, and highlight the specific required cells that need attention on started new rows.
 - **CHANGED** - Clarified that current master-model work should start in the organized `model/` workspace, keeping legacy root-level SQL and docs as compatibility or history unless explicitly requested.
-- **CHANGED** - Kept Manual Data Editor script authentication pointed at the newer Google account and added a `gcloud` token bridge so non-interactive refreshes do not fall back to the legacy R OAuth cache.
+- **CHANGED** - Kept Manual Data Editor script authentication pointed at the newer Google account by using cached R OAuth for Sheets/Drive and the active `gcloud` token for BigQuery, so non-interactive refreshes do not fall back to the legacy account.
 - **CHANGED** - Pointed the Manual Data Editor loader and repair helpers at the new Google Drive workbook so normal refreshes no longer default to the legacy copy.
+- **FIXED** - Added a Manual Data Editor loader stop condition so manual-only draft packages cannot be silently rewritten as inactive blank rows.
+- **FIXED** - Reduced false Manual Data Editor blockers by leaving unknown social flight dates blank and by stopping prior blocked rows without manual evidence from reactivating themselves as edits.
+- **FIXED** - Updated README_v2 with the deployed v3 digital conversion outcome path, source inventory row, field-family notes, and conversion-row warning.
 
 ### Pending Next Actions
 
+- **Since Jul 7** - Resolve the separate v3 visible-key duplicate QA failure found after the `1000heads` exclusion refresh
 - **Since Jun 17** - Define who must sign off and what proof they need before replacing the production model - BLOCKER
 - **Since Jun 16** - Build the redesigned reporting tables described by the plan
 - **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
