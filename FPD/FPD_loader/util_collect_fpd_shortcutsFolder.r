@@ -769,20 +769,28 @@ ensure_prod_schema_matches <- function(data_upload, project_id, dataset_id, prod
     return(prod_field_types)
   }
 
-  ambiguous_cols <- new_cols[vapply(
+  blank_only_new_cols <- new_cols[vapply(
     new_cols,
-    function(nm) all(is.na(data_upload[[nm]])),
+    function(nm) {
+      values <- data_upload[[nm]]
+      all(is.na(values) | trimws(as.character(values)) == "")
+    },
     logical(1)
   )]
 
-  if (length(ambiguous_cols) > 0) {
-    stop(
+  if (length(blank_only_new_cols) > 0) {
+    cat(
       paste0(
-        "New BigQuery columns were detected, but their type is ambiguous because every value is blank/NA in this run: ",
-        paste(ambiguous_cols, collapse = ", "),
-        ". Re-run after those columns contain real values or do a full rebuild after choosing the intended type."
+        "  ⚠ Skipping new blank-only column(s) for prod schema: ",
+        paste(blank_only_new_cols, collapse = ", "),
+        ". These columns were present in staging but had no values in this run.\n"
       )
     )
+    new_cols <- setdiff(new_cols, blank_only_new_cols)
+  }
+
+  if (length(new_cols) == 0) {
+    return(prod_field_types)
   }
 
   for (nm in new_cols) {

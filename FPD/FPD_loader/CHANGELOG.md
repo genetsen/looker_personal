@@ -1,10 +1,14 @@
-## 2026-06-24
+## 2026-07-09
 
-- **FIXED** - Prevented mixed text and date values in partner placement columns from stopping the multi-sheet combine step.
+- **FIXED** - Let the main loader continue when a matched sheet adds a brand-new column that is completely blank, while still avoiding a guessed production BigQuery type; a full live run completed the production sync and confirmed NATVLY rows reached the output.
 
 ### Pending Next Actions
 
-- **Since Jun 24** - Run the full loader and verify the affected NATVLY sheet reaches the final output - RECOMMENDED
+- None currently tracked.
+
+## 2026-06-24
+
+- **FIXED** - Prevented mixed text and date values in partner placement columns from stopping the multi-sheet combine step.
 
 ## 2026-05-08
 

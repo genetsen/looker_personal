@@ -57,7 +57,7 @@ Use this quick checklist before and after every run:
 ## What Changed / How To Undo
 
 - What changed:
-  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run, and character coercion for `partner_placement_name` so mixed text/date sheet cells can be combined safely.
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns and skipping blank-only accidental columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run, and character coercion for `partner_placement_name` so mixed text/date sheet cells can be combined safely.
 - How to undo:
   if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
 
@@ -330,11 +330,11 @@ This is useful for:
 |---|---|
 | Project | `looker-studio-pro-452620` |
 | Dataset | `landing` |
-| Table | `fpd_data_ranged_shortcutsFolder` |
+| Table | [FPD ranged shortcut-folder data](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=fpd_data_ranged_shortcutsFolder&page=table) |
 | Write mode | Staged partial sync (delete + reinsert only rows for sheets in the current run) |
 
 This script uploads to a staging table first, checks the result, adds any missing BigQuery columns when the new column type is clear, and then replaces only the destination rows for the sheets included in that run.
-If a brand-new column is completely blank in the current run, the script stops before changing production because it cannot infer a safe BigQuery type from empty data alone.
+If a brand-new column is completely blank in the current run, the script skips that column for production instead of guessing a BigQuery type from empty data alone. This commonly protects the run from accidental blank spreadsheet headers such as `#REF!`.
 The optional downstream `source(".../util_process_updated_fpd.r")` call is currently commented out in this folder's script.
 
 ---
@@ -488,6 +488,14 @@ sum(phase7$spend, na.rm = TRUE)
 - Authentication expired — run `bigrquery::bq_auth()` to refresh
 - Schema mismatch — the table schema changed (new columns or type changes). The `WRITE_TRUNCATE` mode recreates the table, but the preceding `bq_table_delete` might fail on permissions
 - Network timeout — retry the run
+
+### Blank New Column Is Skipped During BigQuery Sync
+
+**Symptom**: The upload log says a new blank-only column was skipped for the production schema.
+
+**Cause**: A matched partner sheet introduced a new header, but every value under that header was blank in the current run. Broken spreadsheet formula headers such as `#REF!` can create this situation.
+
+**Fix**: Check `output/phase4_normalization_mapping.csv` for the raw header that created the skipped column, then fix the partner sheet if the column should be real. If the column was accidental and has no data, no production action is needed.
 
 ## Possible Improvements
 
