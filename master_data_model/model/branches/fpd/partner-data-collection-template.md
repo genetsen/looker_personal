@@ -6,6 +6,18 @@ Current source workbook: [Partner Data Collection template](https://docs.google.
 
 Historical baseline: the workbook shape, formulas, and experiment findings below came from a July 8, 2026 live inspection of the earlier [2025 Template v2 Partner Data Collection](https://docs.google.com/spreadsheets/d/15zQ_IZx0kFpAffCFpp2d8ddDfjRf-kjnoSQXHxSu5eA/edit?gid=762675964#gid=762675964). Treat those details as migration reference material until the current template is accessible and checked.
 
+## Apps Script Migration Status — July 10, 2026
+
+The current migration has three verified Apps Script blockers:
+
+| Finding | Evidence | What it means for recreation |
+|---|---|---|
+| The duplicator library was run through the wrong entrypoint. | Four July 9 editor executions of `duplicateAndSetup` failed within 0.6 seconds. That function requires a spreadsheet argument and is designed to be called from a sheet-bound wrapper with the active spreadsheet. | Do not run the library function directly from the Apps Script editor. Recreate the sheet-bound wrapper/button so it calls the library with the active spreadsheet. |
+| The duplicator library still uses the archived v2 workbook as its central mapping and logging source. | The library configuration points its master-spreadsheet reference at the historical template above. | Before using the migrated v3 template, update the library configuration to the current template or deliberately choose a separate post-migration master workbook. |
+| The inspected `publish_fpd_template` and `publish_fpd_template_fpdLib` projects are standalone projects. | Their Apps Script metadata has no spreadsheet parent, and no discovered project exposed a `Process FPD` function. | The current v3 workbook's bound wrapper and button assignment still need to be recreated or located; do not treat either standalone project as proof that the v3 sheet is wired up. |
+
+The Google Apps Script API was enabled on July 10 solely to inspect source and execution history. No workbook cells, Apps Script source, triggers, or deployed behavior were changed during this QA.
+
 ## What This Template Does
 
 The workbook is a reusable request builder. Giant Spoon configures the request on `Config`, the workbook generates a partner-facing request list and data-entry table on `data`, and the partner selects the requested package/placement rows before filling in delivery metrics such as spend, impressions, clicks, sends, opens, views, or completions.
