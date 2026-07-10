@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-10
+
+- **CHANGED** - Documented `master_stg.data_model_v3` as the current production master-model table. Existing package/date models, marts, and v2 outputs remain live compatibility surfaces pending a later verified migration and cleanup.
+
 ## 2026-07-08
 
 - **ADDED** - Added Manual Data Editor benchmark metadata so users can edit Benchmark KPI as text and Benchmark Value as a number, with manual values feeding the master-model benchmark reporting fields before FPD benchmark fallbacks.

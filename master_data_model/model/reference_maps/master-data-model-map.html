@@ -1290,13 +1290,13 @@
       {
         id: "v3-lowest-grain-output",
         groupId: "master-output",
-        title: "V3 Lowest-Grain Table",
-        summary: "Clustered sibling table for one-table lowest-available-grain evaluation.",
+        title: "V3 Current Production Master Table",
+        summary: "Current production table for one-table lowest-available-grain master-model analysis.",
         truth: "Table: master_stg.data_model_v3.",
         writes: "Stored table. Rebuild with create_master_stg_data_model_v3.sql or the universal runner step Master Data Model Clustered Advertiser Refresh after stable master inputs are current.",
-        freshness: "Current as of the last v3 builder run. The universal runner refreshes it immediately after the clustered advertiser QA table; production data_model is unchanged.",
+        freshness: "Current as of the last v3 builder run. The universal runner refreshes it immediately after the clustered advertiser QA table; the package/date data_model base remains live for v3 context and compatibility consumers pending later cleanup.",
         risk: "high",
-        reviewReason: "Evaluation table: natural source rows, planned carrier rows, and manual override rows must keep package/date rollups correct without requiring a user-selected grain.",
+        reviewReason: "Production lower-grain table: natural source rows, planned carrier rows, and manual override rows must keep package/date rollups correct without requiring a user-selected grain.",
         kind: "output",
         callouts: { truth: "live", writes: true },
         notes: [
@@ -1311,7 +1311,7 @@
         ],
         sources: [
           ["BigQuery: master_stg.data_model_v3", bq("master_stg", "data_model_v3")],
-          ["V3 builder SQL", "../create_master_stg_data_model_v3.sql"],
+          ["V3 builder SQL", "../final_model/create_master_stg_data_model_v3.sql"],
           ["Universal runner refresh wrapper", "file:///Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh"],
           ["Stable master model", bq("master_stg", "data_model")]
         ]

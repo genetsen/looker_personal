@@ -2,7 +2,7 @@
 
 Complete documentation of the master data model pipeline that unifies planning, digital delivery, partner-reported delivery, digital conversion outcomes, social, TV, Amazon Ads, and manual package edits into one cross-client evidence layer.
 
-The main reporting endpoint is [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table).
+The current production endpoint is [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table). The older package/date evidence and mart outputs remain live compatibility surfaces until their later migration and cleanup.
 
 This v2 README follows the MFT pipeline README format: start with the shape of the pipeline, then explain each source, model layer, operational workflow, current state, usage path, maintenance habit, and troubleshooting route.
 
@@ -40,11 +40,11 @@ This v2 README follows the MFT pipeline README format: start with the shape of t
 ┌────────────────────────────────────────────────────────────────────────────────────┐
 │                               REPORTING OUTPUTS                                    │
 ├────────────────────────────────────────────────────────────────────────────────────┤
-│ master_stg.data_model: evidence layer                                              │
-│ master_stg.data_model_mart: reporting-ready layer                                  │
+│ master_stg.data_model_v3: current production lowest-grain master table             │
+│ master_stg.data_model: package/date compatibility base                             │
+│ master_stg.data_model_mart: package/date compatibility reporting mart              │
 │ master_stg.data_model_v2: compatibility wrapper                                    │
 │ master_stg.data_model_delivery_detail_v2: lower-grain creative/detail sibling      │
-│ master_stg.data_model_v3: lowest-available-grain evaluation table                  │
 └──────────────────────────────────────┬─────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -84,11 +84,11 @@ flowchart TD
     end
 
     subgraph O["3) Reporting Outputs"]
-        DATA_MODEL["master_stg.data_model<br/>main evidence layer"]
-        MART["master_stg.data_model_mart<br/>reporting-ready layer"]
+        V3["master_stg.data_model_v3<br/>current production master table"]
+        DATA_MODEL["master_stg.data_model<br/>package/date compatibility base"]
+        MART["master_stg.data_model_mart<br/>compatibility reporting mart"]
         V2["master_stg.data_model_v2<br/>compatibility wrapper"]
         DETAIL["master_stg.data_model_delivery_detail_v2<br/>creative/detail sibling"]
-        V3["master_stg.data_model_v3<br/>lowest-grain evaluation table"]
         CLUSTER["master_stg.data_model_clustered_by_advertiser_qa<br/>stored advertiser-filter QA table"]
     end
 
@@ -114,7 +114,7 @@ flowchart TD
     BRANCHES --> FINAL
     FINAL --> PRECEDENCE
     PRECEDENCE --> QA
-    QA --> DATA_MODEL
+    QA --> V3
     DATA_MODEL --> MART
     DATA_MODEL --> V2
     DATA_MODEL --> DETAIL
@@ -213,7 +213,7 @@ Start in [model workspace](/Users/eugenetsenter/Looker_clonedRepo/looker_persona
 
 **Local SQL**: [Final model v3 SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)
 
-**Output**: [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table)
+**Output**: [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table)
 
 **Main responsibilities**:
 
@@ -229,12 +229,12 @@ Start in [model workspace](/Users/eugenetsenter/Looker_clonedRepo/looker_persona
 
 | Output | Purpose | Notes |
 |---|---|---|
-| [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Main package/date evidence layer. | Use this when you need source visibility and modeling evidence. |
-| [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_mart&page=table) | Reporting-ready layer over the evidence model. | Applies reporting-only filters and recalculates package rollups after filtering. |
+| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | **Current production master model** at the lowest available source grain. | Default source for new master-model analysis. Use `qa_v3_metric_grain`, row type, and `doNotSum` context fields when aggregating. |
+| [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Package/date compatibility base. | Still live because v3 reads its stable context; do not treat it as the default production model. |
+| [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_mart&page=table) | Package/date compatibility reporting mart. | Remains live for existing consumers pending a separately verified v3 reporting migration. |
 | [Compatibility v2 view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v2&page=table) | Compatibility wrapper over the main evidence model. | Keeps existing v2 consumers alive without making v2 the source of truth. |
 | [Delivery detail v2](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_delivery_detail_v2&page=table) | Lower-grain creative/detail sibling. | Preserves DCM and original FPD creative/detail structure. |
 | [Detail/master sample](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_detail_master_v2_sample&page=table) | One-table comparison sample. | Must be filtered by row level or metric grain before summing metrics. |
-| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Lowest-available-grain evaluation table. | Keeps production `data_model` untouched while testing lower-grain reporting behavior. Adds digital conversion outcome rows at package/date/site/creative/activity grain with delivery metrics intentionally blank. |
 | [Clustered advertiser QA table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_clustered_by_advertiser_qa&page=table) | Stored QA/support table clustered by advertiser. | Refreshed with the same runner path as v3 support work. |
 
 ---
@@ -366,8 +366,8 @@ If a conversion date exists after the package's delivery dates, v3 keeps the con
 |---|---|
 | Local workspace | [model workspace](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/) |
 | Main SQL builder | [Final model v3 SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql) |
-| Main BigQuery output | [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) |
-| Reporting output | [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_mart&page=table) |
+| Main BigQuery output | [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) |
+| Compatibility reporting output | [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_mart&page=table) |
 | Manual editor runbook | [Manual editor QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) |
 | Interactive map | [Master data model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) |
 
@@ -490,7 +490,7 @@ ORDER BY spend DESC;
 ### Monthly Tasks
 
 - Revisit deprecated SQL and archive candidates.
-- Review whether v3 lowest-grain evaluation should stay experimental, be promoted, or be retired.
+- Plan the later compatibility-object migration and cleanup; do not delete live tables, views, or files until the v3 reporting migration has been verified.
 - Confirm documentation still points readers to the canonical `model/` workspace.
 
 ---
