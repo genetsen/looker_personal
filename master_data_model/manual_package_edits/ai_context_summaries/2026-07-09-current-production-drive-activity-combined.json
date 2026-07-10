@@ -1,0 +1,4480 @@
+{
+  "activities": [
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-09T19:33:58.240Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-09T19:30:52.922Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-09T17:21:20.578Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-09T17:18:18.478Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T22:27:00.810Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T22:20:06.906Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T22:17:05.072Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T22:12:13.948Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T22:04:21.720Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T22:01:19.380Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:58:16.013Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:55:13.986Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:51:22.908Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:48:21.762Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:39:20.384Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:36:18.626Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:33:14.265Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:04:27.659Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T21:01:25.856Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T20:32:38.276Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T20:29:35.090Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T20:03:19.925Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T20:00:45.411Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:57:44.424Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:50:51.785Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:47:50.672Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:38:07.114Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:35:04.388Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:31:18.053Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:29:29.072Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T19:28:16.036Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T16:21:49.422Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T16:18:46.311Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T16:18:41.195Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T16:15:44.582Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T16:15:25.396Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T16:12:42.540Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:59:50.715Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:56:48.324Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:53:45.932Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:51:36.890Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:50:41.698Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:47:40.091Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:44:38.140Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:27:22.406Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:25:31.678Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:24:21.301Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:18:04.529Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:15:03.157Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:11:25.245Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-08T15:08:23.101Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T22:49:09.473Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T22:46:04.799Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T22:45:01.956Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T22:43:03.021Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T22:00:09.655Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:55:35.629Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:52:31.708Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:49:27.013Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:22:56.518Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:19:54.523Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:16:52.474Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:13:50.698Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:06:45.086Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T21:00:20.767Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:57:19.047Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:55:58.479Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:54:17.182Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:51:14.760Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:48:12.976Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:42:03.734Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:26:22.637Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:23:20.906Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:20:18.377Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:20:16.009Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:17:12.733Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:14:09.472Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:12:39.838Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:11:07.608Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:08:05.802Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/112399287567371269516"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T20:03:06.076Z"
+    },
+    {
+      "primaryActionDetail": {
+        "permissionChange": {
+          "addedPermissions": [
+            {
+              "role": "EDITOR",
+              "user": {
+                "knownUser": {
+                  "personName": "people/112399287567371269516"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "permissionChange": {
+              "addedPermissions": [
+                {
+                  "role": "EDITOR",
+                  "user": {
+                    "knownUser": {
+                      "personName": "people/112399287567371269516"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T19:43:58.076Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T18:56:04.990Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T18:53:03.196Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T18:41:26.987Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T18:24:33.033Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-07T18:21:31.334Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "impersonation": {
+            "impersonatedUser": {
+              "knownUser": {
+                "personName": "people/101374475003202906017",
+                "isCurrentUser": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-05T18:02:00.290Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "impersonation": {
+            "impersonatedUser": {
+              "knownUser": {
+                "personName": "people/101374475003202906017",
+                "isCurrentUser": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-05T18:01:59.320Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-03T15:55:54.729Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "impersonation": {
+            "impersonatedUser": {
+              "knownUser": {
+                "personName": "people/101374475003202906017",
+                "isCurrentUser": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-03T15:55:45.532Z"
+    },
+    {
+      "primaryActionDetail": {
+        "permissionChange": {
+          "addedPermissions": [
+            {
+              "role": "EDITOR",
+              "user": {
+                "knownUser": {
+                  "personName": "people/115785411820781337841"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "actors": [
+        {
+          "impersonation": {
+            "impersonatedUser": {
+              "knownUser": {
+                "personName": "people/101374475003202906017",
+                "isCurrentUser": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "permissionChange": {
+              "addedPermissions": [
+                {
+                  "role": "EDITOR",
+                  "user": {
+                    "knownUser": {
+                      "personName": "people/115785411820781337841"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-03T15:55:44.421Z"
+    },
+    {
+      "primaryActionDetail": {
+        "permissionChange": {
+          "addedPermissions": [
+            {
+              "role": "EDITOR",
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            }
+          ]
+        }
+      },
+      "actors": [
+        {
+          "impersonation": {
+            "impersonatedUser": {
+              "knownUser": {
+                "personName": "people/101374475003202906017",
+                "isCurrentUser": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "permissionChange": {
+              "addedPermissions": [
+                {
+                  "role": "EDITOR",
+                  "domain": {
+                    "name": "wpromote.com",
+                    "legacyId": "115566332672980869162"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-03T15:55:43.025Z"
+    },
+    {
+      "primaryActionDetail": {
+        "edit": {}
+      },
+      "actors": [
+        {
+          "impersonation": {
+            "impersonatedUser": {
+              "knownUser": {
+                "personName": "people/101374475003202906017",
+                "isCurrentUser": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "edit": {}
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-03T15:55:42.478Z"
+    },
+    {
+      "primaryActionDetail": {
+        "create": {
+          "copy": {
+            "originalObject": {
+              "driveItem": {
+                "name": "items/1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo",
+                "title": "Manual Data Editor | GS Internal",
+                "driveFile": {}
+              }
+            }
+          }
+        }
+      },
+      "actors": [
+        {
+          "user": {
+            "knownUser": {
+              "personName": "people/101374475003202906017",
+              "isCurrentUser": true
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "detail": {
+            "move": {
+              "addedParents": [
+                {
+                  "driveItem": {
+                    "name": "items/0AGeAkxHZ6GkTUk9PVA",
+                    "folder": {
+                      "type": "MY_DRIVE_ROOT"
+                    },
+                    "driveFolder": {
+                      "type": "MY_DRIVE_ROOT"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "detail": {
+            "create": {
+              "copy": {
+                "originalObject": {
+                  "driveItem": {
+                    "name": "items/1WerhrbBMggzCwIUCOsOCV33aHygV96jt1HgqiYcUHZo",
+                    "title": "Manual Data Editor | GS Internal",
+                    "driveFile": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "driveItem": {
+            "name": "items/1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E",
+            "title": "Manual Data Editor | GS Internal",
+            "file": {},
+            "mimeType": "application/vnd.google-apps.spreadsheet",
+            "owner": {
+              "user": {
+                "knownUser": {
+                  "personName": "people/101374475003202906017",
+                  "isCurrentUser": true
+                }
+              },
+              "domain": {
+                "name": "wpromote.com",
+                "legacyId": "115566332672980869162"
+              }
+            },
+            "driveFile": {}
+          }
+        }
+      ],
+      "timestamp": "2026-07-03T15:55:42.154Z"
+    }
+  ]
+}

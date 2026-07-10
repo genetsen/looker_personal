@@ -1,0 +1,15 @@
+HTTP/2 200 
+content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+x-guploader-uploadid: AKhXX7JLcHaxKjn2Tc3qBkjVD0ugNit-yoMi8N6GNRIXLP--XyVKm3RR1Osh3dw2-SWL7CJsjvvV_os
+cache-control: private, max-age=0, must-revalidate
+content-disposition: attachment
+date: Thu, 09 Jul 2026 18:43:30 GMT
+expires: Thu, 09 Jul 2026 18:43:30 GMT
+server: ESF
+vary: Origin, X-Origin
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-xss-protection: 0
+content-length: 778449
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+

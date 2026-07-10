@@ -220,6 +220,26 @@ choose_date_value <- function(sheet_value, live_value, prior_current, prior_manu
   list(value = sheet_value, edited = TRUE)
 }
 
+has_user_edit_evidence <- function(manual_edit_at, manual_edit_by) {
+  !is.na(parse_timestamp(manual_edit_at)) |
+    !is.na(as_trimmed_character(manual_edit_by))
+}
+
+has_manual_audit_evidence <- function(manual_edit_at, manual_edit_by, manual_edit_published_at) {
+  has_user_edit_evidence(manual_edit_at, manual_edit_by) |
+    !is.na(parse_timestamp(manual_edit_published_at))
+}
+
+is_unaudited_source_edit <- function(
+    any_edited,
+    manual_evidence,
+    current_row_count) {
+  source_backed <- dplyr::coalesce(suppressWarnings(as.numeric(current_row_count)), 0) > 0
+  any_edited &&
+    !manual_evidence &&
+    source_backed
+}
+
 should_stop_manual_only_inactive <- function(
     is_manual_only,
     is_active,
@@ -232,9 +252,7 @@ should_stop_manual_only_inactive <- function(
     manual_edit_published_at,
     prior_current_row_count,
     sheet_no_edit_status) {
-  manual_evidence <- !is.na(parse_timestamp(manual_edit_at)) |
-    !is.na(as_trimmed_character(manual_edit_by)) |
-    !is.na(parse_timestamp(manual_edit_published_at))
+  manual_evidence <- has_manual_audit_evidence(manual_edit_at, manual_edit_by, manual_edit_published_at)
   prior_count <- suppressWarnings(as.numeric(prior_current_row_count))
   prior_count[is.na(prior_count)] <- 0
   stale_source_no_edit <- (prior_count > 0 | sheet_no_edit_status) &
@@ -247,6 +265,171 @@ should_stop_manual_only_inactive <- function(
     !is_active &
     !is.na(as_trimmed_character(package_id)) &
     !stale_source_no_edit
+}
+
+metric_specs <- tibble::tribble(
+  ~display_col, ~replacement_col,
+  "Spend", "replacement_spend",
+  "Impressions", "replacement_impressions",
+  "Planned Spend", "replacement_planned_spend",
+  "Planned Impressions", "replacement_planned_impressions",
+  "Clicks", "replacement_clicks",
+  "Video Plays", "replacement_video_plays",
+  "Video Completions", "replacement_video_comps"
+)
+
+metadata_specs <- tibble::tribble(
+  ~display_col, ~manual_col, ~value_type,
+  "Campaign", "man_campaign_name", "text",
+  "Package Name", "man_package_name", "text",
+  "Package Friendly Name", "man_package_name_friendly", "text",
+  "Benchmark KPI", "man_benchmark_kpi", "text",
+  "Benchmark Value", "man_benchmark_value", "numeric"
+)
+
+manual_override_columns <- function() {
+  c(metric_specs$replacement_col, metadata_specs$manual_col, "replacement_flight_start_date", "replacement_flight_end_date")
+}
+
+manual_override_field_labels <- function() {
+  labels <- c(
+    setNames(metric_specs$display_col, metric_specs$replacement_col),
+    setNames(metadata_specs$display_col, metadata_specs$manual_col),
+    replacement_flight_start_date = "Flight Start Date",
+    replacement_flight_end_date = "Flight End Date"
+  )
+  labels[manual_override_columns()]
+}
+
+has_any_manual_override <- function(data) {
+  if (nrow(data) == 0) {
+    return(logical())
+  }
+  cols <- intersect(manual_override_columns(), names(data))
+  if (length(cols) == 0) {
+    return(rep(FALSE, nrow(data)))
+  }
+  apply(!is.na(data[, cols, drop = FALSE]), 1, any)
+}
+
+same_manual_override_value <- function(col, a, b) {
+  numeric_manual_cols <- c(metric_specs$replacement_col, metadata_specs$manual_col[metadata_specs$value_type == "numeric"])
+  date_manual_cols <- c("replacement_flight_start_date", "replacement_flight_end_date")
+
+  if (col %in% date_manual_cols) {
+    return(same_date(a, b))
+  }
+  if (col %in% numeric_manual_cols) {
+    return(same_num(a, b))
+  }
+  same_text(a, b)
+}
+
+has_new_user_audit_evidence <- function(previous_row, proposed_row) {
+  previous_edit_at <- parse_timestamp(previous_row$manual_edit_at)[[1]]
+  proposed_edit_at <- parse_timestamp(proposed_row$manual_edit_at)[[1]]
+  if (!is.na(proposed_edit_at) && (is.na(previous_edit_at) || proposed_edit_at > previous_edit_at)) {
+    return(TRUE)
+  }
+
+  previous_editor <- as_trimmed_character(previous_row$manual_edit_by)[[1]]
+  proposed_editor <- as_trimmed_character(proposed_row$manual_edit_by)[[1]]
+  !is.na(proposed_editor) && (is.na(previous_editor) || proposed_editor != previous_editor)
+}
+
+lost_manual_override_fields <- function(previous_row, proposed_row) {
+  if (has_new_user_audit_evidence(previous_row, proposed_row)) {
+    return(character())
+  }
+
+  cols <- intersect(manual_override_columns(), intersect(names(previous_row), names(proposed_row)))
+  cols <- cols[!is.na(unlist(previous_row[cols], use.names = FALSE))]
+  lost_cols <- cols[!vapply(cols, function(col) {
+    same_manual_override_value(col, previous_row[[col]][[1]], proposed_row[[col]][[1]])
+  }, logical(1))]
+
+  unname(manual_override_field_labels()[lost_cols])
+}
+
+detect_manual_edit_loss <- function(previous_raw, proposed_raw) {
+  empty_result <- tibble::tibble(
+    package_id = character(),
+    package_name_friendly = character(),
+    man_start_date = as.Date(character()),
+    man_end_date = as.Date(character()),
+    loss_reason = character(),
+    lost_fields = character()
+  )
+  if (nrow(previous_raw) == 0) {
+    return(empty_result)
+  }
+
+  previous_manual <- previous_raw[is_trusted_previous_manual_row(previous_raw) & has_any_manual_override(previous_raw), , drop = FALSE]
+  if (nrow(previous_manual) == 0) {
+    return(empty_result)
+  }
+
+  proposed <- proposed_raw
+  previous_manual$manual_row_key <- manual_row_key(previous_manual$package_id, previous_manual$man_start_date, previous_manual$man_end_date)
+  proposed$manual_row_key <- manual_row_key(proposed$package_id, proposed$man_start_date, proposed$man_end_date)
+
+  loss_rows <- list()
+  for (row_idx in seq_len(nrow(previous_manual))) {
+    prior <- previous_manual[row_idx, , drop = FALSE]
+    same_key_rows <- proposed[proposed$manual_row_key == prior$manual_row_key[[1]], , drop = FALSE]
+    active_valid_rows <- same_key_rows[
+      same_key_rows$is_active %in% TRUE &
+        as_trimmed_character(same_key_rows$validation_status) %in% "valid",
+      ,
+      drop = FALSE
+    ]
+
+    reason <- NA_character_
+    fields <- character()
+    if (nrow(active_valid_rows) == 0) {
+      if (nrow(same_key_rows) == 0) {
+        reason <- "missing from proposed upload"
+      } else {
+        reason <- "would become inactive or blocked"
+      }
+      prior_override_cols <- intersect(manual_override_columns(), names(prior))
+      fields <- unname(manual_override_field_labels()[prior_override_cols[!is.na(unlist(prior[prior_override_cols], use.names = FALSE))]])
+    } else {
+      lost_by_match <- lapply(seq_len(nrow(active_valid_rows)), function(match_idx) {
+        lost_manual_override_fields(prior, active_valid_rows[match_idx, , drop = FALSE])
+      })
+      if (!any(vapply(lost_by_match, function(fields) length(fields) == 0, logical(1)))) {
+        reason <- "would lose previously accepted manual field values"
+        fields <- unique(unlist(lost_by_match, use.names = FALSE))
+      }
+    }
+
+    if (!is.na(reason)) {
+      loss_rows[[length(loss_rows) + 1]] <- tibble::tibble(
+        package_id = prior$package_id,
+        package_name_friendly = dplyr::coalesce(
+          prior$man_package_name_friendly,
+          prior$current_package_name_friendly,
+          prior$package_name_friendly,
+          prior$man_package_name,
+          prior$current_package_name,
+          prior$package_name
+        ),
+        man_start_date = prior$man_start_date,
+        man_end_date = prior$man_end_date,
+        loss_reason = reason,
+        lost_fields = paste(sort(unique(fields)), collapse = ", ")
+      )
+    }
+  }
+
+  if (length(loss_rows) == 0) {
+    return(empty_result)
+  }
+  dplyr::arrange(
+    dplyr::bind_rows(loss_rows),
+    package_name_friendly, package_id, man_start_date, man_end_date
+  )
 }
 
 apply_manual_only_flight_date_fallback <- function(raw_upload, display_data) {
@@ -335,7 +518,7 @@ previous_raw_to_editor_rows <- function(previous_raw) {
   )
 }
 
-has_editor_manual_evidence <- function(editor_rows) {
+has_explicit_editor_manual_evidence <- function(editor_rows) {
   if (nrow(editor_rows) == 0) {
     return(logical())
   }
@@ -348,15 +531,7 @@ has_editor_manual_evidence <- function(editor_rows) {
     }
   }
 
-  edited_label <- as_trimmed_character(pick("manually_edited"))
-  validation_status <- as_trimmed_character(pick("validation_status"))
-  manual_edit_by <- as_trimmed_character(pick("manual_edit_by"))
-
-  edited_label %in% c("Yes", "Blocked") |
-    validation_status %in% c("valid", "blocked") |
-    !is.na(parse_timestamp(pick("manual_edit_at"))) |
-    !is.na(manual_edit_by) |
-    !is.na(parse_timestamp(pick("manual_edit_published_at")))
+  has_user_edit_evidence(pick("manual_edit_at"), pick("manual_edit_by"))
 }
 
 merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows) {
@@ -367,10 +542,23 @@ merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows)
     return(previous_editor_rows)
   }
 
-  editor_keys <- manual_row_key(editor_rows$package_id, editor_rows$delivery_start_date, editor_rows$delivery_end_date)
-  editor_keys_with_evidence <- editor_keys[has_editor_manual_evidence(editor_rows)]
+  explicit_editor_evidence <- has_explicit_editor_manual_evidence(editor_rows)
+  previous_package_ids <- unique(as_trimmed_character(previous_editor_rows$package_id))
+  editor_package_ids <- as_trimmed_character(editor_rows$package_id)
+
+  generated_same_package <- !explicit_editor_evidence &
+    !is.na(editor_package_ids) &
+    editor_package_ids %in% previous_package_ids
+  kept_editor_rows <- editor_rows[!generated_same_package, , drop = FALSE]
+
+  kept_explicit_evidence <- has_explicit_editor_manual_evidence(kept_editor_rows)
+  editor_keys_with_evidence <- manual_row_key(
+    kept_editor_rows$package_id,
+    kept_editor_rows$delivery_start_date,
+    kept_editor_rows$delivery_end_date
+  )[kept_explicit_evidence]
   previous_keys <- manual_row_key(previous_editor_rows$package_id, previous_editor_rows$delivery_start_date, previous_editor_rows$delivery_end_date)
-  dplyr::bind_rows(editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
+  dplyr::bind_rows(kept_editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
 }
 
 expect_choice <- function(label, actual, expected_value, expected_edited) {
@@ -584,11 +772,11 @@ prior_editor_probe <- merge_previous_manual_editor_rows(
   ))
 )
 expect_sheet_value(
-  "previous valid manual row is appended beside blank same-package sheet row",
+  "previous valid manual row replaces blank same-package generated sheet row",
   nrow(prior_editor_probe),
-  2L
+  1L
 )
-prior_restored_row <- prior_editor_probe[nrow(prior_editor_probe), , drop = FALSE]
+prior_restored_row <- prior_editor_probe[1, , drop = FALSE]
 expect_sheet_value(
   "previous valid manual row restores one publishable prior row",
   nrow(prior_restored_row),
@@ -622,14 +810,47 @@ same_key_no_evidence_probe <- merge_previous_manual_editor_rows(
   prior_restored_row
 )
 expect_sheet_value(
-  "previous valid manual row is appended beside same-key no-evidence sheet row",
+  "previous valid manual row replaces same-key no-evidence generated sheet row",
   nrow(same_key_no_evidence_probe),
-  2L
+  1L
 )
 expect_sheet_value(
-  "same-key no-evidence append restores metric edits",
-  same_key_no_evidence_probe$planned_spend[[2]],
+  "same-key no-evidence replacement restores metric edits",
+  same_key_no_evidence_probe$planned_spend[[1]],
   100
+)
+
+explicit_same_package_probe <- merge_previous_manual_editor_rows(
+  tibble::tibble(
+    package_id = "P37S8VV",
+    delivery_start_date = as.Date("2026-01-01"),
+    delivery_end_date = as.Date("2026-01-07"),
+    manual_edit_at = as.POSIXct("2026-07-08 18:00:00", tz = "UTC"),
+    manual_edit_by = "gene@example.com",
+    planned_spend = 200
+  ),
+  prior_restored_row
+)
+expect_sheet_value(
+  "explicit same-package user edit is preserved beside previous durable edit",
+  nrow(explicit_same_package_probe),
+  2L
+)
+
+published_only_same_package_probe <- merge_previous_manual_editor_rows(
+  tibble::tibble(
+    package_id = "P37S8VV",
+    delivery_start_date = as.Date("2026-01-01"),
+    delivery_end_date = as.Date("2026-01-07"),
+    manual_edit_published_at = as.POSIXct("2026-07-08 18:00:00", tz = "UTC"),
+    planned_spend = 200
+  ),
+  prior_restored_row
+)
+expect_sheet_value(
+  "published-only same-package sheet row is treated as generated display state",
+  nrow(published_only_same_package_probe),
+  1L
 )
 
 expect_choice(
@@ -797,6 +1018,43 @@ expect_guard <- function(label, actual, expected) {
 }
 
 expect_guard(
+  "unaudited source-backed display edit is stale, not a manual edit",
+  is_unaudited_source_edit(
+    any_edited = TRUE,
+    manual_evidence = FALSE,
+    current_row_count = 5
+  ),
+  TRUE
+)
+expect_guard(
+  "manual evidence preserves a source-backed edit",
+  is_unaudited_source_edit(
+    any_edited = TRUE,
+    manual_evidence = TRUE,
+    current_row_count = 5
+  ),
+  FALSE
+)
+expect_guard(
+  "manual-only draft rows are not classified as stale source display rows",
+  is_unaudited_source_edit(
+    any_edited = TRUE,
+    manual_evidence = FALSE,
+    current_row_count = 0
+  ),
+  FALSE
+)
+expect_guard(
+  "unchanged source-backed rows are not classified as stale edits",
+  is_unaudited_source_edit(
+    any_edited = FALSE,
+    manual_evidence = FALSE,
+    current_row_count = 5
+  ),
+  FALSE
+)
+
+expect_guard(
   "stale no-edit source rows that disappear from lookup do not block refresh",
   should_stop_manual_only_inactive(
     is_manual_only = TRUE,
@@ -866,6 +1124,96 @@ expect_guard(
     sheet_no_edit_status = TRUE
   ),
   TRUE
+)
+
+manual_loss_base_row <- function() {
+  tibble::tibble(
+    is_active = TRUE,
+    validation_status = "valid",
+    package_id = "P3MANUAL",
+    man_start_date = as.Date("2026-06-01"),
+    man_end_date = as.Date("2026-06-30"),
+    manual_edit_at = as.POSIXct("2026-07-08 12:00:00", tz = "UTC"),
+    manual_edit_by = "gene@example.com",
+    manual_edit_published_at = as.POSIXct("2026-07-08 13:00:00", tz = "UTC"),
+    man_package_name_friendly = "Important Package",
+    current_package_name_friendly = NA_character_,
+    package_name_friendly = NA_character_,
+    man_package_name = "Important Package",
+    current_package_name = NA_character_,
+    package_name = NA_character_,
+    replacement_spend = 100,
+    replacement_impressions = NA_real_,
+    replacement_planned_spend = NA_real_,
+    replacement_planned_impressions = NA_real_,
+    replacement_clicks = NA_real_,
+    replacement_video_plays = NA_real_,
+    replacement_video_comps = NA_real_,
+    man_campaign_name = NA_character_,
+    man_benchmark_kpi = NA_character_,
+    man_benchmark_value = NA_real_,
+    replacement_flight_start_date = as.Date(NA),
+    replacement_flight_end_date = as.Date(NA)
+  )
+}
+
+manual_loss_prior <- manual_loss_base_row()
+manual_loss_preserved <- detect_manual_edit_loss(manual_loss_prior, manual_loss_prior)
+expect_sheet_value(
+  "accepted manual edit preserved by proposed upload does not block",
+  nrow(manual_loss_preserved),
+  0L
+)
+
+manual_loss_inactive_proposed <- manual_loss_prior
+manual_loss_inactive_proposed$is_active <- FALSE
+manual_loss_inactive_proposed$validation_status <- "inactive"
+manual_loss_inactive_proposed$replacement_spend <- NA_real_
+manual_loss_inactive <- detect_manual_edit_loss(manual_loss_prior, manual_loss_inactive_proposed)
+expect_sheet_value(
+  "accepted manual edit becoming inactive is detected before upload",
+  nrow(manual_loss_inactive),
+  1L
+)
+expect_sheet_value(
+  "inactive manual edit loss reports the package friendly name",
+  manual_loss_inactive$package_name_friendly[[1]],
+  "Important Package"
+)
+expect_sheet_value(
+  "inactive manual edit loss reports the edited field",
+  grepl("Spend", manual_loss_inactive$lost_fields[[1]], fixed = TRUE),
+  TRUE
+)
+
+manual_loss_missing <- detect_manual_edit_loss(manual_loss_prior, manual_loss_prior[0, ])
+expect_sheet_value(
+  "accepted manual edit missing from proposed upload is detected",
+  nrow(manual_loss_missing),
+  1L
+)
+expect_sheet_value(
+  "missing manual edit loss reports missing proposed upload",
+  manual_loss_missing$loss_reason[[1]],
+  "missing from proposed upload"
+)
+
+manual_loss_changed_proposed <- manual_loss_prior
+manual_loss_changed_proposed$replacement_spend <- 200
+manual_loss_changed <- detect_manual_edit_loss(manual_loss_prior, manual_loss_changed_proposed)
+expect_sheet_value(
+  "accepted manual edit changed without a newer user audit stamp is detected",
+  nrow(manual_loss_changed),
+  1L
+)
+
+manual_loss_changed_with_audit <- manual_loss_changed_proposed
+manual_loss_changed_with_audit$manual_edit_at <- as.POSIXct("2026-07-08 14:00:00", tz = "UTC")
+manual_loss_allowed_update <- detect_manual_edit_loss(manual_loss_prior, manual_loss_changed_with_audit)
+expect_sheet_value(
+  "newer user audit stamp allows an intentional correction to a prior edit",
+  nrow(manual_loss_allowed_update),
+  0L
 )
 
 cat("All manual edit choice logic tests passed.\n")

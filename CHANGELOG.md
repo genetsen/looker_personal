@@ -6,11 +6,21 @@ All notable changes to this repository are documented in this file.
 
 - **CHANGED** - Documented `master_stg.data_model_v3` as the current production master-model table. Existing package/date models, marts, and v2 outputs remain live compatibility surfaces pending a later verified migration and cleanup.
 
+## 2026-07-09
+
+- **FIXED** - Added a Manual Data Editor pre-upload preservation guard so a refresh stops before publishing if any previously accepted manual edit would disappear, become inactive or blocked, or lose an edited field without a newer user edit stamp.
+
+### Pending Next Actions
+
+- **Since Jul 7** - Update the saved `stg__olipop__crossplatform_raw_tbl_sched` transfer config with owner-account credentials so future scheduled runs keep excluding `1000heads` campaigns
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-07-08
 
 - **ADDED** - Added Manual Data Editor benchmark metadata so users can edit Benchmark KPI as text and Benchmark Value as a number, with manual values feeding the master-model benchmark reporting fields before FPD benchmark fallbacks.
-- **CHANGED** - Added the Manual Data Editor split-input design contract and routed loader input toward a user-owned `Manual Edits` tab while keeping `Package Editor` as the refreshed package lookup/preview surface.
 - **FIXED** - Added a Manual Data Editor fallback so trusted prior manual-only dates, metrics, and metadata survive blank sheet reads when no live source baseline exists.
+- **FIXED** - Changed the Manual Data Editor backend merge rule so trusted prior manual rows replace stale generated sheet rows unless a source-backed sheet row has real user edit evidence or trusted raw history, preventing refreshes from splitting edits into blocked/valid duplicates, inventing source-backed manual rows, or dropping known package IDs.
+- **FIXED** - Reverted the Manual Data Editor split-tab interface change so users keep editing in the existing `Package Editor` tab while benchmark fields and refresh-preservation safeguards remain in place.
 
 ### Pending Next Actions
 

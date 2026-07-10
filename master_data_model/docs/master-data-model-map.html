@@ -1180,6 +1180,7 @@
           "manual_existing_rows left-joins those tables onto the unioned rows, while manual_only_rows can add valid manual-only packages.",
           "Then with_rollups sums the manual-prioritized final fields.",
           "Manual benchmark edits publish man_benchmark_kpi as text and man_benchmark_value as a number. The final _benchmark_kpi and _benchmark_value fields use manual benchmark evidence before source-backed benchmark fallbacks.",
+          "The loader treats trusted prior raw manual rows as durable edit state. Generated Package Editor rows can refresh display values, but source-backed rows do not become new manual edits unless they carry Manual Edit At/By evidence or trusted prior raw history. Loose Manual Edit Published At sheet values are loader output, not user intent.",
           "The model exposes friendly qa_manual_* fields so readers can see whether a row used manual evidence, when the user edited it when available, who edited it when Google exposes the identity, and when the loader accepted it into BigQuery."
         ],
         sources: [

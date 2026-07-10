@@ -1,0 +1,126 @@
+# Lost Visible Manual Editor Rows - 2026 Non-Social Filter
+
+Filter: package IDs beginning with `social:` excluded. Date scope: rows whose flight window overlaps calendar year 2026.
+
+## Counts
+
+| Metric | Value |
+| --- | --- |
+| Filtered rows | 91 |
+| Valid rows | 53 |
+| Blocked rows | 38 |
+| Rows with Manual Edit At | 0 |
+| Rows with Manual Edit By | 0 |
+| Rows with Manual Edit Published At | 53 |
+| Rows starting in 2025 but overlapping 2026 | 2 |
+
+## By Advertiser
+
+| Advertiser | All Rows | Valid | Blocked |
+| --- | --- | --- | --- |
+| A Diamond Is Forever | 13 | 13 | 0 |
+| Apollo | 3 | 1 | 2 |
+| MassMutual | 30 | 30 | 0 |
+| Olipop | 5 | 5 | 0 |
+| Ritual | 40 | 4 | 36 |
+
+## Valid Rows
+
+| Package ID | Advertiser | Site | Start | End | Published At | Values |
+| --- | --- | --- | --- | --- | --- | --- |
+| P3C4L1Z | A Diamond Is Forever | REED EXHIBITIONS | 2026-01-01 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=26000; planned_impressions=0; spend=10756.1644911233; impressions=146182; clicks=1321; video_plays=0; video_completions=0 |
+| P3FGQRH | A Diamond Is Forever | MEREDITH CORPORATION | 2026-05-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=260000; spend=0; impressions=282614; clicks=271; video_plays=0; video_completions=0 |
+| P3FGNYV | A Diamond Is Forever | MEREDITH CORPORATION | 2026-05-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=20000; planned_impressions=909091; spend=14684.956; impressions=669094; clicks=1314; video_plays=0; video_completions=0 |
+| P3FGPKW | A Diamond Is Forever | MEREDITH CORPORATION | 2026-05-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=15000; planned_impressions=1090909; spend=11636.19875; impressions=852627; clicks=1098; video_plays=0; video_completions=0 |
+| P3FHBC6 | A Diamond Is Forever | MIQ DIGITAL USA INC | 2026-05-01 | 2026-05-31 | 2026-07-07 16:32:38.524899 | planned_spend=100000; planned_impressions=3703704; spend=99336.834; impressions=3690745; clicks=69; video_plays=0; video_completions=0 |
+| P3FFV6H | A Diamond Is Forever | MIQ DIGITAL USA INC | 2026-04-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=125000; planned_impressions=7352941; spend=108517.273; impressions=6383369; clicks=8339; video_plays=0; video_completions=0 |
+| P3C8T3F | A Diamond Is Forever | MIQ DIGITAL USA INC | 2026-02-02 | 2026-03-31 | 2026-07-07 16:32:38.524899 | planned_spend=70000; planned_impressions=4827586; spend=35000.87; impressions=6838247; clicks=12978; video_plays=0; video_completions=0 |
+| P3FDP4F | A Diamond Is Forever | CONDE NAST | 2026-06-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=150000; planned_impressions=3000001; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3FFSVK | A Diamond Is Forever | MIQ DIGITAL USA INC | 2026-04-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=450000; planned_impressions=6428571; spend=421564.64; impressions=6022352; clicks=66; video_plays=0; video_completions=0 |
+| P3FFSQL | A Diamond Is Forever | MIQ DIGITAL USA INC | 2026-04-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=1080200; planned_impressions=31770588; spend=869014.058; impressions=25559237; clicks=104; video_plays=0; video_completions=0 |
+| P3FGPYQ | A Diamond Is Forever | MEREDITH CORPORATION | 2026-05-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=15000; planned_impressions=535714; spend=11860.8; impressions=424249; clicks=426; video_plays=0; video_completions=0 |
+| P3FGPZF | A Diamond Is Forever | MEREDITH CORPORATION | 2026-05-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=15000; planned_impressions=535714; spend=11899.524; impressions=425710; clicks=600; video_plays=0; video_completions=0 |
+| P3FR3ZV | MassMutual | WALL STREET JOURNAL | 2026-06-01 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=60850; planned_impressions=1067544; spend=1788.432; impressions=31376; clicks=0; video_plays=0; video_completions=0 |
+| P3FR3DR | MassMutual | WALL STREET JOURNAL | 2026-06-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=53630; planned_impressions=653600; spend=26815; impressions=301614; clicks=255; video_plays=0; video_completions=0 |
+| P3D8C0X | MassMutual | THE DAILY UPSIDE | 2026-06-30 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=10000; planned_impressions=100000; spend=110000; impressions=18945; clicks=53; video_plays=0; video_completions=0 |
+| P3F678X | MassMutual | WALL STREET JOURNAL | 2026-05-15 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=849762; spend=0; impressions=127758; clicks=48; video_plays=0; video_completions=0 |
+| P3F66LW | MassMutual | WALL STREET JOURNAL | 2026-05-18 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=14083; planned_impressions=281660; spend=1925.1; impressions=38682; clicks=42; video_plays=0; video_completions=0 |
+| P3F64MB | MassMutual | WALL STREET JOURNAL | 2026-05-18 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=14083; planned_impressions=281660; spend=1928.1; impressions=38711; clicks=28; video_plays=0; video_completions=0 |
+| P3FKYHG | MassMutual | PLAYFLY HOLDINGS | 2026-03-30 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=1063031; clicks=145; video_plays=0; video_completions=0 |
+| P3FNJM2 | MassMutual | MLB ADVANCED MEDIA, LP. | 2026-04-03 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=64188; clicks=56; video_plays=0; video_completions=0 |
+| P3FNKGF | MassMutual | MLB ADVANCED MEDIA, LP. | 2026-04-03 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=148602; clicks=111; video_plays=0; video_completions=0 |
+| P3F9W5C | MassMutual | ADVISOR PERSPECTIVES INC | 2026-07-06 | 2026-11-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=70666; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3D8CZW | MassMutual | THE DAILY UPSIDE | 2026-06-29 | 2026-07-31 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=10000; spend=0; impressions=1728; clicks=5; video_plays=0; video_completions=0 |
+| P3D2NNK | MassMutual | INVESTMENT NEWS LLC | 2026-07-06 | 2026-11-15 | 2026-07-07 16:32:38.524899 | planned_spend=24000; planned_impressions=184615; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3F9NJR | MassMutual | ADVISORHUB,LLC | 2026-07-06 | 2026-11-15 | 2026-07-07 16:32:38.524899 | planned_spend=15000; planned_impressions=115385; spend=0; impressions=115; clicks=0; video_plays=0; video_completions=0 |
+| P3D5H54 | MassMutual | ADVISOR PERSPECTIVES INC | 2026-07-06 | 2026-11-30 | 2026-07-07 16:32:38.524899 | planned_spend=17000; planned_impressions=68000; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3D8CMP | MassMutual | THE DAILY UPSIDE | 2026-06-29 | 2026-07-31 | 2026-07-07 16:32:38.524899 | planned_spend=2000; planned_impressions=8000; spend=218.5; impressions=874; clicks=7; video_plays=0; video_completions=0 |
+| P3D2NV7 | MassMutual | INVESTMENT NEWS LLC | 2026-07-06 | 2026-11-15 | 2026-07-07 16:32:38.524899 | planned_spend=23516; planned_impressions=142521; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3D5HD6 | MassMutual | ADVISOR PERSPECTIVES INC | 2026-07-06 | 2026-11-30 | 2026-07-07 16:32:38.524899 | planned_spend=14000; planned_impressions=82353; spend=0; impressions=127; clicks=0; video_plays=0; video_completions=0 |
+| P3H4W8R | MassMutual | MIQ DIGITAL USA INC | 2026-06-08 | 2026-07-31 | 2026-07-07 16:32:38.524899 | planned_spend=70000; planned_impressions=2413793; spend=31892.779; impressions=1099751; clicks=75; video_plays=0; video_completions=0 |
+| P3FQX94 | MassMutual | DISNEY ADVERTISING SALES | 2026-05-26 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=175711; planned_impressions=4409310; spend=112750.2351; impressions=2829366; clicks=35; video_plays=0; video_completions=0 |
+| P3GL55Z | MassMutual | ESPN | 2026-05-06 | 2026-06-28 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=2990186; spend=0; impressions=1867362; clicks=31; video_plays=1863218; video_completions=1693451 |
+| P37NLSH | MassMutual | DISCOVERY.COM | 2026-01-01 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=380000; planned_impressions=10561423; spend=267948.79589; impressions=7633241; clicks=561; video_plays=7626421; video_completions=7537847 |
+| P3FNGKL | MassMutual | DISCOVERY.COM | 2026-06-01 | 2026-06-30 | 2026-07-07 16:32:38.524899 | planned_spend=120000; planned_impressions=1398601; spend=60446.3574; impressions=711116; clicks=46; video_plays=232946; video_completions=227686 |
+| P3C74CP | MassMutual | THE TENNIS CHANNEL, LLC | 2026-01-01 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=50000; planned_impressions=1733703; spend=34962.09752; impressions=1212278; clicks=0; video_plays=1210005; video_completions=1191877 |
+| P38F8WB | MassMutual | DISNEY ADVERTISING SALES | 2025-11-01 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=1479999.97; planned_impressions=45608628; spend=1173308.2141; impressions=36205250; clicks=2071; video_plays=36159474; video_completions=35771088 |
+| P3FFPRW | MassMutual | PLAYFLY HOLDINGS | 2026-03-30 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=15581482; clicks=1628; video_plays=14024395; video_completions=12729781 |
+| P3FNL2B | MassMutual | MLB ADVANCED MEDIA, LP. | 2026-04-03 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=220307; clicks=227; video_plays=218842; video_completions=131443 |
+| P3FNLFH | MassMutual | MLB ADVANCED MEDIA, LP. | 2026-04-03 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=271054; clicks=280; video_plays=270002; video_completions=138883 |
+| P3F9XH1 | MassMutual | NESN | 2026-03-26 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=878628; clicks=0; video_plays=869872; video_completions=796679 |
+| P3FNLL4 | MassMutual | NESN | 2026-03-26 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=0; spend=0; impressions=472709; clicks=0; video_plays=0; video_completions=0 |
+| tv_pkg:86bab92cbd14e674 | MassMutual | ABC | 2025-12-29 | 2026-03-28 | 2026-07-07 16:32:38.524899 | planned_spend=315299; planned_impressions=477000; spend=315299; impressions=477000; clicks=0; video_plays=0; video_completions=0 |
+| P3GXDNF | Olipop | MIQ DIGITAL USA INC | 2026-06-01 | 2026-08-31 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=2631579; spend=0; impressions=1183456; clicks=548; video_plays=0; video_completions=0 |
+| P3GT8NK | Olipop | MIQ DIGITAL USA INC | 2026-06-01 | 2026-08-31 | 2026-07-07 16:32:38.524899 | planned_spend=500000; planned_impressions=26315789; spend=9189.844; impressions=483676; clicks=521; video_plays=0; video_completions=0 |
+| P3GXB31 | Olipop | MIQ DIGITAL USA INC | 2026-06-01 | 2026-08-31 | 2026-07-07 16:32:38.524899 | planned_spend=0; planned_impressions=3191177; spend=0; impressions=1377108; clicks=97; video_plays=1341520; video_completions=1319927 |
+| P3GT8FP | Olipop | MIQ DIGITAL USA INC | 2026-06-01 | 2026-08-31 | 2026-07-07 16:32:38.524899 | planned_spend=1085000; planned_impressions=31911765; spend=171858.338; impressions=5054664; clicks=16; video_plays=5028237; video_completions=4945255 |
+| P3GT95K | Olipop | MIQ DIGITAL USA INC | 2026-06-01 | 2026-08-31 | 2026-07-07 16:32:38.524899 | planned_spend=375000; planned_impressions=11718750; spend=118677.504; impressions=3708692; clicks=70; video_plays=0; video_completions=0 |
+| P3GVJ96 | Ritual | AMAZONADVERTISING.COM | 2026-05-26 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=298486; planned_impressions=30867219; spend=152945.79675; impressions=15816525; clicks=0; video_plays=0; video_completions=0 |
+| P3GVJ15 | Ritual | AMAZONADVERTISING.COM | 2026-05-26 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=450000; planned_impressions=17307693; spend=49399.454; impressions=1899979; clicks=0; video_plays=0; video_completions=0 |
+| P3GVJ5J | Ritual | AMAZONADVERTISING.COM | 2026-05-26 | 2026-12-31 | 2026-07-07 16:32:38.524899 | planned_spend=500000; planned_impressions=31250000; spend=62809.536; impressions=3925596; clicks=0; video_plays=0; video_completions=0 |
+| P3G38DG | Ritual | BLEACHERREPORT.COM | 2026-06-01 | 2026-07-31 | 2026-07-07 16:32:38.524899 | planned_spend=15000; planned_impressions=454546; spend=3800.511; impressions=116184; clicks=11; video_plays=115239; video_completions=57757 |
+| P3HBMJ9 | Apollo | PGATOUR.COM | 2026-06-29 | 2026-09-30 | 2026-07-07 16:32:38.524899 | planned_spend=50000; planned_impressions=1000000; spend=2.3; impressions=46; clicks=4; video_plays=0; video_completions=0 |
+| tv_pkg:b51c8db03a9061ca | A Diamond Is Forever | ITN | 2026-06-29 | 2026-06-29 | 2026-07-07 16:32:38.524899 | planned_spend=559999.125; spend=559999.125; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+
+## Blocked Rows
+
+| Package ID | Advertiser | Site | Start | End | Reason | Values |
+| --- | --- | --- | --- | --- | --- | --- |
+| P3H7YBF | Apollo | NIKKEI INC. | 2026-06-17 | 2026-07-17 | duplicate active package/date metric: clicks, impressions | planned_spend=0; planned_impressions=0; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:588134552272423298 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=119.21; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:581382844311934964 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=40774.11; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:589866247959033125 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=223.69; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:590857600331663902 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=382.99; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:585703422911131881 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | duplicate active package/date metric: planned_spend | planned_spend=235.37; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:591720383692698342 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=40909.47; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:577361705016346048 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=174.35; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:583834847068163104 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=180.81; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:578298425263457708 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=9230.1; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:583189864716596645 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=6815.5; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:580754872456153656 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=27888.57; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:590474224707590926 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=3629.8; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:578456235533281425 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=81.26; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:583799469674652618 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=55796.51; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:588837119259481659:591568817364243966 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=67344.04; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:588837119259481659:588487569559098653 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=3543.35; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:588837119259481659:579168661982793528 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=29112.61; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3H2SH5 | Ritual | DISNEY ADVERTISING SALES | 2026-06-15 | 2026-07-12 | duplicate active package/date metric: clicks, impressions, spend, video_comps, video_plays | planned_spend=25000; planned_impressions=856164; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3H2SH5 | Ritual | DISNEY ADVERTISING SALES | 2026-06-15 | 2026-07-12 | duplicate active package/date metric: clicks, impressions, spend, video_comps, video_plays | planned_spend=25000; planned_impressions=856164; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:588134552272423298 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=154.03; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:581382844311934964 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=40555.68; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:589866247959033125 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=289.16; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:581882936116449201:590857600331663902 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=501.13; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:585703422911131881 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=308.35; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:591720383692698342 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=40714.49; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:577361705016346048 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=234.51; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:589872744902147777:583834847068163104 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=242.65; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:578298425263457708 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=13700.15; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:583189864716596645 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=8687.89; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:580754872456153656 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=30088.03; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:590474224707590926 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=4745.94; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:578456235533281425 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=68.32; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:583066745626589521:583799469674652618 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=47709.67; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:588837119259481659:591568817364243966 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=69862.72; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:588837119259481659:588487569559098653 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=3607.46; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| amazon_ads:588837119259481659:579168661982793528 | Ritual | Amazon Ads | 2026-05-28 | 2026-08-01 | planned metrics can only be edited on the full flight date range \| duplicate active package/date metric: planned_spend | planned_spend=26529.82; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |
+| P3H7YBF | Apollo | NIKKEI INC. | 2026-06-17 | 2026-07-17 | duplicate active package/date metric: clicks, impressions | planned_spend=0; planned_impressions=0; spend=0; impressions=0; clicks=0; video_plays=0; video_completions=0 |

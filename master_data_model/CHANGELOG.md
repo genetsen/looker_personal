@@ -8,11 +8,23 @@
 
 - **Since Jul 10** - Plan and verify the v3 reporting migration before deleting or replacing any compatibility files, tables, or views.
 
+## 2026-07-09
+
+- **FIXED** - Added a Manual Data Editor pre-upload preservation guard so a refresh stops before publishing if any previously accepted manual edit would disappear, become inactive or blocked, or lose an edited field without a newer user edit stamp.
+
+### Pending Next Actions
+
+- **Since Jul 7** - Resolve the separate v3 visible-key duplicate QA failure found after the `1000heads` exclusion refresh
+- **Since Jun 16** - Build the redesigned reporting tables described by the plan
+- **Since Jun 16** - Finish the interactive workflow for matching each source's fields to the master table
+- **Since Jun 16** - Publish the updated interactive maps to the shared location
+
 ## 2026-07-08
 
 - **ADDED** - Added Manual Data Editor benchmark metadata so users can edit Benchmark KPI as text and Benchmark Value as a number, with manual values feeding the new final benchmark reporting fields before FPD benchmark fallbacks.
-- **CHANGED** - Added the Manual Data Editor split-input design contract and routed loader input toward a user-owned `Manual Edits` tab while keeping `Package Editor` as the refreshed package lookup/preview surface.
 - **FIXED** - Added a Manual Data Editor fallback so trusted prior manual-only dates, metrics, and metadata survive blank sheet reads when no live source baseline exists.
+- **FIXED** - Changed the Manual Data Editor backend merge rule so trusted prior manual rows replace stale generated sheet rows unless a source-backed sheet row has real user edit evidence or trusted raw history, preventing refreshes from splitting edits into blocked/valid duplicates, inventing source-backed manual rows, or dropping known package IDs.
+- **FIXED** - Reverted the Manual Data Editor split-tab interface change so users keep editing in the existing `Package Editor` tab while benchmark fields and refresh-preservation safeguards remain in place.
 - **CHANGED** - Documented the FPD partner template mapping-table correction so duplicate package labels and partner aliases resolve through a dynamic stable-label block instead of the old typed-table dropdown.
 - **CHANGED** - Updated the FPD partner template notes after moving the temp-copy mapping prototype back to `Config!H:J`, including the typed-table dropdown blocker and the next likely formula/validation failure paths.
 

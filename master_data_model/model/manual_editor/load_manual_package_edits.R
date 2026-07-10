@@ -2,10 +2,10 @@
 #### LOAD MASTER DATA MODEL MANUAL PACKAGE EDITS
 ################################################################################
 # Purpose:
-#   Maintain separate Manual Data Editor surfaces: a user-owned Manual Edits tab
-#   for durable input and a script-refreshed Package Editor tab for lookup and
-#   preview context. The loader validates user-owned edits, writes manual
-#   BigQuery tables, and refreshes the preview without using preview rewrites as
+#   Maintain the Manual Data Editor's single Package Editor tab where users edit
+#   dashboard values in-place. The loader compares those cells to source-derived
+#   baselines and trusted prior manual evidence, writes valid manual BigQuery
+#   rows, and refreshes the same visible sheet without using blank/stale reads as
 #   evidence that a user deleted an edit.
 ################################################################################
 
@@ -91,8 +91,7 @@ EXCLUDED_SOCIAL_CAMPAIGN_PATTERN <- Sys.getenv(
   "1000heads"
 )
 
-TAB_EDITOR <- Sys.getenv("MASTER_MANUAL_EDIT_PREVIEW_TAB", "Package Editor")
-TAB_MANUAL_INPUT <- Sys.getenv("MASTER_MANUAL_EDIT_INPUT_TAB", "Manual Edits")
+TAB_EDITOR <- "Package Editor"
 EDITOR_HEADER_ROW <- 4
 EDITOR_HEADER_INDEX <- EDITOR_HEADER_ROW - 1
 EDITOR_DATA_INDEX <- EDITOR_HEADER_ROW
@@ -102,7 +101,7 @@ MANUAL_MARKER_START_COLUMN <- "BD"
 FILTER_HELPER_START_COLUMN <- "CA"
 EDITOR_LAST_COLUMN <- "CA"
 LEGACY_TABS <- c(
-  "Sheet1", "Package Lookup", "Start Here",
+  "Sheet1", "Package Lookup", "Start Here", "Manual Package Edits", "Manual Edits",
   "Validation Preview", "Daily Proof", "Publish Status", "Change History"
 )
 
@@ -695,55 +694,6 @@ normalize_existing_editor <- function(data) {
     )
 }
 
-manual_input_display_data <- function(data) {
-  if (nrow(data) == 0) {
-    return(tibble::as_tibble(setNames(rep(list(character()), 32), display_columns[1:32])))
-  }
-
-  pick <- function(col, default = NA) {
-    if (col %in% names(data)) {
-      data[[col]]
-    } else {
-      rep(default, nrow(data))
-    }
-  }
-
-  tibble::tibble(
-    `Package ID` = pick("package_id"),
-    Site = pick("supplier_name"),
-    `Package Friendly Name` = dplyr::coalesce(pick("package_name_friendly"), pick("package_name")),
-    `Flight Start Date` = pick("flight_start_date"),
-    `Flight End Date` = pick("flight_end_date"),
-    `Planned Spend` = pick("planned_spend", NA_real_),
-    `Planned Impressions` = pick("planned_impressions", NA_real_),
-    Spend = pick("spend", NA_real_),
-    Impressions = pick("impressions", NA_real_),
-    Clicks = pick("clicks", NA_real_),
-    `Video Plays` = pick("video_plays", NA_real_),
-    `Video Completions` = pick("video_comps", NA_real_),
-    `Delivery Override Start Date` = pick("delivery_start_date"),
-    `Delivery Override End Date` = pick("delivery_end_date"),
-    Advertiser = pick("advertiser_name"),
-    `Package Type` = pick("package_type"),
-    Channel = pick("channel"),
-    Campaign = pick("campaign_name"),
-    Initiative = pick("initiative"),
-    `Supplier Code` = pick("supplier_code"),
-    `Supplier Name` = pick("supplier_name"),
-    `Package Name` = pick("package_name"),
-    `GS Channel` = pick("ADIF_channel"),
-    `Benchmark KPI` = pick("benchmark_kpi"),
-    `Benchmark Value` = pick("benchmark_value", NA_real_),
-    `Manually Edited?` = pick("manually_edited"),
-    `Manual Edit At` = pick("manual_edit_at"),
-    `Manual Edit By` = pick("manual_edit_by"),
-    `Manual Edit Published At` = pick("manual_edit_published_at"),
-    `Primary Row Data Source` = NA_character_,
-    `Validation Status` = pick("validation_status"),
-    `Validation Reason` = pick("validation_reason")
-  )
-}
-
 download_previous_raw <- function() {
   raw_ref <- bq_table(PROJECT_ID, DATASET_ID, RAW_TABLE)
   out <- tryCatch(
@@ -842,7 +792,12 @@ previous_raw_to_editor_rows <- function(previous_raw) {
     )
 }
 
-has_editor_manual_evidence <- function(editor_rows) {
+has_user_edit_evidence <- function(manual_edit_at, manual_edit_by) {
+  !is.na(parse_timestamp(manual_edit_at)) |
+    !is.na(as_trimmed_character(manual_edit_by))
+}
+
+has_explicit_editor_manual_evidence <- function(editor_rows) {
   if (nrow(editor_rows) == 0) {
     return(logical())
   }
@@ -855,15 +810,7 @@ has_editor_manual_evidence <- function(editor_rows) {
     }
   }
 
-  edited_label <- as_trimmed_character(pick("manually_edited"))
-  validation_status <- as_trimmed_character(pick("validation_status"))
-  manual_edit_by <- as_trimmed_character(pick("manual_edit_by"))
-
-  edited_label %in% c("Yes", "Blocked") |
-    validation_status %in% c("valid", "blocked") |
-    !is.na(parse_timestamp(pick("manual_edit_at"))) |
-    !is.na(manual_edit_by) |
-    !is.na(parse_timestamp(pick("manual_edit_published_at")))
+  has_user_edit_evidence(pick("manual_edit_at"), pick("manual_edit_by"))
 }
 
 merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows) {
@@ -874,10 +821,23 @@ merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows)
     return(previous_editor_rows)
   }
 
-  editor_keys <- manual_row_key(editor_rows$package_id, editor_rows$delivery_start_date, editor_rows$delivery_end_date)
-  editor_keys_with_evidence <- editor_keys[has_editor_manual_evidence(editor_rows)]
+  explicit_editor_evidence <- has_explicit_editor_manual_evidence(editor_rows)
+  previous_package_ids <- unique(as_trimmed_character(previous_editor_rows$package_id))
+  editor_package_ids <- as_trimmed_character(editor_rows$package_id)
+
+  generated_same_package <- !explicit_editor_evidence &
+    !is.na(editor_package_ids) &
+    editor_package_ids %in% previous_package_ids
+  kept_editor_rows <- editor_rows[!generated_same_package, , drop = FALSE]
+
+  kept_explicit_evidence <- has_explicit_editor_manual_evidence(kept_editor_rows)
+  editor_keys_with_evidence <- manual_row_key(
+    kept_editor_rows$package_id,
+    kept_editor_rows$delivery_start_date,
+    kept_editor_rows$delivery_end_date
+  )[kept_explicit_evidence]
   previous_keys <- manual_row_key(previous_editor_rows$package_id, previous_editor_rows$delivery_start_date, previous_editor_rows$delivery_end_date)
-  bind_rows(editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
+  bind_rows(kept_editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
 }
 
 choose_metric_value <- function(sheet_value, live_value, prior_current, prior_replacement, prior_replacement_trusted = TRUE) {
@@ -987,6 +947,21 @@ choose_date_value <- function(sheet_value, live_value, prior_current, prior_manu
   list(value = sheet_value, edited = TRUE)
 }
 
+has_manual_audit_evidence <- function(manual_edit_at, manual_edit_by, manual_edit_published_at) {
+  has_user_edit_evidence(manual_edit_at, manual_edit_by) |
+    !is.na(parse_timestamp(manual_edit_published_at))
+}
+
+is_unaudited_source_edit <- function(
+    any_edited,
+    manual_evidence,
+    current_row_count) {
+  source_backed <- dplyr::coalesce(parse_num(current_row_count), 0) > 0
+  any_edited &&
+    !manual_evidence &&
+    source_backed
+}
+
 should_stop_manual_only_inactive <- function(
     is_manual_only,
     is_active,
@@ -1014,6 +989,180 @@ should_stop_manual_only_inactive <- function(
     !is_active &
     !is.na(as_trimmed_character(package_id)) &
     !stale_source_no_edit
+}
+
+manual_override_columns <- function() {
+  c(metric_specs$replacement_col, metadata_specs$manual_col, "replacement_flight_start_date", "replacement_flight_end_date")
+}
+
+manual_override_field_labels <- function() {
+  labels <- c(
+    setNames(metric_specs$display_col, metric_specs$replacement_col),
+    setNames(metadata_specs$display_col, metadata_specs$manual_col),
+    replacement_flight_start_date = "Flight Start Date",
+    replacement_flight_end_date = "Flight End Date"
+  )
+  labels[manual_override_columns()]
+}
+
+has_any_manual_override <- function(data) {
+  if (nrow(data) == 0) {
+    return(logical())
+  }
+  cols <- intersect(manual_override_columns(), names(data))
+  if (length(cols) == 0) {
+    return(rep(FALSE, nrow(data)))
+  }
+  apply(!is.na(data[, cols, drop = FALSE]), 1, any)
+}
+
+same_manual_override_value <- function(col, a, b) {
+  numeric_manual_cols <- c(metric_specs$replacement_col, metadata_specs$manual_col[metadata_specs$value_type == "numeric"])
+  date_manual_cols <- c("replacement_flight_start_date", "replacement_flight_end_date")
+
+  if (col %in% date_manual_cols) {
+    return(same_date(a, b))
+  }
+  if (col %in% numeric_manual_cols) {
+    return(same_num(a, b))
+  }
+  same_text(a, b)
+}
+
+has_new_user_audit_evidence <- function(previous_row, proposed_row) {
+  previous_edit_at <- parse_timestamp(previous_row$manual_edit_at)[[1]]
+  proposed_edit_at <- parse_timestamp(proposed_row$manual_edit_at)[[1]]
+  if (!is.na(proposed_edit_at) && (is.na(previous_edit_at) || proposed_edit_at > previous_edit_at)) {
+    return(TRUE)
+  }
+
+  previous_editor <- as_trimmed_character(previous_row$manual_edit_by)[[1]]
+  proposed_editor <- as_trimmed_character(proposed_row$manual_edit_by)[[1]]
+  !is.na(proposed_editor) && (is.na(previous_editor) || proposed_editor != previous_editor)
+}
+
+lost_manual_override_fields <- function(previous_row, proposed_row) {
+  if (has_new_user_audit_evidence(previous_row, proposed_row)) {
+    return(character())
+  }
+
+  cols <- intersect(manual_override_columns(), intersect(names(previous_row), names(proposed_row)))
+  cols <- cols[!is.na(unlist(previous_row[cols], use.names = FALSE))]
+  lost_cols <- cols[!vapply(cols, function(col) {
+    same_manual_override_value(col, previous_row[[col]][[1]], proposed_row[[col]][[1]])
+  }, logical(1))]
+
+  unname(manual_override_field_labels()[lost_cols])
+}
+
+detect_manual_edit_loss <- function(previous_raw, proposed_raw) {
+  empty_result <- tibble::tibble(
+    package_id = character(),
+    package_name_friendly = character(),
+    man_start_date = as.Date(character()),
+    man_end_date = as.Date(character()),
+    loss_reason = character(),
+    lost_fields = character()
+  )
+  if (nrow(previous_raw) == 0) {
+    return(empty_result)
+  }
+
+  previous_manual <- previous_raw[is_trusted_previous_manual_row(previous_raw) & has_any_manual_override(previous_raw), , drop = FALSE]
+  if (nrow(previous_manual) == 0) {
+    return(empty_result)
+  }
+
+  proposed <- proposed_raw
+  previous_manual$manual_row_key <- manual_row_key(previous_manual$package_id, previous_manual$man_start_date, previous_manual$man_end_date)
+  proposed$manual_row_key <- manual_row_key(proposed$package_id, proposed$man_start_date, proposed$man_end_date)
+
+  loss_rows <- list()
+  for (row_idx in seq_len(nrow(previous_manual))) {
+    prior <- previous_manual[row_idx, , drop = FALSE]
+    same_key_rows <- proposed[proposed$manual_row_key == prior$manual_row_key[[1]], , drop = FALSE]
+    active_valid_rows <- same_key_rows[
+      same_key_rows$is_active %in% TRUE &
+        as_trimmed_character(same_key_rows$validation_status) %in% "valid",
+      ,
+      drop = FALSE
+    ]
+
+    reason <- NA_character_
+    fields <- character()
+    if (nrow(active_valid_rows) == 0) {
+      if (nrow(same_key_rows) == 0) {
+        reason <- "missing from proposed upload"
+      } else {
+        reason <- "would become inactive or blocked"
+      }
+      prior_override_cols <- intersect(manual_override_columns(), names(prior))
+      fields <- unname(manual_override_field_labels()[prior_override_cols[!is.na(unlist(prior[prior_override_cols], use.names = FALSE))]])
+    } else {
+      lost_by_match <- lapply(seq_len(nrow(active_valid_rows)), function(match_idx) {
+        lost_manual_override_fields(prior, active_valid_rows[match_idx, , drop = FALSE])
+      })
+      if (!any(vapply(lost_by_match, function(fields) length(fields) == 0, logical(1)))) {
+        reason <- "would lose previously accepted manual field values"
+        fields <- unique(unlist(lost_by_match, use.names = FALSE))
+      }
+    }
+
+    if (!is.na(reason)) {
+      loss_rows[[length(loss_rows) + 1]] <- tibble::tibble(
+        package_id = prior$package_id,
+        package_name_friendly = coalesce(
+          prior$man_package_name_friendly,
+          prior$current_package_name_friendly,
+          prior$package_name_friendly,
+          prior$man_package_name,
+          prior$current_package_name,
+          prior$package_name
+        ),
+        man_start_date = prior$man_start_date,
+        man_end_date = prior$man_end_date,
+        loss_reason = reason,
+        lost_fields = paste(sort(unique(fields)), collapse = ", ")
+      )
+    }
+  }
+
+  if (length(loss_rows) == 0) {
+    return(empty_result)
+  }
+  bind_rows(loss_rows) %>%
+    arrange(package_name_friendly, package_id, man_start_date, man_end_date)
+}
+
+stop_if_manual_edits_would_be_lost <- function(previous_raw, proposed_raw) {
+  loss_rows <- detect_manual_edit_loss(previous_raw, proposed_raw)
+  if (nrow(loss_rows) == 0) {
+    return(invisible(loss_rows))
+  }
+
+  preview <- loss_rows %>%
+    mutate(
+      package_label = if_else(
+        is.na(package_name_friendly) | package_name_friendly == "",
+        package_id,
+        paste0(package_name_friendly, " (", package_id, ")")
+      ),
+      date_label = paste0(format(man_start_date, "%Y-%m-%d"), " to ", format(man_end_date, "%Y-%m-%d")),
+      detail = paste0(package_label, " [", date_label, "]: ", loss_reason, " - ", lost_fields)
+    ) %>%
+    pull(detail)
+  preview <- head(preview, 20)
+  more_count <- nrow(loss_rows) - length(preview)
+  if (more_count > 0) {
+    preview <- c(preview, paste0("...and ", more_count, " more previously accepted manual row(s)."))
+  }
+
+  stop(
+    "Refusing to publish because this refresh would remove previously accepted manual edits before upload:\n",
+    paste(preview, collapse = "\n"),
+    "\nRestore or explicitly delete these user-owned edits before rerunning the loader.",
+    call. = FALSE
+  )
 }
 
 apply_manual_only_flight_date_fallback <- function(raw_upload, display_data) {
@@ -1166,28 +1315,9 @@ live_packages <- live_packages %>%
     current_benchmark_value = benchmark_value
   )
 
+existing_editor <- read_first_existing_tab(SHEET_ID, c(TAB_EDITOR, "Manual Package Edits"))
+existing_editor <- normalize_existing_editor(existing_editor)
 previous_raw <- download_previous_raw()
-existing_editor_raw <- read_first_existing_tab(SHEET_ID, c(TAB_MANUAL_INPUT))
-existing_editor <- normalize_existing_editor(existing_editor_raw)
-manual_input_seeded_from_raw <- FALSE
-if (nrow(existing_editor) == 0 && nrow(previous_raw) > 0) {
-  existing_editor <- previous_raw_to_editor_rows(previous_raw)
-  manual_input_seeded_from_raw <- nrow(existing_editor) > 0
-  if (manual_input_seeded_from_raw) {
-    cat(
-      "Manual input tab '", TAB_MANUAL_INPUT,
-      "' is missing or empty; seeding it from trusted prior raw manual evidence.\n",
-      sep = ""
-    )
-  }
-}
-if (nrow(existing_editor) == 0 && nrow(previous_raw) == 0) {
-  stop(
-    "Manual input tab '", TAB_MANUAL_INPUT,
-    "' is missing or empty, and trusted previous raw manual evidence could not be downloaded. Refusing to run.",
-    call. = FALSE
-  )
-}
 
 excluded_package_ids <- unique(c(
   live_packages$package_id[is_excluded_social_campaign(live_packages$campaign_name)],
@@ -1204,9 +1334,6 @@ existing_editor <- existing_editor %>%
   filter(!package_id %in% excluded_package_ids, !is_excluded_social_campaign(campaign_name))
 previous_raw <- previous_raw %>%
   filter(!package_id %in% excluded_package_ids, !is_excluded_social_campaign(campaign_name))
-if (manual_input_seeded_from_raw && nrow(existing_editor) > 0) {
-  write_editor_tab(SHEET_ID, TAB_MANUAL_INPUT, manual_input_display_data(existing_editor))
-}
 if (length(excluded_package_ids) > 0) {
   cat(
     "Excluded ", length(excluded_package_ids),
@@ -1353,6 +1480,30 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       prior_value(spec$replacement_col),
       prior_replacement_trusted
     )
+  }
+
+  metadata_choice_edited <- any(vapply(metadata_choices, function(choice) isTRUE(choice$edited), logical(1)))
+  metric_choice_edited <- any(vapply(metric_choices, function(choice) isTRUE(choice$edited), logical(1)))
+  row_has_manual_evidence <- isTRUE(has_user_edit_evidence(
+    sheet_value("manual_edit_at"),
+    sheet_value("manual_edit_by")
+  )[[1]]) || prior_replacement_trusted
+
+  if (is_unaudited_source_edit(
+    flight_start_choice$edited || flight_end_choice$edited || metadata_choice_edited || metric_choice_edited,
+    row_has_manual_evidence,
+    live_value("current_row_count")
+  )) {
+    flight_start_choice <- list(value = live_value("current_flight_start_date"), edited = FALSE)
+    flight_end_choice <- list(value = live_value("current_flight_end_date"), edited = FALSE)
+    for (metadata_idx in seq_len(nrow(metadata_specs))) {
+      spec <- metadata_specs[metadata_idx, ]
+      metadata_choices[[spec$value_key]] <- list(value = live_value(spec$current_col), edited = FALSE)
+    }
+    for (metric_idx in seq_len(nrow(metric_specs))) {
+      spec <- metric_specs[metric_idx, ]
+      metric_choices[[spec$value_key]] <- list(value = live_value(spec$current_col), edited = FALSE)
+    }
   }
 
   display <- tibble::tibble(
@@ -1668,6 +1819,10 @@ if (any(manual_only_inactive, na.rm = TRUE)) {
   )
 }
 
+# Existing accepted manual edits are user-owned state. Stop before destructive
+# table replacement or Sheet rewrite if the proposed refresh would drop them.
+stop_if_manual_edits_would_be_lost(previous_raw, raw_upload)
+
 raw_upload$manual_edit_published_at <- dplyr::if_else(
   raw_upload$is_active & raw_upload$validation_status == "valid",
   loaded_at,
@@ -1896,7 +2051,7 @@ current_tabs <- tryCatch(
 )
 if (length(current_tabs) > 0) {
   for (tab_name in LEGACY_TABS) {
-    if (tab_name %in% current_tabs && !tab_name %in% c(TAB_EDITOR, TAB_MANUAL_INPUT)) {
+    if (tab_name %in% current_tabs && tab_name != TAB_EDITOR) {
       try(sheet_delete(SHEET_ID, sheet = tab_name), silent = TRUE)
     }
   }

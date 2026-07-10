@@ -1,0 +1,124 @@
+{
+  "revisions": [
+    {
+      "exportLinks": {
+        "application/x-vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=ods",
+        "text/tab-separated-values": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=tsv",
+        "application/pdf": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=xlsx",
+        "text/csv": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=csv",
+        "application/zip": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=zip",
+        "application/vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=109&exportFormat=ods"
+      },
+      "lastModifyingUser": {
+        "displayName": "Gene Tsenter",
+        "permissionId": "01241928868234682914",
+        "emailAddress": "gene.tsenter@giantspoon.com"
+      },
+      "id": "109",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "modifiedTime": "2026-07-07T22:00:08.425Z",
+      "published": false
+    },
+    {
+      "exportLinks": {
+        "application/x-vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=ods",
+        "text/tab-separated-values": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=tsv",
+        "application/pdf": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=xlsx",
+        "text/csv": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=csv",
+        "application/zip": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=zip",
+        "application/vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=121&exportFormat=ods"
+      },
+      "lastModifyingUser": {
+        "displayName": "gene.tsenter",
+        "permissionId": "03794934192484925536",
+        "emailAddress": "gene.tsenter@old.giantspoon.com"
+      },
+      "id": "121",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "modifiedTime": "2026-07-07T22:46:13.017Z",
+      "published": false
+    },
+    {
+      "exportLinks": {
+        "application/x-vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=ods",
+        "text/tab-separated-values": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=tsv",
+        "application/pdf": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=xlsx",
+        "text/csv": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=csv",
+        "application/zip": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=zip",
+        "application/vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=214&exportFormat=ods"
+      },
+      "lastModifyingUser": {
+        "displayName": "gene.tsenter",
+        "permissionId": "03794934192484925536",
+        "emailAddress": "gene.tsenter@old.giantspoon.com"
+      },
+      "id": "214",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "modifiedTime": "2026-07-08T16:21:42.034Z",
+      "published": false
+    },
+    {
+      "exportLinks": {
+        "application/x-vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=ods",
+        "text/tab-separated-values": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=tsv",
+        "application/pdf": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=xlsx",
+        "text/csv": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=csv",
+        "application/zip": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=zip",
+        "application/vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=263&exportFormat=ods"
+      },
+      "lastModifyingUser": {
+        "displayName": "gene.tsenter",
+        "permissionId": "03794934192484925536",
+        "emailAddress": "gene.tsenter@old.giantspoon.com"
+      },
+      "id": "263",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "modifiedTime": "2026-07-08T20:30:36.114Z",
+      "published": false
+    },
+    {
+      "exportLinks": {
+        "application/x-vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=ods",
+        "text/tab-separated-values": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=tsv",
+        "application/pdf": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=xlsx",
+        "text/csv": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=csv",
+        "application/zip": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=zip",
+        "application/vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=272&exportFormat=ods"
+      },
+      "lastModifyingUser": {
+        "displayName": "gene.tsenter",
+        "permissionId": "03794934192484925536",
+        "emailAddress": "gene.tsenter@old.giantspoon.com"
+      },
+      "id": "272",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "modifiedTime": "2026-07-08T21:02:33.484Z",
+      "published": false
+    },
+    {
+      "exportLinks": {
+        "application/x-vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=ods",
+        "text/tab-separated-values": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=tsv",
+        "application/pdf": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=xlsx",
+        "text/csv": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=csv",
+        "application/zip": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=zip",
+        "application/vnd.oasis.opendocument.spreadsheet": "https://docs.google.com/spreadsheets/export?id=1p1aGAg8lMk7JvUKCJBKRj5rKQNNYL3iEKnl0kPHvZ7E&revision=306&exportFormat=ods"
+      },
+      "lastModifyingUser": {
+        "displayName": "Gene Tsenter",
+        "permissionId": "01241928868234682914",
+        "emailAddress": "gene.tsenter@giantspoon.com"
+      },
+      "id": "306",
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "modifiedTime": "2026-07-08T22:27:00.118Z",
+      "published": false
+    }
+  ]
+}

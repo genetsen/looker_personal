@@ -45,7 +45,8 @@ library(janitor)
 cat ("\n-----------\nADIF first party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
 
 ####* CONFIGURATION ####
-gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
+#gdrive_folder_id <- "1EyN93JE7v4OXjMMQREVuZ4ZN7xEed5WB"
+gdrive_folder_id <- "1HbJiIjONlHBQc6AFbQHjg4kGKTmOe0Yp"
 pattern <- "Partner Data"
 output_dir <- "/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/data"
 use_saved_phases <- FALSE
