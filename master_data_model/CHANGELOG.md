@@ -3,9 +3,11 @@
 ## 2026-07-10
 
 - **CHANGED** - Promoted `master_stg.data_model_v3` to the documented current production master model. The lower-grain v3 table is now the default for new master-model work; `data_model`, its reporting mart, and related v2 outputs remain live compatibility surfaces until a separately verified reporting migration and cleanup.
+- **CHANGED** - Corrected the FPD partner-template documentation to identify the post-Workplace-migration workbook as the current source and to label the prior workbook findings as historical until the workbook and its bound Apps Script can be inspected and recreated.
 
 ### Pending Next Actions
 
+- **Since Jul 10** - Restore access to the FPD partner template's bound Apps Script, then inspect and recreate its workbook dependencies - BLOCKER
 - **Since Jul 10** - Plan and verify the v3 reporting migration before deleting or replacing any compatibility files, tables, or views.
 
 ## 2026-07-09

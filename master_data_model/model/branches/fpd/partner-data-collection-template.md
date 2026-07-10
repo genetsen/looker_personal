@@ -1,8 +1,10 @@
 # First-Party Partner Data Collection Template
 
-This document explains the configurable Google Sheets template used to request first-party delivery data from media partners. It is based on a live read of the workbook on July 8, 2026, plus formula and validation inspection through the Google Sheets API.
+This document explains the configurable Google Sheets template used to request first-party delivery data from media partners.
 
-Source workbook: [2025 Template v2 Partner Data Collection](https://docs.google.com/spreadsheets/d/15zQ_IZx0kFpAffCFpp2d8ddDfjRf-kjnoSQXHxSu5eA/edit?gid=762675964#gid=762675964)
+Current source workbook: [Partner Data Collection template](https://docs.google.com/spreadsheets/d/1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4/edit?gid=561569503#gid=561569503). This is the current template identified on July 10, 2026, and it must be recreated after the Workplace migration. The workbook is now readable through the shared legacy Workplace credential; its bound Apps Script and execution history have not yet been re-verified.
+
+Historical baseline: the workbook shape, formulas, and experiment findings below came from a July 8, 2026 live inspection of the earlier [2025 Template v2 Partner Data Collection](https://docs.google.com/spreadsheets/d/15zQ_IZx0kFpAffCFpp2d8ddDfjRf-kjnoSQXHxSu5eA/edit?gid=762675964#gid=762675964). Treat those details as migration reference material until the current template is accessible and checked.
 
 ## What This Template Does
 
