@@ -115,6 +115,15 @@ The QA candidate was built without changing the current Sheet source or the prod
 
 This candidate is not a persistent production staging table and does not run a production `MERGE`. It is evidence for the source contract and safe join shape; the production history-preserving loader remains a separate approved implementation step.
 
+### Historical direct-source QA candidate
+
+The [direct-history QA builder](../model/branches/digital/conversions/create_rtl_cm360_direct_history_qa.sql) now combines the one-time enriched historical CM360 backfill with the enriched current seed. Its [history staging QA table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_history_qa&page=table) preserves every source field and chooses the newest export if a logical activity record appears more than once. Its [history full-outer QA output](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_dcm_detail_history_full_outer_qa&page=table) proves the same delivery-only, delivery-with-conversion, and conversion-only behavior across the direct-history seed.
+
+This is still review evidence only. The future production loader must use two deliberate modes:
+
+1. A one-time bootstrap from the approved enriched historical and current exports.
+2. A routine `MERGE` that accepts only a future enriched rolling export with both package-roadblock and placement fields. It must reject an export that lacks either field instead of joining at a broader grain.
+
 ## Safe rollout and rollback
 
 1. Build the proposed direct staging table and conversion sidecar as QA-only objects.

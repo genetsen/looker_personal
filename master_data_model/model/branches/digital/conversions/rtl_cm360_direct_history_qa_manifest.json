@@ -1,0 +1,53 @@
+{
+  "keys": [
+    "qa_cm360_outer_join_record_key"
+  ],
+  "metrics": [
+    "dcm_impressions",
+    "dcm_media_cost",
+    "dcm_clicks",
+    "cm360_conv_total_conversions",
+    "cm360_conv_total_revenue"
+  ],
+  "high_risk_metrics": [
+    "dcm_impressions",
+    "dcm_media_cost",
+    "dcm_clicks",
+    "cm360_conv_total_conversions",
+    "cm360_conv_total_revenue"
+  ],
+  "high_risk_dimensions": [
+    "qa_cm360_outer_join_row_type",
+    "cm360_model_detail_join_status"
+  ],
+  "custom_checks": [
+    {
+      "name": "full_outer_row_count_reconciles",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "WITH expected_dcm AS (SELECT COUNT(*) AS record_count FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE qa_v3_source_detail_type = 'dcm' AND _date BETWEEN (SELECT MIN(date) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_history_qa`) AND (SELECT MAX(date) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_history_qa`)), unmatched_conversions AS (SELECT COUNT(*) AS record_count FROM `looker-studio-pro-452620.master_stg.rtl_cm360_conversion_metrics_history_qa` AS c WHERE NOT EXISTS (SELECT 1 FROM `looker-studio-pro-452620.master_stg.data_model_v3` AS d WHERE d.qa_v3_source_detail_type = 'dcm' AND d._date = c.conversion_date AND LOWER(TRIM(d._package_id)) = LOWER(TRIM(c.package_id)) AND LOWER(TRIM(d._placement_id)) = LOWER(TRIM(c.placement_id)) AND LOWER(TRIM(d._creative_name)) = LOWER(TRIM(c.creative)))), candidate AS (SELECT COUNT(*) AS record_count FROM {table}) SELECT ABS((SELECT record_count FROM candidate) - ((SELECT record_count FROM expected_dcm) + (SELECT record_count FROM unmatched_conversions))) AS value",
+      "equals": 0
+    },
+    {
+      "name": "dcm_impressions_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(dcm_impressions), 0) - COALESCE((SELECT SUM(dcm_impressions) FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE qa_v3_source_detail_type = 'dcm' AND _date BETWEEN (SELECT MIN(date) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_history_qa`) AND (SELECT MAX(date) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_history_qa`)), 0)) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "all_direct_conversion_totals_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(cm360_conv_total_conversions), 0) - COALESCE((SELECT SUM(total_conversions) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_history_qa`), 0)) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "conversion_only_rows_have_no_delivery_metrics",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(qa_cm360_outer_join_row_type = 'conversion_only' AND (dcm_impressions IS NOT NULL OR dcm_media_cost IS NOT NULL OR dcm_clicks IS NOT NULL)) AS value FROM {table}",
+      "equals": 0
+    }
+  ]
+}

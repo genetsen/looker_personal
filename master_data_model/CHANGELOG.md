@@ -5,6 +5,7 @@
 - **CHANGED** — Documented the planned direct-CM360 conversion source: it will retain rolling-window history, preserve conversion and revenue evidence, and join activity metrics to delivery detail without duplicating delivery metrics. The current Sheet-based production source remains unchanged pending QA and approval.
 - **ADDED** — Built QA-only direct-CM360 raw staging and detail-metrics sidecar tables. They preserve all source fields, activity and revenue metrics, refresh metadata, parsed package/placement keys, and visible unmatched-key statuses; the current Sheet source and production model remain unchanged.
 - **ADDED** — Extended the direct-CM360 QA candidate with a full-outer DCM-detail/conversion output. It visibly retains delivery-only, matched delivery-plus-conversion, and conversion-only records; conversion-only records have null delivery metrics and are not unioned into other branches.
+- **ADDED** — Built a QA-only direct-CM360 history seed and full-outer output using the corrected enriched historical backfill plus the current enriched source. It proves source-field preservation, deterministic overlap handling, delivery-metric preservation, and explicit conversion-only records; production remains unchanged pending deployment approval.
 
 ### Pending Next Actions
 
