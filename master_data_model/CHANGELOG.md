@@ -2,14 +2,13 @@
 
 ## 2026-07-13
 
+- **CHANGED** — Deployed direct CM360 RTL conversions to the current V3 master model. V3 now reads persistent direct CM360 history instead of the Google Sheet landing table, joins only at package/date/parsed-placement/creative detail, preserves 350 conversion-only evidence rows with null delivery metrics, and exposes direct conversion, revenue, activity, and refresh fields.
+- **ADDED** — Added production bootstrap and routine history-merge SQL. The routine accepts only an enriched CM360 export with package/placement fields and a report window no wider than 14 days; it updates matching source rows without deleting historical conversion evidence.
+- **VERIFIED** — The isolated direct-CM360 V3 candidate passed all 13 SQL Change Guard checks. The deployed V3 live check reconciled 83,402 conversions and $37,587.88 revenue to direct CM360, with zero retired Sheet conversion rows and zero conversion-only rows carrying delivery metrics.
 - **CHANGED** — Documented the planned direct-CM360 conversion source: it will retain rolling-window history, preserve conversion and revenue evidence, and join activity metrics to delivery detail without duplicating delivery metrics. The current Sheet-based production source remains unchanged pending QA and approval.
 - **ADDED** — Built QA-only direct-CM360 raw staging and detail-metrics sidecar tables. They preserve all source fields, activity and revenue metrics, refresh metadata, parsed package/placement keys, and visible unmatched-key statuses; the current Sheet source and production model remain unchanged.
 - **ADDED** — Extended the direct-CM360 QA candidate with a full-outer DCM-detail/conversion output. It visibly retains delivery-only, matched delivery-plus-conversion, and conversion-only records; conversion-only records have null delivery metrics and are not unioned into other branches.
 - **ADDED** — Built a QA-only direct-CM360 history seed and full-outer output using the corrected enriched historical backfill plus the current enriched source. It proves source-field preservation, deterministic overlap handling, delivery-metric preservation, and explicit conversion-only records; production remains unchanged pending deployment approval.
-
-### Pending Next Actions
-
-- **Since Jul 13** — Resolve the direct-CM360 keys that have no precise DCM detail match before requesting production cutover approval. — RECOMMENDED
 
 ## 2026-07-10
 

@@ -1,18 +1,18 @@
-# Planned Direct CM360 Conversion Source Migration
+# Direct CM360 Conversion Source Migration
 
-This guide records the approved design direction for replacing the RTL conversion Google Sheet mirror with a direct Campaign Manager 360 (CM360) BigQuery source. It is for the people who build and validate the master data model. Nothing in this document changes production data, the current model, or the Google Sheet workflow yet.
+This guide records the deployed replacement of the RTL conversion Google Sheet mirror with a direct Campaign Manager 360 (CM360) BigQuery source. It is for the people who build and validate the master data model.
 
-The immediate next step is to build a separate QA candidate[^1], compare it to the current model, and obtain approval before switching the production path.
+The direct source was deployed to V3 on July 13, 2026 after isolated candidate QA, SQL Change Guard validation, and a focused live reconciliation.[^1]
 
 ## Status and decision
 
-| Area | Current production behavior | Planned behavior |
+| Area | Deployed behavior | Historical reference |
 | --- | --- | --- |
-| Conversion source | Google Sheet mirror loaded to [RTL conversion landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) | The newest CM360 export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) |
-| History | Depends on the Sheet mirror refresh | A persistent direct-CM360 staging table[^2] keeps prior dates while new rolling exports update only their matching rows |
-| Connection to the model | Current conversion branch emits separate conversion-outcome rows | A conversion-metrics sidecar[^3] joins to v3 delivery-detail rows[^4]; it does not add a new `UNION ALL` branch |
-| QA candidate | No direct-source QA object | [Raw direct-CM360 QA staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_qa&page=table), [detail-metrics QA sidecar](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_conversion_metrics_detail_qa&page=table), and [full-outer detail QA output](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_dcm_detail_full_outer_qa&page=table) now exist for review only |
-| Cutover state[^5] | Active today | Planned only; keep the Sheet path unchanged until QA passes and the user approves deployment |
+| Conversion source | The newest eligible enriched export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) updates [persistent direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) | [RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) is comparison evidence only |
+| History | Persistent staging[^2] retains older dates while a rolling export updates matching source records | Sheet refresh is no longer part of the V3 path |
+| Connection to the model | Direct conversion metrics join V3 delivery at package/date/parsed-placement/creative detail; unmatched conversion evidence remains separate | The former `conversion_activity` rows are retired |
+| QA candidate | [Isolated V3 direct-CM360 candidate](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3_cm360_direct_qa&page=table) and prior source QA objects preserve review evidence | The production cutover has passed |
+| Cutover state[^5] | Active in [V3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Roll back only if a focused live check fails |
 
 The direct source family is `giant-spoon-299605.ALL_DCM_adswerve.Ritual_conversions_last14_cm360_1123381_1665558564_*`. Each export contains a rolling last-14-day window[^6], so the loader must select exactly one newest export rather than scan all matching tables together. Scanning all exports would count overlapping dates repeatedly.
 
@@ -42,17 +42,17 @@ flowchart LR
   D --> E["Reporting metrics"]
 ```
 
-The planned staging-table name is `landing.rtl_conversions_cm360`. The name is a proposal for implementation, not a table that exists today.
+The production staging table is [direct CM360 RTL conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table).
 
 ## What the direct staging table must preserve
 
-The staging table must retain every source field from CM360, including the conversion and revenue breakdowns. This keeps the source auditable and avoids losing a field that may become useful later.
+The staging table retains every source field from CM360, including the conversion and revenue breakdowns. This keeps the source auditable and avoids losing a field that may become useful later.
 
 | Field group | Fields to retain |
 | --- | --- |
 | Delivery and conversion context | `date`, `advertiser`, `campaign`, `site`, `activity_group`, `activity`, `creative`, `placement`, `package_roadblock` |
-| Conversion metrics | `total_conversions`, `click_through_conversions`, `view_through_conversions` |
-| Revenue metrics | `total_revenue`, `click_through_revenue`, `view_through_revenue` |
+| Conversion metrics | `total_conversions`, `activity_click_through_conversions`, `activity_view_through_conversions` |
+| Revenue metrics | `total_conversions_revenue`, `activity_click_through_revenue`, `activity_view_through_revenue` |
 | Staging metadata | `package_id`, `placement_id`, `conversion_row_key`, `model_detail_key`, `source_table_name`, `source_exported_at`, `data_refresh_date`, `staged_at` |
 
 `data_refresh_date` answers “when did this staging table receive the row?” `source_exported_at` records when the selected CM360 export table landed in BigQuery. They are intentionally separate: a late staging rerun should not disguise an older source export as fresh source data.
@@ -68,11 +68,11 @@ The staging table must retain every source field from CM360, including the conve
 
 Direct CM360 preserves the full descriptive `placement` source field. Its `placement_id` is parsed from the embedded ID in that string because v3 DCM detail rows store that ID, not the full description. `activity` belongs in the raw merge key because it distinguishes conversion outcomes such as purchase and add-to-cart. It is intentionally not part of `model_detail_key`: the delivery model has no matching activity dimension, and adding it to the join would either create unmatched rows or multiply delivery metrics.
 
-The activity-level source data will be aggregated into a sidecar at `package_id + date + placement + creative` before it joins the model. The sidecar will expose explicit fields such as `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, and `conv_purchases`, along with total, click-through, view-through, and revenue measures. New activity names remain preserved in raw staging; adding a new wide `conv_*` field[^12] is a deliberate schema change, not an automatic silent behavior change.
+The activity-level source data is aggregated at `package_id + date + placement + creative` before it joins the model. V3 exposes `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, and `conv_purchases`, along with total, click-through, view-through, and revenue measures. Multi-valued activity and activity-group fields remain available as `conv_activities` and `conv_activity_groups`. New activity names remain preserved in raw staging; adding a new wide `conv_*` field[^12] is a deliberate schema change, not an automatic silent behavior change.
 
 ## Rolling-window history rule
 
-The direct source is not a full historical replacement on each run. The loader must:
+The direct source is not a full historical replacement on each run. The routine loader:
 
 1. Select the one newest CM360 export using the export timestamp in its table name.
 2. Standardize and validate its source fields and keys.
@@ -80,11 +80,11 @@ The direct source is not a full historical replacement on each run. The loader m
 4. Insert genuinely new rows.
 5. Keep staging rows outside the newest 14-day window; never delete history merely because it is absent from the new rolling export.
 
-This makes corrected values inside the rolling window refreshable while retaining older conversion history.
+This makes corrected values inside the rolling window refreshable while retaining older conversion history. It rejects a table whose parsed report window exceeds 14 days, so the historical backfill cannot be accidentally selected by routine refreshes.
 
 ## Model integration rule: join, do not union
 
-The conversion metrics sidecar will full-outer-join existing v3 delivery-detail rows using `model_detail_key`. It will not be unioned into the other model branches, and the other branches will not need placeholder conversion fields merely to satisfy a union schema.
+The conversion metrics sidecar full-outer-joins existing V3 delivery-detail rows using `model_detail_key`. It is not a separate conversion-source branch, and the other branches do not need placeholder conversion fields merely to satisfy a conversion union.
 
 The join must remain one-to-one[^13] at the delivery-detail grain. Conversion outcomes can have several activities for one delivery row; aggregating the sidecar first prevents row multiplication[^14], which would duplicate spend, impressions, clicks, or other delivery metrics.
 
@@ -92,45 +92,43 @@ The full outer join has three visible outcomes: `delivery_with_conversion`, `del
 
 ## QA and release checks
 
-| Check | Required proof before cutover |
+| Check | Deployed proof |
 | --- | --- |
-| Newest source selection | Exactly one CM360 export is selected; overlapping wildcard exports[^15] are not combined |
-| Source preservation | All direct-CM360 source columns and required staging metadata are present and populated as expected |
-| Historical merge | Raw staging keys are unique; recent rows update or insert; older rows remain available |
-| Activity metrics | Sidecar totals reconcile[^16] to raw CM360 values and each published activity field has a documented source activity |
-| Model join | Every intended detail key joins uniquely, with no duplicated v3 delivery metrics; conversion-only rows remain explicit with null delivery metrics |
-| Freshness | `source_exported_at` and `data_refresh_date` are visible for inspection |
-| Deployment comparison[^17] | An isolated QA candidate passes the approved SQL comparison before production deployment |
+| Newest source selection | Routine script accepts one enriched table only when its parsed report window is 0–14 days |
+| Source preservation | All direct CM360 fields and staging metadata are retained in production history |
+| Historical merge | 5,394 unique source records cover Apr 30–Jul 12; older history remains after routine updates |
+| Activity metrics | All five published activity measures reconcile exactly to raw CM360 values[^16] |
+| Model join | 1,555 unique matches, 350 explicit conversion-only rows, and no conversion-only delivery metrics |
+| Freshness | `source_exported_at`, `data_refresh_date`, and `staged_at` are visible in V3 |
+| Deployment comparison[^17] | Isolated candidate passed all 13 SQL Change Guard checks before production deployment |
 
 After the model change is approved and deployed, refresh the dependent stored model table[^18] in the same session and run a focused live check of the changed conversion fields.
 
-## Current QA candidate: review only
+## Deployed implementation and QA evidence
 
-The QA candidate was built without changing the current Sheet source or the production model.
+The QA candidate remains review evidence; production now uses the scripts below and does not read the current Sheet source.
 
 - [QA builder SQL](../model/branches/digital/conversions/create_rtl_cm360_direct_conversions_qa.sql) selects the newest single rolling export and creates the three QA tables.
 - [Raw direct-CM360 QA staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_qa&page=table) preserves all direct source fields, parsed IDs, merge key, logical model key, source export timestamp, and staging refresh date.
 - [Detail-metrics QA sidecar](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_conversion_metrics_detail_qa&page=table) contains activity metrics and `model_detail_join_status`. It keeps unmatched source keys visible rather than joining them at a broader grain.
 - [Full-outer detail QA output](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_dcm_detail_full_outer_qa&page=table) demonstrates the final join shape: matched delivery-plus-conversion rows, delivery-only rows, and conversion-only rows. Conversion-only rows retain conversion metrics but have null DCM delivery metrics.
 
-This candidate is not a persistent production staging table and does not run a production `MERGE`. It is evidence for the source contract and safe join shape; the production history-preserving loader remains a separate approved implementation step.
+The candidate is not the persistent production staging table; it remains evidence for the source contract and safe join shape.
 
 ### Historical direct-source QA candidate
 
 The [direct-history QA builder](../model/branches/digital/conversions/create_rtl_cm360_direct_history_qa.sql) now combines the one-time enriched historical CM360 backfill with the enriched current seed. Its [history staging QA table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_history_qa&page=table) preserves every source field and chooses the newest export if a logical activity record appears more than once. Its [history full-outer QA output](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_dcm_detail_history_full_outer_qa&page=table) proves the same delivery-only, delivery-with-conversion, and conversion-only behavior across the direct-history seed.
 
-This is still review evidence only. The future production loader must use two deliberate modes:
+Production uses two deliberate modes:
 
 1. A one-time bootstrap from the approved enriched historical and current exports.
 2. A routine `MERGE` that accepts only a future enriched rolling export with both package-roadblock and placement fields. It must reject an export that lacks either field instead of joining at a broader grain.
 
-## Safe rollout and rollback
+## Rollback boundary
 
-1. Build the proposed direct staging table and conversion sidecar as QA-only objects.
-2. Compare their source coverage, keys, activity totals, and v3 join behavior with the current path.
-3. Review the evidence and obtain explicit approval for the production switch.
-4. Switch the model to the direct sidecar, then refresh and verify the dependent stored model.
-5. Keep the existing Sheet mirror and its loader untouched for the first release as a legacy fallback[^19] and comparison source.
+1. Rebuild V3 from the direct staging table after the source-history refresh is verified.
+2. Reconcile direct conversion and activity totals, join statuses, and conversion-only delivery-null behavior.
+3. Keep the Sheet landing table as historical comparison evidence only; do not use it as a V3 source.
 
 If the live check fails, restore the prior conversion-source branch. The new direct staging table remains as evidence for investigation; it does not need to be deleted to roll back the model connection.
 

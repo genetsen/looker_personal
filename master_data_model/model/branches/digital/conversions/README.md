@@ -1,25 +1,27 @@
 # Digital Conversions Branch
 
-This folder owns conversion outcome logic that attaches post-media actions to digital package IDs.
+This folder owns the direct Campaign Manager 360 (CM360) conversion path for Ritual. It preserves source activity records in BigQuery, updates only the newest valid rolling window, and joins aggregated conversion metrics to delivery at the lowest shared detail.
 
-The current placeholder source is the BigQuery table [Ritual conversion report](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table). It is a Google Sheet mirror with package IDs embedded in `package_roadblock`, daily conversion activities, creative labels, and source Sheet lineage.
-
-## Planned direct-CM360 migration
-
-This is the current Sheet-based flow. The planned direct-CM360 design keeps the existing path in place until QA and approval are complete, then replaces the source with a history-preserving staging table and a joinable conversion-metrics sidecar. The [QA builder](create_rtl_cm360_direct_conversions_qa.sql) creates disposable evidence tables only, including a full-outer detail output that labels delivery-only, delivery-with-conversion, and conversion-only records; it does not change this production path. Read the [direct CM360 migration guide](../../../../docs/rtl-direct-cm360-conversion-migration.md) before changing this helper path.
-
-The [direct-history QA builder](create_rtl_cm360_direct_history_qa.sql) tests the one-time direct CM360 history seed separately. It keeps the historical-backfill source and current enriched source distinct, preserves all source fields, and proves the full-outer output before a production staging `MERGE` is introduced.
-
-## Current Model Path
+## Production path
 
 | Step | Grain | Purpose |
-|---|---|---|
-| Raw source | Package/date/site/creative/activity | Preserve the conversion report as loaded from the Sheet. |
-| Normalized conversion detail | Package/date/site/creative/activity | Parse package ID, standardize field names, and keep Sheet lineage. |
-| [v3 clustered table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Lowest available source grain | Add conversion outcome rows with delivery metrics intentionally blank. |
+| --- | --- | --- |
+| [Direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) | Source activity | Retain every CM360 field, parsed package/placement IDs, source-export timestamp, and staging refresh date. |
+| Direct conversion summary | Package + date + parsed placement ID + creative | Aggregate activities and revenue without multiplying delivery rows. |
+| [V3 master model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Delivery detail plus conversion-only evidence | Attach direct `conv_*` fields only to a unique delivery match; retain unmatched conversions with null delivery metrics. |
 
-Conversions are outcome evidence, not media delivery. Conversion rows must not populate `_spend`, `_impressions`, `_clicks`, `_video_plays`, `_video_views`, or `_video_comps`.
+The V3 builder does not read the legacy [RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table). That table remains comparison evidence only.
 
-## Match Rule
+## Refresh scripts
 
-Conversion package IDs must match known master-model package IDs. Conversion dates can extend past the delivery row dates because post-flight attribution can happen after the media package ends. In v3, those rows use the nearest package context and are marked with `conversion_date_without_delivery_row`.
+| Script | When to use it | Safety boundary |
+| --- | --- | --- |
+| [Bootstrap direct history](bootstrap_rtl_cm360_direct_conversions.sql) | One-time approved historical seed or recovery rebuild | Uses the approved enriched backfill and current seed; it does not refresh a Google Sheet. |
+| [Merge newest rolling export](merge_rtl_cm360_direct_conversions_latest.sql) | Routine refresh after a new enriched CM360 table lands | Accepts exactly one newest table with `package_roadblock` and `placement` fields and a report window no wider than 14 days. It updates matching source rows and retains older history. |
+| [V3 builder](../../../final_model/create_master_stg_data_model_v3.sql) | Rebuild the production model after staging is current | Joins at package/date/placement/creative. Conversion-only records never inherit delivery metrics. |
+
+## Published conversion fields
+
+Direct CM360 preserves source advertiser, campaign, site, activity-group, activity, creative, placement, package/roadblock, conversions, and revenue. In V3, multi-valued activity and activity-group fields are arrays (`conv_activities`, `conv_activity_groups`) and the activity metrics are `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, and `conv_purchases`.
+
+Read the [direct CM360 migration guide](../../../../docs/rtl-direct-cm360-conversion-migration.md) before changing the source contract or join grain.

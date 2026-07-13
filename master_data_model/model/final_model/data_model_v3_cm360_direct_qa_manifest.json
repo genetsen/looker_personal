@@ -1,0 +1,77 @@
+{
+  "keys": [
+    "qa_cm360_record_key"
+  ],
+  "metrics": [],
+  "high_risk_metrics": [
+    "conv_total_conversions",
+    "conv_total_revenue"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 2200
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 2482,
+    "max_candidate_only": 350
+  },
+  "custom_checks": [
+    {
+      "name": "final_delivery_metrics_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT GREATEST(ABS(COALESCE(SUM(_impressions), 0) - COALESCE((SELECT SUM(_impressions) FROM `looker-studio-pro-452620.master_stg.data_model_v3`), 0)), ABS(COALESCE(SUM(_spend), 0) - COALESCE((SELECT SUM(_spend) FROM `looker-studio-pro-452620.master_stg.data_model_v3`), 0)), ABS(COALESCE(SUM(_clicks), 0) - COALESCE((SELECT SUM(_clicks) FROM `looker-studio-pro-452620.master_stg.data_model_v3`), 0))) AS value FROM {table}",
+      "expected_max": 0.000001
+    },
+    {
+      "name": "actual_dcm_delivery_detail_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT GREATEST(ABS(COALESCE(SUM(dcm_impressions), 0) - COALESCE((SELECT SUM(dcm_impressions) FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE qa_v3_source_detail_type = 'dcm'), 0)), ABS(COALESCE(SUM(dcm_media_cost), 0) - COALESCE((SELECT SUM(dcm_media_cost) FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE qa_v3_source_detail_type = 'dcm'), 0)), ABS(COALESCE(SUM(dcm_clicks), 0) - COALESCE((SELECT SUM(dcm_clicks) FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE qa_v3_source_detail_type = 'dcm'), 0))) AS value FROM {table} WHERE qa_v3_source_detail_type = 'dcm'",
+      "expected_max": 0.000001
+    },
+    {
+      "name": "sheet_conversion_rows_removed",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(qa_v3_source_detail_type = 'conversion_activity') AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "direct_conversion_total_reconciles",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(conv_total_conversions), 0) - COALESCE((SELECT SUM(total_conversions) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions`), 0)) AS value FROM {table} WHERE conv_model_detail_key IS NOT NULL",
+      "equals": 0
+    },
+    {
+      "name": "direct_revenue_reconciles",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(conv_total_revenue), 0) - COALESCE((SELECT SUM(total_conversions_revenue) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions`), 0)) AS value FROM {table} WHERE conv_model_detail_key IS NOT NULL",
+      "expected_max": 0.000001
+    },
+    {
+      "name": "conversion_only_rows_have_no_delivery_metrics",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(conv_model_detail_join_status IN ('conversion_only', 'ambiguous_delivery_match') AND (dcm_impressions IS NOT NULL OR dcm_media_cost IS NOT NULL OR dcm_clicks IS NOT NULL)) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "direct_rows_keep_required_source_dimensions",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(conv_model_detail_key IS NOT NULL AND (conv_advertiser IS NULL OR conv_campaign IS NULL OR conv_site IS NULL OR conv_placement IS NULL OR conv_package_roadblock IS NULL OR ARRAY_LENGTH(conv_activity_groups) = 0 OR ARRAY_LENGTH(conv_activities) = 0)) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "direct_rows_have_refresh_metadata",
+      "severity": "high",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(conv_model_detail_key IS NOT NULL AND (conv_data_refresh_date IS NULL OR conv_staged_at IS NULL OR ARRAY_LENGTH(conv_source_table_names) = 0)) AS value FROM {table}",
+      "equals": 0
+    }
+  ]
+}
