@@ -1,10 +1,10 @@
--- Normalize the Ritual conversion report for v3 conversion outcome rows.
+-- Normalize the legacy-schema RTL compatibility table for historical checks.
 --
 -- Purpose:
---   Parse package IDs from the raw Ritual conversion report, keep conversion
---   activity and creative detail at source grain, and preserve Sheet lineage.
---   This SQL is a readable branch reference; the active v3 builder embeds the
---   same logic in model/final_model/create_master_stg_data_model_v3.sql.
+--   Parse package IDs and keep conversion activity and creative detail at the
+--   compatibility table's source grain. The table now mirrors direct CM360
+--   history; legacy delivery and Sheet-lineage columns remain NULL. Production
+--   v3 uses the direct CM360 history table instead of this reference query.
 
 SELECT
   REGEXP_EXTRACT(package_roadblock, r'\|([^|_]+)_') AS `_package_id`,

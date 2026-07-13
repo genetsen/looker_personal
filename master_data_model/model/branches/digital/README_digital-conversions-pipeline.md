@@ -1,60 +1,61 @@
 # Digital Conversion Outcomes Pipeline
 
-This guide documents how Ritual conversion outcomes enter the versioned master evidence model. It uses the source-to-output structure of [Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README_v2.md), while keeping outcomes separate from media delivery.
-
-## Planned direct-CM360 migration
-
-The Google Sheet path described below is the current production behavior. The planned replacement will read the newest CM360 rolling export directly, keep history in a persistent staging table, and join aggregated conversion metrics to delivery detail without a `UNION ALL`. See the [direct CM360 migration guide](../../../docs/rtl-direct-cm360-conversion-migration.md) for the agreed design, keys, QA checks, and rollout boundary. No cutover has happened yet.
+This guide explains how Ritual conversion outcomes move from direct Campaign Manager 360 (CM360) history into the current V3 master evidence model. Conversion evidence stays separate from media-delivery measures so outcome rows cannot inflate spend, impressions, or clicks.
 
 ## Pipeline Overview
 
 ```text
-Ritual conversion-report Sheet mirror
+Newest eligible CM360 rolling export
               ↓
-Package ID extraction and source-grain normalization
+Persistent direct conversion history
               ↓
-Nearest package-context lookup when needed
+Package + date + placement + creative summary
               ↓
-Master evidence model v3 conversion-outcome rows
+Unique delivery-detail join or explicit conversion-only row
+              ↓
+Master evidence model V3 conversion fields
 ```
 
 ## Source and Output Contract
 
 | Stage | Object or file | Grain | Responsibility |
 |---|---|---|---|
-| Source | [Ritual conversion report](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) | Package/date/site/creative/activity | Sheet-mirrored conversion activity, source impressions/clicks, creative, and Sheet lineage. |
-| Reference normalizer | [Conversion normalization SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/digital/conversions/normalize_rtl_conv_report.sql) | Package/date/site/creative/activity | Readable reference for the logic embedded in the active builder. |
-| Active builder | [Final model v3 SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql) | Package/date/site/creative/activity | Matches package context and emits conversion-outcome rows. |
-| Output | [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Lowest available conversion source grain | Keeps conversion outcomes available without altering delivery totals. |
+| Production source | [Direct CM360 conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) | Source activity record | Retains the rolling-report history, conversion and revenue fields, source keys, and refresh timestamps. |
+| Compatibility reference | [Legacy-schema RTL compatibility table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) | Source activity record in the old 18-column shape | Mirrors direct history for optional comparisons. Its Google Sheet path is retired, and unavailable delivery and Sheet-lineage fields are blank. |
+| Active builder | [Final model V3 SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql) | Delivery detail plus conversion-only evidence | Aggregates activity records, joins only to one matching delivery row, and retains unmatched outcomes without delivery measures. |
+| Output | [Master evidence model V3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Package/date/parsed-placement/creative for conversions | Publishes direct conversion, revenue, activity, source, and refresh evidence without altering delivery totals. |
 
-## Custom Logic and Boundaries
+## Matching and Safety Rules
 
-- The normalizer extracts the package ID from `package_roadblock`, accepts rows from `2025-01-01` onward, and excludes rows that cannot yield a package ID.
-- It groups by package, date, site, campaign, creative, and activity; source impressions and clicks are preserved in `conv_source_*` evidence fields.
-- The builder first seeks exact package/date context in the stable model. When a conversion happens after the final delivery date, it attaches the nearest package context and adds `conversion_date_without_delivery_row` to the QA issues.
-- Conversion rows use `qa_v3_row_type = conversion_outcome` and `qa_v3_metric_grain = package_date_site_creative_activity`.
-- Conversion outcomes do not populate `_planned_spend`, `_planned_impressions`, `_spend`, `_impressions`, `_clicks`, `_video_plays`, `_video_views`, or `_video_comps`. That protects media-delivery totals from post-media outcome rows.
+- The routine source refresh selects one newest enriched CM360 export whose report window is no wider than 14 days.
+- Persistent history updates matching source records and retains older dates outside the newest rolling window.
+- Conversion activities aggregate at package, date, parsed placement ID, and creative before joining delivery.
+- A conversion summary attaches only when exactly one delivery row has the same detail key.
+- Unmatched or ambiguous summaries remain visible as conversion-only evidence with null delivery measures.
+- The compatibility table keeps its original 18 columns but does not invent impressions, clicks, campaign IDs, channel values, or Sheet lineage that direct CM360 does not supply.
 
-## Field Lineage
+## Published Conversion Fields
 
-| Source value | v3 evidence field | Meaning |
+| Field group | Examples | Meaning |
 |---|---|---|
-| `total_conversions` | `conv_total_conversions` | The conversion outcome count. |
-| Source report impressions/clicks | `conv_source_impressions`, `conv_source_clicks` | Source-report context only, not delivery metrics. |
-| Site, campaign, package roadblock, creative, activity | `conv_*` detail fields | Keeps outcome provenance at the source grain. |
-| Latest load and Sheet identifiers | `conv_loaded_at`, `conv_source_sheet_*` | Lets a reader trace an outcome to the Sheet load that supplied it. |
+| Totals | `conv_total_conversions`, `conv_click_through_conversions`, `conv_view_through_conversions` | Conversion counts from direct CM360. |
+| Revenue | `conv_total_revenue`, `conv_click_through_revenue`, `conv_view_through_revenue` | Revenue attributed by CM360. |
+| Activities | `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, `conv_purchases` | Named outcome counts derived from source activity records. |
+| Detail and match status | `conv_model_detail_key`, `conv_model_detail_join_status`, `conv_model_detail_match_count` | Shows how conversion evidence did or did not match delivery detail. |
+| Freshness and source | `conv_source_table_names`, `conv_source_exported_at`, `conv_data_refresh_date`, `conv_staged_at` | Separates source-export time from staging refresh time. |
 
 ## Debugging Route
 
 | Question | First check | Then trace |
 |---|---|---|
-| Why is an outcome missing? | [Ritual conversion report](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) and extracted package ID | The reference normalizer, then the v3 output. |
-| Why is delivery blank on the row? | `qa_v3_row_type` and `qa_v3_metric_behavior` | Blank delivery fields are intentional for an outcome row. |
-| Why is a package context from another date used? | `qa_data_issues` for `conversion_date_without_delivery_row` | The event occurred on a date with no exact delivery row. |
+| Why is an outcome missing? | [Direct CM360 conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) and its `conversion_row_key` | Aggregate by `model_detail_key`, then inspect the V3 join status. |
+| Why is delivery blank? | `conv_model_detail_join_status` | `conversion_only` and ambiguous matches intentionally retain null delivery measures. |
+| Why does the compatibility table lack impressions or clicks? | The table description and legacy-only columns | Direct CM360 conversion history does not provide those delivery values, so the compatibility refresh leaves them blank. |
+| Why are older dates still present? | `source_table_name` and `source_exported_at` | Persistent history keeps older evidence while the newest rolling report updates only matching recent records. |
 
 ## Related Guides
 
-- [Prisma planning pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/prisma/README_prisma-pipeline.md)
+- [Direct CM360 migration guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/rtl-direct-cm360-conversion-migration.md)
+- [Digital conversion helper guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/digital/conversions/README.md)
 - [DCM delivery pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md)
-- [FPD pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/README_fpd-pipeline.md)
 - [Source branch index](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/README.md)

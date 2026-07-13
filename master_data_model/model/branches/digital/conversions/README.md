@@ -10,7 +10,7 @@ This folder owns the direct Campaign Manager 360 (CM360) conversion path for Rit
 | Direct conversion summary | Package + date + parsed placement ID + creative | Aggregate activities and revenue without multiplying delivery rows. |
 | [V3 master model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Delivery detail plus conversion-only evidence | Attach direct `conv_*` fields only to a unique delivery match; retain unmatched conversions with null delivery metrics. |
 
-The V3 builder does not read the legacy [RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table). That table remains comparison evidence only.
+The final V3 output does not read the [legacy-schema RTL compatibility table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table). That table is now refreshed from direct CM360 history for optional compatibility checks; its Google Sheet read path is retired. The canonical V3 builder also removes the former Sheet-shaped `conversion_activity` CTEs entirely instead of building an empty branch and filtering it out later.
 
 ## Refresh scripts
 

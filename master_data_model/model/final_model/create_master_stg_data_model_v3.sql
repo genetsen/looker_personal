@@ -296,74 +296,6 @@ fpd_updated_detail AS (
   GROUP BY u.package_id, DATE(u.date)
 ),
 
-conversion_detail AS (
-  SELECT
-    CAST(NULL AS STRING) AS `_package_id`,
-    CAST(NULL AS DATE) AS `_date`,
-    CAST(NULL AS STRING) AS conv_site,
-    CAST(NULL AS STRING) AS conv_site_cm360,
-    CAST(NULL AS STRING) AS conv_campaign,
-    CAST(NULL AS STRING) AS conv_campaign_id,
-    CAST(NULL AS STRING) AS conv_package_roadblock,
-    CAST(NULL AS STRING) AS conv_creative,
-    CAST(NULL AS STRING) AS conv_activity,
-    CAST(NULL AS INT64) AS conv_total_conversions,
-    CAST(NULL AS INT64) AS conv_source_impressions,
-    CAST(NULL AS INT64) AS conv_source_clicks,
-    CAST(NULL AS INT64) AS conv_source_row_count,
-    CAST(NULL AS TIMESTAMP) AS conv_loaded_at,
-    CAST(NULL AS STRING) AS conv_source_sheet_id,
-    CAST(NULL AS STRING) AS conv_source_sheet_tab,
-    CAST(NULL AS STRING) AS conv_source_sheet_gid
-  FROM UNNEST([]) AS retired_sheet_source
-  WHERE FALSE -- Direct CM360 staging replaces the retired Google Sheet conversion source.
-),
-
-conversion_context_candidates AS (
-  SELECT
-    d.*,
-    ANY_VALUE(exact.c) AS exact_c,
-    ARRAY_AGG(
-      s
-      ORDER BY
-        ABS(DATE_DIFF(s.`_date`, d.`_date`, DAY)),
-        IF(s.`_date` <= d.`_date`, 0, 1),
-        s.`_date` DESC
-      LIMIT 1
-    )[SAFE_OFFSET(0)] AS nearest_c
-  FROM conversion_detail AS d
-  LEFT JOIN stable_context AS exact
-    USING (`_package_id`, `_date`)
-  LEFT JOIN stable AS s
-    ON s.`_package_id` = d.`_package_id`
-  GROUP BY
-    d.`_package_id`,
-    d.`_date`,
-    d.conv_site,
-    d.conv_site_cm360,
-    d.conv_campaign,
-    d.conv_campaign_id,
-    d.conv_package_roadblock,
-    d.conv_creative,
-    d.conv_activity,
-    d.conv_total_conversions,
-    d.conv_source_impressions,
-    d.conv_source_clicks,
-    d.conv_source_row_count,
-    d.conv_loaded_at,
-    d.conv_source_sheet_id,
-    d.conv_source_sheet_tab,
-    d.conv_source_sheet_gid
-),
-
-conversion_context AS (
-  SELECT
-    * EXCEPT(exact_c, nearest_c),
-    exact_c IS NULL AS conv_context_from_nearest_package_date,
-    IF(exact_c IS NULL, nearest_c, exact_c) AS c
-  FROM conversion_context_candidates
-),
-
 digital_detail AS (
   SELECT * FROM dcm_detail
   UNION ALL
@@ -488,70 +420,6 @@ digital_actual_rows AS (
     USING (`_package_id`, `_date`)
 ),
 
-conversion_actual_rows AS (
-  SELECT
-    'conversion_outcome' AS qa_v3_row_type,
-    'package_date_site_creative_activity' AS qa_v3_metric_grain,
-    'conversion_activity' AS qa_v3_source_detail_type,
-    CAST(NULL AS STRING) AS qa_v3_ad_name,
-    IF(
-      d.conv_context_from_nearest_package_date,
-      'conversion outcome row uses nearest package context because no delivery row exists on the conversion date; delivery metrics intentionally null',
-      'conversion outcome row; delivery metrics intentionally null'
-    ) AS qa_v3_metric_behavior,
-    p.planned_spend AS qa_v3_package_planned_spend_doNotSum,
-    p.planned_impressions AS qa_v3_package_planned_impressions_doNotSum,
-    d.c.* REPLACE(
-      'conversion_activity' AS qa_row_data_source_primary,
-      'looker-studio-pro-452620.landing.rtl_conv_report' AS qa_data_source,
-      d.conv_loaded_at AS qa_data_source_refresh_at,
-      CONCAT(COALESCE(d.c.qa_row_data_sources_available, 'none'), ' | conversion_activity') AS qa_row_data_sources_available,
-      COALESCE(
-        NULLIF(ARRAY_TO_STRING(ARRAY_CONCAT(
-          IF(COALESCE(d.c.qa_data_issues, 'no_issues') = 'no_issues', [], [d.c.qa_data_issues]),
-          IF(d.conv_context_from_nearest_package_date, ['conversion_date_without_delivery_row'], [])
-        ), ' | '), ''),
-        'no_issues'
-      ) AS qa_data_issues,
-      d.`_date` AS `_date`,
-      COALESCE(NULLIF(d.conv_site_cm360, ''), NULLIF(d.conv_site, ''), d.`_package_id`) AS `_placement_id`,
-      COALESCE(NULLIF(d.conv_site, ''), NULLIF(d.conv_site_cm360, ''), d.conv_package_roadblock) AS `_placement_name`,
-      CAST(NULL AS STRING) AS fpd_factor,
-      CAST(NULL AS STRING) AS fpd_creative,
-      CAST(NULL AS STRING) AS fpd_creative_img,
-      d.conv_creative AS `_creative_name`,
-      CAST(NULL AS STRING) AS `_creative_img`,
-      CAST(NULL AS FLOAT64) AS `_planned_spend`,
-      CAST(NULL AS FLOAT64) AS `_planned_impressions`,
-      CAST(NULL AS FLOAT64) AS `_spend`,
-      CAST(NULL AS FLOAT64) AS `_impressions`,
-      CAST(NULL AS FLOAT64) AS `_clicks`,
-      CAST(NULL AS FLOAT64) AS `_video_plays`,
-      CAST(NULL AS FLOAT64) AS `_video_views`,
-      CAST(NULL AS FLOAT64) AS `_video_comps`,
-      FALSE AS qa_manual_edit_flag,
-      d.conv_activity AS conv_activity,
-      d.conv_total_conversions AS conv_total_conversions,
-      d.conv_source_impressions AS conv_source_impressions,
-      d.conv_source_clicks AS conv_source_clicks,
-      d.conv_source_row_count AS conv_source_row_count,
-      d.conv_site AS conv_site,
-      d.conv_site_cm360 AS conv_site_cm360,
-      d.conv_campaign AS conv_campaign,
-      d.conv_campaign_id AS conv_campaign_id,
-      d.conv_package_roadblock AS conv_package_roadblock,
-      d.conv_creative AS conv_creative,
-      d.conv_loaded_at AS conv_loaded_at,
-      d.conv_source_sheet_id AS conv_source_sheet_id,
-      d.conv_source_sheet_tab AS conv_source_sheet_tab,
-      d.conv_source_sheet_gid AS conv_source_sheet_gid
-    )
-  FROM conversion_context AS d
-  LEFT JOIN package_plan_daily AS p
-    USING (`_package_id`, `_date`)
-  WHERE d.c IS NOT NULL
-),
-
 non_digital_source_ranked AS (
   SELECT
     s.*,
@@ -665,8 +533,6 @@ final_rows AS (
   UNION ALL
   SELECT * FROM digital_actual_rows
   UNION ALL
-  SELECT * FROM conversion_actual_rows
-  UNION ALL
   SELECT * FROM non_digital_source_rows
   UNION ALL
   SELECT * FROM planned_only_rows
@@ -685,10 +551,9 @@ WHERE `_advertiser_name` != 'Highlights'
 -- Direct CM360 conversion integration. This second write joins the persistent
 -- source history to one unique DCM delivery row at package/date/placement/creative
 -- grain and emits conversion-only evidence rows when no such delivery row exists.
-CREATE TEMP TABLE v3_base_without_sheet_conversions AS
+CREATE TEMP TABLE v3_delivery_base AS
 SELECT *
-FROM `looker-studio-pro-452620.master_stg.data_model_v3`
-WHERE qa_v3_source_detail_type != 'conversion_activity';
+FROM `looker-studio-pro-452620.master_stg.data_model_v3`;
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.master_stg.data_model_v3`
 CLUSTER BY _advertiser AS
@@ -731,7 +596,7 @@ dcm_detail_counts AS (
       LOWER(TRIM(_placement_id)), '|', LOWER(TRIM(_creative_name))
     ) AS model_detail_key,
     COUNT(*) AS dcm_detail_match_count
-  FROM v3_base_without_sheet_conversions
+  FROM v3_delivery_base
   WHERE qa_v3_source_detail_type = 'dcm'
   GROUP BY model_detail_key
 ),
@@ -791,7 +656,7 @@ base_with_direct AS (
     c.conv_data_refresh_date,
     c.conv_staged_at,
     TO_HEX(SHA256(CONCAT('base|', TO_JSON_STRING(b)))) AS qa_cm360_record_key
-  FROM v3_base_without_sheet_conversions AS b
+  FROM v3_delivery_base AS b
   LEFT JOIN cm360_ready AS c
     ON b.qa_v3_source_detail_type = 'dcm'
    AND CONCAT(
@@ -868,7 +733,7 @@ conversion_only_rows AS (
     c.conv_staged_at,
     TO_HEX(SHA256(CONCAT('cm360|', c.model_detail_key))) AS qa_cm360_record_key
   FROM cm360_ready AS c
-  LEFT JOIN v3_base_without_sheet_conversions AS b ON FALSE
+  LEFT JOIN v3_delivery_base AS b ON FALSE
   WHERE c.conv_model_detail_join_status != 'matched_unique'
 )
 -- Direct CM360 source values are joined only at the approved delivery detail grain.
@@ -878,5 +743,5 @@ SELECT * FROM conversion_only_rows;
 
 ALTER TABLE `looker-studio-pro-452620.master_stg.data_model_v3`
 SET OPTIONS (
-  description = 'V3 master evidence model with direct CM360 RTL conversion history. Built by model/final_model/create_master_stg_data_model_v3.sql. Sheet conversion_activity rows are retired; direct CM360 conversions join delivery only at package/date/placement/creative grain and otherwise remain conversion-only evidence rows.'
+  description = 'V3 master evidence model with direct CM360 RTL conversion history. Built by model/final_model/create_master_stg_data_model_v3.sql. The builder does not read the legacy compatibility table; direct CM360 conversions join delivery only at package/date/placement/creative grain and otherwise remain conversion-only evidence rows.'
 );

@@ -1,11 +1,13 @@
-# TV Gmail Loaders
+# TV Gmail And RTL Conversion Loaders
 
-Detailed documentation for the two TV estimate loaders in this folder:
+This folder contains two TV estimate loaders and one RTL conversion compatibility refresh.
+
+The TV loaders read email attachments:
 
 - `gmail_to_bq__tv_local.r`
 - `gmail_to_bq__tv_nat.r`
 
-These scripts do one job: they find the newest TV estimate CSV attachment in Gmail, reshape the file into one shared table shape, and upload the result into BigQuery.
+The RTL conversion refresh reads direct CM360 history already stored in BigQuery. It does not read Google Sheets.
 
 ## What These Loaders Do
 
@@ -13,9 +15,9 @@ Use these scripts when the latest TV estimate file arrives by email and needs to
 
 - The local loader writes to `looker-studio-pro-452620.landing.tv_local_estimates`
 - The national loader writes to `looker-studio-pro-452620.landing.tv_national_estimates`
-- The RTL conversion loader writes the Ritual reporting sheet's `raw sales` tab to [RTL conversion report landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
+- The RTL conversion refresh maps [direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) into the unchanged 18-column [RTL compatibility table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
 
-Both loaders follow the same broad pattern:
+The two TV loaders follow the same broad pattern:
 
 1. Search Gmail for the latest matching TV email.
 2. Open the newest matching thread.
@@ -52,7 +54,7 @@ Rscript gmail_to_bq__tv_nat.r
 Rscript load_rtl_conv_report.R
 ```
 
-Expected result if a run succeeds:
+Expected TV-loader result if a run succeeds:
 
 - the script finds the latest matching Gmail message
 - the attachment downloads without error
@@ -62,18 +64,17 @@ Expected result if a run succeeds:
 
 ## Authentication And Access
 
-These scripts depend on your local Google authentication already being set up in R.
+The TV loaders depend on local Gmail and BigQuery authentication. The RTL compatibility refresh needs BigQuery access only.
 
 They need access to:
 
 - Gmail, to search messages and download attachments
 - BigQuery, to replace the destination table
 
-Loaded packages:
+Packages used across the folder:
 
 - `gmailr`
 - `lubridate`
-- `googlesheets4`
 - `tidyverse`
 - `stringr`
 - `janitor`
@@ -82,19 +83,19 @@ Loaded packages:
 ## RTL Conversion Report Loader
 
 **Script:** `load_rtl_conv_report.R`  
-**Source sheet:** [Ritual reporting raw sales tab](https://docs.google.com/spreadsheets/d/1tFxj3IZ_oBxUO9VwoDpd42CXGPWMJL5M1QKO_WIhOxI/edit?gid=2031245039#gid=2031245039)  
-**Target table:** [RTL conversion report landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
+**Source:** [Direct CM360 conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table)
+**Target:** [RTL conversion compatibility table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
 
-This loader mirrors the Google Sheet's `raw sales` tab into BigQuery for daily reporting refreshes.
+This script keeps the legacy table shape available for compatibility while sourcing its rows from persistent direct CM360 history. The retired Google Sheet path is not read.
 
 | Step | What happens | Why it matters |
 | --- | --- | --- |
-| Read sheet | Pulls all rows from the `raw sales` tab as text | Keeps the Google Sheet as the source of truth |
-| Clean headers | Converts sheet headers into BigQuery-safe snake-case names | BigQuery fields cannot use spaces, slashes, or blank names |
-| Preserve blank header | Renames the blank second column to `unnamed_column_2` | Avoids guessing a business meaning that is not stated in the sheet |
-| Type common fields | Parses `date`, `impressions`, `clicks`, `click_rate`, and `total_conversions` | Makes common report fields easier to query |
-| Add metadata | Adds refresh date, load timestamp, sheet ID, tab, and gid | Makes daily runner loads traceable |
-| Replace table | Recreates the landing table with an explicit schema, then appends the fresh sheet rows | Keeps BigQuery aligned to the current sheet instead of appending duplicates |
+| Validate destination | Compares the live column names, order, types, and nullability with the protected 18-column contract | Stops before changing rows if the table structure has drifted |
+| Validate source | Requires non-empty direct history, whole-number conversions, and complete unique source keys | Prevents an unsafe compatibility refresh |
+| Map shared fields | Carries date, campaign, site, package roadblock, creative, activity, conversions, and refresh time | Preserves values that have honest direct-CM360 equivalents |
+| Preserve legacy columns | Keeps channel, campaign-ID, delivery, and Sheet-lineage columns but writes `NULL` | Preserves structure without inventing unavailable values |
+| Replace rows in a transaction | Truncates and inserts without dropping or recreating the table | Keeps the table object and schema unchanged while avoiding a half-refreshed state |
+| Verify live totals | Reconciles row count and conversions to direct history | Confirms the user-facing compatibility table matches its source |
 
 ### Run just this loader
 
@@ -107,11 +108,12 @@ Rscript load_rtl_conv_report.R
 
 After a run, check:
 
-1. Did the console print `RTL Conversion Report loader finished successfully`?
-2. Did the verification output show a non-zero `row_count`?
-3. Does the BigQuery table link above open and show the newest `data_refresh_date`?
+1. Did the console print `RTL conversion compatibility refresh finished successfully`?
+2. Do source and destination row counts and conversion totals match?
+3. Does the BigQuery table retain the same 18-column structure?
+4. Are the legacy-only delivery and Sheet-lineage fields null?
 
-When run by the universal runner, this script is included as `RTL Conversion Report`.
+The universal runner no longer registers this compatibility refresh. Its production V3 path refreshes direct CM360 history through the established upstream BigQuery schedule.
 
 ## Shared Loader Flow
 

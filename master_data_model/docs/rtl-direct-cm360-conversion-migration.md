@@ -8,10 +8,10 @@ The direct source was deployed to V3 on July 13, 2026 after isolated candidate Q
 
 | Area | Deployed behavior | Historical reference |
 | --- | --- | --- |
-| Conversion source | The newest eligible enriched export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) updates [persistent direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) | [RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) is comparison evidence only |
+| Conversion source | The newest eligible enriched export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) updates [persistent direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) | The [legacy-schema compatibility table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) is refreshed from that history for optional comparison; its Sheet read path is retired |
 | Automatic refresh | The existing `master_data_model_upstream_tables_sched` BigQuery schedule runs the direct-history `MERGE` daily at 10:15 UTC | The universal runner triggers this same schedule immediately before its clustered-advertiser/V3 step; the schedule's own **Run now** control is also safe |
-| History | Persistent staging[^2] retains older dates while a rolling export updates matching source records | The legacy Sheet loader is no longer part of the V3 or universal-runner path |
-| Connection to the model | Direct conversion metrics join V3 delivery at package/date/parsed-placement/creative detail; unmatched conversion evidence remains separate | The former `conversion_activity` rows are retired |
+| History | Persistent staging[^2] retains older dates while a rolling export updates matching source records | The standalone compatibility refresh reads persistent history; the legacy Sheet loader is retired and neither V3 nor the universal runner uses the compatibility table |
+| Connection to the model | Direct conversion metrics join V3 delivery at package/date/parsed-placement/creative detail; unmatched conversion evidence remains separate | The former Sheet-shaped `conversion_activity` CTEs are removed from the canonical builder rather than built empty and filtered out later |
 | QA candidate | [Isolated V3 direct-CM360 candidate](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3_cm360_direct_qa&page=table) and prior source QA objects preserve review evidence | The production cutover has passed |
 | Cutover state[^5] | Active in [V3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Roll back only if a focused live check fails |
 
@@ -113,7 +113,7 @@ After the model change is approved and deployed, refresh the dependent stored mo
 
 ## Deployed implementation and QA evidence
 
-The QA candidate remains review evidence; production now uses the scripts below and does not read the current Sheet source.
+The QA candidate remains review evidence; production now uses the scripts below and does not read the retired Sheet source.
 
 - [QA builder SQL](../model/branches/digital/conversions/create_rtl_cm360_direct_conversions_qa.sql) selects the newest single rolling export and creates the three QA tables.
 - [Raw direct-CM360 QA staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_qa&page=table) preserves all direct source fields, parsed IDs, merge key, logical model key, source export timestamp, and staging refresh date.
@@ -135,7 +135,7 @@ Production uses two deliberate modes:
 
 1. Rebuild V3 from the direct staging table after the source-history refresh is verified.
 2. Reconcile direct conversion and activity totals, join statuses, and conversion-only delivery-null behavior.
-3. Keep the Sheet landing table as historical comparison evidence only; do not use it as a V3 source.
+3. Keep the legacy-schema compatibility table as optional direct-history comparison evidence only; do not use it as a V3 source.
 
 If the live check fails, restore the prior conversion-source branch. The new direct staging table remains as evidence for investigation; it does not need to be deleted to roll back the model connection.
 

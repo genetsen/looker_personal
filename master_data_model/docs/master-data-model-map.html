@@ -1312,12 +1312,14 @@
           "manual_delivery_override rows carry manual package/date actuals and suppress lower-grain final actuals for the same package/date.",
           "DCM final impressions use source impressions; daily_recalculated_imps remains context only.",
           "Direct CM360 history is refreshed by the existing daily 10:15 UTC upstream BigQuery schedule and by the universal runner's dedicated upstream step before V3 refresh. Its repeat-safe MERGE updates matching raw conversion records and retains older history; neither path uses the Google Sheet loader.",
+          "The legacy-schema landing.rtl_conv_report compatibility table is refreshed only by its standalone loader from persistent direct CM360 history. It keeps the old 18-column shape, leaves unavailable delivery and Sheet-lineage fields blank, and is not a V3 source.",
           "Direct CM360 conversion fields join only to a unique package/date/placement/creative delivery row. Conversion-only evidence uses cm360_direct_conversion and leaves delivery metrics blank, so it cannot double-count media delivery.",
           "Refresh proof checks that the table is clustered by _advertiser, has no package_plan rows, has no duplicate visible grain keys, and has no package/date with more than one summable planned carrier."
         ],
         sources: [
           ["BigQuery: master_stg.data_model_v3", bq("master_stg", "data_model_v3")],
           ["Direct CM360 RTL conversion history", bq("master_stg", "rtl_cm360_direct_conversions")],
+          ["Legacy-schema RTL compatibility table", bq("landing", "rtl_conv_report")],
           ["Scheduled-query runbook", "../../docs/SCHEDULED_QUERIES.md#13-master_data_model_upstream_tables_sched"],
           ["V3 builder SQL", "../model/final_model/create_master_stg_data_model_v3.sql"],
           ["Universal runner refresh wrapper", "file:///Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh"],
