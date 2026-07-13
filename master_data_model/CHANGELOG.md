@@ -3,10 +3,11 @@
 ## 2026-07-13
 
 - **CHANGED** — Documented the planned direct-CM360 conversion source: it will retain rolling-window history, preserve conversion and revenue evidence, and join activity metrics to delivery detail without duplicating delivery metrics. The current Sheet-based production source remains unchanged pending QA and approval.
+- **ADDED** — Built QA-only direct-CM360 raw staging and detail-metrics sidecar tables. They preserve all source fields, activity and revenue metrics, refresh metadata, parsed package/placement keys, and visible unmatched-key statuses; the current Sheet source and production model remain unchanged.
 
 ### Pending Next Actions
 
-- **Since Jul 13** — Build and compare the QA-only direct-CM360 staging and conversion-metrics candidate before requesting production cutover approval. — RECOMMENDED
+- **Since Jul 13** — Resolve the direct-CM360 keys that have no precise DCM detail match before requesting production cutover approval. — RECOMMENDED
 
 ## 2026-07-10
 

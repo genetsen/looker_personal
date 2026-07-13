@@ -1,0 +1,71 @@
+{
+  "keys": [
+    "model_detail_key"
+  ],
+  "metrics": [
+    "conv_total_conversions",
+    "conv_click_through_conversions",
+    "conv_view_through_conversions",
+    "conv_total_revenue",
+    "conv_click_through_revenue",
+    "conv_view_through_revenue"
+  ],
+  "high_risk_metrics": [
+    "conv_total_conversions",
+    "conv_total_revenue"
+  ],
+  "high_risk_dimensions": [
+    "package_id",
+    "conversion_date",
+    "placement_id",
+    "creative",
+    "model_detail_join_status"
+  ],
+  "custom_checks": [
+    {
+      "name": "unique_raw_conversion_row_key",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(*) AS value FROM (SELECT conversion_row_key FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_qa` GROUP BY conversion_row_key HAVING COUNT(*) > 1)",
+      "equals": 0
+    },
+    {
+      "name": "all_raw_join_key_parts_present",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(package_id IS NULL OR placement_id IS NULL OR model_detail_key IS NULL) AS value FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_qa`",
+      "equals": 0
+    },
+    {
+      "name": "source_to_sidecar_total_conversions_reconcile",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(conv_total_conversions), 0) - COALESCE((SELECT SUM(total_conversions) FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_qa`), 0)) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "no_ambiguous_model_detail_match",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(model_detail_match_count > 1) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "valid_join_statuses_only",
+      "severity": "high",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(model_detail_join_status NOT IN ('unique_detail_match', 'no_package_date_match', 'no_placement_match', 'no_creative_match', 'ambiguous_detail_match')) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "candidate_has_joined_and_unmatched_evidence",
+      "severity": "high",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(DISTINCT model_detail_join_status) AS value FROM {table}",
+      "expectation": {
+        "op": ">=",
+        "value": 2
+      }
+    }
+  ]
+}
