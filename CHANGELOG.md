@@ -4,6 +4,7 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-07-13
 
+- **CHANGED** - Updated the Purely Elizabeth west-region reporting view so linear rows and `QUAN` supplier rows show planned spend and impressions in the delivered metric fields, while other rows keep their underlying delivered values.
 - **CHANGED** — Added the direct CM360 history `MERGE` to the existing 10:15 UTC master upstream scheduled query and its dedicated universal-runner upstream step. It refreshes the master-model CM360 history without reading the Google Sheet landing source, while leaving the schedule's social-pacing and TV snapshot logic unchanged.
 - **REMOVED** — Removed the legacy RTL Google Sheet loader from the universal runner. Its old landing table remains comparison evidence only and no longer receives runner refreshes.
 - **CHANGED** — Deployed direct CM360 RTL conversions into the current master-data-model V3 table. Persistent direct history now replaces the Google Sheet landing source; the model joins only at package/date/parsed-placement/creative detail and retains unmatched conversions as delivery-null evidence rows.

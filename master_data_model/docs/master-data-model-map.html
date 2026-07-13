@@ -1260,11 +1260,14 @@
         notes: [
           "Use this for reporting-ready totals when low-signal DCM rows should be excluded.",
           "Recalculates package primary and available source fields after filtering so mart labels describe only reporting-visible evidence.",
-          "Manual editor visible values use this mart as the dashboard snapshot."
+          "Manual editor visible values use this mart as the dashboard snapshot.",
+          "The separate master_ext_west Purely Elizabeth view keeps the same reporting shape but uses planned spend and impressions as delivery values for linear and QUAN rows."
         ],
         sources: [
           ["BigQuery: master_stg.data_model_mart", bq("master_stg", "data_model_mart")],
-          ["Mart builder SQL", "../create_master_stg_data_model_mart.sql"]
+          ["Mart builder SQL", "../model/reporting_outputs/create_master_stg_data_model_mart.sql"],
+          ["BigQuery: Purely Elizabeth reporting view", bq("master_ext_west", "mart_data_model_purelyElizabeth")],
+          ["Purely Elizabeth view builder SQL", "../model/reporting_outputs/create_master_ext_west_mart_data_model_purely_elizabeth.sql"]
         ]
       },
       {
