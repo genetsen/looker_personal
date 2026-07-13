@@ -8,8 +8,8 @@
 --
 -- Safe use:
 --   Run only after bootstrap_rtl_cm360_direct_conversions.sql has created the
---   target table. A missing eligible source is a safe failure, not an empty
---   refresh or an instruction to overwrite history.
+--   target table. If no eligible rolling source has landed yet, the routine
+--   completes as a no-op; it never empties or overwrites prior history.
 
 DECLARE source_table_name STRING;
 DECLARE source_exported_at TIMESTAMP;
@@ -38,9 +38,12 @@ SET (source_table_name, source_exported_at) = (
   LIMIT 1
 );
 
-ASSERT source_table_name IS NOT NULL AS 'No enriched rolling CM360 export with package and placement fields is available.';
-
-EXECUTE IMMEDIATE FORMAT(
+IF source_table_name IS NULL THEN
+  SELECT
+    'skipped_no_eligible_rolling_export' AS refresh_status,
+    'No enriched rolling CM360 export with package and placement fields is available; prior direct history was left unchanged.' AS refresh_detail;
+ELSE
+  EXECUTE IMMEDIATE FORMAT(
   """
   SELECT COUNTIF(total_conversions != FLOOR(total_conversions)) = 0
   FROM `giant-spoon-299605.ALL_DCM_adswerve.%s`
@@ -48,9 +51,9 @@ EXECUTE IMMEDIATE FORMAT(
   source_table_name
 ) INTO source_has_whole_number_conversions;
 
-ASSERT source_has_whole_number_conversions AS 'CM360 total_conversions contains fractional values; preserve the V3 integer conversion-field contract before merging.';
+  ASSERT source_has_whole_number_conversions AS 'CM360 total_conversions contains fractional values; preserve the V3 integer conversion-field contract before merging.';
 
-EXECUTE IMMEDIATE FORMAT(
+  EXECUTE IMMEDIATE FORMAT(
   """
   MERGE `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions` AS target
   USING (
@@ -100,5 +103,6 @@ EXECUTE IMMEDIATE FORMAT(
   """,
   source_table_name,
   FORMAT_TIMESTAMP('%F %T+00:00', source_exported_at),
-  source_table_name
-);
+    source_table_name
+  );
+END IF;

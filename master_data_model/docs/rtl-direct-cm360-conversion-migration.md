@@ -9,7 +9,8 @@ The direct source was deployed to V3 on July 13, 2026 after isolated candidate Q
 | Area | Deployed behavior | Historical reference |
 | --- | --- | --- |
 | Conversion source | The newest eligible enriched export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) updates [persistent direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) | [RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) is comparison evidence only |
-| History | Persistent staging[^2] retains older dates while a rolling export updates matching source records | Sheet refresh is no longer part of the V3 path |
+| Automatic refresh | The existing `master_data_model_upstream_tables_sched` BigQuery schedule runs the direct-history `MERGE` daily at 10:15 UTC | The universal runner triggers this same schedule immediately before its clustered-advertiser/V3 step; the schedule's own **Run now** control is also safe |
+| History | Persistent staging[^2] retains older dates while a rolling export updates matching source records | The legacy Sheet loader is no longer part of the V3 or universal-runner path |
 | Connection to the model | Direct conversion metrics join V3 delivery at package/date/parsed-placement/creative detail; unmatched conversion evidence remains separate | The former `conversion_activity` rows are retired |
 | QA candidate | [Isolated V3 direct-CM360 candidate](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3_cm360_direct_qa&page=table) and prior source QA objects preserve review evidence | The production cutover has passed |
 | Cutover state[^5] | Active in [V3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Roll back only if a focused live check fails |
@@ -20,6 +21,9 @@ The direct source family is `giant-spoon-299605.ALL_DCM_adswerve.Ritual_conversi
 
 ```text
 Newest CM360 last-14-day export
+        |
+        v
+10:15 UTC master upstream scheduled query
         |
         v
 Persistent direct-CM360 staging table (raw evidence[^7] and history)
@@ -36,10 +40,11 @@ Master-model reporting fields
 
 ```mermaid
 flowchart LR
-  A["Newest CM360 rolling export"] --> B["Persistent direct-CM360 staging"]
-  B --> C["Conversion metrics sidecar\npackage, date, parsed placement ID, creative"]
-  C --> D["Full outer join to v3 delivery detail"]
-  D --> E["Reporting metrics"]
+  A["Newest CM360 rolling export"] --> B["10:15 UTC upstream scheduled query"]
+  B --> C["Persistent direct-CM360 staging"]
+  C --> D["Conversion metrics sidecar\npackage, date, parsed placement ID, creative"]
+  D --> E["Full outer join to v3 delivery detail"]
+  E --> F["Reporting metrics"]
 ```
 
 The production staging table is [direct CM360 RTL conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table).
@@ -82,6 +87,8 @@ The direct source is not a full historical replacement on each run. The routine 
 
 This makes corrected values inside the rolling window refreshable while retaining older conversion history. It rejects a table whose parsed report window exceeds 14 days, so the historical backfill cannot be accidentally selected by routine refreshes.
 
+The `MERGE` is repeat-safe: rerunning the schedule, using its **Run now** control, or running the universal runner updates the same raw CM360 records instead of appending duplicates. The universal runner triggers this same schedule immediately before its clustered-advertiser/V3 step; it is not a second CM360-loader path.
+
 ## Model integration rule: join, do not union
 
 The conversion metrics sidecar full-outer-joins existing V3 delivery-detail rows using `model_detail_key`. It is not a separate conversion-source branch, and the other branches do not need placeholder conversion fields merely to satisfy a conversion union.
@@ -122,7 +129,7 @@ The [direct-history QA builder](../model/branches/digital/conversions/create_rtl
 Production uses two deliberate modes:
 
 1. A one-time bootstrap from the approved enriched historical and current exports.
-2. A routine `MERGE` that accepts only a future enriched rolling export with both package-roadblock and placement fields. It must reject an export that lacks either field instead of joining at a broader grain.
+2. A routine `MERGE` in the existing daily 10:15 UTC upstream BigQuery schedule. It accepts only an enriched rolling export with both package-roadblock and placement fields, updates matching raw records, retains older history, and must reject an export that lacks either field instead of joining at a broader grain.
 
 ## Rollback boundary
 

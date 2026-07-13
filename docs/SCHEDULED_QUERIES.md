@@ -31,7 +31,7 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 │             (Basis merge, Olipop video, Pacing, MFT export)                         │
 │                                                                                     │
 │  10:15  ──► master_data_model_upstream_tables_sched                                 │
-│             (Master-model social pacing + TV combined table snapshots)              │
+│             (Master-model social pacing + TV snapshots + direct CM360 history merge)│
 │                                                                                     │
 │  EVERY   ──► mm_dcm_costmodel (4 hours)                                             │
 │  N HRS   ──► prisma__stg__digital_plus_linear (8 hours)                             │
@@ -57,7 +57,7 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 | 10 | `basis_update` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.basis_master2` |
 | 11 | `stg__olipop__crossplatform_raw_tbl_sched` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_stg.stg__olipop__crossplatform_raw_tbl` |
 | 12 | `mart__pacing_table` | Daily 10:00 UTC | ✅ SUCCEEDED | `repo_mart.fct_crossplatform_pacing_daily` |
-| 13 | `master_data_model_upstream_tables_sched` | Daily 10:15 UTC | ✅ SUCCEEDED | `repo_int.crossplatform_pacing_tbl`, `landing.tv_combined_tbl` |
+| 13 | `master_data_model_upstream_tables_sched` | Daily 10:15 UTC | ✅ SUCCEEDED | [Social pacing snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_int&t=crossplatform_pacing_tbl&page=table), [TV combined snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined_tbl&page=table), [direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) |
 | 14 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
 | 15 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
 
@@ -688,10 +688,10 @@ INSERT INTO fct_crossplatform_pacing_daily SELECT * FROM recent;
 **Schedule**: Daily 10:15 UTC
 **Status**: ✅ SUCCEEDED
 **Verified Against Live Config**: Jun 5, 2026
-**SQL**: [Master upstream table refresh SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql)
+**Live SQL source of truth**: the saved BigQuery transfer configuration. The [local upstream-table reference](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_data_model_upstream_tables_sched.sql) contains a separate pending social-pacing change, so do not redeploy it wholesale. The direct-CM360 portion is the [history-preserving merge routine](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/digital/conversions/merge_rtl_cm360_direct_conversions_latest.sql).
 
 #### Purpose
-Refreshes stored upstream table siblings used by the master data model while preserving the same-name views for lineage and debugging.
+Refreshes stored upstream table siblings used by the master data model while preserving the same-name views for lineage and debugging. It also merges the newest eligible ≤14-day direct CM360 export into persistent conversion history; that merge does not read the RTL Google Sheet landing table.
 
 #### Live Transfer Config
 ```text
@@ -709,6 +709,7 @@ projects/671028410185/locations/us/transferConfigs/6a3602d3-0000-207b-88a3-089e0
 ```text
 looker-studio-pro-452620.repo_int.crossplatform_pacing_tbl
 looker-studio-pro-452620.landing.tv_combined_tbl
+looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions
 ```
 
 #### Source Tables
@@ -717,6 +718,14 @@ looker-studio-pro-452620.landing.tv_combined_tbl
 - `looker-studio-pro-452620.repo_google_ads.stg__ga_combined_history`
 - `looker-studio-pro-452620.landing.tv_local_estimates`
 - `looker-studio-pro-452620.landing.tv_national_estimates`
+- [Adswerve CM360 direct-report dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset)
+
+#### Direct CM360 refresh behavior
+
+- The direct report merge is the third statement in this saved schedule. The first two social/TV snapshot statements remain unchanged.
+- Re-running the schedule or selecting **Run now** is safe: the CM360 statement uses `MERGE` keyed by the raw conversion-record key, so matching records update and only new records insert.
+- The universal script runner triggers this same schedule through its dedicated `Master Data Model Upstream Refresh` step immediately before the clustered-advertiser/V3 step. BigQuery also runs it daily at 10:15 UTC; its own **Run now** control is safe for manual CM360 refreshes.
+- If no enriched report with both required detail fields and a true ≤14-day window exists, the CM360 step succeeds as a no-op without deleting conversion history. That is a source-availability signal, not a request to read the Google Sheet.
 
 #### Preservation Rule
 | Object | Role | Preserved behavior |

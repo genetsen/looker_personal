@@ -87,8 +87,8 @@ Digital inputs:
 - `looker-studio-pro-452620.DCM.20250505_costModel_v5`
 - `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
 - `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
-- [Direct CM360 RTL conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) - persistent source-activity history for RTL conversions. It retains every direct CM360 source field, parsed delivery keys, source-export details, and refresh metadata.
-- [Legacy RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) - historical comparison evidence only. The V3 builder does not read it.
+- [Direct CM360 RTL conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) - persistent source-activity history for RTL conversions. The existing `master_data_model_upstream_tables_sched` BigQuery schedule merges the newest eligible direct CM360 report into this history daily at 10:15 UTC, and the universal runner triggers that same schedule before its V3 refresh step. Neither path reads the Google Sheet landing table.
+- [Legacy RTL Sheet landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) - historical comparison evidence only. The V3 builder and universal runner do not read or refresh it.
 - [Advertiser mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=advertiser_mapping&page=table)
 
 Social inputs:
