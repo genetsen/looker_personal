@@ -18,7 +18,7 @@ Interactive orientation:
 - [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
 - [`docs/dcm-cost-model-map.html`](docs/dcm-cost-model-map.html) - clickable DCM scheduled-query map for package rollups, pricing logic, the creative-safe join key, and Master Model handoff.
 - [`docs/manual-data-editor-workflow-map.html`](docs/manual-data-editor-workflow-map.html) - clickable map of the Manual Data Editor loop from Sheet edit, request notification, loader writes, manual evidence tables, model merge, mart output, and troubleshooting path.
-- [Planned direct CM360 conversion migration](docs/rtl-direct-cm360-conversion-migration.md) - direct-source design and QA candidate for RTL conversions. The current Sheet-based production path is unchanged.
+- [Planned direct CM360 conversion migration](docs/rtl-direct-cm360-conversion-migration.md) - direct-source design and QA candidate for RTL conversions, including a full-outer detail output that retains conversion-only evidence. The current Sheet-based production path is unchanged.
 - [Manual Data Editor product brief](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad-output/planning-artifacts/briefs/brief-master_data_model-2026-06-18/brief.md) - slide-ready brief for presenting what the editor is, how it works, and which correction bottlenecks it removes.
 
 ## Manual Package Edit Quick Reference

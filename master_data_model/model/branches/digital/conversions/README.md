@@ -6,7 +6,7 @@ The current placeholder source is the BigQuery table [Ritual conversion report](
 
 ## Planned direct-CM360 migration
 
-This is the current Sheet-based flow. The planned direct-CM360 design keeps the existing path in place until QA and approval are complete, then replaces the source with a history-preserving staging table and a joinable conversion-metrics sidecar. The [QA builder](create_rtl_cm360_direct_conversions_qa.sql) creates disposable evidence tables only; it does not change this production path. Read the [direct CM360 migration guide](../../../../docs/rtl-direct-cm360-conversion-migration.md) before changing this helper path.
+This is the current Sheet-based flow. The planned direct-CM360 design keeps the existing path in place until QA and approval are complete, then replaces the source with a history-preserving staging table and a joinable conversion-metrics sidecar. The [QA builder](create_rtl_cm360_direct_conversions_qa.sql) creates disposable evidence tables only, including a full-outer detail output that labels delivery-only, delivery-with-conversion, and conversion-only records; it does not change this production path. Read the [direct CM360 migration guide](../../../../docs/rtl-direct-cm360-conversion-migration.md) before changing this helper path.
 
 ## Current Model Path
 

@@ -2,19 +2,19 @@
 
 This guide records the approved design direction for replacing the RTL conversion Google Sheet mirror with a direct Campaign Manager 360 (CM360) BigQuery source. It is for the people who build and validate the master data model. Nothing in this document changes production data, the current model, or the Google Sheet workflow yet.
 
-The immediate next step is to build a separate QA candidate, compare it to the current model, and obtain approval before switching the production path.
+The immediate next step is to build a separate QA candidate[^1], compare it to the current model, and obtain approval before switching the production path.
 
 ## Status and decision
 
 | Area | Current production behavior | Planned behavior |
 | --- | --- | --- |
 | Conversion source | Google Sheet mirror loaded to [RTL conversion landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) | The newest CM360 export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) |
-| History | Depends on the Sheet mirror refresh | A persistent direct-CM360 staging table keeps prior dates while new rolling exports update only their matching rows |
-| Connection to the model | Current conversion branch emits separate conversion-outcome rows | A conversion-metrics sidecar joins to v3 delivery-detail rows; it does not add a new `UNION ALL` branch |
-| QA candidate | No direct-source QA object | [Raw direct-CM360 QA staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_qa&page=table) and [detail-metrics QA sidecar](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_conversion_metrics_detail_qa&page=table) now exist for review only |
-| Cutover state | Active today | Planned only; keep the Sheet path unchanged until QA passes and the user approves deployment |
+| History | Depends on the Sheet mirror refresh | A persistent direct-CM360 staging table[^2] keeps prior dates while new rolling exports update only their matching rows |
+| Connection to the model | Current conversion branch emits separate conversion-outcome rows | A conversion-metrics sidecar[^3] joins to v3 delivery-detail rows[^4]; it does not add a new `UNION ALL` branch |
+| QA candidate | No direct-source QA object | [Raw direct-CM360 QA staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_qa&page=table), [detail-metrics QA sidecar](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_conversion_metrics_detail_qa&page=table), and [full-outer detail QA output](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_dcm_detail_full_outer_qa&page=table) now exist for review only |
+| Cutover state[^5] | Active today | Planned only; keep the Sheet path unchanged until QA passes and the user approves deployment |
 
-The direct source family is `giant-spoon-299605.ALL_DCM_adswerve.Ritual_conversions_last14_cm360_1123381_1665558564_*`. Each export contains a rolling last-14-day window, so the loader must select exactly one newest export rather than scan all matching tables together. Scanning all exports would count overlapping dates repeatedly.
+The direct source family is `giant-spoon-299605.ALL_DCM_adswerve.Ritual_conversions_last14_cm360_1123381_1665558564_*`. Each export contains a rolling last-14-day window[^6], so the loader must select exactly one newest export rather than scan all matching tables together. Scanning all exports would count overlapping dates repeatedly.
 
 ## Target flow
 
@@ -22,7 +22,7 @@ The direct source family is `giant-spoon-299605.ALL_DCM_adswerve.Ritual_conversi
 Newest CM360 last-14-day export
         |
         v
-Persistent direct-CM360 staging table (raw evidence and history)
+Persistent direct-CM360 staging table (raw evidence[^7] and history)
         |
         v
 Conversion metrics at package + date + parsed placement ID + creative
@@ -38,7 +38,7 @@ Master-model reporting fields
 flowchart LR
   A["Newest CM360 rolling export"] --> B["Persistent direct-CM360 staging"]
   B --> C["Conversion metrics sidecar\npackage, date, parsed placement ID, creative"]
-  C --> D["Join to v3 delivery detail"]
+  C --> D["Full outer join to v3 delivery detail"]
   D --> E["Reporting metrics"]
 ```
 
@@ -59,7 +59,7 @@ The staging table must retain every source field from CM360, including the conve
 
 ## Keys and grain
 
-“Foreign key” is the right relationship idea here, although BigQuery does not enforce foreign-key constraints. The model will store a deterministic logical join key rather than rely on a package/date-only shortcut.
+“Foreign key” is the right relationship idea here, although BigQuery does not enforce foreign-key constraints[^8]. The model will store a deterministic[^9] logical join key[^10] rather than rely on a package/date-only shortcut. The key is calculated at the row's grain[^11], meaning the exact level of detail that one row represents.
 
 | Key | Purpose | Fields |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ The staging table must retain every source field from CM360, including the conve
 
 Direct CM360 preserves the full descriptive `placement` source field. Its `placement_id` is parsed from the embedded ID in that string because v3 DCM detail rows store that ID, not the full description. `activity` belongs in the raw merge key because it distinguishes conversion outcomes such as purchase and add-to-cart. It is intentionally not part of `model_detail_key`: the delivery model has no matching activity dimension, and adding it to the join would either create unmatched rows or multiply delivery metrics.
 
-The activity-level source data will be aggregated into a sidecar at `package_id + date + placement + creative` before it joins the model. The sidecar will expose explicit fields such as `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, and `conv_purchases`, along with total, click-through, view-through, and revenue measures. New activity names remain preserved in raw staging; adding a new wide `conv_*` field is a deliberate schema change, not an automatic silent behavior change.
+The activity-level source data will be aggregated into a sidecar at `package_id + date + placement + creative` before it joins the model. The sidecar will expose explicit fields such as `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, and `conv_purchases`, along with total, click-through, view-through, and revenue measures. New activity names remain preserved in raw staging; adding a new wide `conv_*` field[^12] is a deliberate schema change, not an automatic silent behavior change.
 
 ## Rolling-window history rule
 
@@ -84,31 +84,34 @@ This makes corrected values inside the rolling window refreshable while retainin
 
 ## Model integration rule: join, do not union
 
-The conversion metrics sidecar will join to existing v3 delivery-detail rows using `model_detail_key`. It will not be unioned into the other model branches, and the other branches will not need placeholder conversion fields merely to satisfy a union schema.
+The conversion metrics sidecar will full-outer-join existing v3 delivery-detail rows using `model_detail_key`. It will not be unioned into the other model branches, and the other branches will not need placeholder conversion fields merely to satisfy a union schema.
 
-The join must remain one-to-one at the delivery-detail grain. Conversion outcomes can have several activities for one delivery row; aggregating the sidecar first prevents those activities from duplicating spend, impressions, clicks, or other delivery metrics.
+The join must remain one-to-one[^13] at the delivery-detail grain. Conversion outcomes can have several activities for one delivery row; aggregating the sidecar first prevents row multiplication[^14], which would duplicate spend, impressions, clicks, or other delivery metrics.
+
+The full outer join has three visible outcomes: `delivery_with_conversion`, `delivery_only`, and `conversion_only`. A conversion-only row carries its conversion fields and logical detail key but has null delivery metrics. This preserves every direct-CM360 conversion without attaching it to a broader package or date and without inventing impressions, clicks, or cost.
 
 ## QA and release checks
 
 | Check | Required proof before cutover |
 | --- | --- |
-| Newest source selection | Exactly one CM360 export is selected; overlapping wildcard exports are not combined |
+| Newest source selection | Exactly one CM360 export is selected; overlapping wildcard exports[^15] are not combined |
 | Source preservation | All direct-CM360 source columns and required staging metadata are present and populated as expected |
 | Historical merge | Raw staging keys are unique; recent rows update or insert; older rows remain available |
-| Activity metrics | Sidecar totals reconcile to raw CM360 values and each published activity field has a documented source activity |
-| Model join | Every intended detail key joins uniquely, with no duplicated v3 delivery metrics |
+| Activity metrics | Sidecar totals reconcile[^16] to raw CM360 values and each published activity field has a documented source activity |
+| Model join | Every intended detail key joins uniquely, with no duplicated v3 delivery metrics; conversion-only rows remain explicit with null delivery metrics |
 | Freshness | `source_exported_at` and `data_refresh_date` are visible for inspection |
-| Deployment comparison | An isolated QA candidate passes the approved SQL comparison before production deployment |
+| Deployment comparison[^17] | An isolated QA candidate passes the approved SQL comparison before production deployment |
 
-After the model change is approved and deployed, refresh the dependent stored model table in the same session and run a focused live check of the changed conversion fields.
+After the model change is approved and deployed, refresh the dependent stored model table[^18] in the same session and run a focused live check of the changed conversion fields.
 
 ## Current QA candidate: review only
 
 The QA candidate was built without changing the current Sheet source or the production model.
 
-- [QA builder SQL](../model/branches/digital/conversions/create_rtl_cm360_direct_conversions_qa.sql) selects the newest single rolling export and creates the two QA tables.
+- [QA builder SQL](../model/branches/digital/conversions/create_rtl_cm360_direct_conversions_qa.sql) selects the newest single rolling export and creates the three QA tables.
 - [Raw direct-CM360 QA staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions_qa&page=table) preserves all direct source fields, parsed IDs, merge key, logical model key, source export timestamp, and staging refresh date.
 - [Detail-metrics QA sidecar](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_conversion_metrics_detail_qa&page=table) contains activity metrics and `model_detail_join_status`. It keeps unmatched source keys visible rather than joining them at a broader grain.
+- [Full-outer detail QA output](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_dcm_detail_full_outer_qa&page=table) demonstrates the final join shape: matched delivery-plus-conversion rows, delivery-only rows, and conversion-only rows. Conversion-only rows retain conversion metrics but have null DCM delivery metrics.
 
 This candidate is not a persistent production staging table and does not run a production `MERGE`. It is evidence for the source contract and safe join shape; the production history-preserving loader remains a separate approved implementation step.
 
@@ -118,7 +121,7 @@ This candidate is not a persistent production staging table and does not run a p
 2. Compare their source coverage, keys, activity totals, and v3 join behavior with the current path.
 3. Review the evidence and obtain explicit approval for the production switch.
 4. Switch the model to the direct sidecar, then refresh and verify the dependent stored model.
-5. Keep the existing Sheet mirror and its loader untouched for the first release as a legacy fallback and comparison source.
+5. Keep the existing Sheet mirror and its loader untouched for the first release as a legacy fallback[^19] and comparison source.
 
 If the live check fails, restore the prior conversion-source branch. The new direct staging table remains as evidence for investigation; it does not need to be deleted to roll back the model connection.
 
@@ -128,7 +131,7 @@ Before adding another conversion source, document and prove these items:
 
 | Decision | Question to answer |
 | --- | --- |
-| Source contract | Which exact table family is authoritative, and how is the newest export selected? |
+| Source contract[^20] | Which exact table family is authoritative[^21], and how is the newest export selected? |
 | Grain | What one source row represents, and what is the lowest grain it shares with delivery data? |
 | Stable keys | Which key supports history-preserving `MERGE`, and which logical key supports the model join? |
 | Field contract | Which raw fields are retained, which metric fields are published, and how are new activity types handled? |
@@ -136,6 +139,28 @@ Before adding another conversion source, document and prove these items:
 | Metric safety | How does the join avoid multiplying delivery metrics? |
 | Freshness | Which fields distinguish source-export time from staging refresh time? |
 | Cutover proof | What QA comparison and focused live check prove the source is safe to use? |
+
+[^1]: A separate test version used to check a proposed change without affecting production data.
+[^2]: A holding table that keeps source data before it feeds the model.
+[^3]: A separate supporting table that joins to the main model instead of becoming a new model branch.
+[^4]: The detailed advertising-delivery records that the conversion summary must match.
+[^5]: The switch from the current production source to the new source.
+[^6]: A report that covers only the most recent period; here, the last 14 days.
+[^7]: The original source rows, retained without combining them.
+[^8]: A database rule that enforces a valid relationship between records. The model uses the relationship idea, but BigQuery does not enforce it here.
+[^9]: Produces the same result whenever it receives the same inputs.
+[^10]: A calculated value used to match the same conversion summary to its related delivery record.
+[^11]: The level of detail that one row represents.
+[^12]: A separate named column for each activity type, rather than one shared activity column.
+[^13]: Each conversion summary matches only one delivery record.
+[^14]: An accidental repeat of rows caused by a join, which can inflate totals.
+[^15]: A pattern that can select several similarly named report tables.
+[^16]: Confirm that totals agree between the source and the derived table.
+[^17]: A test that compares the proposed version with the current production version before release.
+[^18]: A saved downstream table that must be refreshed after its input changes.
+[^19]: An older path kept temporarily as a backup and comparison point.
+[^20]: The documented rules for which source to use and how to use it.
+[^21]: Treated as the official source for this purpose.
 
 ## Related documentation
 

@@ -161,3 +161,74 @@ LEFT JOIN model_detail AS d
   AND c.conversion_date = d.conversion_date
   AND LOWER(TRIM(c.placement_id)) = d.placement_id
   AND LOWER(TRIM(c.creative)) = d.creative_key;
+
+CREATE OR REPLACE TABLE
+  `looker-studio-pro-452620.master_stg.rtl_cm360_dcm_detail_full_outer_qa`
+OPTIONS (
+  description = 'QA-only full outer join between current-window v3 DCM detail and the direct CM360 conversion sidecar. Created by model/branches/digital/conversions/create_rtl_cm360_direct_conversions_qa.sql; differs from the current Sheet outcome-row branch by preserving matched delivery-plus-conversion rows, delivery-only rows, and conversion-only rows without a conversion UNION branch. Safe to delete after direct-CM360 migration QA is approved or abandoned. Cleanup owner: Master Data Model migration review.'
+) AS
+WITH source_window AS (
+  SELECT
+    MIN(date) AS first_conversion_date,
+    MAX(date) AS last_conversion_date
+  FROM `looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions_qa`
+),
+dcm_detail AS (
+  SELECT d.*
+  FROM `looker-studio-pro-452620.master_stg.data_model_v3` AS d
+  CROSS JOIN source_window AS w
+  WHERE d.qa_v3_source_detail_type = 'dcm'
+    AND d._date BETWEEN w.first_conversion_date AND w.last_conversion_date
+),
+conversion_detail AS (
+  SELECT *
+  FROM `looker-studio-pro-452620.master_stg.rtl_cm360_conversion_metrics_detail_qa`
+)
+SELECT
+  -- QA-only full outer output: conversion-only rows retain no inferred delivery metrics.
+  CASE
+    WHEN d._package_id IS NULL THEN 'conversion_only'
+    WHEN c.model_detail_key IS NULL THEN 'delivery_only'
+    ELSE 'delivery_with_conversion'
+  END AS qa_cm360_outer_join_row_type,
+  COALESCE(d._package_id, c.package_id) AS `_package_id`,
+  COALESCE(d._date, c.conversion_date) AS `_date`,
+  COALESCE(d._placement_id, c.placement_id) AS `_placement_id`,
+  COALESCE(d._creative_name, c.creative) AS `_creative_name`,
+  TO_HEX(SHA256(TO_JSON_STRING(STRUCT(
+    COALESCE(d._package_id, c.package_id) AS package_id,
+    COALESCE(d._date, c.conversion_date) AS record_date,
+    COALESCE(d._placement_id, c.placement_id) AS placement_id,
+    COALESCE(d._creative_name, c.creative) AS creative,
+    COALESCE(d.qa_v3_ad_name, '[no_dcm_ad]') AS dcm_ad_name,
+    COALESCE(c.model_detail_join_status, 'no_conversion_source') AS conversion_join_status
+  )))) AS qa_cm360_outer_join_record_key,
+  d.* EXCEPT (_package_id, _date, _placement_id, _creative_name),
+  c.model_detail_key AS cm360_model_detail_key,
+  c.model_detail_join_status AS cm360_model_detail_join_status,
+  c.model_detail_match_count AS cm360_model_detail_match_count,
+  c.source_activity_record_count AS cm360_source_activity_record_count,
+  c.conv_total_conversions AS cm360_conv_total_conversions,
+  c.conv_click_through_conversions AS cm360_conv_click_through_conversions,
+  c.conv_view_through_conversions AS cm360_conv_view_through_conversions,
+  c.conv_total_revenue AS cm360_conv_total_revenue,
+  c.conv_click_through_revenue AS cm360_conv_click_through_revenue,
+  c.conv_view_through_revenue AS cm360_conv_view_through_revenue,
+  c.conv_site_visits AS cm360_conv_site_visits,
+  c.conv_view_products AS cm360_conv_view_products,
+  c.conv_add_to_carts AS cm360_conv_add_to_carts,
+  c.conv_begin_checkouts AS cm360_conv_begin_checkouts,
+  c.conv_purchases AS cm360_conv_purchases,
+  c.source_table_name AS cm360_source_table_name,
+  c.source_exported_at AS cm360_source_exported_at,
+  c.data_refresh_date AS cm360_data_refresh_date,
+  c.staged_at AS cm360_staged_at
+FROM dcm_detail AS d
+FULL OUTER JOIN conversion_detail AS c
+  ON CONCAT(
+    LOWER(TRIM(d._package_id)), '|',
+    FORMAT_DATE('%F', d._date), '|',
+    LOWER(TRIM(d._placement_id)), '|',
+    LOWER(TRIM(d._creative_name))
+  ) = c.model_detail_key
+  AND c.model_detail_join_status = 'unique_detail_match';
