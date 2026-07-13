@@ -1,0 +1,134 @@
+# Planned Direct CM360 Conversion Source Migration
+
+This guide records the approved design direction for replacing the RTL conversion Google Sheet mirror with a direct Campaign Manager 360 (CM360) BigQuery source. It is for the people who build and validate the master data model. Nothing in this document changes production data, the current model, or the Google Sheet workflow yet.
+
+The immediate next step is to build a separate QA candidate, compare it to the current model, and obtain approval before switching the production path.
+
+## Status and decision
+
+| Area | Current production behavior | Planned behavior |
+| --- | --- | --- |
+| Conversion source | Google Sheet mirror loaded to [RTL conversion landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) | The newest CM360 export in the [Adswerve CM360 dataset](https://console.cloud.google.com/bigquery?project=giant-spoon-299605&p=giant-spoon-299605&d=ALL_DCM_adswerve&page=dataset) |
+| History | Depends on the Sheet mirror refresh | A persistent direct-CM360 staging table keeps prior dates while new rolling exports update only their matching rows |
+| Connection to the model | Current conversion branch emits separate conversion-outcome rows | A conversion-metrics sidecar joins to v3 delivery-detail rows; it does not add a new `UNION ALL` branch |
+| Cutover state | Active today | Planned only; keep the Sheet path unchanged until QA passes and the user approves deployment |
+
+The direct source family is `giant-spoon-299605.ALL_DCM_adswerve.Ritual_conversions_last14_cm360_1123381_1665558564_*`. Each export contains a rolling last-14-day window, so the loader must select exactly one newest export rather than scan all matching tables together. Scanning all exports would count overlapping dates repeatedly.
+
+## Target flow
+
+```text
+Newest CM360 last-14-day export
+        |
+        v
+Persistent direct-CM360 staging table (raw evidence and history)
+        |
+        v
+Conversion metrics at package + date + placement + creative
+        |
+        v
+Join to matching v3 delivery-detail rows
+        |
+        v
+Master-model reporting fields
+```
+
+```mermaid
+flowchart LR
+  A["Newest CM360 rolling export"] --> B["Persistent direct-CM360 staging"]
+  B --> C["Conversion metrics sidecar\npackage, date, placement, creative"]
+  C --> D["Join to v3 delivery detail"]
+  D --> E["Reporting metrics"]
+```
+
+The planned staging-table name is `landing.rtl_conversions_cm360`. The name is a proposal for implementation, not a table that exists today.
+
+## What the direct staging table must preserve
+
+The staging table must retain every source field from CM360, including the conversion and revenue breakdowns. This keeps the source auditable and avoids losing a field that may become useful later.
+
+| Field group | Fields to retain |
+| --- | --- |
+| Delivery and conversion context | `date`, `advertiser`, `campaign`, `site`, `activity_group`, `activity`, `creative`, `placement`, `package_roadblock` |
+| Conversion metrics | `total_conversions`, `click_through_conversions`, `view_through_conversions` |
+| Revenue metrics | `total_revenue`, `click_through_revenue`, `view_through_revenue` |
+| Staging metadata | `package_id`, `conversion_row_key`, `model_detail_key`, `source_table_name`, `source_exported_at`, `data_refresh_date`, `staged_at` |
+
+`data_refresh_date` answers “when did this staging table receive the row?” `source_exported_at` answers “when did CM360 produce the source export?” They are intentionally separate: a late rerun should not disguise an old source export as fresh source data.
+
+## Keys and grain
+
+“Foreign key” is the right relationship idea here, although BigQuery does not enforce foreign-key constraints. The model will store a deterministic logical join key rather than rely on a package/date-only shortcut.
+
+| Key | Purpose | Fields |
+| --- | --- | --- |
+| `conversion_row_key` | Identifies a raw CM360 staging row for `MERGE` updates | package, date, placement, creative, activity, advertiser, campaign, site, activity group, and package roadblock |
+| `model_detail_key` | Identifies the lowest shared conversion-to-delivery detail grain | package, date, placement, creative |
+
+`activity` belongs in the raw merge key because it distinguishes conversion outcomes such as purchase and add-to-cart. It is intentionally not part of `model_detail_key`: the delivery model has no matching activity dimension, and adding it to the join would either create unmatched rows or multiply delivery metrics.
+
+The activity-level source data will be aggregated into a sidecar at `package_id + date + placement + creative` before it joins the model. The sidecar will expose explicit fields such as `conv_site_visits`, `conv_view_products`, `conv_add_to_carts`, `conv_begin_checkouts`, and `conv_purchases`, along with total, click-through, view-through, and revenue measures. New activity names remain preserved in raw staging; adding a new wide `conv_*` field is a deliberate schema change, not an automatic silent behavior change.
+
+## Rolling-window history rule
+
+The direct source is not a full historical replacement on each run. The loader must:
+
+1. Select the one newest CM360 export using the export timestamp in its table name.
+2. Standardize and validate its source fields and keys.
+3. `MERGE` matching raw conversion rows into persistent staging.
+4. Insert genuinely new rows.
+5. Keep staging rows outside the newest 14-day window; never delete history merely because it is absent from the new rolling export.
+
+This makes corrected values inside the rolling window refreshable while retaining older conversion history.
+
+## Model integration rule: join, do not union
+
+The conversion metrics sidecar will join to existing v3 delivery-detail rows using `model_detail_key`. It will not be unioned into the other model branches, and the other branches will not need placeholder conversion fields merely to satisfy a union schema.
+
+The join must remain one-to-one at the delivery-detail grain. Conversion outcomes can have several activities for one delivery row; aggregating the sidecar first prevents those activities from duplicating spend, impressions, clicks, or other delivery metrics.
+
+## QA and release checks
+
+| Check | Required proof before cutover |
+| --- | --- |
+| Newest source selection | Exactly one CM360 export is selected; overlapping wildcard exports are not combined |
+| Source preservation | All direct-CM360 source columns and required staging metadata are present and populated as expected |
+| Historical merge | Raw staging keys are unique; recent rows update or insert; older rows remain available |
+| Activity metrics | Sidecar totals reconcile to raw CM360 values and each published activity field has a documented source activity |
+| Model join | Every intended detail key joins uniquely, with no duplicated v3 delivery metrics |
+| Freshness | `source_exported_at` and `data_refresh_date` are visible for inspection |
+| Deployment comparison | An isolated QA candidate passes the approved SQL comparison before production deployment |
+
+After the model change is approved and deployed, refresh the dependent stored model table in the same session and run a focused live check of the changed conversion fields.
+
+## Safe rollout and rollback
+
+1. Build the proposed direct staging table and conversion sidecar as QA-only objects.
+2. Compare their source coverage, keys, activity totals, and v3 join behavior with the current path.
+3. Review the evidence and obtain explicit approval for the production switch.
+4. Switch the model to the direct sidecar, then refresh and verify the dependent stored model.
+5. Keep the existing Sheet mirror and its loader untouched for the first release as a legacy fallback and comparison source.
+
+If the live check fails, restore the prior conversion-source branch. The new direct staging table remains as evidence for investigation; it does not need to be deleted to roll back the model connection.
+
+## Reusable checklist for another conversion source
+
+Before adding another conversion source, document and prove these items:
+
+| Decision | Question to answer |
+| --- | --- |
+| Source contract | Which exact table family is authoritative, and how is the newest export selected? |
+| Grain | What one source row represents, and what is the lowest grain it shares with delivery data? |
+| Stable keys | Which key supports history-preserving `MERGE`, and which logical key supports the model join? |
+| Field contract | Which raw fields are retained, which metric fields are published, and how are new activity types handled? |
+| History behavior | Is the source full history, a rolling window, or a correction feed? |
+| Metric safety | How does the join avoid multiplying delivery metrics? |
+| Freshness | Which fields distinguish source-export time from staging refresh time? |
+| Cutover proof | What QA comparison and focused live check prove the source is safe to use? |
+
+## Related documentation
+
+- [Master data model overview](../README.md)
+- [Current v3 source inventory](../README_v2.md)
+- [Digital conversion branch guide](../model/branches/digital/README_digital-conversions-pipeline.md)
+- [Conversion helper guide](../model/branches/digital/conversions/README.md)

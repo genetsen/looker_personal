@@ -2,6 +2,10 @@
 
 This guide documents how Ritual conversion outcomes enter the versioned master evidence model. It uses the source-to-output structure of [Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README_v2.md), while keeping outcomes separate from media delivery.
 
+## Planned direct-CM360 migration
+
+The Google Sheet path described below is the current production behavior. The planned replacement will read the newest CM360 rolling export directly, keep history in a persistent staging table, and join aggregated conversion metrics to delivery detail without a `UNION ALL`. See the [direct CM360 migration guide](../../../docs/rtl-direct-cm360-conversion-migration.md) for the agreed design, keys, QA checks, and rollout boundary. No cutover has happened yet.
+
 ## Pipeline Overview
 
 ```text

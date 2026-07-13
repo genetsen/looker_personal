@@ -4,6 +4,10 @@ This folder owns conversion outcome logic that attaches post-media actions to di
 
 The current placeholder source is the BigQuery table [Ritual conversion report](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table). It is a Google Sheet mirror with package IDs embedded in `package_roadblock`, daily conversion activities, creative labels, and source Sheet lineage.
 
+## Planned direct-CM360 migration
+
+This is the current Sheet-based flow. The planned direct-CM360 design keeps the existing path in place until QA and approval are complete, then replaces the source with a history-preserving staging table and a joinable conversion-metrics sidecar. Read the [direct CM360 migration guide](../../../../docs/rtl-direct-cm360-conversion-migration.md) before changing this helper path.
+
 ## Current Model Path
 
 | Step | Grain | Purpose |
@@ -17,4 +21,3 @@ Conversions are outcome evidence, not media delivery. Conversion rows must not p
 ## Match Rule
 
 Conversion package IDs must match known master-model package IDs. Conversion dates can extend past the delivery row dates because post-flight attribution can happen after the media package ends. In v3, those rows use the nearest package context and are marked with `conversion_date_without_delivery_row`.
-

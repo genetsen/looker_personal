@@ -2,6 +2,14 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-13
+
+- **CHANGED** — Added a master-data-model migration guide for moving RTL conversions from the current Google Sheet mirror to a direct CM360 source. The guide documents rolling-window history, lowest shared join grain, activity metrics, and the required QA-before-cutover boundary; it does not change production behavior.
+
+### Pending Next Actions
+
+- **Since Jul 13** — Build and compare the QA-only direct-CM360 conversion candidate before requesting production cutover approval. — RECOMMENDED
+
 ## 2026-07-10
 
 - **CHANGED** - Documented `master_stg.data_model_v3` as the current production master-model table. Existing package/date models, marts, and v2 outputs remain live compatibility surfaces pending a later verified migration and cleanup.
