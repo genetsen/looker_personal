@@ -1,4 +1,4 @@
--- Build the weekly Purely Elizabeth delivered-product-group media-and-sales view.
+-- Build the weekly Purely Elizabeth delivered-product-group media-and-sales table.
 --
 -- Sources:
 --   master_ext_west.mart_data_model_purelyElizabeth for current dashboard media semantics.
@@ -13,7 +13,7 @@
 --   Campaigns absent from the mapping table are excluded.
 --   Sales-only and media-only weeks remain visible; missing measures remain NULL.
 
-CREATE OR REPLACE VIEW
+CREATE OR REPLACE TABLE
   `looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly`
 OPTIONS (
   description = 'One row per Sunday-ending week and year-free mapped product group with Purely Elizabeth media delivery. Currently available Protein Granola MULO plus Natural Expanded sales and TDP join only to that product group. Campaign mapping is internal, and retail sales are temporal comparison metrics rather than campaign-attributed outcomes.'

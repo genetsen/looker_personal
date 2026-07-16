@@ -2,6 +2,7 @@
 
 ## 2026-07-16
 
+- **CHANGED** - Converted the Purely Elizabeth delivery-plus-sales weekly output to a stored table and moved its rebuild into the existing `master_raw_CopyToWest` scheduled query, preserving the two-hour refresh cadence.
 - **CHANGED** - Updated the live `Prisma_expanded` scheduled query to carry `CAMPAIGN_PUBLIC_ID` from `landing.prisma_master_2025` into `20250327_data_model.prisma_expanded_full`, then refreshed and verified the expanded table.
 - **ADDED** - Added a concise Prisma pipeline guide and table catalog documenting the purpose, grain, upstream/downstream lineage, refresh ownership, field paths, and modeling risks for the live Prisma tables and views.
 - **FIXED** - Extended the separate `process_prisma` package aggregation so `CAMPAIGN_PUBLIC_ID` survives into `prisma_porcessed`, `prisma_porcessed_with_placements`, and the DCM/FPD-enriched `prisma_processed_plusDCMimps` view.

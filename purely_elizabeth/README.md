@@ -9,7 +9,7 @@ Weekly SPINS CSV
     -> private Cloud Storage archive
     -> typed BigQuery sales table
     -> weekly product reporting views
-    -> weekly media-and-sales comparison view
+    -> weekly media-and-sales comparison table
 ```
 
 ```mermaid
@@ -29,7 +29,7 @@ flowchart LR
 | [Typed SPINS sales table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3ssales_data_260709) | Current loaded source data | Geography, week, and product level | Live |
 | [Weekly Protein Granola view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3sprotein_granola_weekly_sales) | Adds Dollar sales and TDP across the approved product and geography set | One row per week | Live and verified |
 | [Campaign mapping table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3spurely_elizabeth_campaign_product_mapping) | Explicitly includes or excludes campaigns from product reporting | One row per advertiser and campaign | Live with two approved campaigns |
-| [Delivery-plus-sales weekly view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_ext_west!3smart_PE_delivery_plus_sales_weekly) | Compares weekly campaign plan and delivery with Protein Granola sales and TDP | One row per Sunday-ending week | Live and verified |
+| [Delivery-plus-sales weekly table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_ext_west!3smart_PE_delivery_plus_sales_weekly) | Compares weekly campaign plan and delivery with Protein Granola sales and TDP | One row per Sunday-ending week | Live and verified; refreshed every two hours by `master_raw_CopyToWest` |
 | [Weekly view QA contract](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/protein_granola_weekly_sales.qa.json) | Checks date uniqueness, source coverage, and metric reconciliation | One validation run | Passed on July 14, 2026 |
 
 ## Protein Granola Definition
@@ -67,4 +67,4 @@ Production is intentionally metric-only: `_date`, each year-free mapped `product
 
 ## Current State
 
-The weekly Protein Granola sales view, campaign mapping table, and delivery-plus-sales weekly view are live. The original weekly SPINS source-loading process is still manual; design and approval of an automated weekly refresh remain separate future work. Loading a new source week updates the joined view automatically through its sales-view dependency.
+The weekly Protein Granola sales view, campaign mapping table, and delivery-plus-sales weekly table are live. The table is rebuilt by the existing `master_raw_CopyToWest` scheduled query every two hours. The original weekly SPINS source-loading process is still manual; loading a new source week is reflected on the next successful scheduled refresh.

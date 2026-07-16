@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-16
+
+- **CHANGED** - Converted the Purely Elizabeth delivery-plus-sales weekly output to a stored table and connected it to the existing two-hour `master_raw_CopyToWest` scheduled refresh.
+
 - **CHANGED** - Updated the live Prisma scheduled queries so `CAMPAIGN_PUBLIC_ID` now flows from `landing.prisma_master_2025` into the expanded and processed Prisma outputs, including `20250327_data_model.prisma_expanded_full` and `prisma_processed_plusDCMimps`; the refreshed tables and downstream view were verified with populated values.
 - **ADDED** - Added a concise Prisma pipeline guide and table catalog so each live Prisma table and view has a readable purpose, grain, lineage, refresh, and risk description.
 

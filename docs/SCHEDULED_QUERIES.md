@@ -60,6 +60,7 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 | 13 | `master_data_model_upstream_tables_sched` | Daily 10:15 UTC | ✅ SUCCEEDED | [Social pacing snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_int&t=crossplatform_pacing_tbl&page=table), [TV combined snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined_tbl&page=table), [direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) |
 | 14 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
 | 15 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
+| 16 | `master_raw_CopyToWest` | Every 2 hours | ✅ SUCCEEDED | `master_ext_west.data_model`, [Purely Elizabeth delivery-plus-sales weekly table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_ext_west!3smart_PE_delivery_plus_sales_weekly) |
 
 ---
 
@@ -750,6 +751,23 @@ looker-studio-pro-452620.master_stg.rtl_cm360_direct_conversions
 | `landing.tv_combined_tbl` | TV combined table sibling | Rebuilt by this schedule and read by the master TV branch. |
 
 ---
+
+### 16. `master_raw_CopyToWest`
+
+**Schedule**: Every 2 hours
+**Status**: ✅ SUCCEEDED
+**Live Transfer Config**: `projects/671028410185/locations/us/transferConfigs/6a7a4904-0000-2e3c-a2e5-d43a2cdb304f`
+
+#### Purpose
+Refreshes the west-region stored master-model copy and the Purely Elizabeth weekly delivery-plus-sales table in one scheduled run. The weekly table is rebuilt from the current Purely Elizabeth media, campaign-mapping, and Protein Granola sales sources.
+
+#### Targets
+```text
+looker-studio-pro-452620.master_ext_west.data_model
+looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly
+```
+
+The transfer configuration has no legacy destination-dataset setting because its SQL is a multi-statement script with fully qualified table targets. The saved query runs under the dedicated `bq-scheduled-queries@looker-studio-pro-452620.iam.gserviceaccount.com` service account.
 
 ### 14. `ext_mm_mft_scheadule`
 

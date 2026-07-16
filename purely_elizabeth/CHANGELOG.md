@@ -2,6 +2,10 @@
 
 Notable Purely Elizabeth reporting changes are recorded here.
 
+## 2026-07-16
+
+- **CHANGED** - Converted the delivery-plus-sales weekly output from a view to a stored table and attached its refresh to the existing `master_raw_CopyToWest` scheduled query, which runs every two hours.
+
 ## 2026-07-15
 
 - **ADDED** - Published the Purely Elizabeth campaign mapping table in the `PE` dataset with two approved Protein Granola campaigns and precedence rules that preserve explicit exclusions over the normalized-name fallback.
