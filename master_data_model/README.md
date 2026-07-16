@@ -76,8 +76,9 @@ The view:
 10. Standardizes `_advertiser`, `_advertiser_name`, and `_advertiser_short_name` through the separate advertiser mapping table so mapped clients use the same advertiser label and short code across digital, social, TV, Amazon, and manual rows. Unmapped clients default to Prisma's advertiser name after removing legal suffixes such as `Inc`, `LLC`, `Corp`, and `Ltd`, and keep any available source short code as a fallback.
 11. Applies valid active manual package edits from `landing.master_data_model_manual_package_daily` and package-level metadata edits from `landing.master_data_model_manual_package_edits_raw` before package rollups are calculated.
 12. Adds `initiative` from Prisma's source column `initative` at the package/date model grain.
-13. Adds canonical `_creative_name` using original FPD creative, Amazon ad-name, and social creative fields. DCM creative remains in the delivery-detail view because one package/date can contain multiple DCM creatives.
-14. Adds canonical source lineage and freshness fields: `qa_data_source` names the raw or controlled source table driving the row, `qa_data_source_refresh_at` shows when that represented data last successfully reached the table consumed by the model, and `qa_data_source_content_modified_at` separately shows reliable source-content modification times for original FPD, revised FPD, and Manual Data Editor Google Sheets.
+13. Preserves Prisma's `CAMPAIGN_PUBLIC_ID` from the raw landing table through the scheduled `Prisma_expanded` table refresh. The field is available in `prisma_expanded_full`; downstream master-model projections must select it explicitly if they publish it.
+14. Adds canonical `_creative_name` using original FPD creative, Amazon ad-name, and social creative fields. DCM creative remains in the delivery-detail view because one package/date can contain multiple DCM creatives.
+15. Adds canonical source lineage and freshness fields: `qa_data_source` names the raw or controlled source table driving the row, `qa_data_source_refresh_at` shows when that represented data last successfully reached the table consumed by the model, and `qa_data_source_content_modified_at` separately shows reliable source-content modification times for original FPD, revised FPD, and Manual Data Editor Google Sheets.
 
 ## Source Tables And Views
 

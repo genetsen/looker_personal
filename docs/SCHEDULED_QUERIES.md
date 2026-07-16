@@ -294,6 +294,9 @@ Step 3: looker-studio-pro-452620.Prisma.prismaExpanded_x_dcmDelivery (TABLE)
 ```
 
 #### Key Logic - Step 1 (Date Expansion)
+
+The live explicit projection also preserves `campaign_public_id` from the Prisma landing table into the expanded daily table.
+
 ```sql
 SELECT
   pm.*,
