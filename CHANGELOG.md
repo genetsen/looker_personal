@@ -2,10 +2,8 @@
 
 All notable changes to this repository are documented in this file.
 
-## 2026-07-16
-
-- **CHANGED** - Updated the live `Prisma_expanded` scheduled query to carry `CAMPAIGN_PUBLIC_ID` from `landing.prisma_master_2025` into `20250327_data_model.prisma_expanded_full`, then refreshed and verified the expanded table.
-- **FIXED** - Updated the live `process_prisma` scheduled query so `CAMPAIGN_PUBLIC_ID` reaches both processed Prisma outputs and the downstream `prisma_processed_plusDCMimps` view; the refreshed path was verified with populated values.
+- **CHANGED** - Updated the live Prisma scheduled queries so `CAMPAIGN_PUBLIC_ID` now flows from `landing.prisma_master_2025` into the expanded and processed Prisma outputs, including `20250327_data_model.prisma_expanded_full` and `prisma_processed_plusDCMimps`; the refreshed tables and downstream view were verified with populated values.
+- **ADDED** - Added a concise Prisma pipeline guide and table catalog so each live Prisma table and view has a readable purpose, grain, lineage, refresh, and risk description.
 
 ## 2026-07-15
 

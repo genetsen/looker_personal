@@ -876,7 +876,7 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "Feeds package, campaign, supplier, channel, cost, planned spend, planned impressions, and p_package_friendly fields.",
-          "Preserves campaign_public_id from the raw Prisma landing table through both Prisma_expanded and process_prisma; later explicit master projections must select it to publish it."
+          "Preserves campaign_public_id from the raw Prisma landing table through both Prisma_expanded and process_prisma; later explicit master projections must select it to publish it. See the Prisma table catalog for object-level lineage and grain warnings."
         ],
         sources: [
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],

@@ -97,6 +97,8 @@ The view:
 
 ## Source Tables And Views
 
+For the complete live Prisma object inventory, table purposes, grain definitions, refresh ownership, and field lineage, see the [Prisma table catalog](model/branches/prisma/PRISMA_TABLE_CATALOG.md). The shorter [Prisma pipeline guide](model/branches/prisma/README_prisma-pipeline.md) is the recommended starting point.
+
 Digital inputs:
 
 - `looker-studio-pro-452620.20250327_data_model.prisma_expanded_full`
