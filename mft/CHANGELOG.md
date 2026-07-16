@@ -3,6 +3,59 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-07-15
+
+### Fixed
+
+#### **FY26 Basis CTV UTM gaps**
+
+Issue: FY26 Autograph, Play by Play, One Man Show, and Welcome to Florida CTV delivery reached MFT with blank UTM fields.
+Cause: 104 active placement-and-creative mappings were missing, and the production delivery and lookup cleanup rules handled long `16x9_0x0` names differently.
+Resolution: derived source-consistent CTV mappings from each placement's existing B2C template, refreshed the production lookup, added a narrowly scoped FY26 join-key correction, and verified all 4,300 affected final-table rows now have UTMs without changing 1,519,667 impressions, $55,074.76 in cost, or 32 clicks.
+
+<details>
+<summary>Paths — FY26 Basis CTV UTM gaps</summary>
+
+- [FY26 Basis CTV join-key correction](scripts/sql/repo_stg__basis_delivery_fy26_ctv_utm_key.sql)
+- [FY26 missing-mapping report](reports/basis_fy26_missing_utm_mappings_2026-07-15.csv)
+
+</details>
+
+#### **Repeated DCM creative-size suffixes**
+
+Issue: 336 `MassMutual20252026Media` delivery records had blank UTM fields even though all seven placements contained the correct UTM creative assignment.
+Cause: the fallback removed only one trailing size token from each side, so DCM `WhatItsAllAbout30_0x0_0x0` became `WhatItsAllAbout30_0x0` while UTM `WhatItsAllAbout30_0x0` became `WhatItsAllAbout30`.
+Resolution: changed both DCM and UTM fallback keys to remove every consecutive trailing size token, deployed the production view, and refreshed the final MFT endpoint. All 336 records and 9,301,443 impressions now have UTMs without changing delivery totals or unique staging keys.
+
+<details>
+<summary>Paths — Repeated DCM creative-size suffixes</summary>
+
+- [DCM UTM deploy SQL](scripts/sql/repo_stg__dcm_plus_utms.sql)
+- [MFT pipeline README](README.md)
+- [DCM UTM lineage note](docs/dcm_plus_utms_lineage.md)
+
+</details>
+
+### Changed
+
+#### **Basis UTM maintenance and troubleshooting guide**
+
+What: documented the partner workbook repository, internal supplement, production lookup, campaign-loading steps, safe CTV extrapolation rule, refresh sequence, and four distinct causes of missing Basis UTMs.
+Why: make new-campaign updates and missing-UTM recovery repeatable without confusing the overall workflow with the `utm_source` field.
+
+<details>
+<summary>Paths — Basis UTM maintenance and troubleshooting guide</summary>
+
+- [MFT pipeline README](README.md)
+
+</details>
+
+### Pending Next Actions
+
+- **Since Jul 15** - Have the partner add and populate the FY26 Q2/Q3 campaign worksheet before that delivery launches - RECOMMENDED
+- **Since Jul 1** - Build a Looker-owned replacement refresh for `landing.basis_master` before attempting an MFT Basis cutover - BLOCKER
+- **Since Jul 1** - Create an isolated QA version of the MFT Basis branch and compare it to the current client-facing output before approval
+
 ## 2026-07-01
 
 - **CHANGED** - Documented the client-shared MFT Basis dependency risk: the live MFT Basis branch reads `landing.basis_master`, not the newly migrated `repo_stg.basis_master2` path, and a direct candidate swap would remove 2026 Basis delivery from the client-facing MFT output.

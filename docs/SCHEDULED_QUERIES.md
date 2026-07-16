@@ -15,7 +15,7 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 │             (Facebook, Google Ads, TikTok history deduplication)                    │
 │                                                                                     │
 │  07:00  ──► process_prisma ──► Prisma_expanded                                      │
-│             (Prisma processing + expansion to daily records)                        │
+│             (Prisma processing + expansion; campaign ID preserved in both)         │
 │                                                                                     │
 │  08:00  ──► UTM UPDATES                                                             │
 │             (Refresh all UTM source tables + build master)                          │
@@ -60,6 +60,17 @@ Documentation of scheduled queries configured in the `looker-studio-pro-452620` 
 | 13 | `master_data_model_upstream_tables_sched` | Daily 10:15 UTC | ✅ SUCCEEDED | [Social pacing snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_int&t=crossplatform_pacing_tbl&page=table), [TV combined snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=tv_combined_tbl&page=table), [direct CM360 history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table) |
 | 14 | `ext_mm_mft_scheadule` | Daily 10:00 UTC | ✅ SUCCEEDED | External export |
 | 15 | `mart__dcm__joined_0519` | Daily 03:00 UTC | ❌ FAILED | `repo_tables.dcm` |
+
+---
+
+#### Prisma campaign identity lineage
+
+The raw Prisma landing table now carries `CAMPAIGN_PUBLIC_ID` for both digital and offline reports. Two scheduled-query branches consume it:
+
+- `Prisma_expanded` publishes it to `20250327_data_model.prisma_expanded_full`.
+- `process_prisma` aggregates it at package grain into `20250327_data_model.prisma_porcessed` and the placement sibling, which makes it available to the `Prisma.prisma_processed_plusDCMimps` DCM/FPD-enriched view.
+
+The DCM and FPD joins add delivery measures; they do not remove the campaign ID. If the field is absent again, inspect the `process_prisma` projection before investigating the enrichment joins.
 
 ---
 

@@ -4,6 +4,29 @@ Verbose session-level and implementation-level change details are documented in 
 For concise daily essentials, see `[BASE]/CHANGELOG.md`.
 All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft.
 
+## 2026-07-15
+
+### Fixed
+
+- Repeated DCM creative-size suffix normalization (`[BASE]/scripts/sql/repo_stg__dcm_plus_utms.sql`, `[BASE]/README.md`, `[BASE]/docs/dcm_plus_utms_lineage.md`)
+  - Issue: 336 `MassMutual20252026Media` records representing 9,301,443 impressions had blank UTM fields even though all seven placements had a `WhatItsAllAbout30_0x0` UTM assignment.
+  - Cause: the loose and extension-stripped keys removed exactly one trailing size token from each side. That left `WhatItsAllAbout30_0x0_0x0` and `WhatItsAllAbout30_0x0` with different normalized keys.
+  - Resolution: changed all six DCM-side, UTM-side, and UTM-deduplication expressions to remove every consecutive trailing size token at the end of the creative name; deployed `repo_stg.dcm_plus_utms`; and ran the canonical `ext_mm_mft_scheadule_s2` endpoint refresh.
+  - Proof: the SQL change guard passed 11 comparisons with zero failures; the live staging view retained 153,564 unique keys, 1,455,294,999 impressions, and 1,069,079 clicks; the live mart and both stored endpoint tables contain all 336 corrected records with 9,301,443 impressions, $188,927.59 cost, and 754 clicks.
+  - Remaining gaps: 885 records remain source exceptions—736 from campaigns absent from the UTM reference, 40 from one missing placement in an existing campaign, and 109 from placement-to-creative assignment differences.
+
+- FY26 Basis CTV UTM enrichment (`[BASE]/scripts/sql/repo_stg__basis_delivery_fy26_ctv_utm_key.sql`, `[BASE]/reports/basis_fy26_missing_utm_mappings_2026-07-15.csv`)
+  - Issue: 4,300 final MFT rows for six FY26 creative-and-length combinations had blank UTM fields, representing 1,519,667 impressions and $55,074.76 in media cost.
+  - Cause: 104 active placement-and-creative mappings were absent from the lookup. After those mappings were derived, the long Autograph and Play by Play names still missed because delivery retained the `16x9` token while the lookup cleanup removed it.
+  - Resolution: added 104 same-placement B2C CTV mappings to the internal supplement. A 64-row `_0x0` alias test proved that suffix removal alone did not resolve the long-name mismatch, so those test aliases were removed and a fallback limited to the FY26 campaign, CTV placements, and the two still-unmatched creative families was deployed instead.
+  - Proof: the UTM lookup refresh and final MFT scheduled refresh both succeeded; the source and enriched FY26 Basis branches reconciled at 46,539 rows, 16,689,254 impressions, $564,616.16 in media cost, and 4,102 clicks; the affected final slice now has 4,300 rows, zero blank UTM rows, 1,519,667 impressions, $55,074.76 in cost, and 32 clicks.
+
+### Changed
+
+- Basis UTM operating documentation (`[BASE]/README.md`)
+  - What: replaced the stale Basis UTM source description and three-file loader example with the current workbook repository, FY26 worksheet configuration, internal supplement, production lookup, scheduled refreshes, safe CTV extrapolation rule, and missing-UTM diagnosis matrix.
+  - Why: make it explicit that a new workbook worksheet is not loaded until the loader configuration, landing table, active union, UTM refresh, delivery join, and final-table refresh all pass.
+
 ## 2026-03-13
 
 ### Added

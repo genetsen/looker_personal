@@ -68,7 +68,7 @@ The next fallback keeps the same normalized `campaign` and `placement_id`, then 
 - trim whitespace
 - remove `px`
 - remove all remaining internal whitespace
-- strip a trailing size token such as `_0x0`, `_0 x 0`, or `_1x1`
+- strip one or more trailing size tokens such as `_0x0`, `_0 x 0`, `_1x1`, or repeated `_0x0_0x0`
 
 This catches rows where DCM and the UTM sheet describe the same creative but disagree on size-token formatting.
 
@@ -126,7 +126,7 @@ It then tries four joins in this order:
 3. Loose Mass-row fallback
    - only runs when exact and normalized both missed
    - only runs when `is_mass_row = TRUE`
-   - matches on normalized `campaign`, normalized `placement_id`, and size-stripped creative
+   - matches on normalized `campaign`, normalized `placement_id`, and repeated-trailing-size-stripped creative
 4. Extension-stripped Mass-row fallback
    - only runs when the first three joins missed
    - only runs when `is_mass_row = TRUE`
@@ -188,6 +188,18 @@ These objects are easy to confuse with the lineage, but they are not direct pare
 - `giant-spoon-299605.data_model_2025.mm_utms_snapshot`
   - appears as a commented historical reference in the live `final_views.utms_view` text
   - it is not the active source that `repo_stg.dcm_plus_utms` reads today
+
+## Verified State On 2026-07-15
+
+The loose and extension-stripped keys now remove every consecutive size token at the end of a creative name. They do not remove size-like text from the middle of a name.
+
+| Check | Verified result |
+|---|---|
+| Corrected pattern | `WhatItsAllAbout30_0x0_0x0` now matches `WhatItsAllAbout30_0x0` across all seven affected placements. |
+| Recovered delivery | 336 records and 9,301,443 impressions regained complete UTM fields. |
+| Grain and metrics | 153,564 staging records remained 153,564 unique `KEY` values; impressions and clicks were unchanged. |
+| Remaining gaps | 736 records belong to campaigns absent from the UTM reference, 40 belong to a missing placement within an existing campaign, and 109 have a real creative-assignment mismatch on an existing placement. |
+| Final endpoint | The canonical `ext_mm_mft_scheadule_s2` refresh succeeded and persisted the corrected rows to the final MFT table. |
 
 ## How To Re-Check This Later
 

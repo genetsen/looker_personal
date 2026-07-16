@@ -32,7 +32,7 @@ WITH dcm_prepped AS (
         r'\s+',
         ''
       ),
-      r'[_-]?\d+x\d+$',
+      r'([_-]?\d+x\d+)+$',
       ''
     ) AS creative_loose_norm,
     REGEXP_REPLACE(
@@ -45,7 +45,7 @@ WITH dcm_prepped AS (
         r'[_.-]?(jpg|jpeg|png|gif|webp|html5|mp4)$',
         ''
       ),
-      r'[_-]?\d+x\d+$',
+      r'([_-]?\d+x\d+)+$',
       ''
     ) AS creative_extless_norm
   FROM `looker-studio-pro-452620.final_views.dcm` AS dcm
@@ -111,7 +111,7 @@ utm_loose AS (
           r'\s+',
           ''
         ),
-        r'[_-]?\d+x\d+$',
+        r'([_-]?\d+x\d+)+$',
         ''
       ) AS creative_loose_norm,
       ROW_NUMBER() OVER (
@@ -124,7 +124,7 @@ utm_loose AS (
               r'\s+',
               ''
             ),
-            r'[_-]?\d+x\d+$',
+            r'([_-]?\d+x\d+)+$',
             ''
           )
         ORDER BY utm.last_updated DESC, utm.placement_end_date DESC, utm.start DESC
@@ -156,7 +156,7 @@ utm_extless AS (
           r'[_.-]?(jpg|jpeg|png|gif|webp|html5|mp4)$',
           ''
         ),
-        r'[_-]?\d+x\d+$',
+        r'([_-]?\d+x\d+)+$',
         ''
       ) AS creative_extless_norm,
       ROW_NUMBER() OVER (
@@ -173,7 +173,7 @@ utm_extless AS (
               r'[_.-]?(jpg|jpeg|png|gif|webp|html5|mp4)$',
               ''
             ),
-            r'[_-]?\d+x\d+$',
+            r'([_-]?\d+x\d+)+$',
             ''
           )
         ORDER BY utm.last_updated DESC, utm.placement_end_date DESC, utm.start DESC

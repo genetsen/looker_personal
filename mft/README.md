@@ -70,7 +70,7 @@ flowchart TD
     subgraph D["1) DCM Staging Branch"]
         D1["Step 1.1: final_views.dcm<br/>Pass-through view of DCM cost model"]
         D2["Step 1.2: final_views.utms_view<br/>Pass-through view of landing.adswerve_utms"]
-        D3["Step 1.3: repo_stg.dcm_plus_utms<br/>Exact join on placement_id + creative_assignment<br/>Mass-only fallback chain: normalized -> size-stripped -> suffix-stripped"]
+        D3["Step 1.3: repo_stg.dcm_plus_utms<br/>Exact join on placement_id + creative_assignment<br/>Mass-only fallback chain: normalized -> repeated-size-stripped -> suffix-stripped"]
     end
 
     %% Basis staging path
@@ -247,20 +247,24 @@ Before any MFT Basis migration:
 
 ---
 
-#### 2. Basis UTM Pivot Table
-**Table**: `looker-studio-pro-452620.utm_scrap.b_sup_pivt_unioned_tab`
+#### 2. Basis UTM mappings
 
-| Attribute | Value |
-|-----------|-------|
-| **Rows** | 1,616 |
-| **Purpose** | UTM mappings extracted from Basis trafficking sheets |
-| **Source** | Excel trafficking sheets via R script |
+Basis UTMs are maintained through two business-input surfaces and one production lookup. Use the terms below so the overall workflow is not confused with the `utm_source` URL field.
 
-**Key Fields**:
-- `tag_placement` - Placement tag name
-- `name` - Creative name
-- `url` - Full URL with UTM parameters
-- Extracted UTM parameters via regex
+| Surface | What it means | When to update it |
+|---|---|---|
+| [UTM mapping workbook repository](https://drive.google.com/drive/u/0/folders/166VjC19FKzYTRM7hRh2z287e2EW97zho) | Partner-maintained campaign trafficking workbooks. The current FY26 workbook is [MassMutual FY26 Q1 Traffic Sheet](https://docs.google.com/spreadsheets/d/1ZPa_UOkiGftXEfTQaeUSyM1qyM9_RtJ4/edit#gid=1699937212). | Add a complete worksheet for each new campaign or quarter, including FY26 Q2/Q3. |
+| [UTM mapping supplement](https://docs.google.com/spreadsheets/d/1kpiBT7IIbWjfUpJ1_BzFSL0d6ukojwW54XkBftep4nM/edit) | Internal correction sheet for urgent missing placement-and-creative mappings or confirmed aliases. Production reads its first tab, `Sheet1`. | Use when delivery has started but the partner workbook is missing a mapping, or when a confirmed naming variant needs an immediate correction. |
+| [MFT UTM lookup table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=b_sup_pivt_unioned_tab&page=table) | Materialized production lookup used by the Basis delivery join. Required grain is one placement plus one normalized creative name. | Refresh after either business-input surface changes. |
+
+The production lookup is built from the [Basis UTM union view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=b_sup_pivt_unioned&page=table), which combines the loaded trafficking-workbook mappings with the UTM mapping supplement.
+
+**Key fields**:
+- `tag_placement` - Exact Basis placement name
+- `name` - Creative name used to build the placement-plus-creative lookup key
+- `url` - Full URL containing the UTM parameter values
+
+**Important loading rule**: adding a worksheet to a trafficking workbook does not load it automatically. The [Basis UTM loader](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r>) has an explicit file, worksheet, and BigQuery destination table for every input. A new FY26 Q2/Q3 worksheet must be added to that configuration and to the production union before it can reach MFT.
 
 **URL Parsing Logic**:
 ```sql
@@ -311,7 +315,7 @@ SELECT * FROM `looker-studio-pro-452620.landing.adswerve_utms`
 - Exact-key join first: `placement_id + creative_assignment`.
 - Mass-only fallback chain when the exact key misses:
   - `utm_norm`: case-insensitive `campaign` + `placement_id`, plus lowercase creative matching with `px` removed
-  - `utm_loose`: same fallback, plus whitespace removal and trailing size-token stripping such as `_0x0` / `_0 x 0`
+  - `utm_loose`: same fallback, plus whitespace removal and removal of one or more trailing size tokens such as `_0x0`, `_0 x 0`, or repeated `_0x0_0x0`
   - `utm_extless`: same fallback, plus common file-type suffix stripping such as `_jpg`
 - Placement-name-only rescue after the creative chain misses:
   - same-campaign placement rescue on `campaign + placement_id`
@@ -356,7 +360,7 @@ SELECT * FROM `looker-studio-pro-452620.landing.adswerve_utms`
    - Compare them at the same normalization level as the winning `match_type`:
      - `exact`: literal equality
      - `normalized`: lowercase/trim plus `px` removal
-     - `loose_norm`: the same, plus whitespace removal and trailing size-token stripping
+     - `loose_norm`: the same, plus whitespace removal and repeated trailing size-token stripping
      - `extless_norm`: the same, plus common file-suffix stripping
 6. Pull row-level samples last.
    - Start with grouped summaries by `match_type`, campaign, `package_id`, `placement_id`, and the UTM tail value found in `utm_content`.
@@ -372,6 +376,15 @@ SELECT * FROM `looker-studio-pro-452620.landing.adswerve_utms`
 - `package_id` appeared in `utm_content` for `100%` of matched Mass-slice rows.
 - `placement_id` appeared in `utm_content` for `99.52%` of matched Mass-slice rows, with one repeated source-tag defect driving the misses.
 - Literal creative-name checks against `utm_content` were not reliable; `utm_creative_assignment` was the correct creative validation field.
+
+**What the repeated-size correction proved on 2026-07-15**:
+
+| Check | Verified result |
+|---|---|
+| Repeated-size recovery | All 336 `WhatItsAllAbout30_0x0_0x0` delivery records matched the existing `WhatItsAllAbout30_0x0` UTM assignments across seven placements. |
+| Delivery preservation | The staging view retained 153,564 unique delivery keys with 1,455,294,999 impressions and 1,069,079 clicks. |
+| Stored endpoint | The scheduled refresh succeeded and the final table contains all 336 corrected records, representing 9,301,443 impressions, $188,927.59 in cost, and 754 clicks. |
+| Remaining UTM gaps | 885 records remain: 736 belong to campaigns absent from the UTM reference, 40 use one missing placement, and 109 have real placement-to-creative assignment differences. |
 
 ---
 
@@ -594,16 +607,18 @@ This mart view remains the unioned transformation layer and feeds the endpoint b
 
 **Purpose**: Processes Basis trafficking sheets to extract UTM parameters
 
-#### Input Files
-```r
-file_path1 <- 'Flight 1_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
-file_path2 <- 'Flight 2_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
-file_path3 <- 'Flight 3 Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx'
+#### Configured inputs
 
-sheet_name1 <- "Q1 Tsheet"
-sheet_name2 <- "Flight 2_Updated"
-sheet_name3 <- "Flight 3"
-```
+The loader uses the `data_sources` configuration near the top of the script. Each row names:
+
+| Setting | Meaning |
+|---|---|
+| `source_id` | Short readable campaign or flight label |
+| `excel_file_path` | Downloaded copy of the partner workbook |
+| `sheet_name` | Exact worksheet to read |
+| `bq_table_name` | Landing table that receives the normalized mappings |
+
+The current FY26 Q1 row reads worksheet `MASSMUTUAL004_updated 1.14.26` from the downloaded FY26 workbook and replaces the [FY26 Q1 landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_utms_pivoted_fy26_q1&page=table). The loader does not discover new workbook tabs by itself.
 
 #### Processing Steps
 
@@ -643,9 +658,9 @@ Converts wide creative columns to rows for easier processing.
 
 Uses regex to parse URLs and extract individual UTM values.
 
-**6. Upload to BigQuery**
+**6. Upload and promote**
 
-Final processed data uploaded to `utm_scrap.b_sup_pivt_unioned_tab`.
+The script replaces each configured landing table. Production promotion is a separate step: include the landing table in the active union, run the scheduled query named `UTM UPDATES`, and verify the refreshed MFT UTM lookup table before refreshing the final MFT table.
 
 ---
 
@@ -1031,20 +1046,36 @@ ORDER BY completion_rate_pct DESC
 
 ## Maintenance
 
-### Daily Checks
-1. Verify row counts haven't dropped unexpectedly
-2. Check for new campaigns requiring UTM mapping
-3. Monitor UTM match rates
+### How to keep Basis UTMs updated
 
-### Weekly Tasks
-1. Review unmatched UTM records
-2. Update trafficking sheet extracts if new flights launched
-3. Validate creative name normalization catching new patterns
+#### New campaign or quarter
 
-### Monthly Tasks
-1. Archive old UTM upload files
-2. Review and optimize view performance
-3. Update documentation for schema changes
+1. Ask the partner to add a new worksheet to the UTM mapping workbook repository. The worksheet must contain every placement, every creative, and the complete tagged URL. Do not reuse the FY26 Q1 worksheet for Q2/Q3.
+2. Download the latest workbook. The FY26 file is an uploaded Excel workbook in Drive, not a native Google Sheet, so the worksheet name must be checked in the actual workbook.
+3. Add one row to `data_sources` in the [Basis UTM loader](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r>) with the downloaded file, exact worksheet name, and a clearly named landing table.
+4. Run the loader and verify the new landing table contains one valid row per placement-and-creative mapping. Reject blank placement names, creative names, or URLs.
+5. Add the landing table to the active Basis workbook union. Confirm the [Basis UTM union view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=b_sup_pivt_unioned&page=table) can see the new rows.
+6. Run the scheduled query named `UTM UPDATES`. Confirm the [MFT UTM lookup table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=b_sup_pivt_unioned_tab&page=table) contains the new placement-and-creative keys.
+7. Check the [Basis delivery-to-UTM view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=basis_plus_utms_v4_PnS_table&page=table). The new campaign's active delivery rows should have populated `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term`.
+8. Run the scheduled query named `ext_mm_mft_scheadule_s2`, then verify the [stored MFT table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=mass_mutual_mft_ext&t=mft_data&page=table). Reconcile rows, impressions, cost, and clicks so UTM enrichment does not change delivery totals.
+
+#### Urgent missing CTV mappings
+
+CTV mappings may be extrapolated only when the same placement already has a valid B2C CTV mapping and the business owner confirms that the destination and campaign values are not creative-specific.
+
+| Keep from the same-placement template | Change for the missing creative |
+|---|---|
+| Destination URL, `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, package ID, placement ID, and publisher portion | Video length and creative-name portion of `utm_content`; creative lookup name |
+
+Add the derived rows to the UTM mapping supplement, then follow steps 6-8 above. Never copy a URL from a different placement, because the package, placement, publisher, campaign, or audience values may differ.
+
+For FY26 CTV, `_0x0` is a size placeholder, not a separate creative or a site value. Treat names such as `autograph` and `autograph_0x0` as the same creative family. The deployed [FY26 CTV join-key correction](scripts/sql/repo_stg__basis_delivery_fy26_ctv_utm_key.sql) applies consistent cleanup to the confirmed Autograph and Play by Play delivery variants without changing displayed creative names or delivery metrics.
+
+### Routine checks
+
+- Daily: review new campaigns and confirm the latest final-table refresh succeeded.
+- Weekly: group blank Basis UTMs by placement and creative, then classify each gap using the troubleshooting matrix below.
+- Monthly: confirm the loader configuration, active union, scheduled-query names, and workbook repository still match the live production path.
 
 ## Changelog Policy
 
@@ -1079,10 +1110,16 @@ SELECT
 FROM `looker-studio-pro-452620.mass_mutual_mft_ext.mft_data`
 ```
 
-**Solutions**:
-1. Check if new placements need UTM mapping
-2. Verify creative name normalization regex
-3. Add manual mappings to `dcm_plus_utms_upload`
+**Basis diagnosis matrix**:
+
+| What the live checks show | Meaning | Action |
+|---|---|---|
+| Placement is absent from the MFT UTM lookup table | The campaign worksheet was not loaded or promoted into the active union. | Check the loader configuration, landing table, and union before changing matching logic. |
+| Placement exists, but the delivered creative does not | The workbook or supplement is missing that placement-and-creative mapping. | Add a source-backed mapping, or use the confirmed same-placement CTV extrapolation rule above. |
+| Placement and creative exist in the lookup, but the delivery-to-UTM view is blank | The two creative names normalize to different join keys. | Compare the exact delivery and lookup names. Treat `_0x0` as an alias, and test any broader cleanup rule for regressions before deployment. |
+| The delivery-to-UTM view is populated, but the stored MFT table is blank | The final table is stale. | Run `ext_mm_mft_scheadule_s2` and verify the stored table after the run succeeds. |
+
+**Do not use the DCM correction upload for Basis gaps.** Basis workbook mappings belong in the partner workbook flow; urgent Basis corrections belong in the UTM mapping supplement.
 
 ---
 
@@ -1115,4 +1152,4 @@ For questions or issues with this pipeline, contact the data engineering team.
 - [Basis UTMs Diagram](../util/basis_utms/archive/b_utms_diagram.md) - Legacy diagram
 - [DCM Cost Model](../sql/base/dcm/) - Shared DCM processing
 
-**Last Updated**: February 12, 2026
+**Last Updated**: July 15, 2026

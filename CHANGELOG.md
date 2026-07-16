@@ -5,6 +5,30 @@ All notable changes to this repository are documented in this file.
 ## 2026-07-16
 
 - **CHANGED** - Updated the live `Prisma_expanded` scheduled query to carry `CAMPAIGN_PUBLIC_ID` from `landing.prisma_master_2025` into `20250327_data_model.prisma_expanded_full`, then refreshed and verified the expanded table.
+- **FIXED** - Updated the live `process_prisma` scheduled query so `CAMPAIGN_PUBLIC_ID` reaches both processed Prisma outputs and the downstream `prisma_processed_plusDCMimps` view; the refreshed path was verified with populated values.
+
+## 2026-07-15
+
+- **CHANGED** - Started the cross-repo Google auth unification rollout in `DCM_API`. The CM360 and Ritual Gmail Python helpers now prefer shared application-default credentials first, while older local token files remain as temporary fallbacks so existing runs are not cut off during migration.
+- **ADDED** - Published and verified the Purely Elizabeth delivery-plus-sales weekly view and its campaign mapping table. The live output retains unique Sunday-ending week-and-product rows, sales-only and media-only history, and reconciled sales, TDP, and media measures.
+- **CHANGED** - Standardized the weekly view's public fields so shared media measures mirror the main model and retail measures use `sales_dollars` and `sales_tdp`.
+- **CHANGED** - Kept the Purely Elizabeth production weekly view metric-only at date and year-free product grain.
+- **CHANGED** - Generalized the Purely Elizabeth weekly output to mapped product groups with delivery without relabeling the Protein Granola-specific sales source.
+- **CHANGED** - Simplified Purely Elizabeth campaign maintenance so every valid mapping row is included, unmapped campaigns are excluded without a name fallback, and add, update, or remove actions can be run directly in BigQuery Studio.
+
+## 2026-07-14
+
+- **ADDED** - Published and verified a weekly Purely Elizabeth Protein Granola reporting view that combines the approved MULO and Natural Expanded product set. The live result contains 12 unique weeks with no missing dates and reconciles its Dollar sales and TDP totals to the approved source calculation.
+- **CHANGED** - Condensed the native master-model package lookup Sheet to one case-insensitive partial search across Package ID, Package Name, and Package Friendly Name, while retaining the Manual Data Editor-style flight, plan, delivery, and metadata result fields.
+- **FIXED** - Corrected the package lookup source so valid manual-only packages are included, and expanded the single search field to Supplier Code and Supplier Name so `QUAN`, `Columbus Circle DOOH`, and `ccdooh` can find the same package.
+- **VERIFIED** - Confirmed that the signed-in Package Lookup menu can return a live package. A final menu check of the new one-field partial search remains pending.
+
+### Pending Next Actions
+
+- **Since Jul 14** - Decide and implement the weekly Purely Elizabeth SPINS source-file refresh workflow - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse - RECOMMENDED
+- **Since Jul 7** - Update the saved `stg__olipop__crossplatform_raw_tbl_sched` transfer config with owner-account credentials so future scheduled runs keep excluding `1000heads` campaigns
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
 
 ## 2026-07-13
 
