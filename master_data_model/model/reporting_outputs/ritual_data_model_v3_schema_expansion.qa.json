@@ -1,0 +1,111 @@
+{
+  "keys": [],
+  "metrics": [
+    "final_spend",
+    "final_impressions",
+    "final_clicks",
+    "planned_daily_spend_pk",
+    "planned_daily_impressions_pk"
+  ],
+  "derived_metrics": [
+    {
+      "name": "final_cpm",
+      "expr": "SAFE_DIVIDE(SUM(final_spend) * 1000, NULLIF(SUM(final_impressions), 0))"
+    },
+    {
+      "name": "final_ctr",
+      "expr": "SAFE_DIVIDE(SUM(final_clicks), NULLIF(SUM(final_impressions), 0))"
+    }
+  ],
+  "comparison_dimensions": [
+    "advertiser_name",
+    "supplier_name",
+    "channel",
+    "row_type"
+  ],
+  "high_risk_metrics": [
+    "final_spend",
+    "final_impressions",
+    "final_clicks",
+    "planned_daily_spend_pk",
+    "planned_daily_impressions_pk",
+    "final_cpm",
+    "final_ctr"
+  ],
+  "high_risk_dimensions": [
+    "advertiser_name",
+    "supplier_name",
+    "channel",
+    "row_type"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0
+    },
+    "final_spend": {
+      "max_abs_delta": 0.000001,
+      "max_abs_pct": 0.000000000001
+    },
+    "final_impressions": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0
+    },
+    "final_clicks": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0
+    },
+    "planned_daily_spend_pk": {
+      "max_abs_delta": 0.000001,
+      "max_abs_pct": 0.000000000001
+    },
+    "planned_daily_impressions_pk": {
+      "max_abs_delta": 0.000001,
+      "max_abs_pct": 0.000000000001
+    },
+    "final_cpm": {
+      "max_abs_delta": 0.000000001,
+      "max_abs_pct": 0.000000000001
+    },
+    "final_ctr": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0
+    },
+    "distinct_advertiser_name": {
+      "max_abs_delta": 0
+    },
+    "distinct_supplier_name": {
+      "max_abs_delta": 0
+    },
+    "distinct_channel": {
+      "max_abs_delta": 0
+    },
+    "distinct_row_type": {
+      "max_abs_delta": 0
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 0,
+    "max_candidate_only": 0
+  },
+  "custom_checks": [
+    {
+      "name": "ritual_filter_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(advertiser_name != 'Ritual' AND advertiser_short_name != 'RTL') AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "v3_fields_queryable",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(*) AS value FROM (SELECT qa_v3_row_type, qa_v3_metric_grain, conv_activity, amzn_campaign_id, initiative, man_manual_edit_at FROM {table} LIMIT 0)",
+      "equals": 0
+    }
+  ],
+  "downstream_objects": [
+    "looker-studio-pro-452620.master_stg.ritual_data_model"
+  ],
+  "downstream_checks": []
+}

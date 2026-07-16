@@ -4,6 +4,12 @@ Dashboard-facing mart and reporting output logic belongs here.
 
 Keep this separate from the final model because dashboard filters and reporting exclusions can differ from the evidence/final table behavior.
 
+## Ritual Dashboard Compatibility View
+
+The [Ritual dashboard compatibility view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=ritual_data_model&page=table) filters the v3 master model to Ritual while preserving the field names used by the existing Omni dashboard. The view currently exposes 240 fields: 125 established compatibility fields and 115 additional v3 fields. Its `v3.* EXCEPT (...)` contract keeps the established aliases stable and automatically includes future v3 fields whose names do not conflict with an existing compatibility output.
+
+Use the [Ritual compatibility view builder](./create_master_stg_ritual_data_model.sql) for deployment. Before replacing the live view, create an isolated candidate with the [Ritual QA builder](./create_master_stg_ritual_data_model_v3_schema_expansion_qa.sql) and run the [Ritual SQL Change Guard manifest](./ritual_data_model_v3_schema_expansion.qa.json). Existing row counts, reporting totals, derived rates, dimensions, and the Ritual-only filter must remain unchanged; only additive v3 columns are expected.
+
 ## Purely Elizabeth West-Region View
 
 The [Purely Elizabeth reporting view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_ext_west&t=mart_data_model_purelyElizabeth&page=table) filters the west-region model to Purely Elizabeth. For rows whose channel group is `linear`, or whose supplier code is `QUAN`, its delivered spend and impression fields intentionally use the corresponding planned values. Other rows retain the delivered values from the underlying model.

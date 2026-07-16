@@ -5,7 +5,7 @@ All notable changes to this repository are documented in this file.
 ## 2026-07-16
 
 - **CHANGED** - Added the separate FY26 Q2/Q3 Basis trafficking file to the maintained UTM loader and production mapping union. The live lookup now contains all 322 complete mappings from the approved `7.7` worksheet, while nine paused assignments without URLs remain excluded from production.
-- **CHANGED** - Moved the live Ritual dashboard compatibility view to the v3 master model without renaming the view or its Omni topic. The deployed view now points only to v3, and its existing Omni measures continued to return populated last-month results after the change.
+- **CHANGED** - Moved the live Ritual dashboard compatibility view to the v3 master model and expanded it from 125 to 240 fields without renaming the view or its Omni topic. All 115 previously hidden v3 fields are now available, future non-conflicting v3 fields pass through automatically, and the established rows and reporting totals remained unchanged in validation.
 - **CHANGED** - Converted the Purely Elizabeth delivery-plus-sales weekly output to a stored table and connected it to the existing two-hour `master_raw_CopyToWest` scheduled refresh.
 
 - **CHANGED** - Updated the live Prisma scheduled queries so `CAMPAIGN_PUBLIC_ID` now flows from `landing.prisma_master_2025` into the expanded and processed Prisma outputs, including `20250327_data_model.prisma_expanded_full` and `prisma_processed_plusDCMimps`; the refreshed tables and downstream view were verified with populated values.
