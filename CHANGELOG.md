@@ -4,6 +4,7 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-07-16
 
+- **CHANGED** - Added the separate FY26 Q2/Q3 Basis trafficking file to the maintained UTM loader and production mapping union. The live lookup now contains all 322 complete mappings from the approved `7.7` worksheet, while nine paused assignments without URLs remain excluded from production.
 - **CHANGED** - Moved the live Ritual dashboard compatibility view to the v3 master model without renaming the view or its Omni topic. The deployed view now points only to v3, and its existing Omni measures continued to return populated last-month results after the change.
 - **CHANGED** - Converted the Purely Elizabeth delivery-plus-sales weekly output to a stored table and connected it to the existing two-hour `master_raw_CopyToWest` scheduled refresh.
 

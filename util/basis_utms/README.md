@@ -19,11 +19,22 @@ Organized workspace for MassMutual Basis UTM extraction, validation, and support
   - Utility SQL for extracting distinct creative names and null-UTM diagnostics.
 - `essential/load_basis_utms_unioned_0929_from_fy26_q1.sql`
   - Idempotent backfill script that inserts missing FY26 Q1 rows from `landing.basis_utms_pivoted_fy26_q1` into `landing.basis_utms_unioned-0929`.
+- `essential/load_basis_utms_unioned_0929_from_fy26_q2_q3.sql`
+  - Idempotent promotion script that inserts complete FY26 Q2/Q3 rows from `landing.basis_utms_pivoted_fy26_q2_q3` into `landing.basis_utms_unioned-0929`.
+
+## Current FY26 Workbook Inputs
+
+| Campaign period | Local workbook | Worksheet | Landing table |
+|---|---|---|---|
+| Q1 | `MassMutual_FY26_Q1_Traffic Sheet.xlsx` | `MASSMUTUAL004_updated 1.14.26` | `landing.basis_utms_pivoted_fy26_q1` |
+| Q2/Q3 | `MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx` | `MASSMUTUAL005_Updated 7.7` | `landing.basis_utms_pivoted_fy26_q2_q3` |
+
+Each campaign period is delivered as a separate file. The loader still requires the exact worksheet name inside that file and does not discover new files automatically. Embedded spaces and line breaks are removed from URL cells before upload.
 
 ## Pipeline-Critical SQL Dependencies
 
 - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/load_basis_utms_union.sql`
-  - Unions all `landing.basis_utms_pivoted_*` tables (including FY26 Q1) into `landing.basis_utms_unioned`.
+  - Unions all `landing.basis_utms_pivoted_*` tables (including FY26 Q1 and Q2/Q3) into `landing.basis_utms_unioned`.
 - `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/stg__basis__utms.sql`
   - Parses UTM parameters from `landing.basis_utms_unioned` into the staging view used by downstream Basis+UTM joins.
 
@@ -59,6 +70,8 @@ Rscript util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r
 Rscript util/basis_utms/essential/util_b_utm_validation.r
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < util/basis_utms/essential/load_basis_utms_unioned_0929_from_fy26_q1.sql
+bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
+  < util/basis_utms/essential/load_basis_utms_unioned_0929_from_fy26_q2_q3.sql
 ```
 
 Use project auth/environment defaults for BigQuery access before running these scripts.
