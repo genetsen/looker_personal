@@ -4,12 +4,12 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-import google.auth
-from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+
+from dcm_api.google_api_auth import try_get_adc_credentials
 
 
 SCOPES = ["https://www.googleapis.com/auth/dfareporting"]
@@ -46,12 +46,9 @@ def get_credentials() -> Credentials:
     client_secrets = settings["client_secrets"]
     token_file = settings["token_file"]
 
-    try:
-        creds, _project = google.auth.default(scopes=SCOPES)
-        creds.refresh(Request())
+    creds = try_get_adc_credentials(SCOPES)
+    if creds is not None:
         return creds
-    except DefaultCredentialsError:
-        pass
 
     creds = None
     if token_file.exists():

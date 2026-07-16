@@ -9,17 +9,27 @@ from typing import Any
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
+from dcm_api.google_api_auth import try_get_adc_credentials
+
 
 GMAIL_TOKEN_PATH = Path.home() / ".cache" / "gmail_token.pickle"
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 
 def build_gmail_service():
+    creds = try_get_adc_credentials(GMAIL_SCOPES)
+    if creds is not None:
+        return build("gmail", "v1", credentials=creds)
+
     with GMAIL_TOKEN_PATH.open("rb") as token_file:
         creds = pickle.load(token_file)
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
     if not creds.valid:
-        raise RuntimeError("Gmail credentials are not valid. Refresh ~/.cache/gmail_token.pickle.")
+        raise RuntimeError(
+            "Gmail credentials are not valid. Refresh ADC with gmail.readonly "
+            "or refresh ~/.cache/gmail_token.pickle."
+        )
     return build("gmail", "v1", credentials=creds)
 
 

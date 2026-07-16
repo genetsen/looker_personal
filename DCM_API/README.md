@@ -11,10 +11,10 @@ It starts with two safe read-only commands:
 ## What You Need
 
 1. A Google Cloud project with the Campaign Manager 360 API enabled.
-2. An OAuth desktop app credential downloaded from Google Cloud.
+2. Existing Google application-default credentials from `gcloud`, or an OAuth desktop app credential as a temporary fallback.
 3. Campaign Manager 360 access for the Google account you will sign in with.
 
-Save the downloaded OAuth JSON file here:
+If you need the temporary fallback path, save the downloaded OAuth JSON file here:
 
 ```text
 secrets/client_secrets.json
@@ -42,8 +42,10 @@ If that command fails, install dependencies into that existing environment:
 /Users/eugenetsenter/virtenvi-2025/bin/python -m pip install -r requirements.txt
 ```
 
-The code first tries existing Google application-default credentials. If those
-are not available, it falls back to a local OAuth file.
+The code now prefers one shared Google auth path inside this repo:
+
+1. Try existing Google application-default credentials first.
+2. Use local OAuth files only as a temporary fallback during migration or on machines without working ADC.
 
 Optional local environment file:
 
@@ -72,7 +74,7 @@ gcloud auth application-default login --scopes=https://www.googleapis.com/auth/c
 That does not require adding a project OAuth file. It refreshes the local
 Google Cloud SDK application-default credential.
 
-If application-default credentials are missing entirely, the script falls back
+If application-default credentials are missing entirely, the CM360 client falls back
 to browser OAuth using:
 
 ```text
@@ -98,11 +100,28 @@ After you have a profile ID:
 
 Replace `PROFILE_ID` with the profile ID from the smoke test.
 
+## Ritual Gmail Loader Auth
+
+The Ritual email-to-BigQuery loader follows the same auth preference:
+
+1. Try application-default credentials with Gmail read-only scope.
+2. Fall back temporarily to the legacy shared Gmail pickle token at `~/.cache/gmail_token.pickle`.
+
+To refresh ADC for both CM360 and Gmail on one machine, use a combined scope login:
+
+```bash
+gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/dfareporting,https://www.googleapis.com/auth/gmail.readonly
+```
+
+This is the repo's preferred path going forward because multiple scripts can
+share one Google auth store instead of keeping separate per-script token files.
+
 ## Notes
 
 - The default API version is `v5`, set in `.env.example`.
 - The starter uses the `https://www.googleapis.com/auth/dfareporting` OAuth
   scope, which is enough for read/write reporting workflows.
+- The Ritual Gmail attachment loader uses `https://www.googleapis.com/auth/gmail.readonly`.
 - The current scripts only read metadata. They do not create, update, or delete
   Campaign Manager objects.
 
