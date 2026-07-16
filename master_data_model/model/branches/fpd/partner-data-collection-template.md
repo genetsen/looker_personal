@@ -2,7 +2,7 @@
 
 This document explains the configurable Google Sheets template used to request first-party delivery data from media partners.
 
-Current source workbook: [Partner Data Collection template](https://docs.google.com/spreadsheets/d/1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4/edit?gid=561569503#gid=561569503). This is the current template identified on July 10, 2026, and it must be recreated after the Workplace migration. The workbook is now readable through the shared legacy Workplace credential; its bound Apps Script and execution history have not yet been re-verified.
+Current source workbook: [Partner Data Collection template](https://docs.google.com/spreadsheets/d/1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4/edit?gid=561569503#gid=561569503). This is the current template identified on July 10, 2026, and it must be recreated after the Workplace migration. The workbook and duplicator-library source are now readable; the library's v3 release uses this workbook for central mappings and logging. The current workbook's sheet-bound wrapper/button is still not located or verified.
 
 Historical baseline: the workbook shape, formulas, and experiment findings below came from a July 8, 2026 live inspection of the earlier [2025 Template v2 Partner Data Collection](https://docs.google.com/spreadsheets/d/15zQ_IZx0kFpAffCFpp2d8ddDfjRf-kjnoSQXHxSu5eA/edit?gid=762675964#gid=762675964). Treat those details as migration reference material until the current template is accessible and checked.
 
@@ -13,10 +13,10 @@ The current migration has three verified Apps Script blockers:
 | Finding | Evidence | What it means for recreation |
 |---|---|---|
 | The duplicator library was run through the wrong entrypoint. | Four July 9 editor executions of `duplicateAndSetup` failed within 0.6 seconds. That function requires a spreadsheet argument and is designed to be called from a sheet-bound wrapper with the active spreadsheet. | Do not run the library function directly from the Apps Script editor. Recreate the sheet-bound wrapper/button so it calls the library with the active spreadsheet. |
-| The duplicator library still uses the archived v2 workbook as its central mapping and logging source. | The library configuration points its master-spreadsheet reference at the historical template above. | Before using the migrated v3 template, update the library configuration to the current template or deliberately choose a separate post-migration master workbook. |
+| The duplicator library previously used the archived v2 workbook as its central mapping and logging source. | The v3 library release now points its master-spreadsheet reference to the current source workbook. The existing v2 library release remains available for older sheets. | Attach the v3 release to the recreated sheet-bound wrapper; do not change older sheets until they are deliberately migrated. |
 | The inspected `publish_fpd_template` and `publish_fpd_template_fpdLib` projects are standalone projects. | Their Apps Script metadata has no spreadsheet parent, and no discovered project exposed a `Process FPD` function. | The current v3 workbook's bound wrapper and button assignment still need to be recreated or located; do not treat either standalone project as proof that the v3 sheet is wired up. |
 
-The Google Apps Script API was enabled on July 10 solely to inspect source and execution history. No workbook cells, Apps Script source, triggers, or deployed behavior were changed during this QA.
+The Google Apps Script API was enabled on July 10 to inspect source and execution history. The standalone duplicator library was then updated and published as a new v3 release that uses the current source workbook for central mappings and logging. No workbook cells, bound-script wrapper, button assignment, triggers, or duplication run were changed during this work.
 
 ## What This Template Does
 

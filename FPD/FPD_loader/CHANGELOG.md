@@ -1,3 +1,11 @@
+## 2026-07-10
+
+- **CHANGED** - Added a local entry point to the partner-data Google Sheets template guide, so FPD loader users can reach the canonical master-data-model documentation without maintaining a duplicate copy.
+
+### Pending Next Actions
+
+- None currently tracked.
+
 ## 2026-07-09
 
 - **FIXED** - Let the main loader continue when a matched sheet adds a brand-new column that is completely blank, while still avoiding a guessed production BigQuery type; a full live run completed the production sync and confirmed NATVLY rows reached the output.

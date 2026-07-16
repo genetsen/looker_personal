@@ -15,6 +15,8 @@ Legacy variants (`util_collect_fpd_v2.r` / `util_collect_fpd_v3.r`) still exist 
 
 If you want a fast orientation first, read `docs/PROJECT_OVERVIEW.md`.
 
+For the partner-facing Google Sheets template and its Apps Script migration notes, start with the [Partner Data Collection template guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/docs/partner-data-collection-template.md).
+
 ```bash
 # Install R packages (one-time)
 Rscript -e 'install.packages(c("googledrive", "googlesheets4", "dplyr", "stringr", "readr", "lubridate", "janitor", "bigrquery", "tidyr"))'
