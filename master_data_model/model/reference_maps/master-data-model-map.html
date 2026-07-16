@@ -1320,19 +1320,21 @@
         id: "ritual-output",
         groupId: "ritual-slice",
         title: "Ritual Slice",
-        summary: "Filtered Ritual view from Master.",
+        summary: "Dashboard-compatible Ritual projection over the v3 master model.",
         truth: "View: master_stg.ritual_data_model.",
-        writes: "View only. Refresh Master View upstreams.",
-        freshness: "Current when master_stg.data_model is current.",
-        risk: "low",
-        reviewReason: "Simple read: simple filter, but it inherits Master logic.",
+        writes: "View only. Rebuild data_model_v3 through the Master Data Model Clustered Advertiser Refresh workflow.",
+        freshness: "Current when master_stg.data_model_v3 is current.",
+        risk: "medium",
+        reviewReason: "The compatibility aliases remain stable, but v3 preserves lower-grain source rows, so row-count metrics can differ from the former package/date source.",
         kind: "output",
         callouts: { truth: "live", writes: false },
         notes: [
-          "Filter: advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'."
+          "Filter: advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'.",
+          "Source changed from master_stg.data_model to master_stg.data_model_v3 on July 16, 2026; Omni sum measures were rechecked after the change."
         ],
         sources: [
-          ["BigQuery: master_stg.ritual_data_model", bq("master_stg", "ritual_data_model")]
+          ["BigQuery: master_stg.ritual_data_model", bq("master_stg", "ritual_data_model")],
+          ["BigQuery: master_stg.data_model_v3", bq("master_stg", "data_model_v3")]
         ]
       }
     ];

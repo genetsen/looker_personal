@@ -2,6 +2,7 @@
 
 ## 2026-07-16
 
+- **CHANGED** - Moved the live Ritual dashboard compatibility view from the package/date master model to the v3 master model while preserving its existing field names and Omni topic. The live definition now points only to v3, and the existing Omni topic returned the expected last-month spend, impression, planned-spend, and row-count measures after the change.
 - **CHANGED** - Converted the Purely Elizabeth delivery-plus-sales weekly output to a stored table and moved its rebuild into the existing `master_raw_CopyToWest` scheduled query, preserving the two-hour refresh cadence.
 - **CHANGED** - Updated the live `Prisma_expanded` scheduled query to carry `CAMPAIGN_PUBLIC_ID` from `landing.prisma_master_2025` into `20250327_data_model.prisma_expanded_full`, then refreshed and verified the expanded table.
 - **ADDED** - Added a concise Prisma pipeline guide and table catalog documenting the purpose, grain, upstream/downstream lineage, refresh ownership, field paths, and modeling risks for the live Prisma tables and views.
