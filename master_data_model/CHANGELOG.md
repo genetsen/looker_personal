@@ -2,7 +2,7 @@
 
 ## 2026-07-16
 
-- **CHANGED** - Moved the live Ritual dashboard compatibility view to the v3 master model and expanded it from 125 to 240 fields. All 115 previously hidden v3 fields are now available while the established dashboard names, rows, and reporting totals remain unchanged; future non-conflicting v3 fields also pass through automatically. The live Omni topic and the unmerged review branch both queried the expanded fields successfully.
+- **CHANGED** - Moved the live Ritual dashboard compatibility view to the v3 master model and expanded it from 125 to 241 fields. All 115 previously hidden v3 fields are available, and the canonical `_creative_name` now also appears in Omni as the friendly `Creative Name` field while the raw field remains intact. Established dashboard names, rows, and reporting totals remain unchanged; future non-conflicting v3 fields also pass through automatically. The live Omni topic and the unmerged review branch both queried the expanded fields successfully.
 - **CHANGED** - Converted the Purely Elizabeth delivery-plus-sales weekly output to a stored table and moved its rebuild into the existing `master_raw_CopyToWest` scheduled query, preserving the two-hour refresh cadence.
 - **CHANGED** - Updated the live `Prisma_expanded` scheduled query to carry `CAMPAIGN_PUBLIC_ID` from `landing.prisma_master_2025` into `20250327_data_model.prisma_expanded_full`, then refreshed and verified the expanded table.
 - **ADDED** - Added a concise Prisma pipeline guide and table catalog documenting the purpose, grain, upstream/downstream lineage, refresh ownership, field paths, and modeling risks for the live Prisma tables and views.

@@ -135,6 +135,7 @@ SELECT
   `qa_pkg_fpd_impressions_doNotSum` AS `pkg_fpd_impressions`,
   `qa_pkg_fpd_spend_doNotSum` AS `pkg_fpd_spend`,
   `qa_package_spend_over_plan_flag` AS `pkg_over_flag`,
+  `_creative_name` AS `creative_name`,
   -- Preserve the established compatibility aliases above, then carry every
   -- additional current or future v3 field that is not already mapped.
   v3.* EXCEPT (

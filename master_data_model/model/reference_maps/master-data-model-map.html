@@ -1331,7 +1331,8 @@
         notes: [
           "Filter: advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'.",
           "Source changed from master_stg.data_model to master_stg.data_model_v3 on July 16, 2026; Omni sum measures were rechecked after the change.",
-          "The output currently exposes 240 fields: 125 established compatibility fields plus all 115 previously hidden v3 fields.",
+          "The output currently exposes 241 fields: 125 established compatibility fields, all 115 previously hidden v3 fields, and a friendly creative_name alias for canonical _creative_name.",
+          "Omni displays creative_name as Creative Name; _creative_name remains available in BigQuery for raw lineage and compatibility.",
           "A v3 wildcard exclusion contract preserves the established aliases and automatically carries future non-conflicting v3 fields."
         ],
         sources: [

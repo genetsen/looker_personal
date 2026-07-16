@@ -100,7 +100,14 @@
       "name": "v3_fields_queryable",
       "severity": "critical",
       "scope": "candidate",
-      "sql": "SELECT COUNT(*) AS value FROM (SELECT qa_v3_row_type, qa_v3_metric_grain, conv_activity, amzn_campaign_id, initiative, man_manual_edit_at FROM {table} LIMIT 0)",
+      "sql": "SELECT COUNT(*) AS value FROM (SELECT qa_v3_row_type, qa_v3_metric_grain, conv_activity, amzn_campaign_id, initiative, man_manual_edit_at, creative_name FROM {table} LIMIT 0)",
+      "equals": 0
+    },
+    {
+      "name": "creative_name_alias_matches_v3",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(creative_name IS DISTINCT FROM _creative_name) AS value FROM {table}",
       "equals": 0
     }
   ],
