@@ -3,6 +3,27 @@
 ## 2026-07-16
 
 - **CHANGED** - Updated the live `Prisma_expanded` scheduled query to carry `CAMPAIGN_PUBLIC_ID` from `landing.prisma_master_2025` into `20250327_data_model.prisma_expanded_full`, then refreshed and verified the expanded table.
+- **FIXED** - Extended the separate `process_prisma` package aggregation so `CAMPAIGN_PUBLIC_ID` survives into `prisma_porcessed`, `prisma_porcessed_with_placements`, and the DCM/FPD-enriched `prisma_processed_plusDCMimps` view.
+
+## 2026-07-15
+
+- **ADDED** - Published the Purely Elizabeth delivery-plus-sales weekly reporting view and its `PE` campaign mapping table. The view preserves sales-only, media-only, and overlapping Sunday-ending weeks, inherits the existing Purely Elizabeth linear and `QUAN` planned-as-delivered interpretation, and keeps unavailable measures null.
+- **VERIFIED** - Confirmed unique week-and-product rows with no null grain values, exact sales and TDP reconciliation, media reconciliation within floating-point precision, and no sales multiplication across campaign rows.
+- **CHANGED** - Aligned the Purely Elizabeth weekly view's shared media fields with the main model and renamed its retail measures to `sales_dollars` and `sales_tdp`.
+- **CHANGED** - Reduced the Purely Elizabeth production weekly view to 12 fields: Sunday-ending date, year-free product group, eight approved media measures, and two sales measures.
+- **CHANGED** - Removed the Protein-Granola-only media restriction. Included mapping-table product groups now qualify when they have delivery, while Protein Granola sales remain scoped to their actual source product.
+- **CHANGED** - Made the campaign mapping table the complete inclusion list. Every valid mapping row is included, unmapped campaigns are excluded without a name fallback, and routine BigQuery Studio queries now add, update, or remove mappings without editing the weekly view.
+
+## 2026-07-14
+
+- **ADDED** - Created a native Google Sheet for finding package-level master-model values by Package ID, Package Name, or Package Friendly Name. The bound script and live source are in place, but the first signed-in menu authorization and returned-result check remain pending.
+
+### Pending Next Actions
+
+- **Since Jul 14** - Authorize the Package Lookup menu in Google Sheets and confirm one returned package against the live warehouse - RECOMMENDED
+- **Since Jul 10** - Restore access to the FPD partner template's bound Apps Script, then inspect and recreate its workbook dependencies - BLOCKER
+- **Since Jul 10** - Recreate or locate the current template's sheet-bound Process FPD wrapper, then update its library's archived master-workbook reference - BLOCKER
+- **Since Jul 10** - Plan and verify the v3 reporting migration before deleting or replacing any compatibility files, tables, or views.
 
 ## 2026-07-13
 
@@ -23,6 +44,7 @@
 - **CHANGED** - Promoted `master_stg.data_model_v3` to the documented current production master model. The lower-grain v3 table is now the default for new master-model work; `data_model`, its reporting mart, and related v2 outputs remain live compatibility surfaces until a separately verified reporting migration and cleanup.
 - **CHANGED** - Corrected the FPD partner-template documentation to identify the post-Workplace-migration workbook as the current source and to label the prior workbook findings as historical until the workbook and its bound Apps Script can be inspected and recreated.
 - **CHANGED** - Documented the FPD template migration QA: the recovered duplicator projects are standalone libraries, recent direct editor runs used the wrong entrypoint, and the library still reads mappings and logs from the archived template rather than the current migrated workbook.
+- **CHANGED** - Published a separate FPD duplicator-library v3 release that uses the current partner template for mappings and logging, while preserving the existing v2 library release for older sheets.
 
 ### Pending Next Actions
 

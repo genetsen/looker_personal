@@ -1,4 +1,4 @@
-# Master Data Model Source Branches
+ # Master Data Model Source Branches
 
 This folder is the source-family map for the active master data model. Each guide traces source data through the stable package/date base, explains custom logic and grain, and links to the current output surfaces. The documentation mirrors the reader-first pipeline style of [Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README_v2.md).
 

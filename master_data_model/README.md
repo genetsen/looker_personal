@@ -18,6 +18,7 @@ Interactive orientation:
 - [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
 - [`docs/dcm-cost-model-map.html`](docs/dcm-cost-model-map.html) - clickable DCM scheduled-query map for package rollups, pricing logic, the creative-safe join key, and Master Model handoff.
 - [`docs/manual-data-editor-workflow-map.html`](docs/manual-data-editor-workflow-map.html) - clickable map of the Manual Data Editor loop from Sheet edit, request notification, loader writes, manual evidence tables, model merge, mart output, and troubleshooting path.
+- [Master Data Model Package Lookup Sheet](https://docs.google.com/spreadsheets/d/1Q_KK6WWqB4aUGNezFmWTMTKz43rQyARqXVGgNs5IT3c) - use one search box to find a partial Package ID, Package Name, or Package Friendly Name and return package-level flight, plan, delivery, advertiser, supplier, campaign, initiative, channel, and GS Channel fields.
 - [Direct CM360 conversion migration](docs/rtl-direct-cm360-conversion-migration.md) - deployed RTL conversion source, history-preserving staging, direct activity metrics, and the explicit conversion-only safety rule.
 - [Manual Data Editor product brief](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad-output/planning-artifacts/briefs/brief-master_data_model-2026-06-18/brief.md) - slide-ready brief for presenting what the editor is, how it works, and which correction bottlenecks it removes.
 
@@ -37,6 +38,20 @@ Use this when a dashboard value needs a direct manual correction.
 - Loader: `manual_package_edits/load_manual_package_edits.R`, also registered in the universal script runner through `automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`.
 - Backend evidence: valid edits land in `man_*` fields and take priority for final `_` fields with `COALESCE(man_value, normal_value)` behavior.
 - QA path: visible Sheet row -> raw manual table -> daily manual table -> `master_stg.data_model` -> `master_stg.data_model_mart`.
+
+## Package Lookup Sheet
+
+Use the [Master Data Model Package Lookup Sheet](https://docs.google.com/spreadsheets/d/1Q_KK6WWqB4aUGNezFmWTMTKz43rQyARqXVGgNs5IT3c) when a user needs to find current package-level values without editing the Manual Data Editor.
+
+| Search field | Fields checked | Match behavior |
+|---|---|---|
+| Any part of an ID, name, site, or supplier | Package ID, Package Name, Package Friendly Name, Supplier Code, and Supplier Name | Case-insensitive partial match; a match in any one field is returned |
+
+The Sheet reads the [complete stored master-model support table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_clustered_by_advertiser_qa&page=table), including valid manual-only packages, and groups matching daily rows into one result per package. One search checks all five identifying and supplier fields, regardless of capitalization, and each search returns at most 200 packages. For example, `QUAN`, `Columbus Circle DOOH`, and `ccdooh` all return the Columbus Circle DOOH package.
+
+Delivery Override Start Date and Delivery Override End Date are intentionally blank because they are user-entered correction windows, not source fields from the master model. The corrected one-field search must pass the three Columbus Circle acceptance searches before it is verified end to end.
+
+Maintained source: [package lookup Sheet code](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/package_lookup_sheet/README.md).
 
 ## What The View Does
 
@@ -76,7 +91,7 @@ The view:
 10. Standardizes `_advertiser`, `_advertiser_name`, and `_advertiser_short_name` through the separate advertiser mapping table so mapped clients use the same advertiser label and short code across digital, social, TV, Amazon, and manual rows. Unmapped clients default to Prisma's advertiser name after removing legal suffixes such as `Inc`, `LLC`, `Corp`, and `Ltd`, and keep any available source short code as a fallback.
 11. Applies valid active manual package edits from `landing.master_data_model_manual_package_daily` and package-level metadata edits from `landing.master_data_model_manual_package_edits_raw` before package rollups are calculated.
 12. Adds `initiative` from Prisma's source column `initative` at the package/date model grain.
-13. Preserves Prisma's `CAMPAIGN_PUBLIC_ID` from the raw landing table through the scheduled `Prisma_expanded` table refresh. The field is available in `prisma_expanded_full`; downstream master-model projections must select it explicitly if they publish it.
+13. Preserves Prisma's `CAMPAIGN_PUBLIC_ID` from the raw landing table through both scheduled branches: `Prisma_expanded` publishes it in `prisma_expanded_full`, while `process_prisma` publishes it in `prisma_porcessed`, `prisma_porcessed_with_placements`, and the downstream `prisma_processed_plusDCMimps` view. Downstream master-model projections must still select it explicitly if they publish it.
 14. Adds canonical `_creative_name` using original FPD creative, Amazon ad-name, and social creative fields. DCM creative remains in the delivery-detail view because one package/date can contain multiple DCM creatives.
 15. Adds canonical source lineage and freshness fields: `qa_data_source` names the raw or controlled source table driving the row, `qa_data_source_refresh_at` shows when that represented data last successfully reached the table consumed by the model, and `qa_data_source_content_modified_at` separately shows reliable source-content modification times for original FPD, revised FPD, and Manual Data Editor Google Sheets.
 
@@ -136,6 +151,7 @@ Output:
 - `looker-studio-pro-452620.master_stg.data_model_detail_master_v2_sample` - One-table comparison sample that stacks package/date rows with delivery-detail rows. This is useful for evaluating a single-table shape but is not the canonical reporting model because unfiltered sums can double-count package and delivery metrics.
 - [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_mart&page=table) - Package/date compatibility reporting mart over `data_model`. It remains live for existing consumers until a separately verified v3 reporting migration.
 - [Purely Elizabeth reporting view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_ext_west&t=mart_data_model_purelyElizabeth&page=table) - Advertiser-specific west-region output. Linear rows and supplier-code `QUAN` rows publish planned spend and impressions in the delivered metric fields; other rows preserve underlying delivery values. Its maintained SQL is the [Purely Elizabeth view builder](model/reporting_outputs/create_master_ext_west_mart_data_model_purely_elizabeth.sql).
+- [Purely Elizabeth delivery-plus-sales weekly view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_ext_west!3smart_PE_delivery_plus_sales_weekly) - Metric-only output with one Sunday-ending row per year-free mapped product group that has media delivery. Its `PE` mapping table is the complete campaign inclusion list; unmapped campaigns are excluded. It exposes eight approved media measures plus `sales_dollars` and `sales_tdp`, and the current Protein Granola sales source joins only to that group.
 - `looker-studio-pro-452620.master_stg.data_model_mart_v2` - Reporting mart over `data_model_v2`.
 - `looker-studio-pro-452620.master_stg.data_model_qa_tv_layer` - QA validation view used before the TV layer was promoted to production.
 - `looker-studio-pro-452620.master_stg.data_model_qa_source_issues` - QA validation view for source visibility, issue labels, and non-Prisma DCM/FPD rows.

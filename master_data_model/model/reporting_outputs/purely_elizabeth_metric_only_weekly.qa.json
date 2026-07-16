@@ -1,0 +1,84 @@
+{
+  "keys": ["_date", "product_group"],
+  "metrics": [
+    "_planned_spend",
+    "_planned_impressions",
+    "_spend",
+    "_impressions",
+    "_clicks",
+    "_video_plays",
+    "_video_views",
+    "_video_comps",
+    "sales_dollars",
+    "sales_tdp"
+  ],
+  "derived_metrics": [],
+  "comparison_dimensions": ["product_group"],
+  "high_risk_metrics": [
+    "_planned_spend",
+    "_planned_impressions",
+    "_spend",
+    "_impressions",
+    "_clicks",
+    "_video_plays",
+    "_video_views",
+    "_video_comps",
+    "sales_dollars",
+    "sales_tdp"
+  ],
+  "high_risk_dimensions": ["_date", "product_group"],
+  "allowed_deltas": {},
+  "custom_checks": [
+    {
+      "name": "candidate_has_no_null_week_dates",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(_date IS NULL) AS value FROM {table}",
+      "expected_max": 0
+    },
+    {
+      "name": "candidate_has_nonempty_year_free_product_group",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(product_group IS NULL OR TRIM(product_group) = '' OR REGEXP_CONTAINS(product_group, r'[0-9]{4}')) AS value FROM {table}",
+      "expected_max": 0
+    },
+    {
+      "name": "candidate_sales_total_matches_source",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT SUM(sales_dollars) FROM {table}) - (SELECT SUM(total_dollar_sales) FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`)) AS value",
+      "expected_max": 0.01
+    },
+    {
+      "name": "candidate_tdp_total_matches_source",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT SUM(sales_tdp) FROM {table}) - (SELECT SUM(total_tdp) FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`)) AS value",
+      "expected_max": 0.01
+    },
+    {
+      "name": "candidate_media_totals_match_classified_source",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "WITH classified_candidates AS (SELECT media.*, mapping.product_group FROM `looker-studio-pro-452620.master_ext_west.mart_data_model_purelyElizabeth` AS media INNER JOIN `looker-studio-pro-452620.repo_stg.purely_elizabeth_campaign_product_mapping_qa` AS mapping ON media._advertiser = mapping.advertiser_name AND media._campaign_name = mapping.campaign_name WHERE mapping.product_group IS NOT NULL AND TRIM(mapping.product_group) != ''), delivered_groups AS (SELECT DISTINCT product_group FROM classified_candidates WHERE COALESCE(_spend, 0) != 0 OR COALESCE(_impressions, 0) != 0 OR COALESCE(_clicks, 0) != 0 OR COALESCE(_video_plays, 0) != 0 OR COALESCE(_video_views, 0) != 0 OR COALESCE(_video_comps, 0) != 0), source AS (SELECT SUM(_planned_spend) AS a, SUM(_planned_impressions) AS b, SUM(_spend) AS c, SUM(_impressions) AS d, SUM(_clicks) AS e, SUM(_video_plays) AS f, SUM(_video_views) AS g, SUM(_video_comps) AS h FROM classified_candidates INNER JOIN delivered_groups USING (product_group)), candidate AS (SELECT SUM(_planned_spend) AS a, SUM(_planned_impressions) AS b, SUM(_spend) AS c, SUM(_impressions) AS d, SUM(_clicks) AS e, SUM(_video_plays) AS f, SUM(_video_views) AS g, SUM(_video_comps) AS h FROM {table}) SELECT GREATEST(ABS(COALESCE(candidate.a, 0) - COALESCE(source.a, 0)), ABS(COALESCE(candidate.b, 0) - COALESCE(source.b, 0)), ABS(COALESCE(candidate.c, 0) - COALESCE(source.c, 0)), ABS(COALESCE(candidate.d, 0) - COALESCE(source.d, 0)), ABS(COALESCE(candidate.e, 0) - COALESCE(source.e, 0)), ABS(COALESCE(candidate.f, 0) - COALESCE(source.f, 0)), ABS(COALESCE(candidate.g, 0) - COALESCE(source.g, 0)), ABS(COALESCE(candidate.h, 0) - COALESCE(source.h, 0))) AS value FROM candidate CROSS JOIN source",
+      "expected_max": 0.01
+    },
+    {
+      "name": "product_group_delivery_eligibility_synthetic_cases",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "WITH campaigns AS (SELECT * FROM UNNEST([STRUCT('MappedOtherDelivery' AS campaign_name, 'OTHER PRODUCT' AS mapped_product_group, 1 AS delivered), STRUCT('MappedOtherNoDelivery', 'NO DELIVERY PRODUCT', 0), STRUCT('UnmappedProteinGranola', CAST(NULL AS STRING), 1), STRUCT('UnmappedOther', CAST(NULL AS STRING), 1)])), delivered_groups AS (SELECT DISTINCT mapped_product_group FROM campaigns WHERE mapped_product_group IS NOT NULL AND delivered != 0), actual AS (SELECT campaign_name, mapped_product_group IS NOT NULL AND mapped_product_group IN (SELECT mapped_product_group FROM delivered_groups) AS included FROM campaigns), expected AS (SELECT * FROM UNNEST([STRUCT('MappedOtherDelivery' AS campaign_name, TRUE AS included), STRUCT('MappedOtherNoDelivery', FALSE), STRUCT('UnmappedProteinGranola', FALSE), STRUCT('UnmappedOther', FALSE)])) SELECT COUNTIF(actual.included IS DISTINCT FROM expected.included) AS value FROM actual JOIN expected USING (campaign_name)",
+      "expected_max": 0
+    },
+    {
+      "name": "mapping_rows_have_unique_keys_and_valid_product_groups",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "WITH invalid_rows AS (SELECT advertiser_name, campaign_name FROM `looker-studio-pro-452620.repo_stg.purely_elizabeth_campaign_product_mapping_qa` WHERE advertiser_name IS NULL OR TRIM(advertiser_name) = '' OR campaign_name IS NULL OR TRIM(campaign_name) = '' OR product_group IS NULL OR TRIM(product_group) = '' OR REGEXP_CONTAINS(product_group, r'[0-9]{4}')), duplicate_keys AS (SELECT advertiser_name, campaign_name FROM `looker-studio-pro-452620.repo_stg.purely_elizabeth_campaign_product_mapping_qa` GROUP BY advertiser_name, campaign_name HAVING COUNT(*) > 1) SELECT (SELECT COUNT(*) FROM invalid_rows) + (SELECT COUNT(*) FROM duplicate_keys) AS value",
+      "expected_max": 0
+    }
+  ],
+  "downstream_objects": [],
+  "downstream_checks": []
+}

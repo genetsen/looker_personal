@@ -154,27 +154,27 @@ Before adding another conversion source, document and prove these items:
 | Freshness | Which fields distinguish source-export time from staging refresh time? |
 | Cutover proof | What QA comparison and focused live check prove the source is safe to use? |
 
-[^1]: A separate test version used to check a proposed change without affecting production data.
-[^2]: A holding table that keeps source data before it feeds the model.
-[^3]: A separate supporting table that joins to the main model instead of becoming a new model branch.
-[^4]: The detailed advertising-delivery records that the conversion summary must match.
-[^5]: The switch from the current production source to the new source.
-[^6]: A report that covers only the most recent period; here, the last 14 days.
-[^7]: The original source rows, retained without combining them.
-[^8]: A database rule that enforces a valid relationship between records. The model uses the relationship idea, but BigQuery does not enforce it here.
-[^9]: Produces the same result whenever it receives the same inputs.
-[^10]: A calculated value used to match the same conversion summary to its related delivery record.
-[^11]: The level of detail that one row represents.
-[^12]: A separate named column for each activity type, rather than one shared activity column.
-[^13]: Each conversion summary matches only one delivery record.
-[^14]: An accidental repeat of rows caused by a join, which can inflate totals.
-[^15]: A pattern that can select several similarly named report tables.
-[^16]: Confirm that totals agree between the source and the derived table.
-[^17]: A test that compares the proposed version with the current production version before release.
-[^18]: A saved downstream table that must be refreshed after its input changes.
-[^19]: An older path kept temporarily as a backup and comparison point.
-[^20]: The documented rules for which source to use and how to use it.
-[^21]: Treated as the official source for this purpose.
+[^1]: **QA candidate:** A separate test version used to check a proposed change without affecting production data.
+[^2]: **Staging table:** A holding table that keeps source data before it feeds the model.
+[^3]: **Sidecar:** A separate supporting table that joins to the main model instead of becoming a new model branch.
+[^4]: **Delivery-detail rows:** The detailed advertising-delivery records that the conversion summary must match.
+[^5]: **Cutover:** The switch from the current production source to the new source.
+[^6]: **Rolling last-14-day window:** A report that covers only the most recent period; here, the last 14 days.
+[^7]: **Raw evidence:** The original source rows, retained without combining them.
+[^8]: **Foreign-key constraint:** A database rule that enforces a valid relationship between records. The model uses the relationship idea, but BigQuery does not enforce it here.
+[^9]: **Deterministic:** Produces the same result whenever it receives the same inputs.
+[^10]: **Logical join key:** A calculated value used to match the same conversion summary to its related delivery record.
+[^11]: **Grain:** The level of detail that one row represents.
+[^12]: **Wide `conv_*` field:** A separate named column for each activity type, rather than one shared activity column.
+[^13]: **One-to-one join:** Each conversion summary matches only one delivery record.
+[^14]: **Row multiplication:** An accidental repeat of rows caused by a join, which can inflate totals.
+[^15]: **Wildcard export:** A pattern that can select several similarly named report tables.
+[^16]: **Reconcile:** Confirm that totals agree between the source and the derived table.
+[^17]: **Deployment comparison:** A test that compares the proposed version with the current production version before release.
+[^18]: **Dependent stored model table:** A saved downstream table that must be refreshed after its input changes.
+[^19]: **Legacy fallback:** An older path kept temporarily as a backup and comparison point.
+[^20]: **Source contract:** The documented rules for which source to use and how to use it.
+[^21]: **Authoritative:** Treated as the official source for this purpose.
 
 ## Related documentation
 

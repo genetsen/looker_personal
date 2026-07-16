@@ -876,7 +876,7 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "Feeds package, campaign, supplier, channel, cost, planned spend, planned impressions, and p_package_friendly fields.",
-          "Preserves campaign_public_id from the raw Prisma landing table through the Prisma_expanded scheduled refresh; later explicit master projections must select it to publish it."
+          "Preserves campaign_public_id from the raw Prisma landing table through both Prisma_expanded and process_prisma; later explicit master projections must select it to publish it."
         ],
         sources: [
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
@@ -1262,13 +1262,20 @@
           "Use this for reporting-ready totals when low-signal DCM rows should be excluded.",
           "Recalculates package primary and available source fields after filtering so mart labels describe only reporting-visible evidence.",
           "Manual editor visible values use this mart as the dashboard snapshot.",
-          "The separate master_ext_west Purely Elizabeth view keeps the same reporting shape but uses planned spend and impressions as delivery values for linear and QUAN rows."
+          "The separate master_ext_west Purely Elizabeth view keeps the same reporting shape but uses planned spend and impressions as delivery values for linear and QUAN rows.",
+          "The Purely Elizabeth delivery-plus-sales weekly view aggregates that media interpretation to Sunday-ending weeks, then full-outer-joins PE Protein Granola sales so media-only and sales-only weeks remain visible.",
+          "PE.purely_elizabeth_campaign_product_mapping is the complete campaign inclusion list: every valid exact row is included under its product group, and unmapped campaigns are excluded.",
+          "The production weekly view is metric-only: Sunday-ending date, year-free mapped product groups with delivery, eight media measures, and the sales measures currently available for Protein Granola."
         ],
         sources: [
           ["BigQuery: master_stg.data_model_mart", bq("master_stg", "data_model_mart")],
           ["Mart builder SQL", "../model/reporting_outputs/create_master_stg_data_model_mart.sql"],
           ["BigQuery: Purely Elizabeth reporting view", bq("master_ext_west", "mart_data_model_purelyElizabeth")],
-          ["Purely Elizabeth view builder SQL", "../model/reporting_outputs/create_master_ext_west_mart_data_model_purely_elizabeth.sql"]
+          ["Purely Elizabeth view builder SQL", "../model/reporting_outputs/create_master_ext_west_mart_data_model_purely_elizabeth.sql"],
+          ["BigQuery: PE campaign mapping", bq("PE", "purely_elizabeth_campaign_product_mapping")],
+          ["BigQuery: PE delivery plus sales weekly", bq("master_ext_west", "mart_PE_delivery_plus_sales_weekly")],
+          ["PE campaign mapping builder SQL", "../model/reporting_outputs/create_PE_purely_elizabeth_campaign_product_mapping.sql"],
+          ["PE delivery plus sales builder SQL", "../model/reporting_outputs/create_master_ext_west_mart_PE_delivery_plus_sales_weekly.sql"]
         ]
       },
       {
