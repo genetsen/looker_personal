@@ -20,13 +20,15 @@ Use the `Package Editor` tab in the Google Sheet.
    - Planned flight totals: `Planned Spend`, `Planned Impressions`
 4. Run the loader.
 
-The loader compares edited cells to source-derived baselines and the last loader run, then writes active valid rows into the manual landing tables. Planned package totals come directly from PRISMA package totals. Delivered metric baselines are recalculated from raw delivery fields, not from manual-affected final `_` fields.
+The loader compares edited cells to source-derived baselines and the last loader run, then writes active valid rows into the manual landing tables. Text values are normalized consistently on both sides of that comparison, so harmless source spacing cannot appear as an edit. Planned package totals come directly from PRISMA package totals. Delivered metric baselines are recalculated from raw delivery fields, not from manual-affected final `_` fields.
 
-Trusted prior raw manual rows are the durable edit state. During a refresh, generated rows from the rewritten `Package Editor` do not override or duplicate that durable state unless a source-backed row has real user edit evidence: `Manual Edit At` or `Manual Edit By`, or trusted prior raw history already accepted by the loader. `Manual Edit Published At` alone on a loose sheet row is loader output, not proof of a new user edit. Before any BigQuery table replacement or visible sheet rewrite, the loader compares the last accepted manual rows to the proposed upload and stops if a prior accepted edit would go missing, become inactive or blocked, or lose an edited field without a newer user audit stamp. This keeps the visible interface the same while preventing blank or stale output rows from deleting, splitting, or inventing user edits.
+The source lookup decides which normal package rows exist. The Sheet can supply edits to those known packages, but an old Sheet-only package ID cannot create a normal visible row. A Sheet-only row is retained only when it has real audit evidence and qualifies as a manual-only package; an inactive, unedited leftover is removed on the next safe refresh. If an unknown Sheet-only row contains values but lacks audit evidence, the loader stops before clearing anything so it cannot erase possible user work.
+
+Trusted prior raw manual rows are the durable edit state. During a refresh, generated rows from the rewritten `Package Editor` do not override or duplicate that durable state unless a source-backed row has real user edit evidence: `Manual Edit At` or `Manual Edit By`, or trusted prior raw history already accepted by the loader. `Manual Edit Published At` alone on a loose sheet row is loader output, not proof of a new user edit. Before any BigQuery table replacement or visible sheet rewrite, the loader compares the last accepted manual rows to the proposed upload and stops if a prior accepted edit would go missing, become inactive or blocked, or lose an edited field without a newer user audit stamp.
 
 If users need a refresh but do not run the loader themselves, they can use the `Request refresh` checkbox-style control at the top of the sheet. It sends Gene an email. If the bound Apps Script has a `MANUAL_EDITOR_SLACK_WEBHOOK_URL` script property, it also posts the same request to Slack. This checkbox is only a notification; it does not validate rows, run the loader, or write to the warehouse by itself.
 
-Started new rows highlight the specific missing required cells or invalid date cells. Planned cells turn red only when a planned edit uses a partial date range instead of the full visible flight dates. Values that are already backed by validated manual updates turn purple. The loader also blocks invalid rows backend-side, so red frontend feedback is a warning to fix the row before requesting a refresh.
+Started audited manual-only rows highlight the specific missing required cells or invalid date cells. A source-backed row with blank flight dates is not treated as a new package. Planned cells turn red only when their planned flight range is blank or invalid; delivery override dates do not affect planned-cell validation. Orange means a meaningful normalized difference from the current source baseline; values already backed by validated manual updates turn purple. The loader also blocks invalid rows backend-side, so red frontend feedback is a warning to fix the row before requesting a refresh.
 
 Filtering uses the standard Google Sheets column header filter controls. They are intentionally not powered by Apps Script, because users need browsing to feel responsive while editing the real source rows.
 
@@ -65,9 +67,9 @@ When the loader runs, it compares edited Sheet values to the current dashboard s
 
 Flight dates and delivery override dates do different jobs.
 
-- `Flight Start Date` and `Flight End Date` are package-level fields. A manual correction to those fields applies to the whole package.
+- `Flight Start Date` and `Flight End Date` are the planned package flight. A manual correction to those fields applies to the whole package and determines the daily range for Planned Spend and Planned Impressions.
 - `Delivery Override Start Date` and `Delivery Override End Date` are the metric override window.
-- To correct the full package flight, keep the delivery override dates on the full package flight and enter the replacement total.
+- Planned totals use the full planned flight. Delivery override dates do not change the planned-total range.
 - To correct one week of delivered data, add or duplicate a row, set the delivery override dates to that week, and enter the replacement delivered totals for that week only.
 - Dates outside the edited delivery override range keep the normal dashboard metric values.
 - Duplicate active edits for the same package, date, and metric are blocked.
@@ -86,13 +88,13 @@ Metadata corrections are package-level.
 
 Planned metrics are flight-level only.
 
-- `Planned Spend` and `Planned Impressions` must be edited only when the row covers the full flight.
+- `Planned Spend` and `Planned Impressions` must have a complete valid planned-flight start and end date.
 - Partial-week or day-level planned edits are blocked by the loader.
-- In the sheet, planned cells should not stay red when `Delivery Override Start Date` and `Delivery Override End Date` match the visible `Flight Start Date` and `Flight End Date`.
+- In the sheet, planned cells are independent of delivery override dates. They are valid when the planned flight range is complete and ordered.
 - The sheet displays planned values as full-flight totals, not daily prorated values.
 - Planned package totals are compared against PRISMA package totals, not filtered mart row sums, so low-signal row filtering cannot create false manual planned markers.
 - The final model keeps package-level planned totals aligned with the manual replacement total.
-- The model still stores daily planned values in `_planned_spend` and `_planned_impressions` so dashboard sums work correctly.
+- The model stores daily planned values across the planned flight and daily actual overrides across the delivery override range, so dashboard sums stay correct without mixing their dates.
 
 ## Undo And Corrections
 

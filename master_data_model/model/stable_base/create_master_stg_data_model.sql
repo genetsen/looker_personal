@@ -904,7 +904,24 @@ social_with_pacing AS (
    AND s.social_platform = p.social_platform
    AND s.campaign_id = p.campaign_id
    AND s.ad_group_id = p.ad_group_id
+  LEFT JOIN social_pacing_dedup AS pacing_window
+    ON s.social_platform = pacing_window.social_platform
+   AND s.campaign_id = pacing_window.campaign_id
+   AND s.ad_group_id = pacing_window.ad_group_id
   WHERE COALESCE(p.start_date, s.date_day) >= DATE '2025-01-01'
+    -- Do not let zero-value API tail rows after a known pacing end enter the
+    -- base model. The raw source is retained upstream for audit; this guards
+    -- the modeled package/date grain from a partial post-flight date pair.
+    AND NOT (
+      pacing_window.end_date IS NOT NULL
+      AND s.date_day > pacing_window.end_date
+      AND s.spend = 0
+      AND s.impressions = 0
+      AND s.clicks = 0
+      AND s.video_play = 0
+      AND s.video_view = 0
+      AND s.video_complete_proxy = 0
+    )
 ),
 
 social_final AS (

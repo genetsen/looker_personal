@@ -1216,4 +1216,22 @@ expect_sheet_value(
   0L
 )
 
+# A source-only whitespace variation must not create a false visible-versus-
+# baseline difference and therefore must not make an unedited cell orange.
+ath_visible_name <- as_trimmed_character("ATH_FinFluencers ")
+ath_baseline_name <- as_trimmed_character("ATH_FinFluencers ")
+expect_sheet_value(
+  "whitespace-only source package name normalizes to one comparison value",
+  identical(ath_visible_name, ath_baseline_name),
+  TRUE
+)
+loader_test_file <- sub("^--file=", "", commandArgs(trailingOnly = FALSE)[startsWith(commandArgs(trailingOnly = FALSE), "--file=")])
+loader_file <- file.path(dirname(dirname(normalizePath(loader_test_file[[1]]))), "load_manual_package_edits.R")
+loader_source <- paste(readLines(loader_file), collapse = "\n")
+expect_sheet_value(
+  "package friendly baseline uses the same text normalization as the visible value",
+  grepl("`Baseline Package Friendly Name` = as_trimmed_character(live_value(\"current_package_name_friendly\"))", loader_source, fixed = TRUE),
+  TRUE
+)
+
 cat("All manual edit choice logic tests passed.\n")

@@ -23,6 +23,7 @@ PROJECT_ID <- Sys.getenv("MASTER_MANUAL_EDIT_PROJECT", "looker-studio-pro-452620
 DATASET_ID <- Sys.getenv("MASTER_MANUAL_EDIT_DATASET", "landing")
 RAW_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_RAW_TABLE", "master_data_model_manual_package_edits_raw")
 DAILY_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_DAILY_TABLE", "master_data_model_manual_package_daily")
+HISTORY_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_HISTORY_TABLE", "master_data_model_manual_package_edits_history")
 MART_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_MART_TABLE", "looker-studio-pro-452620.master_stg.data_model_mart")
 PRISMA_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_PRISMA_TABLE", "looker-studio-pro-452620.20250327_data_model.prisma_expanded_full")
 LOOKUP_TABLE <- Sys.getenv("MASTER_MANUAL_EDIT_LOOKUP_TABLE", "looker-studio-pro-452620.master_stg.manual_package_editor_package_lookup")
@@ -82,6 +83,11 @@ find_loader_script_dir <- function() {
   getwd()
 }
 SCRIPT_DIR <- find_loader_script_dir()
+CONTRACTS_PATH <- file.path(SCRIPT_DIR, "manual_editor_contracts.R")
+if (!file.exists(CONTRACTS_PATH)) {
+  stop("Manual Data Editor contract helper not found: ", CONTRACTS_PATH, call. = FALSE)
+}
+source(CONTRACTS_PATH)
 LOOKUP_REFRESH_SQL <- Sys.getenv(
   "MASTER_MANUAL_EDIT_LOOKUP_REFRESH_SQL",
   file.path(SCRIPT_DIR, "create_manual_package_editor_package_lookup.sql")
@@ -130,6 +136,14 @@ auth_manual_editor <- function() {
   gs4_auth(token = token)
   drive_auth(token = token)
   bq_auth(token = token)
+  sheets_request <- googlesheets4:::gs4_token()
+  sheets_access_token <- sheets_request$auth_token$credentials$access_token
+  if (!is.null(sheets_access_token) && nzchar(sheets_access_token)) {
+    # The Node geometry helper runs in this same loader process. Reuse the
+    # already authenticated Sheets token instead of asking a separate gcloud
+    # credential store to mint a second token.
+    Sys.setenv(MASTER_MANUAL_EDIT_ACCESS_TOKEN = sheets_access_token)
+  }
   cat("Authenticated with account-specific ADC: ", auth_file, "\n", sep = "")
   invisible(token)
 }
@@ -468,8 +482,17 @@ prepare_editor_write_data <- function(data) {
 
 write_editor_tab <- function(sheet_id, tab_name, data) {
   ensure_tab(sheet_id, tab_name)
+  sheet_metadata <- gs4_get(sheet_id)
+  tab_grid_rows <- sheet_metadata$sheets$grid_rows[sheet_metadata$sheets$name == tab_name]
+  if (length(tab_grid_rows) != 1 || is.na(tab_grid_rows[[1]])) {
+    stop("Could not determine the existing row count for editor tab: ", tab_name, call. = FALSE)
+  }
   sheet_resize(sheet_id, sheet = tab_name, ncol = 79)
-  range_clear(sheet_id, range = paste0("'", tab_name, "'!A", EDITOR_HEADER_ROW, ":", EDITOR_LAST_COLUMN), reformat = FALSE)
+  range_clear(
+    sheet_id,
+    range = editor_data_clear_range(tab_name, EDITOR_HEADER_ROW, EDITOR_LAST_COLUMN, tab_grid_rows[[1]]),
+    reformat = FALSE
+  )
   data <- prepare_editor_write_data(data)
   range_write(sheet_id, data = data, sheet = tab_name, range = paste0("A", EDITOR_HEADER_ROW), col_names = TRUE, reformat = FALSE)
 }
@@ -542,8 +565,22 @@ repair_filter_ranges <- function(sheet_id, tab_name) {
 
   cat("Repairing filter ranges with ", node_path, " and ", repair_script, "\n", sep = "")
 
+  # The Sheet write can refresh the R client's OAuth token. Refresh again at
+  # this process boundary so the Node helper never receives the stale token
+  # captured when the loader first authenticated.
+  sheets_config <- googlesheets4:::gs4_token()
+  sheets_token <- sheets_config$auth_token
+  if (is.null(sheets_token) || !is.function(sheets_token$refresh)) {
+    stop("Cannot refresh the Google Sheets token for filter repair.", call. = FALSE)
+  }
+  sheets_token$refresh()
+  sheets_access_token <- sheets_token$credentials$access_token
+  if (is.null(sheets_access_token) || !nzchar(sheets_access_token)) {
+    stop("Google Sheets token refresh produced no access token for filter repair.", call. = FALSE)
+  }
+
   old_env <- Sys.getenv(
-    c("MASTER_MANUAL_EDIT_SHEET_ID", "MASTER_MANUAL_EDIT_TAB", "MASTER_MANUAL_EDIT_AUTH_EMAIL"),
+    c("MASTER_MANUAL_EDIT_SHEET_ID", "MASTER_MANUAL_EDIT_TAB", "MASTER_MANUAL_EDIT_AUTH_EMAIL", "MASTER_MANUAL_EDIT_ACCESS_TOKEN"),
     unset = NA_character_
   )
   on.exit({
@@ -561,7 +598,8 @@ repair_filter_ranges <- function(sheet_id, tab_name) {
   Sys.setenv(
     MASTER_MANUAL_EDIT_SHEET_ID = sheet_id,
     MASTER_MANUAL_EDIT_TAB = tab_name,
-    MASTER_MANUAL_EDIT_AUTH_EMAIL = AUTH_EMAIL
+    MASTER_MANUAL_EDIT_AUTH_EMAIL = AUTH_EMAIL,
+    MASTER_MANUAL_EDIT_ACCESS_TOKEN = sheets_access_token
   )
 
   output <- system2(node_path, repair_script, stdout = TRUE, stderr = TRUE)
@@ -1349,22 +1387,24 @@ previous_by_row_key <- if (nrow(previous_raw) > 0) {
   list()
 }
 
-if (nrow(existing_editor) > 0) {
-  editor_rows <- existing_editor %>%
-    filter(!is.na(package_id))
-
-  missing_live_rows <- live_packages %>%
-    filter(!is.na(package_id), !package_id %in% editor_rows$package_id) %>%
-    transmute(package_id)
-
-  editor_rows <- bind_rows(editor_rows, missing_live_rows)
-} else {
-  editor_rows <- live_packages %>%
-    filter(!is.na(package_id)) %>%
-    transmute(package_id)
-}
-
-editor_rows <- merge_previous_manual_editor_rows(editor_rows, previous_raw_to_editor_rows(previous_raw))
+trusted_manual_only_ids <- previous_raw %>%
+  filter(is_active, validation_status == "valid") %>%
+  pull(package_id) %>%
+  unique()
+row_sets <- build_source_editor_rows(live_packages, existing_editor, trusted_manual_only_ids)
+source_editor_rows <- row_sets$source_editor_rows
+previous_editor_rows <- previous_raw_to_editor_rows(previous_raw)
+source_editor_rows <- merge_previous_manual_editor_rows(
+  source_editor_rows,
+  previous_editor_rows %>% filter(package_id %in% source_editor_rows$package_id)
+)
+previous_manual_only_rows <- previous_editor_rows %>%
+  filter(!package_id %in% source_editor_rows$package_id)
+manual_only_rows <- merge_previous_manual_editor_rows(
+  row_sets$audited_sheet_only_rows,
+  previous_manual_only_rows
+)
+editor_rows <- bind_rows(source_editor_rows, manual_only_rows)
 
 display_rows <- list()
 raw_rows <- list()
@@ -1550,17 +1590,19 @@ for (row_idx in seq_len(nrow(editor_rows))) {
       `Baseline Video Completions` = live_value("current_video_comps"),
       `Baseline Delivery Start Date` = live_value("current_first_date"),
       `Baseline Delivery End Date` = live_value("current_last_date"),
-      `Baseline Advertiser` = live_value("current_advertiser_name"),
-      `Baseline Package Type` = live_value("current_package_type"),
-      `Baseline Channel` = live_value("current_channel"),
-      `Baseline Campaign` = live_value("current_campaign_name"),
-      `Baseline Initiative` = live_value("current_initiative"),
-      `Baseline Supplier Code` = live_value("current_supplier_code"),
-      `Baseline Supplier Name` = live_value("current_supplier_name"),
-      `Baseline Package Name` = live_value("current_package_name"),
-      `Baseline Package Friendly Name` = live_value("current_package_name_friendly"),
-      `Baseline GS Channel` = live_value("current_ADIF_channel"),
-      `Baseline Benchmark KPI` = live_value("current_benchmark_kpi"),
+      # Text baselines must use the same canonical form as visible text. Raw
+      # source values remain preserved in the manual raw audit record below.
+      `Baseline Advertiser` = as_trimmed_character(live_value("current_advertiser_name")),
+      `Baseline Package Type` = as_trimmed_character(live_value("current_package_type")),
+      `Baseline Channel` = as_trimmed_character(live_value("current_channel")),
+      `Baseline Campaign` = as_trimmed_character(live_value("current_campaign_name")),
+      `Baseline Initiative` = as_trimmed_character(live_value("current_initiative")),
+      `Baseline Supplier Code` = as_trimmed_character(live_value("current_supplier_code")),
+      `Baseline Supplier Name` = as_trimmed_character(live_value("current_supplier_name")),
+      `Baseline Package Name` = as_trimmed_character(live_value("current_package_name")),
+      `Baseline Package Friendly Name` = as_trimmed_character(live_value("current_package_name_friendly")),
+      `Baseline GS Channel` = as_trimmed_character(live_value("current_ADIF_channel")),
+      `Baseline Benchmark KPI` = as_trimmed_character(live_value("current_benchmark_kpi")),
       `Baseline Benchmark Value` = live_value("current_benchmark_value")
     )
   display_rows[[length(display_rows) + 1]] <- display
@@ -1687,6 +1729,7 @@ if (length(display_rows) == 0) {
 
 raw_ref <- bq_table(PROJECT_ID, DATASET_ID, RAW_TABLE)
 daily_ref <- bq_table(PROJECT_ID, DATASET_ID, DAILY_TABLE)
+history_ref <- bq_table(PROJECT_ID, DATASET_ID, HISTORY_TABLE)
 
 for (col in metric_specs$current_col) {
   raw_upload[[col]] <- parse_num(raw_upload[[col]])
@@ -1722,6 +1765,8 @@ has_metadata_replacement <- apply(!is.na(raw_upload[, metadata_specs$manual_col,
 has_flight_replacement <- !is.na(raw_upload$replacement_flight_start_date) | !is.na(raw_upload$replacement_flight_end_date)
 planned_replacement_cols <- metric_specs$replacement_col[metric_specs$value_key %in% planned_metric_names]
 has_planned_replacement <- apply(!is.na(raw_upload[, planned_replacement_cols, drop = FALSE]), 1, any)
+actual_replacement_cols <- metric_specs$replacement_col[!(metric_specs$value_key %in% planned_metric_names)]
+has_actual_replacement <- apply(!is.na(raw_upload[, actual_replacement_cols, drop = FALSE]), 1, any)
 delivery_date_ok <- !is.na(raw_upload$man_start_date) & !is.na(raw_upload$man_end_date) & raw_upload$man_end_date >= raw_upload$man_start_date
 flight_date_ok <- (!has_flight_replacement) | (
   !is.na(raw_upload$man_flight_start_date) &
@@ -1733,14 +1778,17 @@ delivery_date_edited <- raw_upload$is_active & has_replacement & (
     !mapply(same_date, raw_upload$man_end_date, raw_upload$current_last_date)
 )
 manual_only <- coalesce(raw_upload$current_row_count, 0) == 0
-full_flight_range <- manual_only | (
-  mapply(same_date, raw_upload$man_start_date, raw_upload$current_first_date) &
-    mapply(same_date, raw_upload$man_end_date, raw_upload$current_last_date)
-)
-planned_range_ok <- !has_planned_replacement | full_flight_range
+effective_planned_start <- dplyr::coalesce(raw_upload$man_flight_start_date, raw_upload$current_flight_start_date)
+effective_planned_end <- dplyr::coalesce(raw_upload$man_flight_end_date, raw_upload$current_flight_end_date)
+planned_flight_range_ok <-
+  !is.na(effective_planned_start) &
+  !is.na(effective_planned_end) &
+  effective_planned_start <= effective_planned_end
+planned_range_ok <- !has_planned_replacement | planned_flight_range_ok
 base_ok <- !is.na(raw_upload$package_id) &
   flight_date_ok &
-  ((!has_replacement) | (delivery_date_ok & planned_range_ok)) &
+  ((!has_actual_replacement) | delivery_date_ok) &
+  planned_range_ok &
   (has_replacement | has_metadata_replacement | has_flight_replacement)
 required_for_new <- c("advertiser_name", "campaign_name", "package_type", "package_name", "ADIF_channel", "supplier_name", "channel", "channel_group", "media_name")
 metadata_ok <- apply(!is.na(raw_upload[, required_for_new, drop = FALSE]), 1, all)
@@ -1748,11 +1796,16 @@ metadata_ok <- apply(!is.na(raw_upload[, required_for_new, drop = FALSE]), 1, al
 duplicate_messages <- rep(NA_character_, nrow(raw_upload))
 active_metric_days <- list()
 for (i in seq_len(nrow(raw_upload))) {
-  if (!raw_upload$is_active[[i]] || !has_replacement[[i]] || !delivery_date_ok[[i]] || is.na(raw_upload$package_id[[i]])) next
-  days <- seq(raw_upload$man_start_date[[i]], raw_upload$man_end_date[[i]], by = "day")
+  if (!raw_upload$is_active[[i]] || !has_replacement[[i]] || is.na(raw_upload$package_id[[i]])) next
   for (metric_idx in seq_len(nrow(metric_specs))) {
     spec <- metric_specs[metric_idx, ]
     if (is.na(raw_upload[[spec$replacement_col]][[i]])) next
+    days <- metric_publish_dates(
+      spec$metric_name,
+      effective_planned_start[[i]], effective_planned_end[[i]],
+      raw_upload$man_start_date[[i]], raw_upload$man_end_date[[i]]
+    )
+    if (length(days) == 0) next
     active_metric_days[[length(active_metric_days) + 1]] <- tibble::tibble(
       edit_row = i,
       package_id = raw_upload$package_id[[i]],
@@ -1779,9 +1832,9 @@ for (i in seq_len(nrow(raw_upload))) {
   msg <- character()
   if (!raw_upload$is_active[[i]]) msg <- c(msg, "not edited")
   if (is.na(raw_upload$package_id[[i]])) msg <- c(msg, "missing package ID")
-  if (has_replacement[[i]] && !delivery_date_ok[[i]]) msg <- c(msg, "invalid or missing delivery override date range")
+  if (has_actual_replacement[[i]] && !delivery_date_ok[[i]]) msg <- c(msg, "invalid or missing delivery override date range")
   if (!flight_date_ok[[i]]) msg <- c(msg, "invalid package flight date range")
-  if (!planned_range_ok[[i]]) msg <- c(msg, "planned metrics can only be edited on the full flight date range")
+  if (!planned_range_ok[[i]]) msg <- c(msg, "planned metric edits require valid planned flight start and end dates")
   if (!has_replacement[[i]] && !has_metadata_replacement[[i]] && !has_flight_replacement[[i]] && raw_upload$is_active[[i]]) msg <- c(msg, "no changed values")
   if (manual_only[[i]] && raw_upload$is_active[[i]] && !metadata_ok[[i]]) msg <- c(msg, "new package missing required metadata")
   if (!is.na(duplicate_messages[[i]])) msg <- c(msg, duplicate_messages[[i]])
@@ -1864,6 +1917,12 @@ raw_upload <- raw_upload %>%
     loaded_at = loaded_at
   )
 
+history_upload <- build_manual_edit_history_rows(raw_upload, loaded_at)
+if (nrow(history_upload) > 0) {
+  cat("Appending ", nrow(history_upload), " accepted manual edit record(s) to permanent history...\n", sep = "")
+  bq_table_upload(history_ref, history_upload, write_disposition = "WRITE_APPEND")
+}
+
 cat("Uploading raw package editor rows to ", DATASET_ID, ".", RAW_TABLE, "...\n", sep = "")
 bq_table_upload(raw_ref, raw_upload, write_disposition = "WRITE_TRUNCATE")
 
@@ -1882,26 +1941,45 @@ daily_rows <- list()
 if (nrow(valid_publish_edits) > 0) {
   for (i in seq_len(nrow(valid_publish_edits))) {
     row <- valid_publish_edits[i, ]
-    publish_start_date <- row$man_start_date %pick% row$current_first_date %pick% row$man_flight_start_date
-    publish_end_date <- row$man_end_date %pick% row$current_last_date %pick% row$man_flight_end_date
-    if (is.na(publish_start_date) || is.na(publish_end_date) || publish_end_date < publish_start_date) {
-      next
-    }
-    days <- seq(publish_start_date, publish_end_date, by = "day")
-    day_count <- length(days)
+    planned_start_date <- row$man_flight_start_date %pick% row$current_flight_start_date
+    planned_end_date <- row$man_flight_end_date %pick% row$current_flight_end_date
+    delivery_start_date <- row$man_start_date %pick% row$current_first_date %pick% row$man_flight_start_date
+    delivery_end_date <- row$man_end_date %pick% row$current_last_date %pick% row$man_flight_end_date
+    metric_ranges <- lapply(seq_len(nrow(metric_specs)), function(metric_idx) {
+      spec <- metric_specs[metric_idx, ]
+      repl <- row[[spec$replacement_col]]
+      if (is.na(repl)) return(NULL)
+      metric_publish_dates(
+        spec$metric_name,
+        planned_start_date, planned_end_date,
+        delivery_start_date, delivery_end_date
+      )
+    })
+    metric_ranges <- Filter(function(days) !is.null(days) && length(days) > 0, metric_ranges)
+    if (length(metric_ranges) == 0) next
+    all_days <- sort(unique(do.call(c, metric_ranges)))
     daily <- tibble::tibble(
       is_active = TRUE,
       validation_status = "valid",
       edit_id = row$edit_id,
       package_id = row$package_id,
-      date = days,
-      man_start_date = publish_start_date,
-      man_end_date = publish_end_date
+      date = all_days,
+      man_start_date = delivery_start_date,
+      man_end_date = delivery_end_date
     )
     for (metric_idx in seq_len(nrow(metric_specs))) {
       spec <- metric_specs[metric_idx, ]
       repl <- row[[spec$replacement_col]]
-      daily[[spec$daily_col]] <- allocate_daily_total(repl, day_count, spec$metric_name)
+      daily[[spec$daily_col]] <- NA_real_
+      daily[[spec$total_col]] <- NA_real_
+      if (is.na(repl)) next
+      metric_days <- metric_publish_dates(
+        spec$metric_name,
+        planned_start_date, planned_end_date,
+        delivery_start_date, delivery_end_date
+      )
+      metric_day_index <- match(metric_days, daily$date)
+      daily[[spec$daily_col]][metric_day_index] <- allocate_daily_total(repl, length(metric_days), spec$metric_name)
       daily[[spec$total_col]] <- repl
     }
     passthrough_cols <- c(
@@ -2077,6 +2155,7 @@ status <- tibble::tibble(
   daily_total_proof_status = "passed",
   daily_total_proof_checks = nrow(daily_total_proof),
   raw_table = paste(PROJECT_ID, DATASET_ID, RAW_TABLE, sep = "."),
+  history_table = paste(PROJECT_ID, DATASET_ID, HISTORY_TABLE, sep = "."),
   daily_table = paste(PROJECT_ID, DATASET_ID, DAILY_TABLE, sep = ".")
 )
 

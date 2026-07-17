@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-17
+
+- **FIXED** - Aligned Manual Data Editor visible text and hidden comparison baselines by normalizing source text on both paths. Unedited rows with harmless leading or trailing source whitespace no longer receive false orange change formatting. The corrected loader and exact regression test were verified in the v2 test Sheet, then deployed to and verified in the production Sheet.
+- **CHANGED** - Added a stable-base source boundary that excludes literal zero-metric social API tail rows after a known pacing end, while preserving the physical raw source for audit. The isolated candidate removed 5,769 non-contributing base-model rows across 73 packages with no meaningful delivery-total change; production was deployed July 17, and the dependent support table, v3 model, reporting mart, production lookup, and Manual Data Editor were refreshed and checked.
+- **CHANGED** - Extended the shared-social source exclusion to campaign names containing `PROS_Dysrupt`, alongside the existing `1000heads` agency exclusion, so these rows do not enter the master-model social input.
+- **ADDED** - Added a permanent Manual Data Editor history ledger. Before the loader replaces the current raw snapshot, it now appends every accepted edit to a partitioned recovery/audit table; the live accepted edits were seeded into that ledger.
+- **FIXED** - Cleared the entire existing Manual Data Editor value grid before each rewrite, while preserving formatting. Old values can no longer remain below a shorter refreshed package list and appear as fake editor rows.
+- **FIXED** - Made the Manual Data Editor source-first: inactive, unedited Sheet-only leftovers can no longer become visible package rows. The loader retains only current lookup packages and audited manual-only packages, stops before clearing unaudited Sheet-only values, and refuses to choose between duplicate Sheet rows for one source package.
+- **FIXED** - Separated planned-flight and delivery-override date authority in Manual Data Editor validation and daily allocation. Planned Spend and Planned Impressions now use package flight dates, while delivered metric overrides use delivery override dates; one no longer invalidates or redistributes the other.
+- **FIXED** - Stopped false incomplete-row and planned-cell red formatting caused by blank source flight dates or delivery dates that differ from the planned flight.
+
 ## 2026-07-16
 
 - **CHANGED** - Moved the live Ritual dashboard compatibility view to the v3 master model and expanded it from 125 to 241 fields. All 115 previously hidden v3 fields are available, and the canonical `_creative_name` now also appears in Omni as the friendly `Creative Name` field while the raw field remains intact. Established dashboard names, rows, and reporting totals remain unchanged; future non-conflicting v3 fields also pass through automatically. The live Omni topic and the unmerged review branch both queried the expanded fields successfully.

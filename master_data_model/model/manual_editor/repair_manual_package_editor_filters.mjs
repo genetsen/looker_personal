@@ -19,6 +19,7 @@ const AUTH_CONFIG_BY_ACCOUNT = {
   "gene.tsenter@old.giantspoon.com": "/Users/eugenetsenter/.config/gcloud-old-giantspoon",
 };
 const AUTH_CONFIG = process.env.CLOUDSDK_CONFIG || process.env.MASTER_MANUAL_EDIT_GCLOUD_CONFIG || AUTH_CONFIG_BY_ACCOUNT[AUTH_ACCOUNT];
+const IN_PROCESS_ACCESS_TOKEN = process.env.MASTER_MANUAL_EDIT_ACCESS_TOKEN;
 const HEADER_ROW_INDEX = 3;
 const DATA_START_ROW_INDEX = HEADER_ROW_INDEX + 1;
 const EDITED_ROW_FILTER_HEADER = "Edited Row Filter";
@@ -79,6 +80,9 @@ const MARKER_NAMES = [
 ];
 
 function token() {
+  if (IN_PROCESS_ACCESS_TOKEN) {
+    return IN_PROCESS_ACCESS_TOKEN;
+  }
   if (!AUTH_CONFIG) {
     throw new Error(`No account-specific Google auth config is defined for ${AUTH_ACCOUNT}.`);
   }

@@ -305,7 +305,7 @@ function buildConditionalFormatRequests(sheetId, rowCount, existingDataEndRowInd
 
   const visibleRowRange = rowRange("Advertiser", "Validation Reason", firstDataRow);
   const metricRowRange = rowRange("Planned Spend", "Video Completions", firstDataRow);
-  const newRowStartedFormula = `AND(${absoluteCell("Baseline Flight Start Date", firstDataRow)}="",COUNTA(${visibleRowRange})>0)`;
+  const newRowStartedFormula = `AND(${absoluteCell("Baseline Flight Start Date", firstDataRow)}="",OR(${absoluteCell("Manual Edit At", firstDataRow)}<>"",${absoluteCell("Manual Edit By", firstDataRow)}<>""))`;
   const requiredHeaders = [
     "Advertiser",
     "Package ID",
@@ -375,7 +375,7 @@ function buildConditionalFormatRequests(sheetId, rowCount, existingDataEndRowInd
             condition: {
               type: "CUSTOM_FORMULA",
               values: [{
-                userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR(${absoluteCell("Planned Spend", firstDataRow)}<>${absoluteCell("Baseline Planned Spend", firstDataRow)},${absoluteCell("Planned Impressions", firstDataRow)}<>${absoluteCell("Baseline Planned Impressions", firstDataRow)}),OR(${absoluteCell("Delivery Override Start Date", firstDataRow)}<>${absoluteCell("Flight Start Date", firstDataRow)},${absoluteCell("Delivery Override End Date", firstDataRow)}<>${absoluteCell("Flight End Date", firstDataRow)}))`,
+                userEnteredValue: `=AND($${plannedSpendMarkerColumn}${firstDataRow}<>TRUE,$${plannedImpressionsMarkerColumn}${firstDataRow}<>TRUE,OR(${absoluteCell("Planned Spend", firstDataRow)}<>${absoluteCell("Baseline Planned Spend", firstDataRow)},${absoluteCell("Planned Impressions", firstDataRow)}<>${absoluteCell("Baseline Planned Impressions", firstDataRow)}),OR(${absoluteCell("Flight Start Date", firstDataRow)}="",${absoluteCell("Flight End Date", firstDataRow)}="",${absoluteCell("Flight Start Date", firstDataRow)}>${absoluteCell("Flight End Date", firstDataRow)}))`,
               }],
             },
             format: {

@@ -85,7 +85,7 @@ The view:
 4. Combines original and updated FPD before final digital metrics are calculated.
 5. Recalculates package rollups after final spend, impressions, and clicks are assigned.
 6. Adds TV rows from the combined local/national TV estimate view with synthetic package and placement IDs.
-7. Adds social rows from the cross-platform raw social table when compatible daily social grain is available, with WP workbook rows primary for Apollo.
+7. Adds social rows from the cross-platform raw social table when compatible daily social grain is available, with WP workbook rows primary for Apollo. Zero-value rows after an already-known pacing end are excluded before they enter the base model; the raw source records remain available for audit.
 8. Adds Ritual Amazon Ads rows from the runner-maintained landing table, mapping supply cost, impressions, clicks, video starts, and video completions into generic delivery metrics while preserving all Amazon report fields in `amzn_*` columns.
 9. Exposes the daily driving source in `qa_row_data_source_primary`, all daily detected sources in `qa_row_data_sources_available`, and compact source or metric problems in `qa_data_issues`.
 10. Standardizes `_advertiser`, `_advertiser_name`, and `_advertiser_short_name` through the separate advertiser mapping table so mapped clients use the same advertiser label and short code across digital, social, TV, Amazon, and manual rows. Unmapped clients default to Prisma's advertiser name after removing legal suffixes such as `Inc`, `LLC`, `Corp`, and `Ltd`, and keep any available source short code as a fallback.
@@ -116,7 +116,7 @@ Social inputs:
 - [Reddit shared-social staging view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop_reddit_crossplatform&page=table)
 - [Social pacing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_int&t=crossplatform_pacing_tbl&page=table)
 
-Shared-social staging excludes campaign names containing `1000heads` before the master model reads social rows. This keeps those agency-side campaigns out of the source path instead of hiding them later in the reporting layer.
+Shared-social staging excludes campaign names containing `1000heads` or `PROS_Dysrupt` before the master model reads social rows. This keeps those agency-side campaigns out of the source path instead of hiding them later in the reporting layer.
 
 Amazon Ads input:
 
@@ -168,7 +168,7 @@ Deprecated Ritual and v2 compatibility SQL is archived in `model/archive_candida
 - This view is separate from the ADIF scheduled refresh and does not replace `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`.
 - For redesign and QA validation, row count is a diagnostic only when grain can change. Approval proof should use overall and package-level spend, impressions, and clicks reconciliation, with any intended filters, transformations, exclusions, allocations, or source-scope changes applied consistently to both baseline and candidate.
 - Digital rows keep package IDs from Prisma/DCM/FPD.
-- Social rows use a synthetic package key: `social:<platform>:<campaign_id>:<ad_group_id>`, because social data does not naturally share Prisma package IDs. Campaigns containing `1000heads` are excluded before shared-social staging reaches this model, and the Manual Data Editor loader also drops stale manual rows for those excluded campaign/package records. Reddit email-ingested rows use the same social key shape, preserve [Reddit Ads email landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=reddit-ads-email&page=table) as their source lineage, and derive pacing from Reddit campaign budget plus campaign flight dates in that landing table.
+- Social rows use a synthetic package key: `social:<platform>:<campaign_id>:<ad_group_id>`, because social data does not naturally share Prisma package IDs. Campaigns containing `1000heads` or `PROS_Dysrupt` are excluded before shared-social staging reaches this model, and the Manual Data Editor loader also drops stale manual rows for those excluded campaign/package records. Reddit email-ingested rows use the same social key shape, preserve [Reddit Ads email landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=reddit-ads-email&page=table) as their source lineage, and derive pacing from Reddit campaign budget plus campaign flight dates in that landing table.
 - In Apollo production social rows, `_Search_` campaign markers map to Paid Search and `_YT_` campaign markers map to Online Video; rows without either marker use the Sheet channel as fallback. Identity includes campaign, ad group, and ad, so cross-campaign ad-ID conflicts are included as separately flagged `publish_pending_source_owner_review` rows pending source-owner clarification; exact duplicate records remain excluded.
 - WP social creative and lineage are visible in `s_creative_name`, `man_creative_img`, `_creative_img`, `s_channel_classification_source`, `s_publication_status`, `s_source_sheet_url`, `s_loaded_at`, `s_wp_row_key`, `s_record_source`, and `s_fallback_fields`.
 - `_creative_name` is the package/date model's canonical creative label. It uses consolidated `fpd_creative`, then `amzn_ad_name`, then `s_creative_name`; Amazon is checked before the shared social field because Amazon rows currently carry their ad name in both fields. DCM creative names are intentionally excluded because they can be one-to-many at package/date grain and remain available in `data_model_delivery_detail_v2`.
@@ -263,6 +263,8 @@ Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model
 
 The production Manual Data Editor sheet is the new Google Drive version. Set `MASTER_MANUAL_EDIT_SHEET_ID` only when intentionally running against a different sheet copy.
 By default, the loader authenticates to Sheets and Drive through the new-account R OAuth cache and uses the active `gcloud` access token for BigQuery. Set `MASTER_MANUAL_EDIT_USE_GCLOUD_TOKEN=false` only when intentionally testing cached BigQuery credentials.
+
+The Manual Data Editor's visible row set is source-first: current lookup packages plus audited manual-only packages. The Sheet supplies edits to known packages but cannot revive an inactive, unedited leftover as a normal editor row. Planned totals use package flight dates; delivered actual overrides use delivery override dates.
 
 Refresh the master view:
 

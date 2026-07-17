@@ -1084,7 +1084,8 @@
           "Exposes s_creative_name and contributes it to canonical _creative_name, alongside FPD creative and Amazon ad name.",
           "DCM creative is not collapsed into _creative_name because one package/date can contain multiple DCM creatives; use the delivery-detail view for that grain.",
           "Also exposes s_video_views, s_record_source, s_wp_row_key, and related WP provenance fields.",
-          "Sets canonical _video_views from source video views where available, with video starts/plays as fallback."
+          "Sets canonical _video_views from source video views where available, with video starts/plays as fallback.",
+          "Excludes zero-value API tail rows after a known social pacing end before they enter the shared model; raw source records remain available for audit."
         ],
         sources: [
           ["BigQuery: Social raw", bq("repo_stg", "stg__olipop__crossplatform_raw_tbl")],

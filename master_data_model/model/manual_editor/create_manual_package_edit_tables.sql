@@ -292,3 +292,48 @@ ADD COLUMN IF NOT EXISTS man_benchmark_kpi STRING;
 
 ALTER TABLE `looker-studio-pro-452620.landing.master_data_model_manual_package_daily`
 ADD COLUMN IF NOT EXISTS man_benchmark_value FLOAT64;
+
+-- Permanent ledger of accepted manual edits. The loader appends accepted rows
+-- here before it replaces the disposable current raw snapshot.
+CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_history`
+PARTITION BY DATE(history_recorded_at)
+CLUSTER BY package_id, edit_id
+OPTIONS (
+  description = "Append-only loader history of accepted Manual Data Editor records. The current raw table is a replaceable snapshot; this table retains each accepted loader state for recovery and audit."
+)
+AS
+SELECT
+  CAST(NULL AS STRING) AS history_event_id,
+  CAST(NULL AS STRING) AS history_event_type,
+  CAST(NULL AS TIMESTAMP) AS history_recorded_at,
+  CAST(NULL AS STRING) AS history_loader_run_id,
+  CAST(NULL AS STRING) AS history_source,
+  raw.*
+FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw` AS raw
+WHERE FALSE;
+
+-- Seed the ledger once with the currently accepted raw snapshot. The raw
+-- loaded_at timestamp remains the evidence for when that snapshot was made.
+INSERT INTO `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_history`
+SELECT
+  CONCAT(
+    "manual-edit-history-initial-",
+    REGEXP_REPLACE(COALESCE(raw.edit_id, "no-edit-id"), r"[^A-Za-z0-9_-]", "_"),
+    "-",
+    FORMAT_TIMESTAMP("%Y%m%dT%H%M%SZ", COALESCE(raw.loaded_at, CURRENT_TIMESTAMP())),
+    "-",
+    CAST(ROW_NUMBER() OVER (ORDER BY raw.package_id, raw.edit_id) AS STRING)
+  ) AS history_event_id,
+  "initial_backfill" AS history_event_type,
+  CURRENT_TIMESTAMP() AS history_recorded_at,
+  "initial_backfill" AS history_loader_run_id,
+  "current_raw_snapshot" AS history_source,
+  raw.*
+FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw` AS raw
+WHERE raw.is_active
+  AND raw.validation_status = "valid"
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_edits_history`
+    WHERE history_event_type = "initial_backfill"
+  );
