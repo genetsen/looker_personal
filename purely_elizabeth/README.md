@@ -28,7 +28,7 @@ flowchart LR
 |---|---|---|---|
 | [Typed SPINS sales table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3ssales_data_260709) | Current loaded source data | Geography, week, and product level | Live |
 | [Weekly Protein Granola view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3sprotein_granola_weekly_sales) | Adds Dollar sales and TDP across the approved product and geography set | One row per week | Live and verified |
-| [Campaign mapping table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3spurely_elizabeth_campaign_product_mapping) | Explicitly includes or excludes campaigns from product reporting | One row per advertiser and campaign | Live with two approved campaigns |
+| [Campaign mapping table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3spurely_elizabeth_campaign_product_mapping) | Assigns product groups for sales eligibility; it never suppresses delivery | One row per advertiser and campaign | Live with two approved campaigns |
 | [Delivery-plus-sales weekly table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_ext_west!3smart_PE_delivery_plus_sales_weekly) | Compares weekly campaign plan and delivery with Protein Granola sales and TDP | One row per Sunday-ending week | Live and verified; refreshed every two hours by `master_raw_CopyToWest` |
 | [Weekly view QA contract](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/protein_granola_weekly_sales.qa.json) | Checks date uniqueness, source coverage, and metric reconciliation | One validation run | Passed on July 14, 2026 |
 
@@ -59,11 +59,11 @@ Post-deployment verification returned 12 unique weekly rows, zero missing dates,
 
 The delivery-plus-sales view passed all 10 pre-deployment SQL Change Guard checks. Live verification on July 15, 2026 returned 31 distinct Sunday-ending weeks: 11 sales-only, 19 media-only, and one overlapping week. Sales and TDP reconciled exactly, media measures reconciled within floating-point precision, and no campaign multiplication changed the sales totals.
 
-Campaign classification gives exact mapping rows precedence over the normalized-name fallback. Exact exclusions override the fallback; exact included rows supply the product group; unmapped names containing `proteingranola` are included and flagged for review; all other campaigns are excluded. Missing media or sales measures remain null so unavailable values are distinguishable from real zeros.
+Campaign mapping assigns a product group only when there is an exact advertiser-and-campaign match. Every campaign's delivery remains in the table: missing or blank mappings are labeled `UNMAPPED` and their sales measures are null. Only a mapped product group with a matching sales source can receive retail sales, so delivery is never silently excluded because its product is unknown.
 
 The joined view reuses the main model's shared media-field names, including `_date`, `_campaign_name`, `_planned_spend`, `_planned_impressions`, `_spend`, `_impressions`, and `_clicks`. Its retail metrics are `sales_dollars` and `sales_tdp`; the selected product remains identified separately by `product_group`.
 
-Production is intentionally metric-only: `_date`, each year-free mapped `product_group` with media delivery, eight approved media measures, `sales_dollars`, and `sales_tdp`. The current Protein Granola sales source joins only to `PROTEIN GRANOLA`; other delivered product groups remain media-only until matching sales sources exist.
+Production is intentionally metric-only: `_date`, each year-free mapped `product_group` or `UNMAPPED` delivery group, eight approved media measures, `sales_dollars`, and `sales_tdp`. The current Protein Granola sales source joins only to `PROTEIN GRANOLA`; other mapped groups and `UNMAPPED` delivery remain media-only until a matching sales source exists.
 
 ## Current State
 

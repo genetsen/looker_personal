@@ -2,6 +2,7 @@
 
 ## 2026-07-17
 
+- **FIXED** - Corrected the Purely Elizabeth weekly delivery-and-sales table so campaigns without a product mapping retain their delivery as `UNMAPPED`, while retail sales remain limited to eligible mapped products. The scheduled refresh and live delivery totals were verified.
 - **FIXED** - Aligned Manual Data Editor visible text and hidden comparison baselines by normalizing source text on both paths. Unedited rows with harmless leading or trailing source whitespace no longer receive false orange change formatting. The corrected loader and exact regression test were verified in the v2 test Sheet, then deployed to and verified in the production Sheet.
 - **CHANGED** - Added a stable-base source boundary that excludes literal zero-metric social API tail rows after a known pacing end, while preserving the physical raw source for audit. The isolated candidate removed 5,769 non-contributing base-model rows across 73 packages with no meaningful delivery-total change; production was deployed July 17, and the dependent support table, v3 model, reporting mart, production lookup, and Manual Data Editor were refreshed and checked.
 - **CHANGED** - Extended the shared-social source exclusion to campaign names containing `PROS_Dysrupt`, alongside the existing `1000heads` agency exclusion, so these rows do not enter the master-model social input.

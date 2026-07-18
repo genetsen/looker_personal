@@ -10,39 +10,38 @@
 --
 -- Business rules:
 --   Every valid exact mapping row is included.
---   Campaigns absent from the mapping table are excluded.
+--   Campaigns absent from the mapping table remain visible as UNMAPPED delivery.
+--   Only mapped product groups can receive product-specific sales measures.
 --   Sales-only and media-only weeks remain visible; missing measures remain NULL.
 
 CREATE OR REPLACE TABLE
   `looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly`
 OPTIONS (
-  description = 'One row per Sunday-ending week and year-free mapped product group with Purely Elizabeth media delivery. Currently available Protein Granola MULO plus Natural Expanded sales and TDP join only to that product group. Campaign mapping is internal, and retail sales are temporal comparison metrics rather than campaign-attributed outcomes.'
+  description = 'One row per Sunday-ending week and product group with Purely Elizabeth media delivery. Campaigns without a valid product mapping remain visible as UNMAPPED delivery and do not receive product-specific sales. Currently available Protein Granola MULO plus Natural Expanded sales and TDP join only to PROTEIN GRANOLA. Retail sales are temporal comparison metrics rather than campaign-attributed outcomes.'
 ) AS
 WITH classified_media_candidates AS (
   -- HOW TO ADD A PRODUCT GROUP
   --
   -- Add each exact campaign name to PE.purely_elizabeth_campaign_product_mapping.
   -- Use a year-free label such as PROTEIN GRANOLA for product_group.
-  -- The campaign is included only while its mapping row exists.
+  -- Mapped campaigns can receive sales for their product group.
+  -- Campaigns without a valid mapping remain visible as UNMAPPED delivery.
   --
   -- No weekly-view change is needed for media. After the mapped product group has
   -- delivery, this view includes its complete weekly media timeline.
   --
   -- Sales require a separate product-specific weekly source. Until that source is
   -- added below, sales_dollars and sales_tdp remain NULL for the new product group.
-  -- Never reuse Protein Granola sales for a different product group.
+  -- Never reuse Protein Granola sales for a different product group or UNMAPPED.
   SELECT
     media.*,
-    mapping.product_group
+    COALESCE(NULLIF(TRIM(mapping.product_group), ''), 'UNMAPPED') AS product_group
   FROM
     `looker-studio-pro-452620.master_ext_west.mart_data_model_purelyElizabeth` AS media
-  INNER JOIN
+  LEFT JOIN
     `looker-studio-pro-452620.PE.purely_elizabeth_campaign_product_mapping` AS mapping
     ON media._advertiser = mapping.advertiser_name
     AND media._campaign_name = mapping.campaign_name
-  WHERE
-    mapping.product_group IS NOT NULL
-    AND TRIM(mapping.product_group) != ''
 ),
 
 delivered_product_groups AS (

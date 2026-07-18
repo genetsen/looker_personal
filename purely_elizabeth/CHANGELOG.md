@@ -2,6 +2,14 @@
 
 Notable Purely Elizabeth reporting changes are recorded here.
 
+## 2026-07-17
+
+- **FIXED** - Kept every Purely Elizabeth campaign's delivery in the weekly reporting table when its product is unknown. Unmapped delivery is labeled `UNMAPPED` with blank sales measures, while retail sales remain limited to eligible mapped products.
+
+### Pending Next Actions
+
+- **Since Jul 14** - Decide and implement the weekly SPINS source-file refresh workflow - RECOMMENDED
+
 ## 2026-07-16
 
 - **CHANGED** - Converted the delivery-plus-sales weekly output from a view to a stored table and attached its refresh to the existing `master_raw_CopyToWest` scheduled query, which runs every two hours.

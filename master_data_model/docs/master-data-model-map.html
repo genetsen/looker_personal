@@ -1265,8 +1265,8 @@
           "Manual editor visible values use this mart as the dashboard snapshot.",
           "The separate master_ext_west Purely Elizabeth view keeps the same reporting shape but uses planned spend and impressions as delivery values for linear and QUAN rows.",
           "The Purely Elizabeth delivery-plus-sales weekly view aggregates that media interpretation to Sunday-ending weeks, then full-outer-joins PE Protein Granola sales so media-only and sales-only weeks remain visible.",
-          "PE.purely_elizabeth_campaign_product_mapping is the complete campaign inclusion list: every valid exact row is included under its product group, and unmapped campaigns are excluded.",
-          "The production weekly view is metric-only: Sunday-ending date, year-free mapped product groups with delivery, eight media measures, and the sales measures currently available for Protein Granola."
+          "PE.purely_elizabeth_campaign_product_mapping controls product-specific sales eligibility: every valid exact row uses its product group, while unmapped delivery remains visible as UNMAPPED with null sales.",
+          "The production weekly view is metric-only: Sunday-ending date, year-free mapped product groups or UNMAPPED delivery, eight media measures, and the sales measures currently available for Protein Granola."
         ],
         sources: [
           ["BigQuery: master_stg.data_model_mart", bq("master_stg", "data_model_mart")],

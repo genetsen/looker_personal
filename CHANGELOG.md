@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-17
+
+- **FIXED** - Corrected the Purely Elizabeth weekly delivery-and-sales table so unmapped campaigns retain their delivery as `UNMAPPED`; sales remain blank unless a product mapping and matching sales source exist. The updated scheduled refresh and live delivery totals were verified.
+
+### Pending Next Actions
+
+- **Since Jul 14** - Decide and implement the weekly Purely Elizabeth SPINS source-file refresh workflow - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse - RECOMMENDED
+- **Since Jul 7** - Update the saved `stg__olipop__crossplatform_raw_tbl_sched` transfer config with owner-account credentials so future scheduled runs keep excluding `1000heads` campaigns
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-07-16
 
 - **CHANGED** - Added the separate FY26 Q2/Q3 Basis trafficking file to the maintained UTM loader and production mapping union. The live lookup now contains all 322 complete mappings from the approved `7.7` worksheet, while nine paused assignments without URLs remain excluded from production.

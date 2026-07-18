@@ -1,0 +1,52 @@
+{
+  "keys": ["_date", "product_group"],
+  "metrics": ["sales_dollars", "sales_tdp"],
+  "comparison_dimensions": ["product_group"],
+  "high_risk_metrics": ["_spend", "_impressions", "_clicks", "sales_dollars", "sales_tdp"],
+  "high_risk_dimensions": ["product_group"],
+  "allowed_deltas": {
+    "row_count": {"max_abs_delta": 100000, "max_abs_pct": 100000},
+    "sales_dollars": {"max_abs_delta": 0.000001},
+    "sales_tdp": {"max_abs_delta": 0.000001},
+    "distinct_product_group": {"max_abs_delta": 1}
+  },
+  "key_overlap_tolerance": {"max_baseline_only": 100000, "max_candidate_only": 100000},
+  "custom_checks": [
+    {
+      "name": "candidate_unique_week_and_product_group",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(*) AS value FROM (SELECT _date, product_group FROM {table} GROUP BY _date, product_group HAVING COUNT(*) > 1)",
+      "equals": 0
+    },
+    {
+      "name": "mapped_delivery_spend_unchanged",
+      "severity": "critical",
+      "compare_to_baseline": true,
+      "sql": "SELECT SUM(_spend) AS value FROM {table} WHERE product_group != 'UNMAPPED'",
+      "max_abs_delta": 0
+    },
+    {
+      "name": "mapped_delivery_impressions_unchanged",
+      "severity": "critical",
+      "compare_to_baseline": true,
+      "sql": "SELECT SUM(_impressions) AS value FROM {table} WHERE product_group != 'UNMAPPED'",
+      "max_abs_delta": 0
+    },
+    {
+      "name": "unmapped_delivery_has_no_sales",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(sales_dollars IS NOT NULL OR sales_tdp IS NOT NULL) AS value FROM {table} WHERE product_group = 'UNMAPPED'",
+      "equals": 0
+    },
+    {
+      "name": "synthetic_unmapped_delivery_has_no_sales",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "WITH synthetic_media AS (SELECT CAST(NULL AS STRING) AS mapped_product_group, CAST(125 AS NUMERIC) AS delivered_spend), classified AS (SELECT COALESCE(NULLIF(TRIM(mapped_product_group), ''), 'UNMAPPED') AS product_group, delivered_spend FROM synthetic_media), product_sales AS (SELECT 'PROTEIN GRANOLA' AS product_group, CAST(100 AS NUMERIC) AS sales_dollars) SELECT COUNT(*) AS value FROM (SELECT classified.product_group, classified.delivered_spend, product_sales.sales_dollars FROM classified LEFT JOIN product_sales USING (product_group)) WHERE product_group = 'UNMAPPED' AND delivered_spend = 125 AND sales_dollars IS NULL",
+      "equals": 1
+    }
+  ],
+  "downstream_objects": ["looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly"]
+}
