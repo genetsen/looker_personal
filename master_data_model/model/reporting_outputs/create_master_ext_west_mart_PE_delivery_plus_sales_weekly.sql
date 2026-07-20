@@ -112,6 +112,9 @@ SELECT
   media._video_comps,
   IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') = 'PROTEIN GRANOLA', sales.protein_granola_sales_dollars, NULL) AS product_group_sales_dollars,
   IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') = 'PROTEIN GRANOLA', sales.protein_granola_tdp, NULL) AS product_group_tdp,
+  -- TEMPORARY DASHBOARD COMPATIBILITY: remove after every dashboard uses product_group_sales_dollars/product_group_tdp.
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') = 'PROTEIN GRANOLA', sales.protein_granola_sales_dollars, NULL) AS sales_dollars,
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') = 'PROTEIN GRANOLA', sales.protein_granola_tdp, NULL) AS sales_tdp,
   IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_sales_dollars, NULL) AS total_brand_sales_dollars,
   IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_tdp, NULL) AS total_brand_tdp,
   IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_granola_sales_dollars, NULL) AS total_brand_granola_sales_dollars,

@@ -6,12 +6,14 @@ The production weekly delivery-and-sales table now shows three retail comparison
 
 ## Dashboard field migration
 
-The two previous fields were renamed because they contain the sales for the row's mapped product group:
+The two previous fields are temporarily retained as exact Protein Granola compatibility copies while dashboards migrate:
 
 | Previous field | Replacement field | Dashboard action |
 |---|---|---|
-| `sales_dollars` | `product_group_sales_dollars` | Replace the old field in charts, scorecards, filters, and calculated fields. |
-| `sales_tdp` | `product_group_tdp` | Replace the old field in charts, scorecards, filters, and calculated fields. |
+| `sales_dollars` | `product_group_sales_dollars` | Both currently return the same Protein Granola-only value. Replace the old field before it is removed. |
+| `sales_tdp` | `product_group_tdp` | Both currently return the same Protein Granola-only value. Replace the old field before it is removed. |
+
+The compatibility fields are deprecated: do not use them in new charts or calculated fields. Remove them from production only after every dashboard has been migrated and checked.
 
 Four fields were added:
 
@@ -66,4 +68,3 @@ All definitions include `TOTAL US - MULO` plus `TOTAL US - NATURAL EXPANDED CHAN
 - No `UNMAPPED` row contains a sales or TDP value.
 - Protein Granola values remained unchanged for the latest available sales week.
 - The live schema contains all six requested sales/TDP fields.
-

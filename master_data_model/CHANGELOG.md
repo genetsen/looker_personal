@@ -2,6 +2,7 @@
 
 ## 2026-07-20
 
+- **CHANGED** - Restored the Purely Elizabeth dashboard fields `sales_dollars` and `sales_tdp` as temporary Protein Granola-only compatibility copies while dashboards move to `product_group_sales_dollars` and `product_group_tdp`.
 - **CHANGED** - Updated the Purely Elizabeth weekly dashboard table with renamed product-group sales/TDP fields and four Total Brand and Total Brand Granola benchmark fields. The scheduled rebuild now joins the expanded weekly sales view by date, keeps all sales blank for `UNMAPPED`, and includes a dashboard migration guide for replacing the previous field names.
 
 ## 2026-07-17

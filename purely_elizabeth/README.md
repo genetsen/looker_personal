@@ -1,6 +1,6 @@
 # Purely Elizabeth Sales Reporting
 
-> **Dashboard migration:** The weekly dashboard table renamed `sales_dollars` to `product_group_sales_dollars` and `sales_tdp` to `product_group_tdp`, and added Total Brand and Total Brand Granola benchmarks. Follow the [weekly sales dashboard migration guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/WEEKLY_SALES_DASHBOARD_MIGRATION.md) before refreshing dashboard fields.
+> **Dashboard migration:** The weekly dashboard table adds `product_group_sales_dollars` and `product_group_tdp` as the replacements for `sales_dollars` and `sales_tdp`. The old fields remain temporarily as identical Protein Granola-only compatibility copies. Follow the [weekly sales dashboard migration guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/WEEKLY_SALES_DASHBOARD_MIGRATION.md) before the old fields are removed.
 
 This project turns weekly SPINS sales deliveries into verified BigQuery reporting outputs. The first live output is a weekly Protein Granola sales view that passed both pre-deployment QA and post-deployment verification.
 
