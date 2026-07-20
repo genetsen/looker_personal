@@ -1,5 +1,7 @@
 # Purely Elizabeth Sales Reporting
 
+> **Dashboard migration:** The weekly dashboard table renamed `sales_dollars` to `product_group_sales_dollars` and `sales_tdp` to `product_group_tdp`, and added Total Brand and Total Brand Granola benchmarks. Follow the [weekly sales dashboard migration guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/WEEKLY_SALES_DASHBOARD_MIGRATION.md) before refreshing dashboard fields.
+
 This project turns weekly SPINS sales deliveries into verified BigQuery reporting outputs. The first live output is a weekly Protein Granola sales view that passed both pre-deployment QA and post-deployment verification.
 
 ## Pipeline Overview
@@ -61,9 +63,9 @@ The delivery-plus-sales view passed all 10 pre-deployment SQL Change Guard check
 
 Campaign mapping assigns a product group only when there is an exact advertiser-and-campaign match. Every campaign's delivery remains in the table: missing or blank mappings are labeled `UNMAPPED` and their sales measures are null. Only a mapped product group with a matching sales source can receive retail sales, so delivery is never silently excluded because its product is unknown.
 
-The joined view reuses the main model's shared media-field names, including `_date`, `_campaign_name`, `_planned_spend`, `_planned_impressions`, `_spend`, `_impressions`, and `_clicks`. Its retail metrics are `sales_dollars` and `sales_tdp`; the selected product remains identified separately by `product_group`.
+The joined table reuses the main model's shared media-field names. Its product-specific retail metrics are `product_group_sales_dollars` and `product_group_tdp`; four additional fields provide Total Brand and Total Brand Granola benchmarks.
 
-Production is intentionally metric-only: `_date`, each year-free mapped `product_group` or `UNMAPPED` delivery group, eight approved media measures, `sales_dollars`, and `sales_tdp`. The current Protein Granola sales source joins only to `PROTEIN GRANOLA`; other mapped groups and `UNMAPPED` delivery remain media-only until a matching sales source exists.
+Production is intentionally metric-only: `_date`, each year-free mapped `product_group` or `UNMAPPED` delivery group, eight approved media measures, two product-group sales measures, and four Brand benchmark measures. Protein Granola populates the product-group measures only for `PROTEIN GRANOLA`; `UNMAPPED` rows retain media and keep every sales field blank.
 
 ## Current State
 

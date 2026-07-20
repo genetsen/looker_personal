@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-20
+
+- **CHANGED** - Updated the Purely Elizabeth weekly dashboard table with renamed product-group sales/TDP fields and four Total Brand and Total Brand Granola benchmark fields. The scheduled rebuild now joins the expanded weekly sales view by date, keeps all sales blank for `UNMAPPED`, and includes a dashboard migration guide for replacing the previous field names.
+
 ## 2026-07-17
 
 - **FIXED** - Corrected the Purely Elizabeth weekly delivery-and-sales table so campaigns without a product mapping retain their delivery as `UNMAPPED`, while retail sales remain limited to eligible mapped products. The scheduled refresh and live delivery totals were verified.

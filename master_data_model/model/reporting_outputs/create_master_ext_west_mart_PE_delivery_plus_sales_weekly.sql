@@ -3,7 +3,7 @@
 -- Sources:
 --   master_ext_west.mart_data_model_purelyElizabeth for current dashboard media semantics.
 --   PE.purely_elizabeth_campaign_product_mapping for explicit overrides.
---   PE.protein_granola_weekly_sales for combined MULO and Natural Expanded sales and TDP.
+--   PE.protein_granola_weekly_sales for Total Brand, Brand Granola, and Protein Granola sales and TDP.
 --
 -- Output grain:
 --   One row per Monday-through-Sunday week, labeled with the Sunday week-ending date.
@@ -11,13 +11,13 @@
 -- Business rules:
 --   Every valid exact mapping row is included.
 --   Campaigns absent from the mapping table remain visible as UNMAPPED delivery.
---   Only mapped product groups can receive product-specific sales measures.
+--   Only mapped product groups can receive retail-sales comparison measures.
 --   Sales-only and media-only weeks remain visible; missing measures remain NULL.
 
 CREATE OR REPLACE TABLE
   `looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly`
 OPTIONS (
-  description = 'One row per Sunday-ending week and product group with Purely Elizabeth media delivery. Campaigns without a valid product mapping remain visible as UNMAPPED delivery and do not receive product-specific sales. Currently available Protein Granola MULO plus Natural Expanded sales and TDP join only to PROTEIN GRANOLA. Retail sales are temporal comparison metrics rather than campaign-attributed outcomes.'
+  description = 'One row per Sunday-ending week and product group with Purely Elizabeth media delivery. UNMAPPED rows retain media but receive no sales. Product-group sales currently represent Protein Granola for PROTEIN GRANOLA rows. Total Brand and Total Brand Granola benchmarks appear on mapped rows. Retail sales are temporal comparisons, not campaign-attributed outcomes.'
 ) AS
 WITH classified_media_candidates AS (
   -- HOW TO ADD A PRODUCT GROUP
@@ -31,7 +31,7 @@ WITH classified_media_candidates AS (
   -- delivery, this view includes its complete weekly media timeline.
   --
   -- Sales require a separate product-specific weekly source. Until that source is
-  -- added below, sales_dollars and sales_tdp remain NULL for the new product group.
+  -- added below, product_group_sales_dollars and product_group_tdp remain NULL.
   -- Never reuse Protein Granola sales for a different product group or UNMAPPED.
   SELECT
     media.*,
@@ -84,9 +84,12 @@ media_weekly AS (
 sales_weekly AS (
   SELECT
     time_period_end_date AS week_end_date,
-    'PROTEIN GRANOLA' AS product_group,
-    total_dollar_sales AS protein_granola_dollar_sales,
-    total_tdp AS protein_granola_tdp
+    total_brand_sales_dollars,
+    total_brand_tdp,
+    total_brand_granola_sales_dollars,
+    total_brand_granola_tdp,
+    protein_granola_sales_dollars,
+    protein_granola_tdp
   FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`
   WHERE EXISTS (
     SELECT 1
@@ -96,10 +99,9 @@ sales_weekly AS (
 )
 
 SELECT
-  -- REPORTING NOTE: Campaign fields classify the year-free product group internally.
-  -- Brand-level retail sales are joined by week and are not campaign-attributed.
+  -- Production output: renamed product-group measures plus brand benchmarks; safe changes require dashboard field migration.
   COALESCE(media.week_end_date, sales.week_end_date) AS _date,
-  COALESCE(media.product_group, sales.product_group) AS product_group,
+  COALESCE(media.product_group, 'PROTEIN GRANOLA') AS product_group,
   media.planned_spend AS _planned_spend,
   media.planned_impressions AS _planned_impressions,
   media.delivered_spend AS _spend,
@@ -108,8 +110,12 @@ SELECT
   media._video_plays,
   media._video_views,
   media._video_comps,
-  sales.protein_granola_dollar_sales AS sales_dollars,
-  sales.protein_granola_tdp AS sales_tdp
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') = 'PROTEIN GRANOLA', sales.protein_granola_sales_dollars, NULL) AS product_group_sales_dollars,
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') = 'PROTEIN GRANOLA', sales.protein_granola_tdp, NULL) AS product_group_tdp,
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_sales_dollars, NULL) AS total_brand_sales_dollars,
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_tdp, NULL) AS total_brand_tdp,
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_granola_sales_dollars, NULL) AS total_brand_granola_sales_dollars,
+  IF(COALESCE(media.product_group, 'PROTEIN GRANOLA') != 'UNMAPPED', sales.total_brand_granola_tdp, NULL) AS total_brand_granola_tdp
 FROM media_weekly AS media
 FULL OUTER JOIN sales_weekly AS sales
-  USING (week_end_date, product_group);
+  USING (week_end_date);

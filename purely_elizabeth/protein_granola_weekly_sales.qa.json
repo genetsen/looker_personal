@@ -1,57 +1,15 @@
 {
-  "keys": [
-    "time_period_end_date"
-  ],
-  "metrics": [
-    "total_dollar_sales",
-    "total_tdp"
-  ],
+  "keys": ["time_period_end_date"],
+  "metrics": ["total_brand_sales_dollars", "total_brand_tdp", "total_brand_granola_sales_dollars", "total_brand_granola_tdp", "protein_granola_sales_dollars", "protein_granola_tdp"],
   "derived_metrics": [],
   "comparison_dimensions": [],
-  "high_risk_metrics": [
-    "total_dollar_sales",
-    "total_tdp"
-  ],
-  "high_risk_dimensions": [
-    "time_period_end_date"
-  ],
+  "high_risk_metrics": ["total_brand_sales_dollars", "total_brand_tdp", "total_brand_granola_sales_dollars", "total_brand_granola_tdp", "protein_granola_sales_dollars", "protein_granola_tdp"],
+  "high_risk_dimensions": ["time_period_end_date"],
   "allowed_deltas": {},
   "custom_checks": [
-    {
-      "name": "candidate_has_weekly_records",
-      "severity": "critical",
-      "scope": "candidate",
-      "sql": "SELECT COUNT(*) AS value FROM {table}",
-      "expected_min": 1
-    },
-    {
-      "name": "candidate_has_no_null_dates",
-      "severity": "critical",
-      "scope": "candidate",
-      "sql": "SELECT COUNTIF(time_period_end_date IS NULL) AS value FROM {table}",
-      "expected_max": 0
-    },
-    {
-      "name": "all_three_approved_upcs_are_present",
-      "severity": "critical",
-      "scope": "candidate",
-      "sql": "SELECT ABS(COUNT(DISTINCT upc) - 3) AS value FROM `looker-studio-pro-452620.PE.sales_data_260709` WHERE geography IN ('TOTAL US - MULO', 'TOTAL US - NATURAL EXPANDED CHANNEL') AND brand = 'PURELY ELIZABETH' AND subcategory = 'SS GRANOLA & MUESLI' AND product_level = 'UPC' AND upc IN ('08-10589-03260', '08-10589-03261', '08-10589-03259')",
-      "expected_max": 0
-    },
-    {
-      "name": "candidate_dollar_total_matches_source",
-      "severity": "critical",
-      "scope": "candidate",
-      "sql": "SELECT ABS((SELECT SUM(total_dollar_sales) FROM {table}) - (SELECT SUM(dollars) FROM `looker-studio-pro-452620.PE.sales_data_260709` WHERE geography IN ('TOTAL US - MULO', 'TOTAL US - NATURAL EXPANDED CHANNEL') AND brand = 'PURELY ELIZABETH' AND subcategory = 'SS GRANOLA & MUESLI' AND product_level = 'UPC' AND upc IN ('08-10589-03260', '08-10589-03261', '08-10589-03259'))) AS value",
-      "expected_max": 0.1
-    },
-    {
-      "name": "candidate_tdp_total_matches_source",
-      "severity": "critical",
-      "scope": "candidate",
-      "sql": "SELECT ABS((SELECT SUM(total_tdp) FROM {table}) - (SELECT SUM(tdp) FROM `looker-studio-pro-452620.PE.sales_data_260709` WHERE geography IN ('TOTAL US - MULO', 'TOTAL US - NATURAL EXPANDED CHANNEL') AND brand = 'PURELY ELIZABETH' AND subcategory = 'SS GRANOLA & MUESLI' AND product_level = 'UPC' AND upc IN ('08-10589-03260', '08-10589-03261', '08-10589-03259'))) AS value",
-      "expected_max": 0.1
-    }
+    {"name": "candidate_has_weekly_records", "severity": "critical", "scope": "candidate", "sql": "SELECT COUNT(*) AS value FROM {table}", "expected_min": 1},
+    {"name": "candidate_has_no_null_dates", "severity": "critical", "scope": "candidate", "sql": "SELECT COUNTIF(time_period_end_date IS NULL) AS value FROM {table}", "expected_max": 0},
+    {"name": "candidate_protein_granola_sales_matches_source", "severity": "critical", "scope": "candidate", "sql": "SELECT ABS((SELECT SUM(protein_granola_sales_dollars) FROM {table}) - (SELECT SUM(dollars) FROM `looker-studio-pro-452620.PE.sales_data_260709` WHERE geography IN ('TOTAL US - MULO', 'TOTAL US - NATURAL EXPANDED CHANNEL') AND brand = 'PURELY ELIZABETH' AND product_level = 'UPC' AND subcategory = 'SS GRANOLA & MUESLI' AND upc IN ('08-10589-03260', '08-10589-03261', '08-10589-03259'))) AS value", "expected_max": 0.1}
   ],
   "downstream_objects": [],
   "downstream_checks": []

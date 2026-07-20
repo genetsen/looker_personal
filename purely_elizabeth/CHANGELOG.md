@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-20
+
+- **CHANGED** - Expanded the weekly sales view from Protein Granola-only metrics to six explicit Total Brand, Total Brand Granola, and Protein Granola sales/TDP fields. Renamed the downstream dashboard fields from `sales_dollars` and `sales_tdp` to `product_group_sales_dollars` and `product_group_tdp`, added four Brand benchmark fields, updated the two-hour scheduled query, and documented the required Looker Studio field migration.
+
 Notable Purely Elizabeth reporting changes are recorded here.
 
 ## 2026-07-17

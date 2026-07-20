@@ -9,8 +9,12 @@
     "_video_plays",
     "_video_views",
     "_video_comps",
-    "sales_dollars",
-    "sales_tdp"
+    "product_group_sales_dollars",
+    "product_group_tdp",
+    "total_brand_sales_dollars",
+    "total_brand_tdp",
+    "total_brand_granola_sales_dollars",
+    "total_brand_granola_tdp"
   ],
   "derived_metrics": [],
   "comparison_dimensions": ["product_group"],
@@ -23,8 +27,12 @@
     "_video_plays",
     "_video_views",
     "_video_comps",
-    "sales_dollars",
-    "sales_tdp"
+    "product_group_sales_dollars",
+    "product_group_tdp",
+    "total_brand_sales_dollars",
+    "total_brand_tdp",
+    "total_brand_granola_sales_dollars",
+    "total_brand_granola_tdp"
   ],
   "high_risk_dimensions": ["_date", "product_group"],
   "allowed_deltas": {},
@@ -47,14 +55,14 @@
       "name": "candidate_sales_total_matches_source",
       "severity": "critical",
       "scope": "candidate",
-      "sql": "SELECT ABS((SELECT SUM(sales_dollars) FROM {table}) - (SELECT SUM(total_dollar_sales) FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`)) AS value",
+      "sql": "SELECT ABS((SELECT SUM(product_group_sales_dollars) FROM {table}) - (SELECT SUM(protein_granola_sales_dollars) FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`)) AS value",
       "expected_max": 0.01
     },
     {
       "name": "candidate_tdp_total_matches_source",
       "severity": "critical",
       "scope": "candidate",
-      "sql": "SELECT ABS((SELECT SUM(sales_tdp) FROM {table}) - (SELECT SUM(total_tdp) FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`)) AS value",
+      "sql": "SELECT ABS((SELECT SUM(product_group_tdp) FROM {table}) - (SELECT SUM(protein_granola_tdp) FROM `looker-studio-pro-452620.PE.protein_granola_weekly_sales`)) AS value",
       "expected_max": 0.01
     },
     {
