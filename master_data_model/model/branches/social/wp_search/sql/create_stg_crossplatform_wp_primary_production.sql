@@ -8,7 +8,8 @@
 -- @safety:      Production replacement. Deploy only after QA candidate review.
 -- @decision:    Campaign-separated WP ad IDs are included for now and remain
 --               flagged publish_pending_source_owner_review until clarified.
--- @exclusion:   Campaigns containing "1000heads" are agency-side social rows
+-- @exclusion:   Campaigns containing "1000heads" or "PROS_Dysrupt" are
+--               agency-side social rows
 --               that must be excluded before shared-social staging reaches the
 --               master data model.
 
@@ -41,14 +42,14 @@ delivery_source AS (
   SELECT *
   FROM `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report`
   WHERE (SELECT source_name FROM source_choice) = 'transformed'
-    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'(1000heads|pros_dysrupt)')
 
   UNION ALL
 
   SELECT *
   FROM `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report`
   WHERE (SELECT source_name FROM source_choice) = 'reports'
-    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'(1000heads|pros_dysrupt)')
 ),
 video_metrics AS (
   SELECT *
@@ -104,7 +105,7 @@ wp_publishable AS (
   SELECT *
   FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
   WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
-    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
+    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'(1000heads|pros_dysrupt)')
 ),
 merged_apollo AS (
   SELECT
@@ -191,7 +192,7 @@ combined_social AS (
 )
 SELECT *
 FROM combined_social
-WHERE NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads');
+WHERE NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'(1000heads|pros_dysrupt)');
 
 -- Preserve the existing video-metric refresh in the live scheduled build.
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop_videoviews_crossplatform_tbl` AS

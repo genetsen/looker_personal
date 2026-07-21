@@ -3,6 +3,49 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-07-20
+
+### Fixed
+
+#### **FY26 Basis UTM missing-key regression**
+
+Issue: the FY26 Q2/Q3 missing-UTM report increased from 117 placement-and-creative keys to 135 after the audio normalization refresh.
+Cause: 18 CTV combinations were outside the exact mapping keys; a literal rollback of the audio change would have increased the report to 231 missing keys.
+Resolution: kept the verified audio normalization and added an explicit 18-key CTV fallback that derives only creative length/name from one unambiguous same-placement template.
+Verification: the SQL change guard passed with zero failures; zero existing populated UTM rows changed; the live report and refreshed stored table both contain the exact 117-key set from the pre-refresh CSV and reconcile at 4,337,803 impressions, $145,072.21 cost, and 1,714 clicks.
+
+<details>
+<summary>Paths — FY26 Basis UTM missing-key regression</summary>
+
+- [Basis delivery-to-UTM SQL](scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql)
+- [Basis UTM verification query](scripts/sql/qa__repo_stg__basis_plus_utms_fy26_q2_q3.sql)
+- [MFT pipeline README](README.md)
+
+</details>
+
+## 2026-07-16
+
+### Changed
+
+#### **FY26 Q2/Q3 Basis UTM mappings**
+
+What: loaded the separate FY26 Q2/Q3 trafficking file, selected only its approved `MASSMUTUAL005_Updated 7.7` worksheet, and refreshed the production UTM lookup with all 322 complete mappings.
+Why: prepare Q2/Q3 delivery to receive UTMs as soon as `MASSMUTUAL005` placements arrive, without combining the older worksheet version or duplicating mapping keys.
+Verification: the landing table contains 331 distinct assignments, including 322 complete URLs and nine paused-only blanks; the refreshed lookup contains all 322 complete mappings with zero missing rows, duplicate keys, whitespace, or incomplete UTM URLs. The MFT mart and stored table still reconcile at 46,539 FY26 rows, 16,689,254 impressions, $564,616.16 cost, and 4,102 clicks. Final Q2/Q3 row verification remains pending because live Basis delivery contains no `MASSMUTUAL005` placements yet.
+
+<details>
+<summary>Paths — FY26 Q2/Q3 Basis UTM mappings</summary>
+
+- [MFT pipeline README](README.md)
+
+</details>
+
+### Pending Next Actions
+
+- **Since Jul 16** - Verify Q2/Q3 UTM population after Basis delivery begins supplying `MASSMUTUAL005` placements - BLOCKER
+- **Since Jul 1** - Build a Looker-owned replacement refresh for `landing.basis_master` before attempting an MFT Basis cutover
+- **Since Jul 1** - Create an isolated QA version of the MFT Basis branch and compare it to the current client-facing output before approval
+
 ## 2026-07-15
 
 ### Fixed
@@ -52,7 +95,6 @@ Why: make new-campaign updates and missing-UTM recovery repeatable without confu
 
 ### Pending Next Actions
 
-- **Since Jul 15** - Have the partner add and populate the FY26 Q2/Q3 campaign worksheet before that delivery launches - RECOMMENDED
 - **Since Jul 1** - Build a Looker-owned replacement refresh for `landing.basis_master` before attempting an MFT Basis cutover - BLOCKER
 - **Since Jul 1** - Create an isolated QA version of the MFT Basis branch and compare it to the current client-facing output before approval
 

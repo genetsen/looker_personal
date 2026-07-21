@@ -4,6 +4,35 @@ Verbose session-level and implementation-level change details are documented in 
 For concise daily essentials, see `[BASE]/CHANGELOG.md`.
 All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft.
 
+## 2026-07-20
+
+### Fixed
+
+- FY26 Q2/Q3 Basis UTM missing-key regression (`[BASE]/scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql`, `[BASE]/scripts/sql/qa__repo_stg__basis_plus_utms_fy26_q2_q3.sql`, `[BASE]/README.md`)
+  - Issue: the user-provided pre-refresh export contained 117 missing placement-and-creative keys, while the audio-normalized candidate exposed 135.
+  - Diagnosis: frozen SQL-change-guard tables proved the audio normalization changed 4,235 daily audio rows from blank to populated without changing CTV rows, delivery keys, impressions, cost, or clicks. A literal rollback would have restored 8,940 blank daily rows and 231 report-level missing keys.
+  - Resolution: retained the audio normalization and added an explicit allowlist for the 18 newly exposed CTV combinations. Each fallback preserves one same-placement `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, and tracking suffix while changing only the approved video-length and creative-name portion of `utm_content`.
+  - Safety: exact mappings remain first priority; the CTV fallback is second; the audio fallback is third. Conflicting same-placement template values prevent a fallback from being built.
+  - Proof: candidate and CSV each contained 117 missing keys with SHA-256 `9eafbdf6d846c3534e156936cbaa78d01e05513d5fdf06d113b62f88f818b427`; the SQL change guard passed eight comparisons with zero failures; 112 daily rows across 18 report keys changed from blank to populated; zero existing populated UTM rows changed; and zero populated rows became blank.
+  - Production: the Basis UTM view deployment succeeded, the final MFT scheduled refresh succeeded, and both the live report and stored table reconcile at 4,337,803 impressions, $145,072.21 cost, 1,714 clicks, and the exact 117-key missing set.
+
+### Changed
+
+- Basis UTM maintenance proof (`[BASE]/README.md`)
+  - What: documented the live match priority and required exact-key comparison before and after any Basis UTM change.
+  - Why: prevent a successful refresh or unchanged total count from being mistaken for proof that the same placement-and-creative gaps remain.
+
+## 2026-07-16
+
+### Changed
+
+- FY26 Q2/Q3 Basis UTM mapping load (`[BASE]/README.md` and the parent Basis UTM utility)
+  - Source selection: downloaded the separate partner workbook `MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx` and selected only `MASSMUTUAL005_Updated 7.7`; the older `MASSMUTUAL005_Updated 6.15` worksheet was not combined.
+  - Loader change: added a dedicated `fy26_q2_q3` configuration targeting `landing.basis_utms_pivoted_fy26_q2_q3`, removed embedded whitespace from URL cells, and added an idempotent production-promotion script.
+  - Landing proof: 331 distinct placement-and-creative assignments were loaded; 322 have complete five-parameter UTM URLs, zero contain URL whitespace, zero populated mapping keys are duplicated, and all nine blank URLs belong to paused assignments.
+  - Production lookup proof: the active workbook union accepted exactly 322 rows and has zero remaining eligible inserts; `UTM UPDATES` succeeded; and `utm_scrap.b_sup_pivt_unioned_tab` contains all 322 mappings with zero missing rows, duplicate keys, whitespace, or incomplete URLs. The lookup grew from 2,112 to 2,434 rows.
+  - Final-output boundary: `ext_mm_mft_scheadule_s2` succeeded, and the live MFT mart and stored table reconcile at 46,539 FY26 rows, 16,689,254 impressions, $564,616.16 cost, 4,102 clicks, and zero blank `utm_source` rows. No Q2/Q3 final rows exist yet because `repo_stg.basis_delivery` contains zero `MASSMUTUAL005` placements.
+
 ## 2026-07-15
 
 ### Fixed
@@ -25,7 +54,7 @@ All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clo
 
 - Basis UTM operating documentation (`[BASE]/README.md`)
   - What: replaced the stale Basis UTM source description and three-file loader example with the current workbook repository, FY26 worksheet configuration, internal supplement, production lookup, scheduled refreshes, safe CTV extrapolation rule, and missing-UTM diagnosis matrix.
-  - Why: make it explicit that a new workbook worksheet is not loaded until the loader configuration, landing table, active union, UTM refresh, delivery join, and final-table refresh all pass.
+  - Why: make it explicit that a new campaign file is not loaded until the loader configuration, landing table, active union, UTM refresh, delivery join, and final-table refresh all pass.
 
 ## 2026-03-13
 
