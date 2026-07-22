@@ -814,6 +814,15 @@ ensure_prod_schema_matches <- function(data_upload, project_id, dataset_id, prod
   get_table_field_types(project_id, dataset_id, prod_table)
 }
 
+#### GOOGLE AUTHENTICATION (consolidated login, new-primary / old-fallback) ####
+# Primary: authenticate googledrive/googlesheets4/bigrquery via the durable
+# consolidated Google login. If it fails for any reason, gspoon_ok stays FALSE
+# and gargle's pre-existing implicit cached-token auth is used unchanged.
+gspoon_ok <- tryCatch({
+  source("/Users/eugenetsenter/.config/gspoon_google_auth/google_auth.R")
+  !is.null(gspoon_google_auth(packages = c("googledrive", "googlesheets4", "bigrquery"), fallback = TRUE))
+}, error = function(e) { message("gspoon-auth fallback: ", conditionMessage(e)); FALSE })
+
 ################################################################################
 #### PHASE 1: GOOGLE DRIVE DISCOVERY ####
 ################################################################################

@@ -283,6 +283,16 @@
       # Script file name for error reporting
             # Dynamically detect script file path
       
+      # Consolidated Google login (new primary) for BigQuery only.
+      # gmailr is intentionally left untouched (it needs its send scope).
+      # If the consolidated login succeeds, bigrquery is pre-authenticated with
+      # it; if it fails, bigrquery falls back to the implicit default auth exactly
+      # as before.
+      tryCatch({
+        source("/Users/eugenetsenter/.config/gspoon_google_auth/google_auth.R")
+        gspoon_google_auth(packages = c("bigrquery"), fallback = TRUE)
+      }, error = function(e) message("gspoon-auth fallback: ", conditionMessage(e)))
+
       # Create BigQuery table reference using outer scope variables
       bq_tbl <- bq_table(project = project_id, dataset = dataset, table = table)
       

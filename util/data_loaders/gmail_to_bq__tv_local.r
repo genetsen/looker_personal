@@ -36,6 +36,14 @@ table <- "tv_local_estimates"
 
 # ------------------------------ pull gmail data ----------------------------- #
 
+  # ---- consolidated Google login for BigQuery only (new primary; old implicit auth is fallback) ----
+  # NOTE: gmailr is intentionally NOT wired here. This workload calls gm_send_message,
+  # but the consolidated login is Gmail read-only; pre-authing gmailr would break the send path.
+  gspoon_ok <- tryCatch({
+    source("/Users/eugenetsenter/.config/gspoon_google_auth/google_auth.R")
+    !is.null(gspoon_google_auth(packages = c("bigrquery"), fallback = TRUE))
+  }, error = function(e) { message("gspoon-auth fallback: ", conditionMessage(e)); FALSE })
+
   #retrieve threads matching search --------------------- #
   my_threads <- gm_threads(search = search_criteria,
                           num_results = 10)
