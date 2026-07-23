@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-23
+
+- **FIXED** - Restored all 117 missing FY26 Q2/Q3 Basis placement-and-creative UTM mappings by preserving the approved June 15 historical worksheet alongside the July 7 current worksheet and using a unique official-source creative fallback. Both production refreshes succeeded; the live mart and stored MFT table now have zero missing report keys with unchanged reporting totals.
+
 ## 2026-07-17
 
 - **FIXED** - Corrected the Purely Elizabeth weekly delivery-and-sales table so unmapped campaigns retain their delivery as `UNMAPPED`; sales remain blank unless a product mapping and matching sales source exist. The updated scheduled refresh and live delivery totals were verified.

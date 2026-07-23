@@ -1,11 +1,13 @@
 -- Purpose: enrich Basis delivery with UTM fields while preserving exact-key
--- behavior, resolving FY26 audio trafficking-name differences, and restoring
--- 18 approved FY26 CTV placement-and-creative mappings.
+-- behavior, using complete historical FY26 partner mappings when exact names
+-- differ, resolving audio trafficking wrappers, and retaining 18 approved CTV
+-- placement-and-creative fallbacks.
 -- Reads: repo_stg.basis_delivery, utm_scrap.b_sup_pivt_unioned_tab, and
 -- repo_stg.dcm_plus_utms_upload. Replaces: repo_stg.basis_plus_utms_v4_PnS_table.
--- Safety: exact matches win. The CTV fallback is limited to an explicit
--- placement-and-creative allowlist. The audio fallback is usable only when the
--- normalized placement-and-creative key has one complete partner URL.
+-- Safety: exact matches win. The FY26 source-backed fallback requires one
+-- complete partner URL per placement ID and normalized creative. The CTV
+-- fallback remains limited to an explicit allowlist. The audio fallback is
+-- usable only when the normalized key has one complete partner URL.
 
 CREATE OR REPLACE VIEW `looker-studio-pro-452620.repo_stg.basis_plus_utms_v4_PnS_table` AS
 WITH
@@ -94,6 +96,67 @@ exact_utm AS (
     utm_term,
     CONCAT(LOWER(placement), ' || ', normalized_creative) AS utm_key
   FROM dcm_utm
+),
+
+fy26_source_fallback_candidates AS (
+  SELECT DISTINCT
+    REGEXP_EXTRACT(placement, r'MASSMUTUAL\d+CP_(\d+)') AS placement_id,
+    REGEXP_REPLACE(
+      REGEXP_REPLACE(
+        normalized_creative,
+        r'(^audio|companionbannertfimm\d+$)',
+        ''
+      ),
+      r'(streamingburnedincaptions16x9|peacock$)',
+      ''
+    ) AS fallback_creative,
+    placement,
+    url,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    utm_content,
+    utm_term
+  FROM basis_utm_base
+  WHERE REGEXP_EXTRACT(placement, r'MASSMUTUAL\d+CP_(\d+)') IN (
+    SELECT DISTINCT id
+    FROM delivery
+    WHERE campaign = 'Massachusetts Mutual Connected Funnel FY26 - Q2/Q3'
+  )
+    AND NULLIF(TRIM(url), '') IS NOT NULL
+    AND NULLIF(TRIM(utm_source), '') IS NOT NULL
+    AND NULLIF(TRIM(utm_medium), '') IS NOT NULL
+    AND NULLIF(TRIM(utm_campaign), '') IS NOT NULL
+    AND NULLIF(TRIM(utm_content), '') IS NOT NULL
+    AND NULLIF(TRIM(utm_term), '') IS NOT NULL
+),
+
+fy26_source_fallback_unique AS (
+  SELECT * EXCEPT(url, candidate_url_count, candidate_rank)
+  FROM (
+    SELECT
+      placement_id,
+      fallback_creative,
+      placement,
+      url,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_term,
+      CONCAT(placement_id, ' || ', fallback_creative) AS fallback_key,
+      CONCAT(LOWER(placement), ' || ', fallback_creative) AS utm_key,
+      COUNT(DISTINCT url) OVER (
+        PARTITION BY placement_id, fallback_creative
+      ) AS candidate_url_count,
+      ROW_NUMBER() OVER (
+        PARTITION BY placement_id, fallback_creative
+        ORDER BY url
+      ) AS candidate_rank
+    FROM fy26_source_fallback_candidates
+  )
+  WHERE candidate_url_count = 1
+    AND candidate_rank = 1
 ),
 
 audio_fallback_candidates AS (
@@ -240,13 +303,13 @@ ctv_fallback_unique AS (
 joined AS (
   SELECT
     delivery.*,
-    COALESCE(exact_utm.placement, ctv_fallback_unique.placement, audio_fallback_unique.placement) AS placement__utms,
-    COALESCE(exact_utm.utm_source, ctv_fallback_unique.utm_source, audio_fallback_unique.utm_source) AS utm_source,
-    COALESCE(exact_utm.utm_medium, ctv_fallback_unique.utm_medium, audio_fallback_unique.utm_medium) AS utm_medium,
-    COALESCE(exact_utm.utm_campaign, ctv_fallback_unique.utm_campaign, audio_fallback_unique.utm_campaign) AS utm_campaign,
-    COALESCE(exact_utm.utm_term, ctv_fallback_unique.utm_term, audio_fallback_unique.utm_term) AS utm_term,
-    COALESCE(exact_utm.utm_content, ctv_fallback_unique.utm_content, audio_fallback_unique.utm_content) AS utm_content,
-    COALESCE(exact_utm.utm_key, ctv_fallback_unique.utm_key, audio_fallback_unique.utm_key) AS utm_key,
+    COALESCE(exact_utm.placement, ctv_fallback_unique.placement, audio_fallback_unique.placement, fy26_source_fallback_unique.placement) AS placement__utms,
+    COALESCE(exact_utm.utm_source, ctv_fallback_unique.utm_source, audio_fallback_unique.utm_source, fy26_source_fallback_unique.utm_source) AS utm_source,
+    COALESCE(exact_utm.utm_medium, ctv_fallback_unique.utm_medium, audio_fallback_unique.utm_medium, fy26_source_fallback_unique.utm_medium) AS utm_medium,
+    COALESCE(exact_utm.utm_campaign, ctv_fallback_unique.utm_campaign, audio_fallback_unique.utm_campaign, fy26_source_fallback_unique.utm_campaign) AS utm_campaign,
+    COALESCE(exact_utm.utm_term, ctv_fallback_unique.utm_term, audio_fallback_unique.utm_term, fy26_source_fallback_unique.utm_term) AS utm_term,
+    COALESCE(exact_utm.utm_content, ctv_fallback_unique.utm_content, audio_fallback_unique.utm_content, fy26_source_fallback_unique.utm_content) AS utm_content,
+    COALESCE(exact_utm.utm_key, ctv_fallback_unique.utm_key, audio_fallback_unique.utm_key, fy26_source_fallback_unique.utm_key) AS utm_key,
     delivery.del_key AS master_key
   FROM delivery
   LEFT JOIN exact_utm
@@ -258,6 +321,20 @@ joined AS (
     ON exact_utm.utm_key IS NULL
    AND ctv_fallback_unique.utm_key IS NULL
    AND delivery.del_key = audio_fallback_unique.utm_key
+  LEFT JOIN fy26_source_fallback_unique
+    ON exact_utm.utm_key IS NULL
+   AND ctv_fallback_unique.utm_key IS NULL
+   AND audio_fallback_unique.utm_key IS NULL
+   AND delivery.campaign = 'Massachusetts Mutual Connected Funnel FY26 - Q2/Q3'
+   AND CONCAT(
+     delivery.id,
+     ' || ',
+     REGEXP_REPLACE(
+       delivery.cleaned_creative_name,
+       r'(streamingburnedincaptions16x9|peacock$)',
+       ''
+     )
+   ) = fy26_source_fallback_unique.fallback_key
 ),
 
 ranked AS (

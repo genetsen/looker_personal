@@ -20,16 +20,17 @@ Organized workspace for MassMutual Basis UTM extraction, validation, and support
 - `essential/load_basis_utms_unioned_0929_from_fy26_q1.sql`
   - Idempotent backfill script that inserts missing FY26 Q1 rows from `landing.basis_utms_pivoted_fy26_q1` into `landing.basis_utms_unioned-0929`.
 - `essential/load_basis_utms_unioned_0929_from_fy26_q2_q3.sql`
-  - Idempotent promotion script that inserts complete FY26 Q2/Q3 rows from `landing.basis_utms_pivoted_fy26_q2_q3` into `landing.basis_utms_unioned-0929`.
+  - Idempotent promotion script that inserts complete FY26 Q2/Q3 rows from both the historical June tab and current July tab into `landing.basis_utms_unioned-0929`.
 
 ## Current FY26 Workbook Inputs
 
 | Campaign period | Local workbook | Worksheet | Landing table |
 |---|---|---|---|
 | Q1 | `MassMutual_FY26_Q1_Traffic Sheet.xlsx` | `MASSMUTUAL004_updated 1.14.26` | `landing.basis_utms_pivoted_fy26_q1` |
-| Q2/Q3 | `MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx` | `MASSMUTUAL005_Updated 7.7` | `landing.basis_utms_pivoted_fy26_q2_q3` |
+| Q2/Q3 historical | `MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx` | `MASSMUTUAL005_Updated 6.15` | `landing.basis_utms_pivoted_fy26_q2_q3_previous` |
+| Q2/Q3 current | `MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx` | `MASSMUTUAL005_Updated 7.7` | `landing.basis_utms_pivoted_fy26_q2_q3` |
 
-Each campaign period is delivered as a separate file. The loader still requires the exact worksheet name inside that file and does not discover new files automatically. Embedded spaces and line breaks are removed from URL cells before upload.
+Each campaign period is delivered as a separate file. When one file contains approved historical and current tabs, load each tab to its own landing table so paused historical mappings remain available without overwriting the current assignments. The loader requires the exact worksheet names and does not discover new files automatically. Embedded spaces and line breaks are removed from URL cells before upload.
 
 ## Pipeline-Critical SQL Dependencies
 

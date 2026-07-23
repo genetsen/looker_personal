@@ -4,6 +4,25 @@ Verbose session-level and implementation-level change details are documented in 
 For concise daily essentials, see `[BASE]/CHANGELOG.md`.
 All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft.
 
+## 2026-07-23
+
+### Fixed
+
+- FY26 Q2/Q3 historical Basis UTM coverage (`[BASE]/scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql`, `[BASE]/scripts/sql/qa__repo_stg__basis_plus_utms_fy26_q2_q3.sql`, `[BASE]/README.md`, and the parent Basis UTM utility)
+  - Issue: the user-provided export identified 117 delivered placement-and-creative keys with blank UTMs in the final FY26 Q2/Q3 report.
+  - Root cause: the maintained loader and production union retained only `MASSMUTUAL005_Updated 7.7`. The partner's approved `MASSMUTUAL005_Updated 6.15` worksheet contained all 117 missing source mappings, including paused creatives omitted from the current tab. Some CTV delivery names also contained `streamingburnedincaptions16x9` or a trailing Peacock label not present in the source mapping name.
+  - Source load: added a dedicated historical landing table, kept the current worksheet in its existing table, loaded 340 historical and 331 current rows, and promoted 133 new complete mappings into the active union. The active union increased from 2,155 to 2,288 rows.
+  - Matching logic: added a final FY26 source-backed fallback using placement ID plus normalized creative name. It removes only the confirmed audio wrapper, long CTV wrapper, and trailing Peacock label, and it returns a mapping only when the approved source rows resolve to one complete distinct URL.
+  - Approved replacement boundary: official partner mappings replace extrapolated values for 54 daily rows across six placement-and-creative combinations. The guard proved zero populated UTM changes outside those combinations.
+  - Production proof: `UTM UPDATES` run `6a69a125-0000-26de-bc4e-24058872e074` succeeded; `ext_mm_mft_scheadule_s2` run `6a6e7cab-0000-280f-a549-94eb2c0b009e` succeeded; the deployed Basis view has zero distinct tested-row differences from the guarded candidate.
+  - Final output: the live mart and refreshed stored table each contain 11,533 FY26 Q2/Q3 report rows, zero missing report keys, 4,629,186 impressions, $154,941.79 cost, and 1,842 clicks.
+
+### Changed
+
+- Basis UTM maintenance guidance (`[BASE]/README.md` and the parent Basis UTM utility README)
+  - What: replaced the stale “latest worksheet only” rule with separate historical-and-current worksheet loading and documented the unique official-source fallback.
+  - Why: paused historical creative mappings must remain available after the current traffic sheet removes them.
+
 ## 2026-07-20
 
 ### Fixed

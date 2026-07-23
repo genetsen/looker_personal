@@ -618,7 +618,7 @@ The loader uses the `data_sources` configuration near the top of the script. Eac
 | `sheet_name` | Exact worksheet to read |
 | `bq_table_name` | Landing table that receives the normalized mappings |
 
-The FY26 Q1 row reads worksheet `MASSMUTUAL004_updated 1.14.26` from the Q1 workbook and replaces the [FY26 Q1 landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_utms_pivoted_fy26_q1&page=table). The FY26 Q2/Q3 row reads only the latest worksheet, `MASSMUTUAL005_Updated 7.7`, from the separate Q2/Q3 workbook and replaces the [FY26 Q2/Q3 landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_utms_pivoted_fy26_q2_q3&page=table). The loader does not discover new files or worksheets automatically, and it removes embedded whitespace from URL cells before upload.
+The FY26 Q1 row reads worksheet `MASSMUTUAL004_updated 1.14.26` from the Q1 workbook and replaces the [FY26 Q1 landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_utms_pivoted_fy26_q1&page=table). The FY26 Q2/Q3 workbook has two approved sources: historical worksheet `MASSMUTUAL005_Updated 6.15` loads to the [historical Q2/Q3 landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_utms_pivoted_fy26_q2_q3_previous&page=table), and current worksheet `MASSMUTUAL005_Updated 7.7` loads to the [current Q2/Q3 landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=basis_utms_pivoted_fy26_q2_q3&page=table). Keep approved historical and current worksheets in separate landing tables so paused historical creative mappings remain available. The loader does not discover new files or worksheets automatically, and it removes embedded whitespace from URL cells before upload.
 
 #### Processing Steps
 
@@ -1051,8 +1051,8 @@ ORDER BY completion_rate_pct DESC
 #### New campaign or quarter
 
 1. Ask the partner to create a separate trafficking file for the new campaign or quarter and add it to the UTM mapping workbook repository. The file must contain every placement, every creative, and the complete tagged URL. Do not add the new campaign to an older campaign file.
-2. Download the new file. These are uploaded Excel workbooks in Drive, not native Google Sheets, so check the exact worksheet name inside the downloaded workbook. When multiple versions exist inside one file, select only the latest approved worksheet.
-3. Add one row to `data_sources` in the [Basis UTM loader](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r>) with the downloaded file, exact worksheet name, and a clearly named landing table.
+2. Download the new file. These are uploaded Excel workbooks in Drive, not native Google Sheets, so check the exact worksheet names inside the downloaded workbook. Preserve every approved worksheet version that contains a placement-and-creative mapping needed by delivered media; load historical and current versions to separate landing tables.
+3. Add one row per approved worksheet to `data_sources` in the [Basis UTM loader](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r>) with the downloaded file, exact worksheet name, and a clearly named landing table.
 4. Run the loader and verify the new landing table contains one row per placement-and-creative assignment. Active mappings must have a placement, creative name, and complete URL. Paused assignments with blank URLs may remain in the landing table, but the production-promotion SQL must exclude them.
 5. Promote the new landing rows into the active Basis workbook union with an idempotent campaign-specific SQL script. Confirm the [Basis UTM union view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=b_sup_pivt_unioned&page=table) can see the new rows without duplicate placement-and-creative-and-URL records.
 6. Run the scheduled query named `UTM UPDATES`. Confirm the [MFT UTM lookup table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=utm_scrap&t=b_sup_pivt_unioned_tab&page=table) contains the new placement-and-creative keys.
@@ -1078,6 +1078,9 @@ The production Basis join uses this fixed priority:
 | 1 | Exact placement-and-normalized-creative mapping | Always wins when present. |
 | 2 | Approved FY26 CTV fallback | Limited to the explicit allowlist; requires one unambiguous same-placement UTM template. |
 | 3 | Audio creative-name fallback | Used only when one complete partner URL remains after removing the known audio trafficking wrapper. |
+| 4 | Unique FY26 official-source fallback | Uses the placement ID plus the normalized creative name across approved historical and current partner worksheets. It runs only when that key has one complete distinct partner URL. |
+
+When an official partner mapping makes an older derived CTV template ambiguous, the official source-backed mapping replaces the derived value. Do not manufacture `utm_campaign`, `utm_content`, or other URL fields when the approved worksheets contain the mapping.
 
 #### Required proof after any Basis UTM change
 
