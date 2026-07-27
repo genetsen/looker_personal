@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-07-27
+
+**WP delivery-workbook loader uses its current ID-source tab** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/load_wp_search_data_template.R)) — 🟢 **Verified and committed**<br>The [WP delivery-workbook workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md) now reads the verified `Import_blend` worksheet rather than a stale tab name, preventing the preview path from falling back to generated ad-group IDs. Production upload remains deliberately manual. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md)
+
 ## 2026-07-17
 
 - **FIXED** - Corrected the Purely Elizabeth weekly delivery-and-sales table so unmapped campaigns retain their delivery as `UNMAPPED`; sales remain blank unless a product mapping and matching sales source exist. The updated scheduled refresh and live delivery totals were verified.
