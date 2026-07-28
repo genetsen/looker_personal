@@ -1,3 +1,11 @@
+## 2026-07-28
+
+- **FIXED** - Preserved established numeric BigQuery types when a current FPD run contains an entirely blank metric column, so `video_watch_time` no longer becomes text and blocks the production sync. The canonical loader completed a live refresh after the repair.
+
+### Pending Next Actions
+
+- The latest source output still contains rows with missing package IDs and exact duplicate rows; those are source-quality conditions present before the warehouse sync, not a result of this type-preservation repair.
+
 ## 2026-07-10
 
 - **CHANGED** - Added a local entry point to the partner-data Google Sheets template guide, so FPD loader users can reach the canonical master-data-model documentation without maintaining a duplicate copy.

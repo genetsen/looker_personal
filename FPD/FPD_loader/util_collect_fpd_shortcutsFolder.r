@@ -752,6 +752,40 @@ get_table_field_types <- function(project_id, dataset_id, table_name) {
   setNames(field_types, field_names)
 }
 
+coerce_blank_logicals_to_existing_numeric_types <- function(data_upload, prod_field_types) {
+  # A completely blank source column is read as logical by readr. Preserve the
+  # established numeric warehouse type so staging cannot turn it into STRING.
+  if (is.null(prod_field_types) || length(prod_field_types) == 0) {
+    return(data_upload)
+  }
+
+  numeric_bq_types <- c("FLOAT", "FLOAT64", "NUMERIC", "BIGNUMERIC", "INTEGER", "INT64", "DECIMAL", "BIGDECIMAL")
+  candidate_cols <- intersect(names(data_upload), names(prod_field_types))
+  coerced_cols <- candidate_cols[vapply(
+    candidate_cols,
+    function(column_name) {
+      is.logical(data_upload[[column_name]]) &&
+        all(is.na(data_upload[[column_name]])) &&
+        toupper(prod_field_types[[column_name]]) %in% numeric_bq_types
+    },
+    logical(1)
+  )]
+
+  for (column_name in coerced_cols) {
+    data_upload[[column_name]] <- rep(NA_real_, nrow(data_upload))
+  }
+
+  if (length(coerced_cols) > 0) {
+    cat(
+      "  ✓ Preserved numeric NULL type(s) from production schema:",
+      paste(coerced_cols, collapse = ", "),
+      "\n"
+    )
+  }
+
+  data_upload
+}
+
 ensure_prod_schema_matches <- function(data_upload, project_id, dataset_id, prod_table) {
   prod_field_types <- get_table_field_types(project_id, dataset_id, prod_table)
 
@@ -2435,6 +2469,15 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
       # Normalize types before upload to avoid BigQuery autodetect edge-case failures.
       # Keep timestamps explicit and coerce non-standard/list/object columns to character.
       data_upload <- data
+      prod_field_types_before_upload <- get_table_field_types(
+        project_id,
+        dataset_id,
+        prod_table
+      )
+      data_upload <- coerce_blank_logicals_to_existing_numeric_types(
+        data_upload,
+        prod_field_types_before_upload
+      )
 
       # Ensure Date columns are plain Date and timestamp is POSIXct UTC.
       date_cols_upload <- intersect(c("date", "week", "month", "start_date", "end_date", "prisma_start_date", "prisma_end_date", "start_date_final", "end_date_final", "date_final"), names(data_upload))

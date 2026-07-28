@@ -337,6 +337,7 @@ This is useful for:
 
 This script uploads to a staging table first, checks the result, adds any missing BigQuery columns when the new column type is clear, and then replaces only the destination rows for the sheets included in that run.
 If a brand-new column is completely blank in the current run, the script skips that column for production instead of guessing a BigQuery type from empty data alone. This commonly protects the run from accidental blank spreadsheet headers such as `#REF!`.
+If an existing production column is numeric but every value is blank in the current run, the staging upload keeps it as a numeric blank rather than changing it to text. This lets a temporarily empty metric such as `video_watch_time` refresh safely without changing the production schema.
 The optional downstream `source(".../util_process_updated_fpd.r")` call is currently commented out in this folder's script.
 
 ---
