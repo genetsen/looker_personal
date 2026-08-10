@@ -57,27 +57,16 @@ SELECT
   (SELECT SUM(clicks) FROM enriched) AS enriched_clicks
 LIMIT 1;
 
--- 4. The report-level missing set must match the approved pre-refresh export.
+-- 4. Every previously reported FY26 Q2/Q3 key must now have a UTM mapping.
 WITH missing_keys AS (
   SELECT DISTINCT CONCAT(placement, ' -- ', creative_name) AS placement_name
   FROM `looker-studio-pro-452620.repo_stg.basis_plus_utms_v4_PnS_table`
   WHERE campaign = 'Massachusetts Mutual Connected Funnel FY26 - Q2/Q3'
     AND impressions > 10
     AND NULLIF(TRIM(utm_content), '') IS NULL
-),
-missing_summary AS (
-  SELECT
-    COUNT(*) AS missing_key_count,
-    TO_HEX(
-      SHA256(STRING_AGG(placement_name, '\n' ORDER BY placement_name))
-    ) AS missing_key_set_sha256
-  FROM missing_keys
 )
 SELECT
-  missing_key_count,
-  missing_key_set_sha256,
-  missing_key_count = 117
-    AND missing_key_set_sha256 = '9eafbdf6d846c3534e156936cbaa78d01e05513d5fdf06d113b62f88f818b427'
-    AS matches_approved_pre_refresh_export
-FROM missing_summary
+  COUNT(*) AS missing_key_count,
+  COUNT(*) = 0 AS all_reported_keys_resolved
+FROM missing_keys
 LIMIT 1;

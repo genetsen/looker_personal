@@ -3,6 +3,28 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-07-23
+
+### Fixed
+
+#### **FY26 Q2/Q3 historical Basis UTM coverage**
+
+Issue: 117 delivered placement-and-creative keys in the FY26 Q2/Q3 report had no matching UTM values.
+Cause: production retained the current July 7 worksheet but not the approved June 15 historical worksheet, and several delivered CTV creative names contained wrapper text not present in the partner mapping names.
+Resolution: loaded the historical and current worksheets to separate landing tables, promoted 133 complete official mappings, and added a unique source-backed fallback using placement ID plus normalized creative name.
+Verification: the SQL change guard passed all eight comparisons; only the 54 approved daily rows across six official mapping combinations replaced extrapolated values; no other populated UTM changed. The live mart and refreshed stored table both have zero missing report keys and reconcile at 11,533 rows, 4,629,186 impressions, $154,941.79 cost, and 1,842 clicks.
+
+<details>
+<summary>Paths — FY26 Q2/Q3 historical Basis UTM coverage</summary>
+
+- [Basis delivery-to-UTM SQL](scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql)
+- [Basis UTM verification query](scripts/sql/qa__repo_stg__basis_plus_utms_fy26_q2_q3.sql)
+- [MFT pipeline README](README.md)
+- [Basis UTM loader](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r>)
+- [FY26 Q2/Q3 promotion SQL](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/load_basis_utms_unioned_0929_from_fy26_q2_q3.sql>)
+
+</details>
+
 ## 2026-07-20
 
 ### Fixed
@@ -42,7 +64,6 @@ Verification: the landing table contains 331 distinct assignments, including 322
 
 ### Pending Next Actions
 
-- **Since Jul 16** - Verify Q2/Q3 UTM population after Basis delivery begins supplying `MASSMUTUAL005` placements - BLOCKER
 - **Since Jul 1** - Build a Looker-owned replacement refresh for `landing.basis_master` before attempting an MFT Basis cutover
 - **Since Jul 1** - Create an isolated QA version of the MFT Basis branch and compare it to the current client-facing output before approval
 

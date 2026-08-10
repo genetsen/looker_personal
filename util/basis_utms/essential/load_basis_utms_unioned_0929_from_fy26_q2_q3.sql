@@ -12,6 +12,15 @@ SET target_rows_before = (
   FROM `looker-studio-pro-452620.landing.basis_utms_unioned-0929`
 );
 
+CREATE TEMP TABLE source_rows AS
+SELECT *
+FROM `looker-studio-pro-452620.landing.basis_utms_pivoted_fy26_q2_q3_previous`
+
+UNION ALL
+
+SELECT *
+FROM `looker-studio-pro-452620.landing.basis_utms_pivoted_fy26_q2_q3`;
+
 CREATE TEMP TABLE rows_to_insert AS
 SELECT DISTINCT
   CAST(src.line_item AS STRING) AS line_item,
@@ -28,7 +37,7 @@ SELECT DISTINCT
   ) AS size,
   CAST(src.formats AS STRING) AS formats,
   CAST(src.url AS STRING) AS url
-FROM `looker-studio-pro-452620.landing.basis_utms_pivoted_fy26_q2_q3` AS src
+FROM source_rows AS src
 WHERE src.name IS NOT NULL
   AND TRIM(CAST(src.name AS STRING)) != ''
   AND src.url IS NOT NULL
