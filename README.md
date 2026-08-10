@@ -56,6 +56,7 @@ Instruction files policy:
 - Basis delivery now refreshes the Looker-owned `repo_stg.basis_master2` table from the Looker-owned external Google Sheets table `repo_stg.basis_gsheet2`; the main Looker Basis views read `repo_stg.basis_master2` instead of the sunset-risk Giant Spoon master table.
 - Basis, DCM, and master model handoff documentation ([Basis, DCM, and master data model pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/BASIS_DCM_MASTER_DATA_MODEL_PIPELINE.md)) explains the current boundary between Looker-owned Basis delivery, DCM cost-model inputs, `final_views.joined_dcmBasis`, and the master data model.
 - TV Gmail loaders (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md`) documenting the shared local and national estimate-ingestion flow into `landing.tv_local_estimates` and `landing.tv_national_estimates`
+- FPD, WP, and the TV loaders now use the consolidated Google login as their primary R authentication route. Their prior cached-token routes remain available as fallbacks, and the TV loaders continue to use their established Gmail authentication separately.
 
 TV national Gmail loader note:
 

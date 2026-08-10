@@ -1,10 +1,10 @@
 ## 2026-08-10
 
-**FPD publishing now fails closed and preserves blank numeric metrics** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [shortcut-aware FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves established warehouse types for completely blank metrics and stops when a production BigQuery job fails or cannot be verified. A full live run published Purely Elizabeth through August 7, and matching totals were verified in the production landing table, master V3, west-region stored copy, and Purely reporting view. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/tests/test_fpd_bigquery_safety.R)
+**FPD publishing now fails closed, preserves blank numeric metrics, and runs through the canonical scheduler** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [shortcut-aware FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves established warehouse types for completely blank metrics, stops when a production BigQuery job fails or cannot be verified, prefers the consolidated Google login with the prior cached credentials retained as fallback, and resolves its safety helper correctly when sourced by the universal runner. The canonical runner completed 19 of 19 workloads successfully. Purely Elizabeth through August 7 reconciled at 15,328,236 impressions and $68,167.14 spend in the production FPD table and both refreshed master models. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/tests/test_fpd_bigquery_safety.R)
 
 ### Pending Next Actions
 
-- **Since Jul 28** - Reconcile and remove the superseded FPD side branches and stashed guard prototype after canonical branch preservation is proven - BLOCKER
+- **Since Jul 28** - Reconcile and remove any remaining superseded FPD preservation surfaces after canonical branch coverage is proven - BLOCKER
 
 ## 2026-07-10
 

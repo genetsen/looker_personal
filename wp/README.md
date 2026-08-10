@@ -16,6 +16,7 @@ In plain English: WP is now the first source for Apollo social/search/video deli
 | Agency campaign exclusion | Campaign names containing `1000heads`, case-insensitive, are removed in the shared-social production builder before the rows can feed the master model. | This is a source exclusion, not a dashboard filter or zeroed-out row. |
 | Pending source-owner clarification | Cross-campaign records sharing date/platform/ad ID are included and flagged `publish_pending_source_owner_review`. | Keep the flag visible until the source owner confirms the correct ownership rule. |
 | Dates | Uses `Report Start Date` as the reporting date. | Placeholder flight-date fields are intentionally ignored. |
+| Authentication | Uses the consolidated Google login for Sheets and BigQuery first, with the prior cached package credentials retained as fallback. | The canonical runner loaded 24,992 rows successfully on 2026-08-10. |
 
 ## Folder Inventory
 

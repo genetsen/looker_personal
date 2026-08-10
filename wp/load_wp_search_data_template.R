@@ -97,8 +97,20 @@ suppressPackageStartupMessages({
   # Description: Use the visible report for facts and hidden import only for IDs.
 
   # ? Authenticate to the workbook using the established cached Sheets path
-    gs4_auth(email = AUTH_EMAIL)
-    drive_auth(email = AUTH_EMAIL)
+    gspoon_ok <- tryCatch({
+      source("/Users/eugenetsenter/.config/gspoon_google_auth/google_auth.R")
+      !is.null(gspoon_google_auth(
+        packages = c("googledrive", "googlesheets4", "bigrquery"),
+        fallback = TRUE
+      ))
+    }, error = function(e) {
+      message("gspoon-auth fallback: ", conditionMessage(e))
+      FALSE
+    })
+    if (!gspoon_ok) {
+      gs4_auth(email = AUTH_EMAIL)
+      drive_auth(email = AUTH_EMAIL)
+    }
     sheet_url <- paste0("https://docs.google.com/spreadsheets/d/", SHEET_ID)
     loaded_at <- Sys.time()
 
@@ -138,7 +150,9 @@ suppressPackageStartupMessages({
 
   # ? Upload the normalized rows to the selected BigQuery table when enabled
     if (UPLOAD_ENABLED) {
-      bq_auth(email = AUTH_EMAIL)
+      if (!gspoon_ok) {
+        bq_auth(email = AUTH_EMAIL)
+      }
       target <- bq_table(PROJECT_ID, DATASET_ID, TABLE_ID)
       bq_table_upload(
         target,

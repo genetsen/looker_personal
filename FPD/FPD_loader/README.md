@@ -31,9 +31,11 @@ Rscript util_collect_fpd_shortcutsFolder.r --pattern="APO | Partner Data"
 Rscript manually_updated_data_loader.r
 ```
 
-On first run, a browser window will open for Google OAuth. Subsequent runs use the cached token.
+The loader first uses the consolidated Google login for Drive, Sheets, and BigQuery. If that shared route is unavailable, the established package-level cached-token authentication remains the fallback.
 
 Default behavior now starts from Phase 1 with a fresh run. Reusing saved phase outputs is for debugging only.
+
+The loader can run directly or be sourced by the universal runner. In either case, it locates the mandatory BigQuery safety helper beside the loader before any production work begins.
 
 ## Safe Run Checklist (Beginner)
 
@@ -171,8 +173,9 @@ Partner sheets can use different column names — the pipeline normalizes them (
 
 ### Authentication
 
-- **Google Drive/Sheets**: OAuth via `googledrive` and `googlesheets4`. First run opens a browser for consent; token is cached for subsequent runs.
-- **BigQuery**: Uses `bigrquery` with project `looker-studio-pro-452620`.
+- **Primary shared route**: The consolidated Google login authenticates `googledrive`, `googlesheets4`, and `bigrquery` together.
+- **Fallback route**: If the consolidated login cannot be used, the loader leaves the established cached package credentials in control.
+- **BigQuery project**: `bigrquery` writes to project `looker-studio-pro-452620`.
 
 ## Outputs
 
@@ -435,11 +438,11 @@ Packages without a matching Prisma date range are skipped with a warning.
 
 **Symptom**: `Error in gargle::token_fetch()` or browser doesn't open.
 
-**Fix**: Delete the cached token and re-authenticate:
+**Fix**: First verify the consolidated Google login is healthy. If the loader explicitly reports that it used the fallback and the fallback also fails, refresh the established package credentials:
 ```r
 googledrive::drive_deauth()
 googlesheets4::gs4_deauth()
-# Then re-run — a new browser auth window will appear
+# Then re-run and complete the package authentication prompt if one appears
 ```
 
 ### "No header found" for a Sheet
@@ -493,7 +496,7 @@ sum(phase7$spend, na.rm = TRUE)
 **Symptom**: `"ERROR writing to BigQuery"` in console output.
 
 **Possible causes**:
-- Authentication expired — run `bigrquery::bq_auth()` to refresh
+- Both the consolidated Google login and the established `bigrquery` fallback are unavailable; restore the shared login first, or refresh the fallback with `bigrquery::bq_auth()`
 - Schema mismatch — the table schema changed (new columns or type changes). The `WRITE_TRUNCATE` mode recreates the table, but the preceding `bq_table_delete` might fail on permissions
 - Network timeout — retry the run
 

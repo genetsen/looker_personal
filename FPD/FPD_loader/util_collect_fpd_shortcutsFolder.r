@@ -29,14 +29,48 @@ library(lubridate)
 library(janitor)
 
 # Load mandatory BigQuery publication safeguards from this loader's directory.
+# When this file is sourced by the universal runner, commandArgs() identifies
+# the runner rather than this loader, so prefer the nearest source-frame path.
 # A missing or invalid helper stops the run before any production write begins.
+fpd_source_files <- vapply(
+  rev(sys.frames()),
+  function(frame) {
+    if (is.null(frame$ofile) || length(frame$ofile) != 1) {
+      return(NA_character_)
+    }
+    as.character(frame$ofile)
+  },
+  character(1)
+)
+fpd_source_files <- fpd_source_files[!is.na(fpd_source_files) & nzchar(fpd_source_files)]
+
 loader_file_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
-fpd_loader_dir <- if (length(loader_file_arg) > 0) {
-  dirname(normalizePath(sub("^--file=", "", loader_file_arg[[length(loader_file_arg)]])))
+loader_file_path <- if (length(loader_file_arg) > 0) {
+  sub("^--file=", "", loader_file_arg[[length(loader_file_arg)]])
 } else {
-  normalizePath(getwd())
+  character(0)
 }
-source(file.path(fpd_loader_dir, "fpd_bigquery_safety.R"), local = globalenv())
+
+fpd_loader_dir_candidates <- unique(c(
+  dirname(fpd_source_files),
+  dirname(loader_file_path),
+  getwd()
+))
+fpd_safety_candidates <- file.path(
+  fpd_loader_dir_candidates,
+  "fpd_bigquery_safety.R"
+)
+fpd_safety_matches <- fpd_safety_candidates[file.exists(fpd_safety_candidates)]
+
+if (length(fpd_safety_matches) == 0) {
+  stop(
+    "FPD safety helper not found beside the sourced loader, top-level script, or working directory."
+  )
+}
+
+fpd_safety_path <- normalizePath(fpd_safety_matches[[1]])
+fpd_loader_dir <- dirname(fpd_safety_path)
+source(fpd_safety_path, local = globalenv())
 
 cat ("\n-----------\n First party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
 
@@ -823,6 +857,21 @@ ensure_prod_schema_matches <- function(data_upload, project_id, dataset_id, prod
 
   get_table_field_types(project_id, dataset_id, prod_table)
 }
+
+#### GOOGLE AUTHENTICATION (consolidated login, new-primary / old-fallback) ####
+# Primary: authenticate googledrive/googlesheets4/bigrquery via the durable
+# consolidated Google login. If it fails for any reason, gspoon_ok stays FALSE
+# and gargle's pre-existing implicit cached-token auth is used unchanged.
+gspoon_ok <- tryCatch({
+  source("/Users/eugenetsenter/.config/gspoon_google_auth/google_auth.R")
+  !is.null(gspoon_google_auth(
+    packages = c("googledrive", "googlesheets4", "bigrquery"),
+    fallback = TRUE
+  ))
+}, error = function(e) {
+  message("gspoon-auth fallback: ", conditionMessage(e))
+  FALSE
+})
 
 ################################################################################
 #### PHASE 1: GOOGLE DRIVE DISCOVERY ####

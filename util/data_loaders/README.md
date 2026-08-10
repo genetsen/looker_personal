@@ -64,12 +64,14 @@ Expected TV-loader result if a run succeeds:
 
 ## Authentication And Access
 
-The TV loaders depend on local Gmail and BigQuery authentication. The RTL compatibility refresh needs BigQuery access only.
+The TV loaders keep their established Gmail authentication for message and attachment access. Their BigQuery writes now prefer the consolidated Google login, with the prior cached `bigrquery` credentials retained as fallback. The RTL compatibility refresh needs BigQuery access only.
 
 They need access to:
 
 - Gmail, to search messages and download attachments
 - BigQuery, to replace the destination table
+
+This split is intentional: the shared login change covers BigQuery only and does not replace or broaden the working Gmail route.
 
 Packages used across the folder:
 
