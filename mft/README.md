@@ -553,7 +553,15 @@ CREATE OR REPLACE TABLE `looker-studio-pro-452620.mass_mutual_mft_ext.mft_data_c
 SELECT
   date,
   campaign,
-  COALESCE(REGEXP_EXTRACT(placement_name, r'\(\s*([A-Za-z]+)'), utm_source) AS partner,
+  CASE
+    WHEN utm_source = 'basis'
+      AND COALESCE(REGEXP_EXTRACT(placement_name, r'\(\s*([A-Za-z]+)'), utm_source) IN ('S', 'UpperFunnel')
+      THEN COALESCE(
+        NULLIF(REGEXP_EXTRACT(placement_name, r'_PMP\(([^)]*)\)'), ''),
+        COALESCE(REGEXP_EXTRACT(placement_name, r'\(\s*([A-Za-z]+)'), utm_source)
+      )
+    ELSE COALESCE(REGEXP_EXTRACT(placement_name, r'\(\s*([A-Za-z]+)'), utm_source)
+  END AS partner,
   placement_name,
   utm_source,
   utm_medium,
@@ -586,7 +594,7 @@ This mart view remains the unioned transformation layer and feeds the endpoint b
 |--------|------|-------------|
 | `date` | DATE | Delivery date |
 | `campaign` | STRING | Campaign name |
-| `partner` | STRING | Partner/publisher extracted from placement or fallback to `utm_source` |
+| `partner` | STRING | Partner/publisher extracted from placement or fallback to `utm_source`; Basis rows incorrectly labeled `S` or `UpperFunnel` use the publisher inside `PMP(...)`. |
 | `placement_name` | STRING | Placement identifier |
 | `utm_source` | STRING | Traffic source |
 | `utm_medium` | STRING | Marketing medium |
@@ -1171,4 +1179,4 @@ For questions or issues with this pipeline, contact the data engineering team.
 - [Basis UTMs Diagram](../util/basis_utms/archive/b_utms_diagram.md) - Legacy diagram
 - [DCM Cost Model](../sql/base/dcm/) - Shared DCM processing
 
-**Last Updated**: July 20, 2026
+**Last Updated**: August 10, 2026

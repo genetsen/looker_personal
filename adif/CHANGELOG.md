@@ -1,3 +1,19 @@
+## 2026-08-10
+
+**Restored ADIF scheduled-refresh documentation is current on the canonical branch** ([Runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/README.md)) — 🟢 **Verified and committed**<br>The [main ADIF refresh](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README.md) documentation now records the repaired 148-column contract and today’s successful every-10-hours production run. The live table contains 27,365 rows through August 10; `campaign_public_id` is column 39, is populated on 23,602 non-social rows, and remains blank across all 3,763 social rows.
+
+### Pending Next Actions
+
+- **Since Aug 6** - Make future upstream field additions fail a schema check before they can interrupt the scheduled refresh - RECOMMENDED
+
+## 2026-08-06
+
+**Main ADIF scheduled refresh restored after Prisma schema growth** ([Runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/projects/social_layering/README.md)) — 🟢 **Verified and committed**<br>The [main ADIF refresh](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/adif/README.md) now carries Prisma's `campaign_public_id` through digital rows while keeping the field blank for social rows, and a production transfer rebuilt the reporting table on its existing every-10-hours schedule.
+
+### Pending Next Actions
+
+- **Since Aug 6** - Make future upstream field additions fail a schema check before they can interrupt the scheduled refresh - RECOMMENDED
+
 ## 2026-06-26
 
 ### Changed

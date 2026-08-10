@@ -1,0 +1,38 @@
+{
+  "keys": [
+    "date",
+    "campaign",
+    "placement_name",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term"
+  ],
+  "metrics": ["Cost", "Impressions", "Clicks", "video_audio_plays", "video_audio_fully_played"],
+  "comparison_dimensions": ["campaign", "placement_name", "utm_source"],
+  "high_risk_metrics": ["Cost", "Impressions", "Clicks"],
+  "high_risk_dimensions": ["partner", "campaign", "placement_name"],
+  "allowed_deltas": {
+    "row_count": {"max_abs_delta": 0, "max_abs_pct": 0.0},
+    "Cost": {"max_abs_delta": 0.000001},
+    "Impressions": {"max_abs_delta": 0, "max_abs_pct": 0.0},
+    "Clicks": {"max_abs_delta": 0, "max_abs_pct": 0.0},
+    "video_audio_plays": {"max_abs_delta": 0, "max_abs_pct": 0.0},
+    "video_audio_fully_played": {"max_abs_delta": 0, "max_abs_pct": 0.0},
+    "distinct_campaign": {"max_abs_delta": 0},
+    "distinct_placement_name": {"max_abs_delta": 0},
+    "distinct_utm_source": {"max_abs_delta": 0},
+    "distinct_partner": {"max_abs_delta": 0}
+  },
+  "key_overlap_tolerance": {"max_baseline_only": 2909, "max_candidate_only": 2909},
+  "custom_checks": [
+    {
+      "name": "no_remaining_basis_placeholder_partner_labels",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(*) AS value FROM {table} WHERE utm_source = 'basis' AND partner IN ('S', 'UpperFunnel') AND REGEXP_CONTAINS(placement_name, r'_PMP\\(')",
+      "equals": 0
+    }
+  ]
+}

@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-08-10
+
+**Automated SPINS sales refresh source is now preserved on the canonical branch** ([Apps Script](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/download_purely_elizabeth_sales_attachment.gs)) — 🟢 **Verified and committed**<br>The complete [Purely Elizabeth sales workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#scheduled-bigquery-refresh)—Gmail selection, dated Drive and Cloud Storage preservation, guarded BigQuery refresh, three sales views, and the master weekly table—is available on `dev`. Local syntax and file-integrity checks passed; the live 34,042-row July 12 snapshot has zero duplicate keys, matches its selected external file, and is reflected consistently in all downstream sales outputs after the August 10 scheduled rebuild. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/sales_data_current.qa.json)
+
+- **⚠️ Unverified** - No newer sales email was ingested during this source-integration check; the selected SPINS sales snapshot remains July 12, 2026.
+
+### Pending Next Actions
+
+- **Since Jul 30** - Connect the production sales views to the sales dashboard
+
+## 2026-08-03
+
+**Weekly SPINS delivery now refreshes the complete BigQuery reporting path automatically** ([Workflow guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/PURELY_ELIZABETH_SALES_REFRESH_WORKFLOW.docx)) — 🟢 **Verified and committed**<br>The [weekly sales refresh workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#scheduled-bigquery-refresh) now carries Tess Vargas's newest valid `Data thru M.D.YY` tab from Gmail through a create-only dated Cloud Storage snapshot into guarded six-hour BigQuery refreshes, loading every row from the latest file without imposing a fixed rolling-week count; the live source and master refreshes reconcile reporting to that selected file with no duplicate keys, and a linked plain-language guide explains the complete path. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/sales_data_current.qa.json)
+
+### Pending Next Actions
+
+- **Since Jul 30** - Connect the production sales views to the sales dashboard
+
+## 2026-07-30
+
+**Production sales views published** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/create_sales_by_category_subcategory_brand_weekly.sql)) — 🟢 **Verified**<br>The [production sales views](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#production-sales-comparison-views) use the original SPINS terminology, clearly separate individual-UPC comparisons from summarized category, subcategory, and Brand totals, and now include source-reconciled dollars, units, and TDP in the summarized view. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/create_sales_upc_comparison_weekly.sql)
+
+### Pending Next Actions
+
+- **Since Jul 14** - Decide and implement the weekly SPINS source-file refresh workflow - DONE
+- **Since Jul 30** - Connect the production sales views to the sales dashboard
+
 ## 2026-07-20
 
 - **CHANGED** - Restored `sales_dollars` and `sales_tdp` as temporary compatibility copies of the Protein Granola-only `product_group_sales_dollars` and `product_group_tdp` fields. Existing dashboards can continue working while they migrate; new dashboard work should use the replacement names.
@@ -13,7 +40,7 @@ Notable Purely Elizabeth reporting changes are recorded here.
 
 ### Pending Next Actions
 
-- **Since Jul 14** - Decide and implement the weekly SPINS source-file refresh workflow - RECOMMENDED
+- **Since Jul 14** - Decide and implement the weekly SPINS source-file refresh workflow - DONE
 
 ## 2026-07-16
 
@@ -33,4 +60,4 @@ Notable Purely Elizabeth reporting changes are recorded here.
 
 ### Pending Next Actions
 
-- **Since Jul 14** - Decide and implement the weekly SPINS source-file refresh workflow - RECOMMENDED
+- **Since Jul 14** - Decide and implement the weekly SPINS source-file refresh workflow - DONE

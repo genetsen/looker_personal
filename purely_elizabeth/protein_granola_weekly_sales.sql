@@ -1,5 +1,5 @@
 -- Purpose: Define weekly Purely Elizabeth Total Brand, Brand Granola, and Protein Granola sales.
--- Reads: PE.sales_data_260709.
+-- Reads: PE.sales_data_current.
 -- Produces: One row per week combining MULO and Natural Expanded for three named sales comparisons.
 -- Safety: Validate with the paired QA manifest before replacing the live view.
 
@@ -41,7 +41,7 @@ SELECT
     tdp,
     0
   )), 1) AS protein_granola_tdp
-FROM `looker-studio-pro-452620.PE.sales_data_260709`
+FROM `looker-studio-pro-452620.PE.sales_data_current`
 WHERE geography IN ('TOTAL US - MULO', 'TOTAL US - NATURAL EXPANDED CHANNEL')
   AND brand = 'PURELY ELIZABETH'
 GROUP BY time_period_end_date

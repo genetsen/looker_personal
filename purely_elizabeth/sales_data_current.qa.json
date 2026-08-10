@@ -1,0 +1,115 @@
+{
+  "keys": [
+    "geography",
+    "time_period",
+    "time_period_end_date",
+    "product_universe",
+    "product_level",
+    "category",
+    "subcategory",
+    "brand",
+    "upc",
+    "description",
+    "flavor",
+    "nfp_protein",
+    "product_type",
+    "packaging_type_primary",
+    "size"
+  ],
+  "metrics": [
+    "dollars",
+    "units",
+    "avg_percent_acv",
+    "tdp",
+    "number_of_stores_selling",
+    "average_weekly_dollars_per_store_selling_per_item",
+    "average_weekly_units_per_store_selling_per_item"
+  ],
+  "derived_metrics": [],
+  "comparison_dimensions": [
+    "geography",
+    "product_level",
+    "category",
+    "subcategory",
+    "brand"
+  ],
+  "high_risk_metrics": [
+    "dollars",
+    "units",
+    "avg_percent_acv",
+    "tdp",
+    "number_of_stores_selling"
+  ],
+  "high_risk_dimensions": [
+    "geography",
+    "product_level",
+    "brand",
+    "upc"
+  ],
+  "allowed_deltas": {},
+  "custom_checks": [
+    {
+      "name": "candidate_row_count_matches_selected_external_file",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT COUNT(*) FROM {table}) - (SELECT COUNT(*) FROM `looker-studio-pro-452620.PE.sales_data_bigquery_ready_external` WHERE _FILE_NAME = (SELECT ANY_VALUE(_source_object) FROM {table}))) AS value",
+      "expected_max": 0
+    },
+    {
+      "name": "candidate_dollars_match_selected_external_file",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT SUM(dollars) FROM {table}) - (SELECT SUM(SAFE_CAST(REPLACE(REPLACE(REPLACE(NULLIF(TRIM(dollars), ''), ',', ''), '$', ''), '%', '') AS FLOAT64)) FROM `looker-studio-pro-452620.PE.sales_data_bigquery_ready_external` WHERE _FILE_NAME = (SELECT ANY_VALUE(_source_object) FROM {table}))) AS value",
+      "expected_max": 0.01
+    },
+    {
+      "name": "candidate_units_match_selected_external_file",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT SUM(units) FROM {table}) - (SELECT SUM(SAFE_CAST(REPLACE(REPLACE(REPLACE(NULLIF(TRIM(units), ''), ',', ''), '$', ''), '%', '') AS FLOAT64)) FROM `looker-studio-pro-452620.PE.sales_data_bigquery_ready_external` WHERE _FILE_NAME = (SELECT ANY_VALUE(_source_object) FROM {table}))) AS value",
+      "expected_max": 0.01
+    },
+    {
+      "name": "candidate_tdp_matches_selected_external_file",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT SUM(tdp) FROM {table}) - (SELECT SUM(SAFE_CAST(REPLACE(REPLACE(REPLACE(NULLIF(TRIM(tdp), ''), ',', ''), '$', ''), '%', '') AS FLOAT64)) FROM `looker-studio-pro-452620.PE.sales_data_bigquery_ready_external` WHERE _FILE_NAME = (SELECT ANY_VALUE(_source_object) FROM {table}))) AS value",
+      "expected_max": 0.01
+    },
+    {
+      "name": "candidate_latest_date_matches_source_filename",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(DATE_DIFF(MAX(time_period_end_date), MAX(_source_snapshot_date), DAY)) AS value FROM {table}",
+      "expected_max": 0
+    },
+    {
+      "name": "candidate_uses_one_source_object",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(DISTINCT _source_object) AS value FROM {table}",
+      "equals": 1
+    },
+    {
+      "name": "candidate_required_fields_are_present",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(geography IS NULL OR time_period_end_date IS NULL OR product_level IS NULL OR dollars IS NULL OR units IS NULL OR avg_percent_acv IS NULL OR tdp IS NULL OR number_of_stores_selling IS NULL) AS value FROM {table}",
+      "expected_max": 0
+    },
+    {
+      "name": "candidate_contains_expected_25_fields",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COUNT(*) - 25) AS value FROM `looker-studio-pro-452620.PE.INFORMATION_SCHEMA.COLUMNS` WHERE table_name = 'sales_data_current_qa'",
+      "expected_max": 0
+    }
+  ],
+  "downstream_objects": [
+    "looker-studio-pro-452620.PE.protein_granola_weekly_sales",
+    "looker-studio-pro-452620.PE.sales_by_category_subcategory_brand_weekly",
+    "looker-studio-pro-452620.PE.sales_upc_comparison_weekly",
+    "looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly"
+  ],
+  "downstream_checks": []
+}

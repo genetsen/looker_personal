@@ -36,8 +36,8 @@ flowchart LR
 - Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
 - Display name: `ADIF_FullDataRefresh_2604`
 - Schedule: `every 10 hours`
-- Verified on: `2026-04-10`
-- Live target table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Verified on: `2026-08-10`
+- Live target table: [`looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2srepo_stg!3sadif__mainDataTable_notebook_v2_test)
 
 ## Historical Notebook Copies and Archived SQL
 
@@ -59,6 +59,7 @@ flowchart LR
   - Normalizes social platform to `meta` / `tiktok`
   - Maps `ad_set -> package`, `ad -> placement`
   - Computes package pacing rollups and over/under flags
+  - Keeps `campaign_public_id` as `NULL` so the social schema aligns with the Prisma-backed digital branch without inventing a Prisma identifier
   - Unions social rows into the rebuilt target table inside the V2 single-pass scheduled query
 
 ### `repo_int.crossplatform_pacing` upstream views used by live scheduled-query logic
@@ -68,12 +69,13 @@ flowchart LR
 
 ## Verification Notes
 
-Warehouse-side verification completed on `2026-04-10`:
+Live production verification completed on `2026-08-10`:
 
-- `repo_stg.adif__mainDataTable_notebook_v2_test` exists and had `16,701` rows at inspection time
-- `repo_stg.adif__mainDataTable_notebook` also exists and had `16,663` rows at inspection time
-- The V2 test table was modified on `2026-04-10T10:03:13Z`, which is newer than the older notebook table modification time `2026-04-06T14:02:15Z`
-- `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`, `repo_stg.stg__adif__social_crossplatform`, and `repo_int.crossplatform_pacing` still match the documented live lineage chain
+- Scheduled transfer run `6a96ea99-0000-24c4-9529-f4f5e806ee30` succeeded through the real `ADIF_FullDataRefresh_2604` entrypoint from `2026-08-10T12:03:01Z` to `2026-08-10T12:04:16Z`.
+- The [main ADIF table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2srepo_stg!3sadif__mainDataTable_notebook_v2_test) contains `27,365` rows, `148` final columns, and report data through `2026-08-10`.
+- The digital and social branches both emit `142` columns before later calculated fields are added.
+- `campaign_public_id` is column `39`, between `campaign_name` and `supplier_code`; `23,602` non-social rows carry a value and all `3,763` social rows remain `NULL`.
+- The transfer configuration reports `SUCCEEDED`, retains its every-10-hours schedule, and keeps failure email enabled.
 
 Historical notebook copies still contain useful validation queries for:
 - Table totals (`row_count`, `min_date`, `max_date`, `total_spend`, `total_impressions`) for 2026

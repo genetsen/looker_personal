@@ -17,6 +17,22 @@ All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clo
   - Production proof: `UTM UPDATES` run `6a69a125-0000-26de-bc4e-24058872e074` succeeded; `ext_mm_mft_scheadule_s2` run `6a6e7cab-0000-280f-a549-94eb2c0b009e` succeeded; the deployed Basis view has zero distinct tested-row differences from the guarded candidate.
   - Final output: the live mart and refreshed stored table each contain 11,533 FY26 Q2/Q3 report rows, zero missing report keys, 4,629,186 impressions, $154,941.79 cost, and 1,842 clicks.
 
+- **Basis Partner labels in MFT reporting**
+  - Issue: Basis placements with an earlier funnel or sequencing parenthetical appeared as `S` or `UpperFunnel` instead of the publisher inside `PMP(...)`.
+  - Cause: the active scheduled-query expression extracted the first parenthetical in each placement name.
+  - Resolution: preserved the deployed narrow Basis-only branch in canonical source. It replaces only `S` and `UpperFunnel` labels with the exact `PMP(...)` publisher; every other existing Partner label remains unchanged.
+  - Current proof: the SQL Change Guard passed with zero failures against the live 204,480-row table. The live output contains 126,193 Basis PMP rows through August 9 and zero remaining affected placeholders.
+
+<details>
+<summary>Paths — Basis Partner labels in MFT reporting</summary>
+
+- [Scheduled-query SQL](scripts/sql/mft__scheduled_query__partner_label_fix.sql)
+- [Partner-label candidate query](scripts/sql/qa__mft_partner_label_candidate.sql)
+- [Partner-label validation manifest](scripts/sql/qa__mft_partner_label_change_manifest.json)
+- [MFT pipeline README](README.md)
+
+</details>
+
 ### Changed
 
 - Basis UTM maintenance guidance (`[BASE]/README.md` and the parent Basis UTM utility README)

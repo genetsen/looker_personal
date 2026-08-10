@@ -88,8 +88,8 @@ The main live ADIF refresh runs from a BigQuery scheduled query. The older noteb
 - Transfer config: `projects/671028410185/locations/us/transferConfigs/6a40bbfa-0000-2ee2-a61f-582429bc84e0`
 - Display name: `ADIF_FullDataRefresh_2604`
 - Schedule: `every 10 hours`
-- Verified against live BigQuery on: `2026-04-10`
-- Current live output table: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`
+- Verified against live BigQuery on: `2026-08-10`
+- Current live output table: [`looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook_v2_test`](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2srepo_stg!3sadif__mainDataTable_notebook_v2_test)
 - Older notebook-era table that still exists: `looker-studio-pro-452620.repo_stg.adif__mainDataTable_notebook`
 
 What the live scheduled query does:
@@ -98,6 +98,8 @@ What the live scheduled query does:
 2. Reads normalized social data from `repo_stg.stg__adif__social_crossplatform`.
 3. Reads pacing data from `repo_int.crossplatform_pacing`.
 4. Rebuilds `repo_stg.adif__mainDataTable_notebook_v2_test` in one pass using the V2 single-query flow.
+
+The digital and social branches now share one 142-column union contract. `campaign_public_id` comes from Prisma on digital rows and remains `NULL` on social rows, where that Prisma identifier does not apply.
 
 Why this matters:
 
@@ -256,12 +258,12 @@ flowchart LR
 
 ### Verification Notes
 
-Warehouse-side verification completed on `2026-04-10`:
+Live production verification completed on `2026-08-10`:
 
-- `repo_stg.adif__mainDataTable_notebook_v2_test` exists, had `16,701` rows, and was last modified on `2026-04-10T10:03:13Z`
-- `repo_stg.adif__mainDataTable_notebook` also still exists, had `16,663` rows, and was last modified on `2026-04-06T14:02:15Z`
-- `repo_stg.adif__prisma_expanded_plus_dcm_updated_fpd_view`, `repo_stg.stg__adif__social_crossplatform`, and `repo_int.crossplatform_pacing` all still exist in production
-- The transfer config identifier and schedule remain documented here, but I could not re-check scheduler-service metadata from this environment because neither `bq` nor `gcloud` is installed
+- Scheduled transfer run `6a96ea99-0000-24c4-9529-f4f5e806ee30` succeeded through `ADIF_FullDataRefresh_2604` from `2026-08-10T12:03:01Z` to `2026-08-10T12:04:16Z`.
+- The [main ADIF table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2srepo_stg!3sadif__mainDataTable_notebook_v2_test) was rebuilt with `27,365` rows, `148` final columns, and report data through `2026-08-10`.
+- `campaign_public_id` is a `STRING` at column `39`, between `campaign_name` and `supplier_code`; it is populated for `23,602` non-social rows and remains `NULL` for all `3,763` social rows.
+- The transfer remains scheduled every 10 hours with failure email enabled, and the documented digital, social, and pacing sources completed successfully in the production run.
 
 Historical notebook copies still include post-run checks for:
 - Target table row/date/spend/impression totals
