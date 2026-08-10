@@ -6,6 +6,8 @@
 
 **Apollo LinkedIn identity is canonical across every production model layer** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The [master data model](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) reports LinkedIn rows whose source account is `Apollo Corporate` under the canonical advertiser `Apollo`, while retaining the original account text. All 22,406 matching rows are correct in the base, clustered, and V3 layers with zero incorrect labels and both raw account spellings preserved. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/tests/test_apollo_advertiser_normalization.R)
 
+**Master-model agent guidance is preserved on the canonical branch** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/CLAUDE.md)) — 🟢 **Verified and committed**<br>The [master-model workspace guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now gives Claude Code the recovered model map, deployment boundary, runner entrypoint, Manual Package Editor rules, and field-lineage warnings while keeping `AGENTS.md` explicitly authoritative.
+
 ### Pending Next Actions
 
 - **Since Aug 6** - Reconcile preserved master-model, reporting, and loader work into the canonical branch before deleting the remaining preservation branches - BLOCKER

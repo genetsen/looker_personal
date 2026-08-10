@@ -13,6 +13,11 @@ Start in [model](./model/) for current work. It organizes the project by functio
 
 The organized workspace is now the canonical local surface for runner-used master-model files. Legacy root-level files remain only where they are still needed for compatibility or history.
 
+Agent entrypoints:
+
+- [AGENTS.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/AGENTS.md) is the authoritative project rule file.
+- [CLAUDE.md](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/CLAUDE.md) gives Claude Code a concise architecture and workflow guide and explicitly defers to `AGENTS.md` when they differ.
+
 Interactive orientation:
 
 - [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
