@@ -6,6 +6,9 @@ All notable changes to this repository are documented in this file.
 
 **First-party data publishing, Apollo identity, master-model delivery, and shared runner authentication recovered** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves blank numeric warehouse fields, fails closed on unsuccessful BigQuery jobs, and removes warehouse rows only for Sheets explicitly named `ARCHIVE`, using the exact source URL while preserving merely missing sources. FPD, WP, and TV BigQuery access prefer the consolidated Google login while retaining their established cached-token fallbacks. The canonical runner completed 19 of 19 workloads successfully; Purely Elizabeth's August 7 rows reconciled at 15,328,236 impressions and $68,167.14 spend, and its full MIQ feed reconciled across the landing, base, clustered, and V3 models. Apollo's 22,406 LinkedIn rows use the canonical advertiser `Apollo` in all three model layers while retaining both raw account spellings. The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) also publishes planned delivery for eligible offline planned-only rows, with 409 live rows verified and the west-region reporting tables refreshed.
 
+**MFT historical UTM and WP workbook-tab repairs consolidated on the canonical branch** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql)) — 🟡 **Partially verified**<br>The [MFT workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md) now preserves the previously deployed historical/current FY26 mapping logic on `dev`; live QA has zero duplicate keys and zero missing reported UTM keys. The [WP workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md) now reads the live `Import_blend` tab under the newer shared-authentication path, and a no-write preview normalized 24,992 rows without the old fallback warning.
+- **⚠️ Unverified** - The WP production upload has not been rerun with the corrected `Import_blend` code path.
+
 ### Pending Next Actions
 
 - **Since Jul 28** - Reconcile all preserved side-branch and stash work into canonical branches before deleting those preservation surfaces - BLOCKER
@@ -13,6 +16,10 @@ All notable changes to this repository are documented in this file.
 - **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
 - **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
 - **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
+## 2026-07-27
+
+**WP delivery-workbook loader uses its current ID-source tab** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/load_wp_search_data_template.R)) — 🟢 **Verified and committed**<br>The [WP delivery-workbook workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md) now reads the verified `Import_blend` worksheet rather than a stale tab name, preventing the preview path from falling back to generated ad-group IDs. Production upload remains deliberately manual. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md)
 
 ## 2026-07-23
 

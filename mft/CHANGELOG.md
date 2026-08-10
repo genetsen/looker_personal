@@ -3,6 +3,10 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-08-10
+
+**Historical FY26 Basis UTM repair is now preserved on the canonical branch** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql)) — 🟢 **Verified and committed**<br>The [MFT reporting workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md) retains the approved June historical and July current mappings plus the unique official-source fallback. The live check has zero duplicate keys and zero missing reported UTM keys, with its source and enriched outputs reconciling at 15,203 rows, 4,631,190 impressions, $161,195.07 media cost, and 1,874 clicks. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/qa__repo_stg__basis_plus_utms_fy26_q2_q3.sql)
+
 ## 2026-07-23
 
 ### Fixed

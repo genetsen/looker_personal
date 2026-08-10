@@ -6,7 +6,7 @@
 #   for WP-first shared-social delivery and validation. The source workbook
 #   title is still APO Search Data Template.
 # Inputs:
-#   Google Sheet tabs `Report` and `Import` from the configured workbook.
+#   Google Sheet tabs `Report` and `Import_blend` from the configured workbook.
 # Output and safe usage:
 #   Defaults to a read/preview run and a QA staging table. Set
 #   WP_SEARCH_UPLOAD=TRUE to replace the configured output. Production writes
@@ -94,7 +94,7 @@ suppressPackageStartupMessages({
 
 # * SECTION [2]: READ AND NORMALIZE WORKBOOK
 
-  # Description: Use the visible report for facts and hidden import only for IDs.
+  # Description: Use the visible report for facts and import blend only for IDs.
 
   # ? Authenticate to the workbook using the established cached Sheets path
     gspoon_ok <- tryCatch({
@@ -118,10 +118,10 @@ suppressPackageStartupMessages({
     report_rows <- read_sheet(SHEET_ID, sheet = "Report", col_names = TRUE, col_types = "c", .name_repair = "unique") %>%
       clean_names()
     import_rows <- tryCatch(
-      read_sheet(SHEET_ID, sheet = "Import", col_names = TRUE, col_types = "c", .name_repair = "unique") %>%
+      read_sheet(SHEET_ID, sheet = "Import_blend", col_names = TRUE, col_types = "c", .name_repair = "unique") %>%
         clean_names(),
       error = function(e) {
-        message("Import tab unavailable; using deterministic ad-group ID fallback. Detail: ", conditionMessage(e))
+        message("Import_blend tab unavailable; using deterministic ad-group ID fallback. Detail: ", conditionMessage(e))
         data.frame()
       }
     )
