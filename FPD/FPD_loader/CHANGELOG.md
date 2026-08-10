@@ -1,3 +1,11 @@
+## 2026-08-10
+
+**FPD publishing now fails closed and preserves blank numeric metrics** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [shortcut-aware FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves established warehouse types for completely blank metrics and stops when a production BigQuery job fails or cannot be verified. A full live run published Purely Elizabeth through August 7, and matching totals were verified in the production landing table, master V3, west-region stored copy, and Purely reporting view. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/tests/test_fpd_bigquery_safety.R)
+
+### Pending Next Actions
+
+- **Since Jul 28** - Reconcile and remove the superseded FPD side branches and stashed guard prototype after canonical branch preservation is proven - BLOCKER
+
 ## 2026-07-10
 
 - **CHANGED** - Added a local entry point to the partner-data Google Sheets template guide, so FPD loader users can reach the canonical master-data-model documentation without maintaining a duplicate copy.

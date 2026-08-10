@@ -59,9 +59,15 @@ Use this quick checklist before and after every run:
 ## What Changed / How To Undo
 
 - What changed:
-  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns and skipping blank-only accidental columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run, and character coercion for `partner_placement_name` so mixed text/date sheet cells can be combined safely.
+  the main loader now supports shortcut-aware discovery, a one-run `--pattern` override, default per-sheet cache reuse for unchanged files, staged BigQuery sync that updates only the sheets included in the current run while auto-adding safe new columns and skipping blank-only accidental columns in BigQuery, an in-pipeline APO `creative_git_link` refresh that runs during Phase 5 before BigQuery upload, a checkpoint-read safeguard that forces sparse rate columns like `ctr_vcr` back to numeric before later phases run, character coercion for `partner_placement_name` so mixed text/date sheet cells can be combined safely, production-schema preservation for completely blank numeric metrics, and a mandatory final BigQuery job check that stops the loader when a production query fails or cannot be verified.
 - How to undo:
-  if the shortcut-aware flow causes a bad result, restore the previous script version from Git and point daily runs back to the earlier loader entrypoint.
+  if the shortcut-aware flow causes a bad result, restore the previous script version from Git while retaining the numeric-type and final-job safeguards; do not route production back to an unchecked BigQuery wait.
+
+### BigQuery Publication Safety
+
+Before staging data, the loader compares completely blank incoming columns with the existing production schema. A blank metric such as `video_watch_time` stays numeric when production defines it as numeric, preventing an empty batch from changing that column to text.
+
+After every production BigQuery query, the loader checks the final structured job result. A rejected query, missing final result, or non-final state stops the R process with `DATA LOAD FAILURE` and the BigQuery job details. The safety helper is mandatory; if it is missing or invalid, the loader stops before production publishing begins.
 
 ## How It Works
 

@@ -28,6 +28,16 @@ library(readr)
 library(lubridate)
 library(janitor)
 
+# Load mandatory BigQuery publication safeguards from this loader's directory.
+# A missing or invalid helper stops the run before any production write begins.
+loader_file_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+fpd_loader_dir <- if (length(loader_file_arg) > 0) {
+  dirname(normalizePath(sub("^--file=", "", loader_file_arg[[length(loader_file_arg)]])))
+} else {
+  normalizePath(getwd())
+}
+source(file.path(fpd_loader_dir, "fpd_bigquery_safety.R"), local = globalenv())
+
 cat ("\n-----------\n First party data pipeline started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n-----------\n")
 
 #### CLI ARGUMENTS ####
@@ -2435,6 +2445,15 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
       # Normalize types before upload to avoid BigQuery autodetect edge-case failures.
       # Keep timestamps explicit and coerce non-standard/list/object columns to character.
       data_upload <- data
+      prod_field_types_before_upload <- get_table_field_types(
+        project_id,
+        dataset_id,
+        prod_table
+      )
+      data_upload <- coerce_blank_logicals_to_existing_numeric_types(
+        data_upload,
+        prod_field_types_before_upload
+      )
 
       # Ensure Date columns are plain Date and timestamp is POSIXct UTC.
       date_cols_upload <- intersect(c("date", "week", "month", "start_date", "end_date", "prisma_start_date", "prisma_end_date", "start_date_final", "end_date_final", "date_final"), names(data_upload))
@@ -2540,10 +2559,10 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
         query = create_sql,
         billing = project_id
       )
-      bq_job_wait(create_job)
+      wait_for_fpd_bq_job_success(create_job)
       cat("✓ Prod table created from staging:", prod_table, "\n")
     }, error = function(e) {
-      stop(paste0("Failed to create prod table from staging: ", e$message))
+      rethrow_fpd_bq_error(e, "Failed to create prod table from staging")
     })
   } else {
     staging_field_types <- get_table_field_types(project_id, dataset_id, staging_table)
@@ -2612,10 +2631,10 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
         query = sync_sql,
         billing = project_id
       )
-      bq_job_wait(sync_job)
+      wait_for_fpd_bq_job_success(sync_job)
       cat("✓ Prod table updated only for sheets in this run:", prod_table, "\n")
     }, error = function(e) {
-      stop(paste0("Failed incremental prod sync from staging: ", e$message))
+      rethrow_fpd_bq_error(e, "Failed incremental prod sync from staging")
     })
   }
 

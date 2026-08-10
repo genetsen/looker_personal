@@ -2,6 +2,18 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-10
+
+**First-party data publishing and Purely Elizabeth reporting recovered** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves blank numeric warehouse fields and treats failed or unverifiable BigQuery jobs as loader failures. Purely Elizabeth data through August 7 was verified with matching spend, impressions, and clicks across the production FPD table, master V3, west-region stored copy, and reporting view; the weekly media-and-sales table was refreshed in the same recovery.
+
+### Pending Next Actions
+
+- **Since Jul 28** - Reconcile all preserved side-branch and stash work into canonical branches before deleting those preservation surfaces - BLOCKER
+- **Since Jul 14** - Decide and implement the weekly Purely Elizabeth SPINS source-file refresh workflow - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
+- **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-07-17
 
 - **FIXED** - Corrected the Purely Elizabeth weekly delivery-and-sales table so unmapped campaigns retain their delivery as `UNMAPPED`; sales remain blank unless a product mapping and matching sales source exist. The updated scheduled refresh and live delivery totals were verified.
