@@ -2012,6 +2012,13 @@ with_standardized_advertiser_base AS (
     COALESCE(
       short_map.standardized_advertiser_name,
       name_map.standardized_advertiser_name,
+      -- LinkedIn renamed Apollo's account to "Apollo Corporate". Keep its
+      -- canonical reporting identity aligned with the existing Apollo rows.
+      CASE
+        WHEN LOWER(TRIM(wi.social_platform)) IN ('linkedin', 'linkedin_ads')
+          AND UPPER(TRIM(wi.advertiser_name)) = 'APOLLO CORPORATE'
+          THEN 'Apollo'
+      END,
       NULLIF(TRIM(REGEXP_REPLACE(
         wi.advertiser_name,
         r'(?i),?\s+(incorporated|inc|l\.?l\.?c\.?|corporation|corp|limited|ltd|plc|l\.?l\.?p\.?|l\.?p\.?|p\.?c\.?|company|co)\.?$',

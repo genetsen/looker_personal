@@ -57,6 +57,8 @@ Instruction files policy:
 - Basis, DCM, and master model handoff documentation ([Basis, DCM, and master data model pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/BASIS_DCM_MASTER_DATA_MODEL_PIPELINE.md)) explains the current boundary between Looker-owned Basis delivery, DCM cost-model inputs, `final_views.joined_dcmBasis`, and the master data model.
 - TV Gmail loaders (`/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md`) documenting the shared local and national estimate-ingestion flow into `landing.tv_local_estimates` and `landing.tv_national_estimates`
 - FPD, WP, and the TV loaders now use the consolidated Google login as their primary R authentication route. Their prior cached-token routes remain available as fallbacks, and the TV loaders continue to use their established Gmail authentication separately.
+- The FPD shortcut loader removes existing warehouse rows only when a current shortcut label or resolved Google Sheet name is explicitly marked `ARCHIVE`; a missing or temporarily inaccessible source is preserved. Archive cleanup is limited to that Sheet's exact source URL.
+- Apollo LinkedIn rows whose raw account name is `Apollo Corporate` use the canonical reporting advertiser `Apollo` in the base, clustered, and V3 master models while retaining the original account text for source-level audit.
 
 TV national Gmail loader note:
 
