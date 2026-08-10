@@ -1,0 +1,81 @@
+{
+  "keys": [
+    "qa_comparison_key"
+  ],
+  "metrics": [],
+  "derived_metrics": [],
+  "comparison_dimensions": [],
+  "high_risk_metrics": [
+    "_spend",
+    "_impressions",
+    "_clicks",
+    "_planned_spend",
+    "_planned_impressions"
+  ],
+  "high_risk_dimensions": [
+    "qa_media_data_type",
+    "_channel_group",
+    "_channel",
+    "_media_name",
+    "qa_v3_source_detail_type"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 0,
+    "max_candidate_only": 0
+  },
+  "custom_checks": [
+    {
+      "name": "eligible_rows_receive_exact_fallback",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(qa_v3_row_type = 'planned_only_package_date' AND NULLIF(_planned_impressions, 0) IS NOT NULL AND (qa_media_data_type = 'tv' OR _channel_group IN ('linear', 'print', 'ooh', 'ooh_d') OR _channel IN ('linear_tv', 'print', 'ooh', 'ooh_d') OR LOWER(COALESCE(_media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')) AND (_impressions IS DISTINCT FROM _planned_impressions OR (_planned_spend IS NOT NULL AND _spend IS DISTINCT FROM _planned_spend))) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "noneligible_spend_unchanged",
+      "severity": "critical",
+      "baseline_sql": "SELECT SUM(CAST(COALESCE(_spend, 0) AS NUMERIC)) AS value FROM {baseline_table} WHERE NOT (qa_v3_row_type = 'planned_only_package_date' AND NULLIF(_planned_impressions, 0) IS NOT NULL AND (qa_media_data_type = 'tv' OR _channel_group IN ('linear', 'print', 'ooh', 'ooh_d') OR _channel IN ('linear_tv', 'print', 'ooh', 'ooh_d') OR LOWER(COALESCE(_media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')))",
+      "candidate_sql": "SELECT SUM(CAST(COALESCE(_spend, 0) AS NUMERIC)) AS value FROM {candidate_table} WHERE NOT (qa_v3_row_type = 'planned_only_package_date' AND NULLIF(_planned_impressions, 0) IS NOT NULL AND (qa_media_data_type = 'tv' OR _channel_group IN ('linear', 'print', 'ooh', 'ooh_d') OR _channel IN ('linear_tv', 'print', 'ooh', 'ooh_d') OR LOWER(COALESCE(_media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')))",
+      "max_abs_delta": 0
+    },
+    {
+      "name": "noneligible_impressions_unchanged",
+      "severity": "critical",
+      "baseline_sql": "SELECT SUM(CAST(COALESCE(_impressions, 0) AS NUMERIC)) AS value FROM {baseline_table} WHERE NOT (qa_v3_row_type = 'planned_only_package_date' AND NULLIF(_planned_impressions, 0) IS NOT NULL AND (qa_media_data_type = 'tv' OR _channel_group IN ('linear', 'print', 'ooh', 'ooh_d') OR _channel IN ('linear_tv', 'print', 'ooh', 'ooh_d') OR LOWER(COALESCE(_media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')))",
+      "candidate_sql": "SELECT SUM(CAST(COALESCE(_impressions, 0) AS NUMERIC)) AS value FROM {candidate_table} WHERE NOT (qa_v3_row_type = 'planned_only_package_date' AND NULLIF(_planned_impressions, 0) IS NOT NULL AND (qa_media_data_type = 'tv' OR _channel_group IN ('linear', 'print', 'ooh', 'ooh_d') OR _channel IN ('linear_tv', 'print', 'ooh', 'ooh_d') OR LOWER(COALESCE(_media_name, '')) IN ('tv', 'print', 'magazine', 'newspaper', 'ooh')))",
+      "max_abs_delta": 0
+    },
+    {
+      "name": "clicks_unchanged",
+      "severity": "critical",
+      "compare_to_baseline": true,
+      "sql": "SELECT SUM(CAST(COALESCE(_clicks, 0) AS NUMERIC)) AS value FROM {table}",
+      "max_abs_delta": 0
+    },
+    {
+      "name": "planned_spend_unchanged",
+      "severity": "critical",
+      "compare_to_baseline": true,
+      "sql": "SELECT SUM(CAST(COALESCE(_planned_spend, 0) AS NUMERIC)) AS value FROM {table}",
+      "max_abs_delta": 0
+    },
+    {
+      "name": "planned_impressions_unchanged",
+      "severity": "critical",
+      "compare_to_baseline": true,
+      "sql": "SELECT SUM(CAST(COALESCE(_planned_impressions, 0) AS NUMERIC)) AS value FROM {table}",
+      "max_abs_delta": 0
+    }
+  ],
+  "downstream_objects": [
+    "looker-studio-pro-452620.master_ext_west.data_model",
+    "looker-studio-pro-452620.master_ext_west.mart_data_model_purelyElizabeth"
+  ],
+  "downstream_checks": []
+}

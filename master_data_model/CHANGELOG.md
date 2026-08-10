@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-10
+
+**Offline delivery fallback restored in the production master model** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)) — 🟢 **Verified and committed**<br>The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) again publishes planned spend and impressions as delivered values for eligible planned-only TV, Print, OOH, and dOOH rows while preserving real delivery and every unaffected row. The live model contains 409 eligible rows with zero fallback mismatches, and the west-region reporting copy was refreshed successfully. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/data_model_v3_offline_fallback.qa.json)
+
+### Pending Next Actions
+
+- **Since Aug 6** - Reconcile preserved master-model, reporting, and loader work into the canonical branch before deleting the remaining preservation branches - BLOCKER
+- **Since Jul 14** - Decide and implement the weekly Purely Elizabeth SPINS source-file refresh workflow - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse
+
 ## 2026-07-20
 
 - **CHANGED** - Restored the Purely Elizabeth dashboard fields `sales_dollars` and `sales_tdp` as temporary Protein Granola-only compatibility copies while dashboards move to `product_group_sales_dollars` and `product_group_tdp`.

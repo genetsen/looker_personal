@@ -498,8 +498,36 @@ planned_only_rows AS (
       CAST(NULL AS STRING) AS `_creative_name`,
       p.planned_spend AS `_planned_spend`,
       p.planned_impressions AS `_planned_impressions`,
-      CAST(NULL AS FLOAT64) AS `_spend`,
-      CAST(NULL AS FLOAT64) AS `_impressions`,
+      -- Offline package/date rows have no delivery-source row. For TV, Print,
+      -- OOH, and dOOH, publish planned delivery only as the last fallback.
+      -- Keep the plan visible and do not change any row with actual delivery.
+      CASE
+        WHEN p.planned_spend IS NOT NULL
+          AND NULLIF(p.planned_impressions, 0) IS NOT NULL
+          AND (
+            ctx.c.qa_media_data_type = 'tv'
+            OR ctx.c._channel_group IN ('linear', 'print', 'ooh', 'ooh_d')
+            OR ctx.c._channel IN ('linear_tv', 'print', 'ooh', 'ooh_d')
+            OR LOWER(COALESCE(ctx.c._media_name, '')) IN (
+              'tv', 'print', 'magazine', 'newspaper', 'ooh'
+            )
+          )
+          THEN p.planned_spend
+        ELSE CAST(NULL AS FLOAT64)
+      END AS `_spend`,
+      CASE
+        WHEN NULLIF(p.planned_impressions, 0) IS NOT NULL
+          AND (
+            ctx.c.qa_media_data_type = 'tv'
+            OR ctx.c._channel_group IN ('linear', 'print', 'ooh', 'ooh_d')
+            OR ctx.c._channel IN ('linear_tv', 'print', 'ooh', 'ooh_d')
+            OR LOWER(COALESCE(ctx.c._media_name, '')) IN (
+              'tv', 'print', 'magazine', 'newspaper', 'ooh'
+            )
+          )
+          THEN p.planned_impressions
+        ELSE CAST(NULL AS FLOAT64)
+      END AS `_impressions`,
       CAST(NULL AS FLOAT64) AS `_clicks`,
       CAST(NULL AS FLOAT64) AS `_video_plays`,
       CAST(NULL AS FLOAT64) AS `_video_views`,

@@ -4,7 +4,7 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-08-10
 
-**First-party data publishing and Purely Elizabeth reporting recovered** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves blank numeric warehouse fields and treats failed or unverifiable BigQuery jobs as loader failures. Purely Elizabeth data through August 7 was verified with matching spend, impressions, and clicks across the production FPD table, master V3, west-region stored copy, and reporting view; the weekly media-and-sales table was refreshed in the same recovery.
+**First-party data publishing and master-model delivery protections recovered** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves blank numeric warehouse fields and treats failed or unverifiable BigQuery jobs as loader failures. Purely Elizabeth data through August 7 matches across the production FPD table, master V3, west-region stored copy, and reporting view. The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) also again publishes planned delivery for eligible offline planned-only rows, with 409 live rows verified and the west-region reporting tables refreshed.
 
 ### Pending Next Actions
 
