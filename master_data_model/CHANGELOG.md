@@ -10,8 +10,6 @@
 
 ### Pending Next Actions
 
-- **Since Aug 6** - Reconcile preserved master-model, reporting, and loader work into the canonical branch before deleting the remaining preservation branches - BLOCKER
-- **Since Jul 14** - Decide and implement the weekly Purely Elizabeth SPINS source-file refresh workflow - RECOMMENDED
 - **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse
 
 ## 2026-07-20
