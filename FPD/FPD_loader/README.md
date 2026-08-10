@@ -346,6 +346,8 @@ This is useful for:
 
 This script uploads to a staging table first, checks the result, adds any missing BigQuery columns when the new column type is clear, and then replaces only the destination rows for the sheets included in that run.
 If a brand-new column is completely blank in the current run, the script skips that column for production instead of guessing a BigQuery type from empty data alone. This commonly protects the run from accidental blank spreadsheet headers such as `#REF!`.
+The loader checks the final BigQuery job result before treating either the staging upload or production replacement as successful. A failed, incomplete, or unavailable final status stops the run with the BigQuery job details intact.
+Archive cleanup is intentionally explicit. During a fresh Drive discovery, `ARCHIVE` in either the shortcut label or the resolved Google Sheet name queues only that Sheet's exact `source_url` for removal. A source that is simply missing from discovery is preserved, and saved-phase debugging cannot replay an older archive decision.
 The optional downstream `source(".../util_process_updated_fpd.r")` call is currently commented out in this folder's script.
 
 ---

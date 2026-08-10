@@ -140,6 +140,9 @@ use_saved_phases <- FALSE
   # Default to a full fresh run. Turn this on only while debugging a saved checkpoint.
   # Set the phase you are actively working on (1..7). Saved results will be used for other phases.
   current_phase <- 1
+# Populated only by fresh Phase 1 Drive discovery. Saved-phase debugging must
+# never replay an archive cleanup decision from an older checkpoint.
+archived_source_urls <- character(0)
 #
 
 known_kpi_metrics <- c(
@@ -655,6 +658,7 @@ fetch_sheet_metadata <- function(sheet_id) {
 
   if (is.null(metadata) || nrow(metadata) == 0) {
     return(list(
+      resolved_sheet_name = NA_character_,
       last_modified_time = NA_character_,
       last_modified_by = NA_character_
     ))
@@ -662,9 +666,77 @@ fetch_sheet_metadata <- function(sheet_id) {
 
   drive_resource <- metadata$drive_resource[[1]]
   list(
+    resolved_sheet_name = if ("name" %in% names(metadata)) as.character(metadata$name[[1]]) else NA_character_,
     last_modified_time = format_est_timestamp(extract_last_modified_time(drive_resource)),
     last_modified_by = extract_last_modified_by(drive_resource)
   )
+}
+
+# A shortcut label and the Google Sheet it opens can have different names.
+# Cleanup is authorized only by an explicit ARCHIVE marker on either current
+# Drive identity; absence from discovery is not archive evidence.
+is_archive_named <- function(x) {
+  x <- as.character(x)
+  !is.na(x) & grepl("archive", tolower(x), fixed = TRUE)
+}
+
+mark_archived_discovered_sources <- function(discovered_files) {
+  if (!"resolved_sheet_name" %in% names(discovered_files)) {
+    discovered_files$resolved_sheet_name <- NA_character_
+  }
+
+  discovered_files$is_archived_source <-
+    is_archive_named(discovered_files$sheet_name) |
+    is_archive_named(discovered_files$resolved_sheet_name)
+  discovered_files
+}
+
+normalize_source_identities <- function(x) {
+  values <- as.character(x)
+  unique(values[!is.na(values) & nzchar(values)])
+}
+
+# Archived sources enter the transaction only through exact source_url values.
+# Active source_file matching remains available for the established incremental
+# replacement path, but archive discovery cannot add a display-name deletion.
+build_fpd_sync_scope <- function(active_source_urls, active_source_files, archived_source_urls) {
+  active_urls <- normalize_source_identities(active_source_urls)
+  active_files <- normalize_source_identities(active_source_files)
+  archived_urls <- normalize_source_identities(archived_source_urls)
+
+  list(
+    source_urls = unique(c(active_urls, archived_urls)),
+    source_files = active_files,
+    archived_source_urls = archived_urls
+  )
+}
+
+build_fpd_delete_clauses <- function(sync_scope) {
+  delete_clauses <- character(0)
+
+  if (length(sync_scope$source_urls) > 0) {
+    delete_clauses <- c(
+      delete_clauses,
+      paste0(
+        "target.source_url IN (",
+        paste(vapply(sync_scope$source_urls, sql_quote_string, character(1)), collapse = ", "),
+        ")"
+      )
+    )
+  }
+
+  if (length(sync_scope$source_files) > 0) {
+    delete_clauses <- c(
+      delete_clauses,
+      paste0(
+        "target.source_file IN (",
+        paste(vapply(sync_scope$source_files, sql_quote_string, character(1)), collapse = ", "),
+        ")"
+      )
+    )
+  }
+
+  delete_clauses
 }
 
 sanitize_cache_name <- function(x) {
@@ -1004,18 +1076,30 @@ if (use_saved_phases && current_phase != 1 && file.exists(phase1_output)) {
     rowwise() %>%
     mutate(
       metadata = list(fetch_sheet_metadata(sheet_id)),
+      resolved_sheet_name = metadata$resolved_sheet_name,
       last_modified_time = metadata$last_modified_time,
       last_modified_by = metadata$last_modified_by
     ) %>%
     select(-metadata) %>%
     ungroup()
 
-  # Filter out ARCHIVE sheets upstream so they never enter later phases
-  # (case-insensitive match on sheet name)
+  # Only an explicit current Drive or resolved-target ARCHIVE name can queue
+  # exact source_url cleanup. Merely missing sources are intentionally absent.
+  discovered_files <- mark_archived_discovered_sources(discovered_files)
+  archived_source_urls <- discovered_files %>%
+    filter(is_archived_source) %>%
+    pull(sheet_url) %>%
+    normalize_source_identities()
+
+  # Archived sources never enter later ingestion phases.
   before_archive_filter <- nrow(discovered_files)
   discovered_files <- discovered_files %>%
-    filter(!str_detect(sheet_name, "(?i)archive"))
-  cat("✓ Found", before_archive_filter, "matching sheets (", nrow(discovered_files), "after removing ARCHIVE)\n")
+    filter(!is_archived_source)
+  cat(
+    "✓ Found", before_archive_filter, "matching sheets (", nrow(discovered_files),
+    "after removing ARCHIVE;", length(archived_source_urls),
+    "explicitly archived source URL(s) queued for cleanup)\n"
+  )
 
   # Write checkpoint
   write_csv(discovered_files, phase1_output)
@@ -2619,36 +2703,19 @@ cat("Phase 7 complete. Rows:", if (exists('phase7_df')) nrow(phase7_df) else 0, 
       stop("Staging table schema could not be read after upload.")
     }
 
-    sync_source_urls <- unique(as.character(phase7_df$source_url))
-    sync_source_urls <- sync_source_urls[!is.na(sync_source_urls) & sync_source_urls != ""]
-    sync_source_files <- unique(as.character(phase7_df$source_file))
-    sync_source_files <- sync_source_files[!is.na(sync_source_files) & sync_source_files != ""]
+    sync_scope <- build_fpd_sync_scope(
+      active_source_urls = phase7_df$source_url,
+      active_source_files = phase7_df$source_file,
+      archived_source_urls = archived_source_urls
+    )
+    sync_source_urls <- sync_scope$source_urls
+    sync_source_files <- sync_scope$source_files
 
     if (length(sync_source_urls) == 0 && length(sync_source_files) == 0) {
       stop("Incremental BigQuery sync requires source_url or source_file values, but none were found in this run.")
     }
 
-    delete_clauses <- character(0)
-    if (length(sync_source_urls) > 0) {
-      delete_clauses <- c(
-        delete_clauses,
-        paste0(
-          "target.source_url IN (",
-          paste(vapply(sync_source_urls, sql_quote_string, character(1)), collapse = ", "),
-          ")"
-        )
-      )
-    }
-    if (length(sync_source_files) > 0) {
-      delete_clauses <- c(
-        delete_clauses,
-        paste0(
-          "target.source_file IN (",
-          paste(vapply(sync_source_files, sql_quote_string, character(1)), collapse = ", "),
-          ")"
-        )
-      )
-    }
+    delete_clauses <- build_fpd_delete_clauses(sync_scope)
 
     prod_columns <- names(prod_field_types)
     insert_column_sql <- paste(paste0("`", prod_columns, "`"), collapse = ", ")
