@@ -38,11 +38,7 @@ function publishFpdTemplate() {
  * replaces / backs up the drawing button.
  */
 function onOpen() {
-  // TODO(human): build the operator-facing menu here.
-  // Use SpreadsheetApp.getUi().createMenu("<menu name>")
-  //   .addItem("<item label>", "publishFpdTemplate")
-  //   [.addItem(...more items if useful...)]
-  //   .addToUi();
-  // Decide the menu name + item label operators will actually see. Keep it
-  // obvious for a non-technical operator (this is the "Publish" action).
+  SpreadsheetApp.getUi().createMenu("Publish New FPD Sheet")
+    .addItem("Publish", "publishFpdTemplate")
+    .addToUi();
 }
