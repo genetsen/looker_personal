@@ -2,6 +2,8 @@
 
 ## 2026-08-10
 
+- **ADDED** - Recovered the first-party-data partner-template "Publish" button logic, which previously existed only inside Google's cloud, and saved a copy in the repository. The button duplicates a configured template for one partner, leaves only the partner-facing data tab visible, hands file ownership to Gene, files the copy in the client's folder, and records it in the shared log. It stopped working because Gene's account move left the button pointing at the old pre-move version that still reads the retired workbook, while the corrected version that reads the current workbook is not yet connected to a working button.
+
 **Offline delivery fallback restored in the production master model** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)) — 🟢 **Verified and committed**<br>The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) again publishes planned spend and impressions as delivered values for eligible planned-only TV, Print, OOH, and dOOH rows while preserving real delivery and every unaffected row. The live model contains 409 eligible rows with zero fallback mismatches, and the west-region reporting copy was refreshed successfully. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/data_model_v3_offline_fallback.qa.json)
 
 **Apollo LinkedIn identity is canonical across every production model layer** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The [master data model](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) reports LinkedIn rows whose source account is `Apollo Corporate` under the canonical advertiser `Apollo`, while retaining the original account text. All 22,406 matching rows are correct in the base, clustered, and V3 layers with zero incorrect labels and both raw account spellings preserved. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/tests/test_apollo_advertiser_normalization.R)
@@ -10,6 +12,7 @@
 
 ### Pending Next Actions
 
+- **Since Jul 10** - Restore a working in-sheet "Publish" button for the FPD partner template, either by fixing the corrected version's button connection or replacing it with a non-script equivalent - BLOCKER
 - **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse
 
 ## 2026-07-20
