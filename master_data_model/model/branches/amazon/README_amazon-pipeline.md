@@ -27,7 +27,8 @@ Master evidence model v3 (natural Amazon source rows)
 
 | Landing value | Stable-base field | Final meaning |
 |---|---|---|
-| `supply_cost` | `final_spend` | `_spend`, the Amazon media-cost measure. |
+| `total_cost` | `final_spend` and `amzn_total_cost` | `_spend`, the Amazon final-cost measure, plus its source lineage. |
+| `supply_cost` | `amzn_supply_cost` | Preserved source evidence; it no longer defines final spend. |
 | `impressions`, `clicks` | `final_impressions`, `final_clicks` | `_impressions` and `_clicks`. |
 | `starts_video_ad`, `complete_views_video_ad` | `final_video_plays`, `final_video_comps` | Video delivery fields. |
 | `impressions_video_ad` | `social_video_views` | `_video_views`; Amazon preserves this separately from starts. |
@@ -39,7 +40,7 @@ Master evidence model v3 (natural Amazon source rows)
 - The branch accepts rows dated from `2025-01-01` onward and parses the Amazon text date format before filtering.
 - It creates the package key from campaign and ad-group IDs; the placement key combines the ad ID with a deal ID, using `no_deal` when no deal exists.
 - A row is flagged `missing_final_metrics` only when impressions, clicks, and both video measures are all absent.
-- Amazon supply cost is final spend. Amazon sales and purchase fields stay in the `amzn_*` evidence family so reporting does not accidentally treat sales as media delivery.
+- Amazon total cost is final spend. Supply cost, sales, and purchase fields stay in the `amzn_*` evidence family so reporting preserves the source definitions without treating outcomes as media delivery.
 - The branch fixes the advertiser short name to `RTL`; the shared advertiser mapping then standardizes the user-facing advertiser label.
 - Valid Manual Package Editor delivery overrides can replace final metrics later in the common model flow. That is a model-wide control, not an Amazon-specific source rewrite.
 

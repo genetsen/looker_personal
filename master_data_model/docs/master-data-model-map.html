@@ -1240,6 +1240,7 @@
           "_advertiser and _advertiser_name use the same standardized label from advertiser_mapping. _advertiser_short_name uses that same mapping to publish the canonical client code across all mapped source rows. New clients use a cleaned Prisma advertiser name by default.",
           "Excludes Highlights rows before final publication.",
           "Canonical _creative_name uses original FPD creative, Amazon ad name, then social creative. Amazon is checked before the shared social field because Amazon rows currently populate both fields. DCM creative stays in the delivery-detail view to preserve its lower grain.",
+          "Amazon _spend uses the emailed report's total_cost. The model preserves that value as amzn_total_cost and keeps supply_cost separately as amzn_supply_cost for source-level reconciliation.",
           "Final benchmark fields use manual benchmark edits first. _benchmark_value then falls back to FPD benchmark value, while _benchmark_kpi can use a nonzero FPD benchmark metric as text before package-level KPI."
         ],
         sources: [
@@ -1339,16 +1340,17 @@
         id: "ritual-output",
         groupId: "ritual-slice",
         title: "Ritual Slice",
-        summary: "Filtered Ritual view from Master.",
+        summary: "Ritual dashboard compatibility view from V3.",
         truth: "View: master_stg.ritual_data_model.",
-        writes: "View only. Refresh Master View upstreams.",
-        freshness: "Current when master_stg.data_model is current.",
+        writes: "View only. Rebuild V3 first, then recreate this view after source-schema additions.",
+        freshness: "Current when master_stg.data_model_v3 is rebuilt and the compatibility view has registered its current schema.",
         risk: "low",
         reviewReason: "Simple read: simple filter, but it inherits Master logic.",
         kind: "output",
         callouts: { truth: "live", writes: false },
         notes: [
-          "Filter: advertiser_name = 'Ritual' OR advertiser_short_name = 'RTL'."
+          "Filter: _advertiser_name = 'Ritual' OR _advertiser_short_name = 'RTL'.",
+          "Amazon final_spend uses amzn_total_cost; amzn_supply_cost remains available as separate source evidence."
         ],
         sources: [
           ["BigQuery: master_stg.ritual_data_model", bq("master_stg", "ritual_data_model")]

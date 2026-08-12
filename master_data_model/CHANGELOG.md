@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-12
+
+**Ritual Amazon final cost now uses source total cost** ([SQL](model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified**<br>The full-history [Amazon landing source](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rit_amzn_report_daily&page=table) has 4,467 rows from May 28 through August 12 with `total_cost` populated throughout. The base, rebuilt v3 table, and recreated Ritual compatibility view all use it for final Amazon spend, retain `amzn_supply_cost` separately, and reconcile to $425,432.94 with zero row-level mismatches. [More details](model/branches/amazon/README_amazon-pipeline.md).
+
 ## 2026-08-11
 
 - **ADDED** - Published the corrected FPD partner-sheet "Publish" logic (version 4) to its shared script library; only wiring the in-sheet button to it and a test run remain. The updated version files each new partner sheet into the correct client's shared-drive "First Party Data" folder, keeps the file controlled through shared-drive membership instead of transferring ownership, marks the working copy it was made from as outdated, and locks the partner selection so it cannot be repointed. Confirmed the data needed to scope each sheet to a single partner already exists in BigQuery. Sharing finished sheets to outside partners is intentionally held until a follow-up BigQuery change guarantees a partner can never see another partner's data.
