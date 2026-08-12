@@ -17,7 +17,9 @@
  * (Editor > Libraries > +):
  *   Identifier: FPDLib
  *   Script ID : 139EYkXK6w08HSN5wbWfdsoB3keQIEHSqFoEHqbckiYRWDIvvvIfz08BF
- *   Version   : 3   (fpdLib v3.1 -> current master 1pc9 + migrated CLIENTS root)
+ *   Version   : 4   (fpdLib v4 -> Shared-Drive routing + interim lockdown;
+ *                    paste apps_script/publish_fpd_template_fpdLib__v4/Library.gs
+ *                    into the library project and publish it as version 4 first)
  *
  * SAFETY: never run duplicateAndSetup from the Apps Script editor. It requires
  * the ACTIVE spreadsheet and drives its own confirmation/progress dialogs, so
