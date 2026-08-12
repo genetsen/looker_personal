@@ -105,7 +105,8 @@ Replace `PROFILE_ID` with the profile ID from the smoke test.
 The Ritual email-to-BigQuery loader follows the same auth preference:
 
 1. Try application-default credentials with Gmail read-only scope.
-2. Fall back temporarily to the legacy shared Gmail pickle token at `~/.cache/gmail_token.pickle`.
+2. Fall back to the approved runner Gmail OAuth client at `/Users/eugenetsenter/Docs/R_Studio_Projects/DCM_authorization/dcm_cred_20240916.json`, storing a Python-native Gmail token at `~/.cache/gmail_token.json`.
+3. Fall back temporarily to the legacy shared Gmail pickle token at `~/.cache/gmail_token.pickle`.
 
 To refresh ADC for both CM360 and Gmail on one machine, use a combined scope login:
 
@@ -115,6 +116,12 @@ gcloud auth application-default login --scopes=https://www.googleapis.com/auth/c
 
 This is the repo's preferred path going forward because multiple scripts can
 share one Google auth store instead of keeping separate per-script token files.
+
+If ADC is unavailable but you need to reapprove Gmail for the Ritual loader, the
+loader now opens browser OAuth with the same approved DCM desktop client the
+Universal Runner uses for its Gmail route. That keeps the Gmail account and
+approved app consistent even though Python stores its refreshed token in a
+different file format than the runner's R/gargle cache.
 
 ## Notes
 
