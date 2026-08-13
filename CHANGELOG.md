@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-13
+
+**Apollo DCM creative images now follow the authoritative assignment workbook** ([R loader](master_data_model/model/branches/dcm/load_apo_dcm_creative_image_map.R)) — 🟢 **Verified**<br>The [Apollo creative-image map](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=apo_dcm_creative_image_map&page=table) reads the workbook’s exact `Ad Name` and `Creative Assignment` pairing, publishes its seven available creative files, and supplies their URLs to the [V3 master model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table). All 1,012 current delivery rows for 25 mapped DCM ads now contain a creative URL, with spend and impressions unchanged. [More details](master_data_model/README.md).
+
 ## 2026-08-12
 
 **Ritual Amazon final cost now uses the emailed report's total cost** ([SQL](master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified**<br>The [Amazon daily landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rit_amzn_report_daily&page=table) now contains 4,467 full-history rows from May 28 through August 12 with `total_cost` populated on every row. The [master base](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table), [v3 model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table), and [Ritual compatibility view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=ritual_data_model&page=table) now use that field for final Amazon spend while preserving `supply_cost` separately; all four layers reconcile to $425,432.94 with zero row-level mismatches. [More details](master_data_model/model/branches/amazon/README_amazon-pipeline.md).

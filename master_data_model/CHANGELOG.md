@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-13
+
+**Apollo DCM creative images now follow the authoritative assignment workbook** ([R loader](model/branches/dcm/load_apo_dcm_creative_image_map.R)) — 🟢 **Verified**<br>The [Apollo creative-image map](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=apo_dcm_creative_image_map&page=table) now carries the workbook’s exact `Ad Name` to `Creative Assignment` mapping into V3. Seven published source files populate `_creative_img` for all 1,012 current delivery rows across 25 mapped DCM ads, without changing spend or impressions. [More details](README.md).
+
 ## 2026-08-12
 
 **Ritual Amazon final cost now uses source total cost** ([SQL](model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified**<br>The full-history [Amazon landing source](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rit_amzn_report_daily&page=table) has 4,467 rows from May 28 through August 12 with `total_cost` populated throughout. The base, rebuilt v3 table, and recreated Ritual compatibility view all use it for final Amazon spend, retain `amzn_supply_cost` separately, and reconcile to $425,432.94 with zero row-level mismatches. [More details](model/branches/amazon/README_amazon-pipeline.md).

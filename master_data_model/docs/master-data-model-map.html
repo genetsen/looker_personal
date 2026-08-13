@@ -1321,6 +1321,7 @@
           "qa_v3_package_planned_spend_doNotSum and qa_v3_package_planned_impressions_doNotSum keep package/date planned context available on detail rows without treating those context fields as summable metrics.",
           "manual_delivery_override rows carry manual package/date actuals and suppress lower-grain final actuals for the same package/date.",
           "DCM final impressions use source impressions; daily_recalculated_imps remains context only.",
+          "Apollo DCM creative images come from the Creative Assignment workbook's exact Ad Name to Creative Assignment mapping. Published source-file URLs fill _creative_img only for mapped DCM ads; unavailable files remain blank and no placement-name inference is used.",
           "Direct CM360 history is refreshed by the existing daily 10:15 UTC upstream BigQuery schedule and by the universal runner's dedicated upstream step before V3 refresh. Its repeat-safe MERGE updates matching raw conversion records and retains older history; neither path uses the Google Sheet loader.",
           "The legacy-schema landing.rtl_conv_report compatibility table is refreshed only by its standalone loader from persistent direct CM360 history. It keeps the old 18-column shape, leaves unavailable delivery and Sheet-lineage fields blank, and is not a V3 source.",
           "Direct CM360 conversion fields join only to a unique package/date/placement/creative delivery row. Conversion-only evidence uses cm360_direct_conversion and leaves delivery metrics blank, so it cannot double-count media delivery.",

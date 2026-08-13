@@ -200,6 +200,20 @@ fpd_winners AS (
     USING (`_package_id`, `_date`)
 ),
 
+apo_dcm_creative_image_map AS (
+  -- Exact workbook-derived map: one published creative URL per DCM Ad Name.
+  SELECT
+    dcm_ad_name,
+    published_image_url
+  FROM `looker-studio-pro-452620.landing.apo_dcm_creative_image_map`
+  WHERE publication_status = 'published'
+    AND published_image_url IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY dcm_ad_name
+    ORDER BY loaded_at DESC, published_image_url
+  ) = 1
+),
+
 dcm_detail AS (
   SELECT
     'dcm' AS source_detail_type,
@@ -212,6 +226,7 @@ dcm_detail AS (
     CAST(NULL AS STRING) AS fpd_factor,
     CAST(NULL AS STRING) AS fpd_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
+    ANY_VALUE(m.published_image_url) AS dcm_creative_img,
     SUM(d.daily_recalculated_cost) AS dcm_daily_recalculated_cost,
     SUM(d.daily_recalculated_imps) AS dcm_daily_recalculated_imps,
     SUM(d.impressions) AS dcm_impressions,
@@ -223,6 +238,8 @@ dcm_detail AS (
     CAST(NULL AS FLOAT64) AS fpd_spend,
     CAST(NULL AS FLOAT64) AS fpd_clicks
   FROM `looker-studio-pro-452620.DCM.20250505_costModel_v5` AS d
+  LEFT JOIN apo_dcm_creative_image_map AS m
+    ON CAST(d.ad AS STRING) = m.dcm_ad_name
   WHERE DATE(d.date) >= DATE '2025-01-01'
     AND d.package_id IS NOT NULL
   GROUP BY
@@ -245,6 +262,7 @@ fpd_original_detail AS (
     CAST(f.factor AS STRING) AS fpd_factor,
     CAST(f.partner_creative_name AS STRING) AS fpd_creative,
     CAST(f.creative_git_link AS STRING) AS fpd_creative_img,
+    CAST(NULL AS STRING) AS dcm_creative_img,
     CAST(NULL AS FLOAT64) AS dcm_daily_recalculated_cost,
     CAST(NULL AS INT64) AS dcm_daily_recalculated_imps,
     CAST(NULL AS INT64) AS dcm_impressions,
@@ -280,6 +298,7 @@ fpd_updated_detail AS (
     CAST(NULL AS STRING) AS fpd_factor,
     CAST(NULL AS STRING) AS fpd_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
+    CAST(NULL AS STRING) AS dcm_creative_img,
     CAST(NULL AS FLOAT64) AS dcm_daily_recalculated_cost,
     CAST(NULL AS INT64) AS dcm_daily_recalculated_imps,
     CAST(NULL AS INT64) AS dcm_impressions,
@@ -358,7 +377,7 @@ digital_actual_rows AS (
       d.fpd_creative AS fpd_creative,
       d.fpd_creative_img AS fpd_creative_img,
       d.creative_name AS `_creative_name`,
-      d.fpd_creative_img AS `_creative_img`,
+      COALESCE(d.dcm_creative_img, d.fpd_creative_img) AS `_creative_img`,
       IF(
         m.`_package_id` IS NULL
         AND d.planned_carrier_rank = 1,
