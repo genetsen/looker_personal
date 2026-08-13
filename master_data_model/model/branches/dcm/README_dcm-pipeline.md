@@ -43,10 +43,12 @@ DCM cost model v5
 ### Current state
 
 The [Apollo creative-image loader](load_apo_dcm_creative_image_map.R) is an
-Apollo-only implementation. It reads one known workbook and writes one Apollo
-mapping table. Do not point it at another client's workbook or add another
-client by copying its configuration: DCM Ad Names are not guaranteed to be
-globally unique across clients.
+Apollo-only implementation. It reads the workbook's `STEP 1 | INPUT - Creative
+Details` tab, retains every Asset Name with a publication status, and writes
+one Apollo mapping table. V3 removes only a final DCM creative size suffix,
+then joins the client-scoped normalized creative name. Do not point this loader
+at another client's workbook or add another client by copying its configuration:
+creative names are not guaranteed to be globally unique across clients.
 
 ### Intended upgrade when the next client is ready
 
@@ -59,21 +61,23 @@ shared loader how to read it.
 | `advertiser` | Keeps mappings within the client that owns the workbook. |
 | `workbook_url` | Identifies the client-owned creative workbook. |
 | `creative_details_tab` | Names the tab containing Asset Name and the source file path. |
-| `assignment_output_tab` | Names the tab containing DCM Ad Name and Creative Assignment. |
+| `asset_name_field` | Names the workbook field that supplies the client’s base creative name. |
+| `dcm_creative_suffix_rule` | States the final DCM-only suffix pattern removed before matching, such as `_300 x 250`. |
 | `source_path_field` | Names the approved file-path field, such as `Final_img_path`. |
 | `media_repository_prefix` | Keeps published files grouped by client in the shared media repository. |
 | `active` | Allows a source to be paused without deleting its prior mapping evidence. |
 
-The shared mapping table must retain the workbook URL, asset name, creative
-assignment, source path, published URL, publication status, and load time. Its
-unique key must be `advertiser + dcm_ad_name`. V3 must use the same client-safe
-key when joining the DCM delivery source; matching only on a placement name,
-creative label, or bare DCM Ad Name is not safe.
+The shared mapping table must retain the workbook URL, source Asset Name,
+normalized DCM creative name, source path, published URL, publication status,
+and load time. Its unique key must be `advertiser + normalized_dcm_creative_name`.
+V3 must use the same client-safe key when joining the DCM delivery source after
+the documented final-suffix normalization. Matching on placement text or an
+unscoped creative name is not safe.
 
 ```text
 Registered client workbook
   → client-safe creative-image map
-  → DCM delivery joined by advertiser + DCM Ad Name
+  → DCM delivery joined by advertiser + normalized DCM creative name
   → V3 _creative_img
 ```
 
@@ -82,7 +86,8 @@ Registered client workbook
 When a second client workbook is ready, first confirm its exact tab names,
 headers, and local-file field. Then build the registry and shared loader, run a
 small QA mapping table, and verify that every mapped V3 row has the expected
-client, ad name, and published URL before replacing the Apollo-only path. Keep
+client, normalized creative name, and published URL before replacing the
+Apollo-only path. Keep
 unavailable source files as explicit blank/failed-publication records; do not
 substitute another creative or infer a match from placement text.
 

@@ -201,15 +201,16 @@ fpd_winners AS (
 ),
 
 apo_dcm_creative_image_map AS (
-  -- Exact workbook-derived map: one published creative URL per DCM Ad Name.
+  -- Step 1 asset map: match Apollo DCM creative after final size suffix removal.
   SELECT
-    dcm_ad_name,
+    advertiser,
+    normalized_dcm_creative_name,
     published_image_url
-  FROM `looker-studio-pro-452620.landing.apo_dcm_creative_image_map`
+  FROM `looker-studio-pro-452620.landing.apo_dcm_creative_image_asset_map`
   WHERE publication_status = 'published'
     AND published_image_url IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY dcm_ad_name
+    PARTITION BY advertiser, normalized_dcm_creative_name
     ORDER BY loaded_at DESC, published_image_url
   ) = 1
 ),
@@ -239,7 +240,13 @@ dcm_detail AS (
     CAST(NULL AS FLOAT64) AS fpd_clicks
   FROM `looker-studio-pro-452620.DCM.20250505_costModel_v5` AS d
   LEFT JOIN apo_dcm_creative_image_map AS m
-    ON CAST(d.ad AS STRING) = m.dcm_ad_name
+    ON LOWER(TRIM(CAST(d.advertiser AS STRING))) LIKE '%apollo%'
+   AND m.advertiser = 'Apollo'
+   AND LOWER(REGEXP_REPLACE(
+     CAST(d.creative AS STRING),
+     r'_(?:\d+\s*x\s*\d+|\d+x\d+|0x0|NA)$',
+     ''
+   )) = m.normalized_dcm_creative_name
   WHERE DATE(d.date) >= DATE '2025-01-01'
     AND d.package_id IS NOT NULL
   GROUP BY
