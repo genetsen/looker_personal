@@ -38,6 +38,54 @@ DCM cost model v5
 - The delivery-detail builder chooses one context row per package/date, then joins that context to every natural detail row. Planned fields are deliberately named `doNotSum` when repeated.
 - Basis is adjacent reporting lineage only. It does not feed the package/date master-model DCM branch.
 
+## Future Multi-Client Creative-Image Sources
+
+### Current state
+
+The [Apollo creative-image loader](load_apo_dcm_creative_image_map.R) is an
+Apollo-only implementation. It reads one known workbook and writes one Apollo
+mapping table. Do not point it at another client's workbook or add another
+client by copying its configuration: DCM Ad Names are not guaranteed to be
+globally unique across clients.
+
+### Intended upgrade when the next client is ready
+
+Replace the Apollo-only configuration with one controlled source registry. One
+row in that registry represents one client's creative workbook and tells the
+shared loader how to read it.
+
+| Registry field | Why it is required |
+|---|---|
+| `advertiser` | Keeps mappings within the client that owns the workbook. |
+| `workbook_url` | Identifies the client-owned creative workbook. |
+| `creative_details_tab` | Names the tab containing Asset Name and the source file path. |
+| `assignment_output_tab` | Names the tab containing DCM Ad Name and Creative Assignment. |
+| `source_path_field` | Names the approved file-path field, such as `Final_img_path`. |
+| `media_repository_prefix` | Keeps published files grouped by client in the shared media repository. |
+| `active` | Allows a source to be paused without deleting its prior mapping evidence. |
+
+The shared mapping table must retain the workbook URL, asset name, creative
+assignment, source path, published URL, publication status, and load time. Its
+unique key must be `advertiser + dcm_ad_name`. V3 must use the same client-safe
+key when joining the DCM delivery source; matching only on a placement name,
+creative label, or bare DCM Ad Name is not safe.
+
+```text
+Registered client workbook
+  → client-safe creative-image map
+  → DCM delivery joined by advertiser + DCM Ad Name
+  → V3 _creative_img
+```
+
+### Implementation checklist
+
+When a second client workbook is ready, first confirm its exact tab names,
+headers, and local-file field. Then build the registry and shared loader, run a
+small QA mapping table, and verify that every mapped V3 row has the expected
+client, ad name, and published URL before replacing the Apollo-only path. Keep
+unavailable source files as explicit blank/failed-publication records; do not
+substitute another creative or infer a match from placement text.
+
 ## Safe Debugging Route
 
 | Symptom | Trace this path | Why |

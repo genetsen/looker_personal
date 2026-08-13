@@ -4,7 +4,7 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-08-13
 
-**Apollo DCM creative images now follow the authoritative assignment workbook** ([R loader](master_data_model/model/branches/dcm/load_apo_dcm_creative_image_map.R)) — 🟢 **Verified**<br>The [Apollo creative-image map](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=apo_dcm_creative_image_map&page=table) reads the workbook’s exact `Ad Name` and `Creative Assignment` pairing, publishes its seven available creative files, and supplies their URLs to the [V3 master model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table). All 1,012 current delivery rows for 25 mapped DCM ads now contain a creative URL, with spend and impressions unchanged. [More details](master_data_model/README.md).
+**Apollo DCM creative images now follow the authoritative assignment workbook and have a future multi-client registry design** ([DCM guide](master_data_model/model/branches/dcm/README_dcm-pipeline.md)) — 🟢 **Verified**<br>The [Apollo creative-image map](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=apo_dcm_creative_image_map&page=table) supplies seven published source files to 1,012 current delivery rows for 25 mapped DCM ads, with spend and impressions unchanged. The documented next phase is a source registry for other client workbooks, with client-safe `advertiser + DCM Ad Name` matching and QA before replacing the Apollo-only path. [More details](master_data_model/model/branches/dcm/README_dcm-pipeline.md).
 
 ## 2026-08-12
 

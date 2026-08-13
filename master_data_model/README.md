@@ -22,6 +22,7 @@ Interactive orientation:
 
 - [`docs/master-data-model-map.html`](docs/master-data-model-map.html) - clickable map of live inputs, branch logic, rollups, production outputs, and model-warning callouts.
 - [`docs/dcm-cost-model-map.html`](docs/dcm-cost-model-map.html) - clickable DCM scheduled-query map for package rollups, pricing logic, the creative-safe join key, and Master Model handoff.
+- [DCM delivery pipeline](model/branches/dcm/README_dcm-pipeline.md) - DCM delivery lineage plus the documented future multi-client creative-workbook registry design. The current Apollo loader is intentionally single-client until that registry is built.
 - [`docs/manual-data-editor-workflow-map.html`](docs/manual-data-editor-workflow-map.html) - clickable map of the Manual Data Editor loop from Sheet edit, request notification, loader writes, manual evidence tables, model merge, mart output, and troubleshooting path.
 - [Master Data Model Package Lookup Sheet](https://docs.google.com/spreadsheets/d/1Q_KK6WWqB4aUGNezFmWTMTKz43rQyARqXVGgNs5IT3c) - use one search box to find a partial Package ID, Package Name, or Package Friendly Name and return package-level flight, plan, delivery, advertiser, supplier, campaign, initiative, channel, and GS Channel fields.
 - [Direct CM360 conversion migration](docs/rtl-direct-cm360-conversion-migration.md) - deployed RTL conversion source, history-preserving staging, direct activity metrics, and the explicit conversion-only safety rule.
