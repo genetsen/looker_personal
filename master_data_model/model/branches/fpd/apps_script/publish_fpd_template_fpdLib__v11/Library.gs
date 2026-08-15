@@ -1,7 +1,12 @@
 /**
  * ============================================================================
- * FPD DUPLICATOR LIBRARY V4  (Track 1: Shared-Drive routing + interim lockdown)
+ * FPD DUPLICATOR LIBRARY — LIVE DEPLOYMENT VERSION 11
  * ============================================================================
+ *
+ * VERSION NOTE:
+ *   The live workbook dependency uses Apps Script library version 11. The
+ *   "V4" labels below describe the feature-generation lineage retained in the
+ *   source comments; they are not the current deployed library version.
  *
  * NEW IN V4 (deltas from v3, all clearly marked with "V4:" comments):
  *   1. Shared-Drive routing: each client's sheet lands in that client's
@@ -20,6 +25,13 @@
  *      external partners until Track 2 is in place.
  *   5. Optional opt-in partner auto-share (CELLS.PARTNER_EMAIL), confirmation-
  *      gated; blank cell = manual sharing (today's behavior).
+ *   6. V4.1: robust My-Drive fallback for unmapped clients - creates/uses
+ *      Reporting/<client>/First Party Data in the running user's My Drive, so
+ *      Publish always works. Mapping a client is done IN-SCRIPT: at the confirm
+ *      dialog choose "change destination folder" and paste a folder link; it is
+ *      saved as that client's default (client-level) for every future partner -
+ *      no spreadsheet editing. (A CustomFolderPrefs row, client code + blank
+ *      partner + folder URL/ID, is an optional manual override.)
  *
  * NEW IN V2: User confirmation dialog before duplication with option to
  * change destination folder by pasting folder URL or ID.
@@ -30,13 +42,13 @@
  * DEPLOYMENT INSTRUCTIONS:
  * 1. Create a new standalone Apps Script project at script.google.com
  * 2. Paste this entire script
- * 3. Save and name the project (e.g., "FPD Duplicator Library V2")
+ * 3. Save and name the project ("FPD Duplicator Library")
  * 4. Deploy > New deployment > Type: Library
  * 5. Copy the Script ID (from Project Settings)
  * 6. In your spreadsheets, add this library:
  *    - Extensions > Apps Script > Libraries > Add
  *    - Paste the Script ID
- *    - Select latest version
+ *    - Select the explicitly approved deployment version (currently version 11)
  *    - Set identifier as "FPDLib"
  * 7. Add the stub code (see Stub.gs) to each spreadsheet
  *
@@ -82,13 +94,26 @@ const CONFIG = {
   VISIBLE_TAB_NAME: 'data',
 
   // Folder ID for creating shortcuts to new files
-  // https://drive.google.com/drive/folders/1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF
+  // Canonical First_Party_Data shortcut folder:
+  // https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY
   SHORTCUT_FOLDER_ID: '1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY',
 
-  // Master spreadsheet ID for centralized Log and ClientMapping
-  // https://docs.google.com/spreadsheets/d/1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4
-  // All logging and client mappings are stored here, regardless of which sheet runs the script
-  MASTER_SPREADSHEET_ID: '1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4',
+  // Shared warning asset placed over Config and data in unpublished copies.
+  UNPUBLISHED_WARNING_IMAGE_FILE_ID: '1emAgtyqxvVTAVSXtN9wI5bx2dTWMNbj3',
+  UNPUBLISHED_WARNING_ALT_TITLE: 'FPD_UNPUBLISHED_WARNING_V1',
+  UNPUBLISHED_WARNING_TABS: [
+    { name: 'Config', column: 6, row: 2, width: 620, height: 146 },
+    { name: 'data', column: 3, row: 2, width: 620, height: 146 }
+  ],
+
+  // Master spreadsheet ID for centralized Log and ClientMapping.
+  // V4.3: this is the ACTUAL in-use template "GS | Partner Data Collection |
+  // Template 2026 v3" (1BYq...), not the older "*2025 Template* v3 ... Dupe
+  // before using" (1pc9...). Log, ClientMapping, and CustomFolderPrefs (incl.
+  // in-script client mappings) are written here regardless of which duplicate
+  // runs the script.
+  // https://docs.google.com/spreadsheets/d/1BYqrQrjL4_rf5-LKTlGkR94CkqSW6QOsYzAPLHxucfY
+  MASTER_SPREADSHEET_ID: '1BYqrQrjL4_rf5-LKTlGkR94CkqSW6QOsYzAPLHxucfY',
 
   // V4: Client code -> the "First Party Data" folder ID inside that client's
   // MAIN Shared Drive (verified live 2026-08). Publish routes here directly,
@@ -157,26 +182,19 @@ function duplicateAndSetup(ss) {
       progress.start(2); progress.complete(2, 'n/a (mapped destination)');
       progress.start(3); progress.complete(3, 'First Party Data (mapped)');
     } else {
-      // Legacy fallback: My-Drive CLIENTS root traversal.
-      const clientFolder = getClientFolder_(configValues.clientCode, ui);
-      if (!clientFolder) return; // User cancelled or error
-      progress.complete(1, clientFolder.getName());
-
+      // V4.1 robust fallback (always works, even with no Shared-Drive mapping):
+      // create/use  <running user's My Drive> / Reporting / <client> / First Party Data.
+      // Replaces the old stale My-Drive CLIENTS traversal that could fail for
+      // unmapped clients. To route a client to a Shared Drive instead, add a
+      // client-level row to CustomFolderPrefs (client code, blank partner,
+      // folder URL or ID) - no code change needed.
+      progress.complete(1, 'My Drive fallback');
       progress.start(2);
-      const yearFolder = getYearFolder_(clientFolder, configValues.year, configValues.clientCode, ui);
-      if (!yearFolder) return; // User cancelled or error
-      progress.complete(2, yearFolder.getName());
-
+      progress.complete(2, 'Reporting / ' + configValues.clientCode);
       progress.start(3);
-      const savedCustomFolder = getCustomFolderPref_(configValues.clientCode, configValues.partnerName);
-      if (savedCustomFolder) {
-        dataFolder = savedCustomFolder;
-        usingCustomFolder = true;
-        progress.complete(3, 'Using saved preference');
-      } else {
-        dataFolder = getOrCreateDataFolder_(yearFolder);
-        progress.complete(3);
-      }
+      dataFolder = getMyDriveFallbackFolder_(configValues.clientCode);
+      usingCustomFolder = false;
+      progress.complete(3, 'First Party Data (My Drive)');
     }
 
     // Step 5: Generate filename and handle duplicates
@@ -189,12 +207,14 @@ function duplicateAndSetup(ss) {
     const confirmation = confirmDestination_(fileName, dataFolder, usingCustomFolder, ui);
     if (!confirmation) return; // User cancelled
 
-    // If user changed the folder, update our dataFolder reference and save preference
+    // If user changed the folder, update our dataFolder reference and save the
+    // mapping. V4.1: save at CLIENT level (blank partner) so choosing a folder
+    // once during a run maps the whole client for every future partner - the
+    // in-script way to map, with no spreadsheet editing.
     if (confirmation.changedFolder) {
       dataFolder = confirmation.folder;
       usingCustomFolder = true;
-      // Save the custom folder preference for future runs
-      saveCustomFolderPref_(configValues.clientCode, configValues.partnerName, dataFolder.getId());
+      saveClientLevelFolderPref_(configValues.clientCode, dataFolder.getId());
     }
     progress.complete(5, confirmation.changedFolder ? 'Custom location (saved)' : (usingCustomFolder ? 'Saved preference' : 'Confirmed'));
 
@@ -204,6 +224,7 @@ function duplicateAndSetup(ss) {
     const newFile = originalFile.makeCopy(fileName, dataFolder);
     const newSpreadsheet = SpreadsheetApp.openById(newFile.getId());
     const newFileUrl = newFile.getUrl();
+    removeUnpublishedWarnings_(newSpreadsheet);
     progress.complete(6);
 
     // Step 8: Hide all tabs except 'data', then V4 interim lockdown
@@ -239,12 +260,71 @@ function duplicateAndSetup(ss) {
     archiveSourceDupe_(ss, fileName);
 
     // Step 12: Show success dialog with link
-    showSuccessDialog_(newFileUrl, fileName, permissionResult, progress.getSummary());
+    showSuccessDialog_(newFileUrl, fileName, permissionResult, progress.getSummary(), shortcutId);
 
   } catch (error) {
     showError_('An unexpected error occurred: ' + error.message);
     console.error(error);
   }
+}
+
+/**
+ * One-time, idempotent installer for the unpublished warning images on the
+ * master template. Normal spreadsheet copies inherit these over-grid images.
+ * Safe to rerun: an existing labeled warning is never duplicated.
+ * @returns {number} Number of newly inserted warning images
+ */
+function installUnpublishedWarnings() {
+  const spreadsheet = SpreadsheetApp.openById(CONFIG.MASTER_SPREADSHEET_ID);
+  const warningBlob = DriveApp.getFileById(CONFIG.UNPUBLISHED_WARNING_IMAGE_FILE_ID).getBlob();
+  let insertedCount = 0;
+
+  CONFIG.UNPUBLISHED_WARNING_TABS.forEach(spec => {
+    const sheet = spreadsheet.getSheetByName(spec.name);
+    if (!sheet) {
+      throw new Error('Warning image target tab not found: ' + spec.name);
+    }
+
+    const alreadyPresent = sheet.getImages().some(image =>
+      image.getAltTextTitle() === CONFIG.UNPUBLISHED_WARNING_ALT_TITLE
+    );
+    if (alreadyPresent) return;
+
+    sheet.insertImage(warningBlob.copyBlob(), spec.column, spec.row)
+      .setAltTextTitle(CONFIG.UNPUBLISHED_WARNING_ALT_TITLE)
+      .setAltTextDescription('UNPUBLISHED — DO NOT SHARE')
+      .setWidth(spec.width)
+      .setHeight(spec.height);
+    insertedCount++;
+  });
+
+  SpreadsheetApp.flush();
+  return insertedCount;
+}
+
+/**
+ * Removes only the labeled unpublished warnings from a published copy.
+ * Other over-grid images, including partner logos, are preserved.
+ * @param {Spreadsheet} spreadsheet - Newly published spreadsheet
+ * @returns {number} Number of warning images removed
+ */
+function removeUnpublishedWarnings_(spreadsheet) {
+  let removedCount = 0;
+
+  CONFIG.UNPUBLISHED_WARNING_TABS.forEach(spec => {
+    const sheet = spreadsheet.getSheetByName(spec.name);
+    if (!sheet) return;
+
+    sheet.getImages().forEach(image => {
+      if (image.getAltTextTitle() === CONFIG.UNPUBLISHED_WARNING_ALT_TITLE) {
+        image.remove();
+        removedCount++;
+      }
+    });
+  });
+
+  SpreadsheetApp.flush();
+  return removedCount;
 }
 
 // ============================================================================
@@ -829,45 +909,32 @@ function formatMonthYear_(date) {
 function confirmDestination_(fileName, folder, usingCustomFolder, ui) {
   const folderPath = getFolderPath_(folder);
 
-  // Build confirmation message
-  const savedIndicator = usingCustomFolder ? '\n  ★ Using saved preference\n' : '';
-  const message = 'READY TO DUPLICATE\n' +
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+  // V4.1: real Yes/No/Cancel buttons instead of typing "1". The message maps
+  // each button to a plain action so the click is unambiguous.
+  const savedIndicator = usingCustomFolder ? '  (saved preference for this client)\n' : '';
+  const message =
     'File name:\n' +
     '  ' + fileName + '\n\n' +
     'Destination:\n' +
-    '  📁 ' + folderPath + savedIndicator + '\n' +
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-    'Enter:\n' +
-    '  1 - Proceed with duplication\n' +
-    '  2 - Change destination folder' + (usingCustomFolder ? ' (clears saved preference)' : '') + '\n' +
-    '  cancel - Cancel operation';
+    '  📁 ' + folderPath + '\n' + savedIndicator + '\n' +
+    'YES  =  Publish here\n' +
+    'NO   =  Choose a different folder\n' +
+    'CANCEL  =  Stop';
 
-  const response = ui.prompt('Confirm Destination', message, ui.ButtonSet.OK_CANCEL);
+  const response = ui.alert('Confirm publish destination', message, ui.ButtonSet.YES_NO_CANCEL);
 
-  // Check if user cancelled
-  if (response.getSelectedButton() !== ui.Button.OK) {
-    return null;
-  }
-
-  const input = response.getResponseText().trim().toLowerCase();
-
-  if (input === '1') {
-    // Proceed with current folder
+  if (response === ui.Button.YES) {
+    // Proceed with the current folder.
     return { folder: folder, changedFolder: false };
-  } else if (input === '2') {
-    // Change folder
-    const newFolder = showChangeFolderDialog_(ui);
-    if (!newFolder) {
-      return null; // User cancelled folder change
-    }
-    return { folder: newFolder, changedFolder: true };
-  } else if (input === 'cancel') {
-    return null;
-  } else {
-    showError_('Invalid selection: "' + input + '". Please enter 1, 2, or cancel.');
-    return null;
   }
+  if (response === ui.Button.NO) {
+    // Let the operator pick a different folder (pasted link/ID).
+    const newFolder = showChangeFolderDialog_(ui);
+    if (!newFolder) return null; // cancelled the folder change
+    return { folder: newFolder, changedFolder: true };
+  }
+  // CANCEL, or the dialog was dismissed.
+  return null;
 }
 
 /**
@@ -1125,18 +1192,75 @@ function getClientLevelFolderPref_(clientCode) {
   for (let i = 1; i < data.length; i++) {
     const rowClient = String(data[i][0]).toLowerCase().trim();
     const rowPartner = String(data[i][1]).trim();
-    const folderId = data[i][2];
-    if (rowClient === clientLower && rowPartner === '' && folderId) {
+    const rawFolder = data[i][2];
+    if (rowClient === clientLower && rowPartner === '' && rawFolder) {
+      // V4.1: accept a pasted folder URL or a raw ID, so a non-technical user
+      // can add a mapping by dropping the folder link into the sheet.
+      const folderId = extractFolderIdFromInput_(String(rawFolder).trim()) || String(rawFolder).trim();
       try {
         const folder = DriveApp.getFolderById(folderId);
         folder.getName();
         return folder;
       } catch (e) {
-        return null;
+        // Bad/inaccessible row - keep scanning rather than giving up.
+        console.warn('Client-level folder not accessible for ' + clientCode + ': ' + rawFolder);
       }
     }
   }
   return null;
+}
+
+/**
+ * V4.1: Robust fallback destination that ALWAYS works - creates/uses
+ *   <running user's My Drive> / Reporting / <clientCode> / First Party Data
+ * Used when a client has no Shared-Drive mapping. Because the running user owns
+ * these folders, the copy is owned by them and normal ownership handling applies.
+ */
+function getMyDriveFallbackFolder_(clientCode) {
+  const root = DriveApp.getRootFolder(); // the running user's My Drive
+  const reporting = getOrCreateChildFolder_(root, 'Reporting');
+  const client = getOrCreateChildFolder_(reporting, String(clientCode).trim());
+  return getOrCreateChildFolder_(client, CONFIG.DATA_FOLDER_NAME);
+}
+
+/**
+ * V4.1: Get a direct child folder by name, creating it if it does not exist.
+ */
+function getOrCreateChildFolder_(parentFolder, name) {
+  const existing = parentFolder.getFoldersByName(name);
+  return existing.hasNext() ? existing.next() : parentFolder.createFolder(name);
+}
+
+/**
+ * V4.1: Save a CLIENT-LEVEL folder mapping (partner column blank) to
+ * CustomFolderPrefs, so a folder chosen once via the in-script "change
+ * destination" dialog becomes the default for every partner of that client.
+ * Upserts the client's blank-partner row.
+ */
+function saveClientLevelFolderPref_(clientCode, folderId) {
+  const prefsSheet = getOrCreateCustomFolderPrefsSheet_();
+  const data = prefsSheet.getDataRange().getValues();
+  const clientLower = String(clientCode).toLowerCase().trim();
+
+  let folderPath = '';
+  try {
+    folderPath = getFolderPath_(DriveApp.getFolderById(folderId));
+  } catch (e) {
+    folderPath = '(unknown)';
+  }
+
+  // Update the existing client-level row (blank partner) if present.
+  for (let i = 1; i < data.length; i++) {
+    const rowClient = String(data[i][0]).toLowerCase().trim();
+    const rowPartner = String(data[i][1]).trim();
+    if (rowClient === clientLower && rowPartner === '') {
+      prefsSheet.getRange(i + 1, 3, 1, 3).setValues([[folderId, folderPath, new Date()]]);
+      return;
+    }
+  }
+
+  // Otherwise append a new client-level row (partner column intentionally blank).
+  prefsSheet.appendRow([clientCode, '', folderId, folderPath, new Date()]);
 }
 
 /**
@@ -1223,7 +1347,8 @@ function archiveSourceDupe_(ss, publishedName) {
  * Creates a shortcut to the new file in the designated shortcuts folder.
  * @param {File} file - The file to create a shortcut to
  * @param {string} fileName - The name for the shortcut
- * @returns {string|null} The shortcut file ID, or null if creation failed
+ * @returns {string} The shortcut file ID
+ * @throws {Error} When the shortcut cannot be created
  */
 function createShortcut_(file, fileName) {
   try {
@@ -1237,14 +1362,15 @@ function createShortcut_(file, fileName) {
         targetId: file.getId()
       },
       parents: [CONFIG.SHORTCUT_FOLDER_ID]
+    }, null, {
+      supportsAllDrives: true
     });
 
     console.log('Created shortcut: ' + shortcut.id);
     return shortcut.id;
   } catch (e) {
-    // Log error but don't fail the whole process
     console.error('Could not create shortcut: ' + e.message);
-    return null;
+    throw new Error('Could not create ingestion shortcut: ' + e.message);
   }
 }
 
@@ -1293,7 +1419,7 @@ function logAction_(ss, originalFile, newFile, destinationFolder, success, custo
   // Shortcut link (if available)
   let shortcutLink = '';
   if (shortcutId) {
-    shortcutLink = '=HYPERLINK("https://drive.google.com/file/d/' + shortcutId + '/view","Open Shortcut")';
+    shortcutLink = '=HYPERLINK("https://drive.google.com/drive/folders/' + CONFIG.SHORTCUT_FOLDER_ID + '","Open Shortcut Folder")';
   }
 
   // Append log entry with formulas
@@ -1500,7 +1626,13 @@ function showFolderDropdown_(folderList, title, message, ui) {
  * @param {Object} permissionResult - Result from permission setting
  * @param {string} progressSummary - HTML summary of completed steps
  */
-function showSuccessDialog_(fileUrl, fileName, permissionResult, progressSummary) {
+function showSuccessDialog_(fileUrl, fileName, permissionResult, progressSummary, shortcutId) {
+  // Open the canonical folder containing the shortcut. Linking the shortcut
+  // object itself opens Drive's generic preview shell instead of a useful view.
+  const shortcutFolderUrl = 'https://drive.google.com/drive/folders/' + CONFIG.SHORTCUT_FOLDER_ID;
+  const shortcutHtml = shortcutId
+    ? `<br><a class="open-btn secondary" href="${shortcutFolderUrl}" target="_blank" onclick="google.script.host.close()">Open Shortcut Folder</a>`
+    : '';
   let warningHtml = '';
   if (!permissionResult.success) {
     warningHtml = `
@@ -1530,6 +1662,8 @@ function showSuccessDialog_(fileUrl, fileName, permissionResult, progressSummary
         margin-top: 10px;
       }
       .open-btn:hover { background-color: #3367d6; }
+      .open-btn.secondary { background-color: #5f6368; }
+      .open-btn.secondary:hover { background-color: #494c50; }
       .close-btn { margin-top: 15px; color: #666; cursor: pointer; font-size: 13px; }
       .summary {
         background-color: #f8f9fa;
@@ -1558,8 +1692,9 @@ function showSuccessDialog_(fileUrl, fileName, permissionResult, progressSummary
     </div>
 
     <a class="open-btn" href="${fileUrl}" target="_blank" onclick="google.script.host.close()">
-      Open New Sheet
+      Open Published Sheet
     </a>
+    ${shortcutHtml}
     <p class="close-btn" onclick="google.script.host.close()">Close</p>
 
     <script>

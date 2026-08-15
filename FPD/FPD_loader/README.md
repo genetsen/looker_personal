@@ -17,6 +17,8 @@ If you want a fast orientation first, read `docs/PROJECT_OVERVIEW.md`.
 
 For the partner-facing Google Sheets template and its Apps Script migration notes, start with the [Partner Data Collection template guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/docs/partner-data-collection-template.md).
 
+Before changing publisher versions or shortcut routing, read the shared [FPD current state](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/CURRENT_STATE.md). It records the active version 11 publisher, template, canonical shortcut folder, and verification boundary used by both Codex and Claude Code.
+
 ```bash
 # Install R packages (one-time)
 Rscript -e 'install.packages(c("googledrive", "googlesheets4", "dplyr", "stringr", "readr", "lubridate", "janitor", "bigrquery", "tidyr"))'
@@ -114,7 +116,7 @@ Edit the top of `util_collect_fpd_shortcutsFolder.r`:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `gdrive_folder_id` | Google Drive folder ID containing partner sheets | `"1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"` |
+| `gdrive_folder_id` | Canonical [First_Party_Data shortcut folder](https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY) scanned for partner sheets | `"1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY"` |
 | `pattern` | Sheet name pattern to match during discovery (can be overridden with `--pattern`) | `"| Partner Data"` |
 | `output_dir` | Directory for checkpoint CSVs | `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output` |
 | `cache_dir` | Per-sheet cache directory used by the default cache-reuse mode | `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/output/sheet_cache` |

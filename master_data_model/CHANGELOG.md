@@ -1,8 +1,22 @@
 # Changelog
 
+## 2026-08-14
+
+**FPD publisher version 11 distinguishes unpublished sheets and opens the shortcut folder directly** ([Apps Script](model/branches/fpd/apps_script/publish_fpd_template_fpdLib__v11/Library.gs)) — 🟢 **User verified**<br>The library removes only warning images labeled `FPD_UNPUBLISHED_WARNING_V1` from published copies, preserves other images, creates canonical Shared Drive shortcuts, and makes the confirmation and Log shortcut actions open the canonical shortcut folder. The bound template was pulled back with dependency version 11, and the user verified the complete fresh Publish flow: warnings remain on the source, are absent from the published Sheet, and the shortcut action opens the correct folder.
+- **ℹ️ Evidence boundary** - Google’s connection does not expose over-cell image labels, so the visual transition is user-verified rather than independently readable through the API.
+
+### Pending Next Actions
+
+- **Since Aug 11** - Build the per-partner BigQuery source before any published sheet is shared externally - BLOCKER
+- **Since Aug 12** - Map the remaining clients to their shared-drive `First Party Data` folders
+- **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse
+
 ## 2026-08-13
 
 **Apollo DCM creative images now match the authoritative Asset Name mapping and have a future multi-client registry design** ([DCM guide](model/branches/dcm/README_dcm-pipeline.md)) — 🟢 **Verified**<br>The [Apollo creative-image asset map](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=apo_dcm_creative_image_asset_map&page=table) retains all 63 workbook assets and publishes eight supported source images. V3 removes only the final size suffix from Apollo DCM creative names, correctly fills 911 delivery rows across nine creative variants—including V1 and V2—and leaves the MP4 and unavailable sources blank. The SQL Change Guard passed all 16 checks with no row, key, schema, or metric change. The documented next phase is a source registry for other client workbooks using client-safe `advertiser + normalized DCM creative name` matching. [More details](model/branches/dcm/README_dcm-pipeline.md).
+
+**The active FPD template and shortcut creator now document one canonical ingestion destination** ([Apps Script](model/branches/fpd/apps_script/publish_fpd_template_fpdLib__v11/Library.gs)) — 🟡 **Partially verified**<br>The [current template guide](model/branches/fpd/partner-data-collection-template.md), workbook-bound wrapper, and active publishing library identify [Analytics First_Party_Data](https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY) as the shortcut destination scanned by the R loader. The active Apps Script source passes JavaScript syntax validation and its configured folder matches the loader.
+- ⚠️ Unverified — This task did not republish a new live Apps Script library version or run a fresh Publish action.
 
 ## 2026-08-12
 
@@ -10,15 +24,19 @@
 
 **Ritual conversion dashboard compatibility refresh is restored and runner-proven** ([R loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/load_rtl_conv_report.R)) — 🟢 **Verified and committed**<br>The [Ritual dashboard table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table) now refreshes from direct CM360 history immediately after the universal runner’s upstream merge, rather than remaining at its July 12 snapshot. The protected 18-column table reconciles all 96 source dates, 7,141 records, and 102,657 conversions through August 3, and the registered refresh completed successfully in a full 20-of-20 universal runner execution on August 13. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md).
 
-## 2026-08-11
-
-- **ADDED** - Published the corrected FPD partner-sheet "Publish" logic (version 4) to its shared script library; only wiring the in-sheet button to it and a test run remain. The updated version files each new partner sheet into the correct client's shared-drive "First Party Data" folder, keeps the file controlled through shared-drive membership instead of transferring ownership, marks the working copy it was made from as outdated, and locks the partner selection so it cannot be repointed. Confirmed the data needed to scope each sheet to a single partner already exists in BigQuery. Sharing finished sheets to outside partners is intentionally held until a follow-up BigQuery change guarantees a partner can never see another partner's data.
+- **FIXED** - Restored the FPD partner-sheet "Publish" button end to end for mapped clients. A test Olipop sheet published straight into the client's shared-drive "First Party Data" folder, with every internal tab hidden and locked and the action recorded in the shared log; file control is handled through shared-drive membership. The final blocker was that the in-sheet button lacked permission to act on Drive, now granted. Any client without a shared-drive mapping still publishes reliably to an auto-created "Reporting / [client] / First Party Data" folder in the user's own Drive, and operators can map a client to a shared drive while the script runs (choose "change destination folder" and paste the link) without editing any spreadsheet.
+- **CHANGED** - Repointed the FPD Publish fix at the template operators actually duplicate ("GS | Partner Data Collection | Template 2026 v3") after finding the earlier work targeted an older copy. The in-sheet button and the central log/client-mapping hub now both live on that in-use file, so runs are recorded and mappings saved where the team works.
 
 ### Pending Next Actions
 
-- **Since Jul 10** - Install and test the FPD "Publish" button fix (shared-drive routing + interim lockdown) on the current template - RECOMMENDED
 - **Since Aug 11** - Build the per-partner BigQuery source so a partner can never see another partner's data, before any sheet is shared externally - BLOCKER
+- **Since Aug 14** - Migrate the FPD central source workbook (the template's live data feed) from the old Google Workspace to the new one; every template and published sheet depends on it
+- **Since Aug 12** - Map the remaining clients (for example ICE) to their shared-drive "First Party Data" folders so they stop using the old location
 - **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse
+
+## 2026-08-11
+
+- **ADDED** - Published the corrected FPD partner-sheet "Publish" logic (version 4) to its shared script library; only wiring the in-sheet button to it and a test run remain. The updated version files each new partner sheet into the correct client's shared-drive "First Party Data" folder, keeps the file controlled through shared-drive membership instead of transferring ownership, marks the working copy it was made from as outdated, and locks the partner selection so it cannot be repointed. Confirmed the data needed to scope each sheet to a single partner already exists in BigQuery. Sharing finished sheets to outside partners is intentionally held until a follow-up BigQuery change guarantees a partner can never see another partner's data.
 
 ## 2026-08-10
 

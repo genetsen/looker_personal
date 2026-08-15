@@ -7,6 +7,15 @@ way that matches the new per-client Shared Drive structure. Read the companion
 [partner-data-collection-template.md](partner-data-collection-template.md) for
 the workbook itself.
 
+> **Correction (2026-08-12):** The in-use template is **`GS | Partner Data
+> Collection | Template 2026 v3`** =
+> `1BYqrQrjL4_rf5-LKTlGkR94CkqSW6QOsYzAPLHxucfY`. Earlier references below to
+> `1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4` ("*2025 Template* v3 … Dupe
+> before using") point at an **older copy**; the canonical doc had mislabeled it
+> as current. The bound stub goes on `1BYq`, and the library's
+> `MASTER_SPREADSHEET_ID` (central Log / ClientMapping / CustomFolderPrefs) is
+> now `1BYq`. Treat `1BYq` wherever `1pc9` appears below.
+
 ## 1. What the Publish button does
 
 The button on the current template workbook
@@ -138,6 +147,10 @@ than a drawing button).
   prompt — keep the `CLIENT_FPD_FOLDERS` map / `CustomFolderPrefs` current.
 - External auto-share must stay confirmation-gated to avoid mis-sends.
 - The library source lives only in the cloud + this repo copy; keep them in sync.
+- **Central source workbook is in the OLD workspace.** The template's `IMPORTRANGE`
+  source `1T4PCzCmkpB35MYaML1Z8ovitSgeE-2WCqFnNi8t_Qds` still lives in the old
+  Google Workspace and must be migrated to the new one — every template and
+  published sheet depends on it. (Track 2's BigQuery source ultimately replaces it.)
 
 ## 9. Additional improvements (folded into v4)
 

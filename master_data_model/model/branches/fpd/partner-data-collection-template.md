@@ -2,21 +2,23 @@
 
 This document explains the configurable Google Sheets template used to request first-party delivery data from media partners.
 
-Current source workbook: [Partner Data Collection template](https://docs.google.com/spreadsheets/d/1pc9gXkMhWZ0dFNeagZWjUqsKUnWebIvB3xd5IGht4w4/edit?gid=561569503#gid=561569503). This is the current template identified on July 10, 2026, and it must be recreated after the Workplace migration. The workbook and duplicator-library source are now readable; the library's v3 release uses this workbook for central mappings and logging. The current workbook's sheet-bound wrapper/button is still not located or verified.
+Current source workbook: [GS | Partner Data Collection | Template 2026 v3](https://docs.google.com/spreadsheets/d/1BYqrQrjL4_rf5-LKTlGkR94CkqSW6QOsYzAPLHxucfY/edit). This is the template operators currently duplicate. Its workbook-bound wrapper calls FPD library version 11, and that library uses this workbook for central mappings and logging. The shared [FPD current state](CURRENT_STATE.md) is the first handoff to read before changing this workflow.
+
+Canonical shortcut destination: [Analytics First_Party_Data](https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY). New partner sheets published by the active version 11 library create their ingestion shortcuts here, and the shortcut-aware R loader scans this same folder. The success dialog and Log shortcut action open this folder directly.
+
+Unpublished visual status: run **Publish New FPD Sheet → Install Unpublished Warning Images** once on the master template. It places the labeled `UNPUBLISHED — DO NOT SHARE` image over both Config and data. Template copies inherit the warnings; publishing removes only those labeled images from the new output.
 
 Historical baseline: the workbook shape, formulas, and experiment findings below came from a July 8, 2026 live inspection of the earlier [2025 Template v2 Partner Data Collection](https://docs.google.com/spreadsheets/d/15zQ_IZx0kFpAffCFpp2d8ddDfjRf-kjnoSQXHxSu5eA/edit?gid=762675964#gid=762675964). Treat those details as migration reference material until the current template is accessible and checked.
 
-## Apps Script Migration Status — July 10, 2026
+## Current Apps Script Status — August 13, 2026
 
-The current migration has three verified Apps Script blockers:
-
-| Finding | Evidence | What it means for recreation |
+| Active surface | Current role | Canonical source |
 |---|---|---|
-| The duplicator library was run through the wrong entrypoint. | Four July 9 editor executions of `duplicateAndSetup` failed within 0.6 seconds. That function requires a spreadsheet argument and is designed to be called from a sheet-bound wrapper with the active spreadsheet. | Do not run the library function directly from the Apps Script editor. Recreate the sheet-bound wrapper/button so it calls the library with the active spreadsheet. |
-| The duplicator library previously used the archived v2 workbook as its central mapping and logging source. | The v3 library release now points its master-spreadsheet reference to the current source workbook. The existing v2 library release remains available for older sheets. | Attach the v3 release to the recreated sheet-bound wrapper; do not change older sheets until they are deliberately migrated. |
-| The inspected `publish_fpd_template` and `publish_fpd_template_fpdLib` projects are standalone projects. | Their Apps Script metadata has no spreadsheet parent, and no discovered project exposed a `Process FPD` function. | The current v3 workbook's bound wrapper and button assignment still need to be recreated or located; do not treat either standalone project as proof that the v3 sheet is wired up. |
+| In-use template | Workbook operators duplicate and use to run `Publish` | [GS \| Partner Data Collection \| Template 2026 v3](https://docs.google.com/spreadsheets/d/1BYqrQrjL4_rf5-LKTlGkR94CkqSW6QOsYzAPLHxucfY/edit) |
+| Workbook-bound wrapper | Passes the active workbook to `FPDLib.duplicateAndSetup`; it does not choose the shortcut folder itself | [Bound stub](apps_script/current_workbook_bound_stub/Stub.gs) using FPDLib version 11 |
+| Version 11 FPD library | Duplicates, routes, locks, logs, removes unpublished warnings, and creates Shared Drive ingestion shortcuts | [Version 11 library](apps_script/publish_fpd_template_fpdLib__v11/Library.gs), with `SHORTCUT_FOLDER_ID` set to the canonical First_Party_Data folder |
 
-The Google Apps Script API was enabled on July 10 to inspect source and execution history. The standalone duplicator library was then updated and published as a new v3 release that uses the current source workbook for central mappings and logging. No workbook cells, bound-script wrapper, button assignment, triggers, or duplication run were changed during this work.
+Do not run `duplicateAndSetup` directly from the Apps Script editor. It requires the active spreadsheet and must be called by the workbook-bound wrapper. Older v3 and old-account source copies remain historical references and are not the active template path.
 
 ## What This Template Does
 

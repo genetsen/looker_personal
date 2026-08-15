@@ -1,3 +1,17 @@
+## 2026-08-14
+
+**FPD publisher version 11 and the shortcut-aware loader share the canonical folder** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/CURRENT_STATE.md)) — 🟢 **User verified**<br>The publisher removes labeled unpublished warnings from outputs, opens the canonical shortcut folder from the confirmation and Log, supports Shared Drive shortcut creation, and remains aligned with the folder scanned by the loader. The live template was pulled back with version 11, and the user verified the complete fresh Publish flow; the production loader itself was not run.
+- **ℹ️ Evidence boundary** - Google’s connection does not expose over-cell image labels, so the visual transition is user-verified rather than independently readable through the API.
+
+### Pending Next Actions
+
+- **Since Jul 28** - Reconcile and remove any remaining superseded FPD preservation surfaces after canonical branch coverage is proven - BLOCKER
+
+## 2026-08-13
+
+**FPD shortcut ingestion now reads the canonical Analytics folder used by the publishing template** ([R loader](util_collect_fpd_shortcutsFolder.r)) — 🟡 **Partially verified**<br>The [shortcut-aware loader](README.md) now scans the same [First_Party_Data folder](https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY) where the active publisher creates ingestion shortcuts. The R source parses successfully and its configured folder matches the active Apps Script source.
+- ⚠️ Unverified — The production loader was intentionally not run, so this change is not verified end to end.
+
 ## 2026-08-10
 
 **FPD publishing now fails closed, preserves blank metrics, and removes only explicitly archived sources** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r)) — 🟢 **Verified and committed**<br>The [shortcut-aware FPD loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/README.md) now preserves established warehouse types for completely blank metrics, stops when a production BigQuery job fails or cannot be verified, and treats `ARCHIVE` on the current shortcut or resolved Sheet name as the only deletion signal. Archive cleanup uses the exact source URL, merely missing sources remain untouched, and saved-phase debugging cannot replay an older cleanup decision. The canonical runner completed 19 of 19 workloads successfully. Purely Elizabeth's August 7 rows reconciled at 15,328,236 impressions and $68,167.14 spend, while the complete MIQ feed reconciled across the landing, base, clustered, and V3 models. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/FPD/FPD_loader/tests/test_archive_source_cleanup_scope.R)

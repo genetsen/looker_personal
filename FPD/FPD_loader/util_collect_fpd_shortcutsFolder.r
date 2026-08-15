@@ -1,8 +1,8 @@
 ################################################################################
 #### ! LATEST VERSION OF THIS SCRIPT
 #### FPD INGESTION - VERSION 4 ALL FPD FILES from shortcuts folder...
-#### /Users/eugenetsenter/Library/CloudStorage/GoogleDrive-gene.tsenter@giantspoon.com/.shortcut-targets-by-id/0B0U23i7iN3kZaHJ4NzMyeHp5NW8/Giant Spoon - SHARED (USE THIS ONE)/4. Department Folders/Analytics
-#### https://drive.google.com/drive/folders/1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF?usp=drive_link
+#### Giant Spoon - SHARED (USE THIS ONE) / 4. Department Folders / Analytics / First_Party_Data
+#### https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY
 ################################################################################
 # What changed: this shortcut-aware loader now resolves Drive shortcuts, supports
 # a one-run pattern override, and stages BigQuery writes before replacing prod.
@@ -116,9 +116,9 @@ has_flag <- function(args, flag_name) {
 }
 
 #### CONFIGURATION ####
-gdrive_folder_id <- "1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF"
-  # Analytics department folder (recursive scan, filtered by pattern):
-  # https://drive.google.com/drive/folders/1d--Bc554eBaRCr8blt1LnUYiOMHQe7jF
+gdrive_folder_id <- "1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY"
+  # Canonical First_Party_Data shortcut folder (recursive scan, filtered by pattern):
+  # https://drive.google.com/drive/folders/1pqQVdROIhOkfuBLwexH00uW4eiqkb0GY
 pattern <- "| Partner Data"
   pattern_override <- get_flag_value(cli_args, "pattern")
     if (!is.null(pattern_override)) {
