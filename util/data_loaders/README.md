@@ -11,7 +11,7 @@ The RTL conversion refresh reads direct CM360 history already stored in BigQuery
 
 ## What These Loaders Do
 
-Use these scripts when the latest TV estimate file arrives by email and needs to be refreshed into BigQuery.
+Use these scripts when the latest TV estimate file arrives by email or when the Ritual dashboard compatibility table needs its direct CM360 refresh.
 
 - The local loader writes to `looker-studio-pro-452620.landing.tv_local_estimates`
 - The national loader writes to `looker-studio-pro-452620.landing.tv_national_estimates`
@@ -88,7 +88,7 @@ Packages used across the folder:
 **Source:** [Direct CM360 conversion history](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=rtl_cm360_direct_conversions&page=table)
 **Target:** [RTL conversion compatibility table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=rtl_conv_report&page=table)
 
-This script keeps the legacy table shape available for compatibility while sourcing its rows from persistent direct CM360 history. The retired Google Sheet path is not read.
+This script keeps the legacy table shape used by the Ritual Omni dashboard while sourcing its rows from persistent direct CM360 history. The retired Google Sheet path is not read. The universal runner invokes this script immediately after `Master Data Model Upstream Refresh`, so the dashboard table receives the newest direct-history merge before the V3 refresh begins.
 
 | Step | What happens | Why it matters |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ After a run, check:
 3. Does the BigQuery table retain the same 18-column structure?
 4. Are the legacy-only delivery and Sheet-lineage fields null?
 
-The universal runner no longer registers this compatibility refresh. Its production V3 path refreshes direct CM360 history through the established upstream BigQuery schedule.
+The universal runner registers this compatibility refresh immediately after its upstream direct-CM360 history refresh. V3 does not read this table, but the Ritual dashboard compatibility view does.
 
 ## Shared Loader Flow
 
