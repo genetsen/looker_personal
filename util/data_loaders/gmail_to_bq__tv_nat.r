@@ -409,6 +409,28 @@
           "Total rows:", sum(result$row_count), "\n"
       )
     }
+
+
+# * ZERO IMPRESSIONS WRITE GUARD
+
+  # Description: Refuse to overwrite the final table when the incoming report
+  # carries no impressions. The source impressions column can arrive present but
+  # entirely empty, and the transform above coerces those NA values to 0. Without
+  # this guard that silently replaces good history with a table of zeros, and the
+  # runner verification still reports PASS because zero-in matches zero-out.
+
+  # ? Stop before the write when the incoming file has no impressions
+    incoming_impressions_total <- sum(df$net_impressions, na.rm = TRUE)
+    if (!is.finite(incoming_impressions_total) || incoming_impressions_total <= 0) {
+      stop(
+        paste0(
+          "RUNNER_SKIP|reason=TV national incoming report carried no impressions (total ",
+          format(incoming_impressions_total, big.mark = ",", scientific = FALSE),
+          " across ", nrow(df), " rows); table not overwritten."
+        )
+      )
+    }
+
     f_write_to_bq(df)
     #
     #
