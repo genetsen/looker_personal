@@ -235,6 +235,8 @@ fpd_original_raw AS (
     f.spend,
     f.sends,
     f.opens,
+    f.views,
+    f.completed_views,
     f.benchmark,
     f.benchmark_metric,
     f.factor,
@@ -259,6 +261,8 @@ fpd_original_daily AS (
     SUM(impressions) AS fpd_orig_impressions,
     SUM(clicks) AS fpd_orig_clicks,
     SUM(spend) AS fpd_orig_spend,
+    SUM(views) AS fpd_orig_video_views,
+    SUM(completed_views) AS fpd_orig_video_comps,
     SAFE_CAST(ROUND(SUM(sends)) AS INT64) AS fpd_orig_sends,
     SAFE_CAST(ROUND(SUM(opens)) AS INT64) AS fpd_orig_opens,
     MAX(benchmark) AS fpd_orig_benchmark,
@@ -275,6 +279,16 @@ fpd_original_daily AS (
     ARRAY_AGG(package_name IGNORE NULLS ORDER BY package_name LIMIT 1)[SAFE_OFFSET(0)] AS fpd_orig_package_name
   FROM fpd_original_raw
   GROUP BY package_id, date
+),
+
+fpd_video_daily AS (
+  -- Keep FPD views available for the final package/date video-view mapping
+  -- without duplicating the broader FPD aggregate in later joins.
+  SELECT
+    package_id AS fpd_package_id,
+    date AS fpd_date,
+    fpd_orig_video_views
+  FROM fpd_original_daily
 ),
 
 fpd_updated_daily AS (
@@ -723,7 +737,7 @@ digital_final AS (
     END AS final_video_plays,
     CASE
       WHEN prisma_package_id IS NULL THEN NULL
-      ELSE CAST(d_video_comps AS FLOAT64)
+      ELSE COALESCE(fpd_orig_video_comps, CAST(d_video_comps AS FLOAT64))
     END AS final_video_comps,
     CAST(NULL AS DATE) AS tv_data_refresh_date,
     CAST(NULL AS STRING) AS tv_media_outlet,
@@ -2263,7 +2277,7 @@ SELECT
   final_impressions AS `_impressions`,
   final_clicks AS `_clicks`,
   final_video_plays AS `_video_plays`,
-  COALESCE(social_video_views, final_video_plays) AS `_video_views`,
+  COALESCE(social_video_views, fpd_video.fpd_orig_video_views, final_video_plays) AS `_video_views`,
   final_video_comps AS `_video_comps`,
   tv_data_refresh_date AS `tv_data_refresh_date`,
   tv_media_outlet AS `tv_media_outlet`,
@@ -2389,6 +2403,9 @@ LEFT JOIN social_source_by_final_row AS social_source
  AND social_campaign_id = social_source.social_campaign_id_key
  AND social_ad_group_id = social_source.social_ad_group_id_key
  AND social_ad_id = social_source.social_ad_id_key
+LEFT JOIN fpd_video_daily AS fpd_video
+  ON with_standardized_advertiser.package_id_joined = fpd_video.fpd_package_id
+ AND with_standardized_advertiser.date = fpd_video.fpd_date
 WHERE standardized_advertiser_name != 'Highlights'
 ),
 
@@ -2456,6 +2473,7 @@ row_source_contributors AS (
         IF(
           `_video_views` IS NOT NULL,
           [CASE
+            WHEN `qa_media_data_type` = 'digital' AND `qa_row_data_source_primary` = 'fpd' THEN 'fpd'
             WHEN `qa_media_data_type` = 'digital' AND `dcm_video_plays` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'
@@ -2467,6 +2485,7 @@ row_source_contributors AS (
         IF(
           `man_daily_video_comps` IS NULL AND `_video_comps` IS NOT NULL,
           [CASE
+            WHEN `qa_media_data_type` = 'digital' AND `qa_row_data_source_primary` = 'fpd' THEN 'fpd'
             WHEN `qa_media_data_type` = 'digital' AND `dcm_video_comps` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'

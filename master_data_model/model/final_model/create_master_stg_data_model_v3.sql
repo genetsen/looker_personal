@@ -237,7 +237,9 @@ dcm_detail AS (
     SUM(d.rich_media_video_completions) AS dcm_video_comps,
     CAST(NULL AS FLOAT64) AS fpd_impressions,
     CAST(NULL AS FLOAT64) AS fpd_spend,
-    CAST(NULL AS FLOAT64) AS fpd_clicks
+    CAST(NULL AS FLOAT64) AS fpd_clicks,
+    CAST(NULL AS FLOAT64) AS fpd_video_views,
+    CAST(NULL AS FLOAT64) AS fpd_video_comps
   FROM `looker-studio-pro-452620.DCM.20250505_costModel_v5` AS d
   LEFT JOIN apo_dcm_creative_image_map AS m
     ON LOWER(TRIM(CAST(d.advertiser AS STRING))) LIKE '%apollo%'
@@ -279,7 +281,9 @@ fpd_original_detail AS (
     CAST(NULL AS INT64) AS dcm_video_comps,
     SUM(f.impressions) AS fpd_impressions,
     SUM(f.spend) AS fpd_spend,
-    SUM(f.clicks) AS fpd_clicks
+    SUM(f.clicks) AS fpd_clicks,
+    SUM(f.views) AS fpd_video_views,
+    SUM(f.completed_views) AS fpd_video_comps
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` AS f
   WHERE DATE(f.date_final) >= DATE '2025-01-01'
     AND f.package_id IS NOT NULL
@@ -315,7 +319,9 @@ fpd_updated_detail AS (
     CAST(NULL AS INT64) AS dcm_video_comps,
     SUM(u.daily_fpd_impressions) AS fpd_impressions,
     SUM(u.daily_fpd_spend) AS fpd_spend,
-    CAST(NULL AS FLOAT64) AS fpd_clicks
+    CAST(NULL AS FLOAT64) AS fpd_clicks,
+    CAST(NULL AS FLOAT64) AS fpd_video_views,
+    CAST(NULL AS FLOAT64) AS fpd_video_comps
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily` AS u
   WHERE DATE(u.date) >= DATE '2025-01-01'
     AND u.package_id IS NOT NULL
@@ -429,8 +435,20 @@ digital_actual_rows AS (
         ELSE d.fpd_clicks
       END AS `_clicks`,
       IF(m.`_package_id` IS NOT NULL OR NOT COALESCE(a.has_stable_video_plays, FALSE), NULL, CAST(d.dcm_video_plays AS FLOAT64)) AS `_video_plays`,
-      IF(m.`_package_id` IS NOT NULL OR NOT COALESCE(a.has_stable_video_views, FALSE), NULL, CAST(d.dcm_video_plays AS FLOAT64)) AS `_video_views`,
-      IF(m.`_package_id` IS NOT NULL OR NOT COALESCE(a.has_stable_video_comps, FALSE), NULL, CAST(d.dcm_video_comps AS FLOAT64)) AS `_video_comps`,
+      CASE
+        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_views
+        WHEN NOT COALESCE(a.has_stable_video_views, FALSE) THEN NULL
+        WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_video_plays AS FLOAT64)
+        ELSE NULL
+      END AS `_video_views`,
+      CASE
+        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_comps
+        WHEN NOT COALESCE(a.has_stable_video_comps, FALSE) THEN NULL
+        WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_video_comps AS FLOAT64)
+        ELSE NULL
+      END AS `_video_comps`,
       IF(m.`_package_id` IS NOT NULL, TRUE, COALESCE(ctx.c.qa_manual_edit_flag, FALSE)) AS qa_manual_edit_flag
     )
   FROM digital_detail_ranked AS d

@@ -940,7 +940,7 @@
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
-          "Original and revised FPD inputs are resolved into one public fpd_* family, including final metrics, factor, creative, benchmark, and contributing-source lineage."
+          "Original and revised FPD inputs are resolved into one public fpd_* family, including final metrics, factor, creative, benchmark, and contributing-source lineage. Original FPD views and completed views populate final video views and completions."
         ],
         sources: [
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
@@ -984,7 +984,7 @@
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
-          "Sets row_data_source_primary plus final_spend, final_impressions, final_clicks, final_video_plays, and final_video_comps.",
+          "Sets row_data_source_primary plus final spend, impressions, clicks, video plays, video views, and video completions. Original FPD views and completed views supply the corresponding final video metrics when present.",
           "For TV, Print, OOH, and dOOH package rows, planned cost and impressions can fill final_spend/final_impressions only when delivered metrics are unavailable and planned impressions are available.",
           "Exposes qa_data_source for the actual driving table and qa_data_source_refresh_at for the operational refresh included in the model.",
           "Keeps qa_data_source_content_modified_at separate for reliable FPD and Manual Data Editor source-content timestamps."

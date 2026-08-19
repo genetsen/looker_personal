@@ -1,0 +1,65 @@
+{
+  "_purpose": "Validate the QA-only FPD video-metric mapping candidate against the live V3 model before production review.",
+  "keys": [
+    "qa_cm360_record_key"
+  ],
+  "metrics": [
+    "_spend",
+    "_impressions",
+    "_clicks"
+  ],
+  "comparison_dimensions": [
+    "qa_v3_source_detail_type"
+  ],
+  "high_risk_metrics": [
+    "_spend",
+    "_impressions",
+    "_clicks",
+    "_video_views",
+    "_video_comps"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 0
+    },
+    "_spend": {
+      "max_abs_delta": 0.000001
+    },
+    "_impressions": {
+      "max_abs_delta": 0.000001
+    },
+    "_clicks": {
+      "max_abs_delta": 0.000001
+    },
+    "distinct_qa_v3_source_detail_type": {
+      "max_abs_delta": 0
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 22448,
+    "max_candidate_only": 22448
+  },
+  "custom_checks": [
+    {
+      "name": "fpd_video_views_match_source",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(IF(qa_v3_source_detail_type = 'fpd_original', _video_views, 0)), 0) - COALESCE((SELECT SUM(views) FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` WHERE DATE(date_final) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH) AND CURRENT_DATE() AND package_id IS NOT NULL), 0)) AS value FROM {table}",
+      "expected_max": 0.000001
+    },
+    {
+      "name": "fpd_video_completions_match_source",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS(COALESCE(SUM(IF(qa_v3_source_detail_type = 'fpd_original', _video_comps, 0)), 0) - COALESCE((SELECT SUM(completed_views) FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` WHERE DATE(date_final) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH) AND CURRENT_DATE() AND package_id IS NOT NULL), 0)) AS value FROM {table}",
+      "expected_max": 0.000001
+    },
+    {
+      "name": "dcm_video_metrics_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT GREATEST(ABS(COALESCE(SUM(IF(qa_v3_source_detail_type = 'dcm', _video_views, 0)), 0) - COALESCE((SELECT SUM(IF(qa_v3_source_detail_type = 'dcm', _video_views, 0)) FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE _date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH) AND CURRENT_DATE()), 0)), ABS(COALESCE(SUM(IF(qa_v3_source_detail_type = 'dcm', _video_comps, 0)), 0) - COALESCE((SELECT SUM(IF(qa_v3_source_detail_type = 'dcm', _video_comps, 0)) FROM `looker-studio-pro-452620.master_stg.data_model_v3` WHERE _date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH) AND CURRENT_DATE()), 0))) AS value FROM {table}",
+      "expected_max": 0.000001
+    }
+  ]
+}

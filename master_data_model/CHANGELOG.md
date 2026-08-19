@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-19
+
+**FPD video delivery is now available in the master model** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)) — 🟢 **Verified and committed**<br>The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) now carries original FPD views and completed views into the final video fields across the compatibility model, clustered support table, and V3 model, while preserving spend, impressions, clicks, and DCM video metrics.
+
 ## 2026-08-14
 
 **FPD publisher version 11 distinguishes unpublished sheets and opens the shortcut folder directly** ([Apps Script](model/branches/fpd/apps_script/publish_fpd_template_fpdLib__v11/Library.gs)) — 🟢 **User verified**<br>The library removes only warning images labeled `FPD_UNPUBLISHED_WARNING_V1` from published copies, preserves other images, creates canonical Shared Drive shortcuts, and makes the confirmation and Log shortcut actions open the canonical shortcut folder. The bound template was pulled back with dependency version 11, and the user verified the complete fresh Publish flow: warnings remain on the source, are absent from the published Sheet, and the shortcut action opens the correct folder.
