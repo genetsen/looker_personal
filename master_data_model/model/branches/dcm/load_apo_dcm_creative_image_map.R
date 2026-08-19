@@ -17,12 +17,19 @@
 
 suppressPackageStartupMessages({
   library(googlesheets4)
-  library(googledrive)
   library(bigrquery)
   library(dplyr)
   library(janitor)
   library(stringr)
 })
+
+script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+script_directory <- if (length(script_argument) > 0) {
+  dirname(normalizePath(sub("^--file=", "", script_argument[1])))
+} else {
+  normalizePath(getwd())
+}
+source(file.path(script_directory, "publish_github_assets.R"))
 
 # * SECTION [1]: CONFIGURATION
 
@@ -31,7 +38,8 @@ DATASET_ID <- Sys.getenv("APO_DCM_CREATIVE_DATASET", "landing")
 TABLE_ID <- Sys.getenv("APO_DCM_CREATIVE_TABLE", "apo_dcm_creative_image_asset_map_qa")
 SHEET_ID <- Sys.getenv("APO_DCM_CREATIVE_SHEET_ID", "1U46ZJ4U6XCLTXqtNXlun7uY0L1iyG88RZ6HMiOeACyU")
 AUTH_EMAIL <- Sys.getenv("APO_DCM_CREATIVE_AUTH_EMAIL", "gene.tsenter@giantspoon.com")
-MEDIA_REPO <- Sys.getenv("APO_DCM_CREATIVE_MEDIA_REPO", "")
+GITHUB_REPOSITORY <- Sys.getenv("APO_DCM_CREATIVE_GITHUB_REPOSITORY", "genetsen/apo-db-creat")
+GITHUB_BRANCH <- Sys.getenv("APO_DCM_CREATIVE_GITHUB_BRANCH", "main")
 UPLOAD_ENABLED <- tolower(Sys.getenv("APO_DCM_CREATIVE_UPLOAD", "FALSE")) == "true"
 ALLOW_PRODUCTION <- tolower(Sys.getenv("APO_DCM_CREATIVE_ALLOW_PRODUCTION", "FALSE")) == "true"
 IS_QA_TABLE <- grepl("_qa$", TABLE_ID)
@@ -39,14 +47,10 @@ IS_QA_TABLE <- grepl("_qa$", TABLE_ID)
 if (UPLOAD_ENABLED && !IS_QA_TABLE && !ALLOW_PRODUCTION) {
   stop("Production upload blocked. Use a _qa table or explicitly set APO_DCM_CREATIVE_ALLOW_PRODUCTION=TRUE after QA review.")
 }
-if (UPLOAD_ENABLED && !nzchar(MEDIA_REPO)) {
-  stop("Set APO_DCM_CREATIVE_MEDIA_REPO to a clean clone of the shared creative-media repository before publishing files.")
-}
 
 # * SECTION [2]: READ AND VALIDATE THE AUTHORITATIVE ASSET MAP
 
 gs4_auth(email = AUTH_EMAIL)
-drive_auth(email = AUTH_EMAIL)
 loaded_at <- Sys.time()
 
 asset_rows <- read_sheet(
@@ -115,33 +119,35 @@ if (UPLOAD_ENABLED) {
   media_prefix <- "assets/dcm/apollo"
   unique_assets <- mapping_rows %>%
     filter(publication_status == "pending_publish") %>%
-    distinct(source_asset_name, source_file_path)
-
-  for (i in seq_len(nrow(unique_assets))) {
-    asset <- unique_assets[i, ]
-    file_name <- basename(asset$source_file_path)
-    safe_asset <- str_replace_all(tolower(asset$source_asset_name), "[^a-z0-9]+", "-") %>% str_remove("-$")
-    relative_media_path <- file.path(media_prefix, safe_asset, file_name)
-    destination <- file.path(MEDIA_REPO, relative_media_path)
-    dir.create(dirname(destination), recursive = TRUE, showWarnings = FALSE)
-    if (!file.exists(destination)) file.copy(asset$source_file_path, destination, overwrite = FALSE)
-    mapping_rows$published_image_url[mapping_rows$source_asset_name == asset$source_asset_name] <- paste0(
-      "https://raw.githubusercontent.com/genetsen/apo-db-creat/main/", relative_media_path
+    distinct(source_asset_name, source_file_path) %>%
+    mutate(
+      safe_asset = str_replace_all(tolower(source_asset_name), "[^a-z0-9]+", "-") %>% str_remove("-$"),
+      relative_media_path = file.path(media_prefix, safe_asset, basename(source_file_path))
     )
-  }
 
-  git_status <- system2("git", c("-C", MEDIA_REPO, "status", "--short"), stdout = TRUE, stderr = TRUE)
-  if (length(git_status) > 0) {
-    publish_git <- function(args) {
-      exit_code <- system2("git", c("-C", MEDIA_REPO, args))
-      if (exit_code != 0) stop("Creative-media publication failed: git ", paste(args, collapse = " "))
-    }
-    publish_git(c("add", "assets/dcm/apollo"))
-    publish_git(c("commit", "-m", shQuote("Publish Apollo DCM creative media")))
-    publish_git(c("push", "origin", "main"))
+  publication <- publish_github_assets(
+    unique_assets %>% select(source_file_path, relative_media_path),
+    repository = GITHUB_REPOSITORY,
+    branch = GITHUB_BRANCH
+  )
+  published_assets <- unique_assets %>%
+    select(source_asset_name, relative_media_path) %>%
+    inner_join(publication, by = "relative_media_path") %>%
+    mutate(
+      published_image_url = paste0(
+        "https://raw.githubusercontent.com/", GITHUB_REPOSITORY, "/", GITHUB_BRANCH, "/", relative_media_path
+      )
+    )
+  if (nrow(published_assets) != nrow(unique_assets)) {
+    stop("GitHub publication did not return every intended asset; BigQuery was not changed.")
   }
   mapping_rows <- mapping_rows %>%
-    mutate(publication_status = if_else(publication_status == "pending_publish", "published", publication_status))
+    left_join(published_assets %>% select(source_asset_name, published_image_url), by = "source_asset_name") %>%
+    mutate(
+      published_image_url = coalesce(published_image_url.y, published_image_url.x),
+      publication_status = if_else(publication_status == "pending_publish", "published", publication_status)
+    ) %>%
+    select(-published_image_url.x, -published_image_url.y)
 
   target <- bq_table(PROJECT_ID, DATASET_ID, TABLE_ID)
   bq_auth(email = AUTH_EMAIL)

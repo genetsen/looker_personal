@@ -2,6 +2,8 @@
 
 ## 2026-08-19
 
+**Apollo creative images publish without a second Git workspace** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/publish_github_assets.R)) — 🟢 **Verified and committed**<br>The [Apollo creative-image workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now publishes all intended image paths to the existing GitHub `main` branch in one guarded update and confirms them before replacing the BigQuery map. Existing public URLs and V3 matching remain unchanged, while the local media checkout is no longer required. The focused runner completed both the 63-row image-map refresh with nine published images and the 257,065-row V3 rebuild with all grain checks passing.
+
 **FPD video delivery is now available in the master model** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)) — 🟢 **Verified and committed**<br>The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) now carries original FPD views and completed views into the final video fields across the compatibility model, clustered support table, and V3 model, while preserving spend, impressions, clicks, and DCM video metrics.
 
 ## 2026-08-14

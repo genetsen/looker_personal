@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-19
+
+**Apollo creative-image publishing no longer needs a separate checkout** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/publish_github_assets.R)) — 🟢 **Verified and committed**<br>The [master-model creative-image path](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now publishes directly to the existing GitHub repository in one guarded update, preserves every current public image URL, and updates BigQuery only after confirming every asset on `main`. A focused production runner completed the image-map and V3 refreshes successfully with nine published mappings and all V3 grain checks passing.
+
 ## 2026-08-13
 
 **Apollo DCM creative images now match the authoritative Asset Name mapping and have a future multi-client registry design** ([DCM guide](master_data_model/model/branches/dcm/README_dcm-pipeline.md)) — 🟢 **Verified**<br>The [Apollo creative-image asset map](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=apo_dcm_creative_image_asset_map&page=table) retains all 63 workbook assets and publishes eight supported source images. V3 removes only the final size suffix from Apollo DCM creative names, correctly fills 911 delivery rows across nine creative variants—including V1 and V2—and leaves the MP4 and unavailable sources blank. The SQL Change Guard passed all 16 checks with no row, key, schema, or metric change. The documented next phase is a source registry for other client workbooks using client-safe `advertiser + normalized DCM creative name` matching. [More details](master_data_model/model/branches/dcm/README_dcm-pipeline.md).
