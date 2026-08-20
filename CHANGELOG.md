@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-20
+
+**Polaris FPD has a production-isolated review path** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_fpd.R)) — 🟢 **Verified and committed**<br>The [master-model FPD workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) can now preserve and normalize the current 992 daily Purely Elizabeth Meta and TikTok rows, apply the three approved MIQ package candidates, and compare Sunday-start Polaris weeks with MIQ's native weekly FPD records without changing any live data or scheduled workflow.
+
+### Pending Next Actions
+
+- **Since Aug 20** - Review the Polaris mapping and overlap evidence before approving Stage 2 - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
+- **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-08-19
 
 **Apollo creative-image publishing no longer needs a separate checkout** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/publish_github_assets.R)) — 🟢 **Verified and committed**<br>The [master-model creative-image path](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now publishes directly to the existing GitHub repository in one guarded update, preserves every current public image URL, and updates BigQuery only after confirming every asset on `main`. A focused production runner completed the image-map and V3 refreshes successfully with nine published mappings and all V3 grain checks passing.

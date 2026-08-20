@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-20
+
+**Polaris FPD can be reviewed safely before any production integration** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_fpd.R)) — 🟢 **Verified and committed**<br>The [QA-only Polaris preview](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) now preserves and normalizes all 992 daily creative-level Meta and TikTok rows, applies the three approved MIQ package candidates, reconciles every source metric, and compares Sunday-start Polaris weeks with MIQ's native weekly FPD records. It does not write BigQuery, Sheets, the Manual Data Editor, the production model, or automation.
+
+### Pending Next Actions
+
+- **Since Aug 20** - Review the Stage 1 mapping and overlap evidence before approving the central mapping-editor design or replacement behavior - RECOMMENDED
+- **Since Aug 11** - Build the per-partner BigQuery source before any published sheet is shared externally - BLOCKER
+- **Since Aug 12** - Map the remaining clients to their shared-drive `First Party Data` folders
+- **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse
+
 ## 2026-08-19
 
 **Apollo creative images publish without a second Git workspace** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/publish_github_assets.R)) — 🟢 **Verified and committed**<br>The [Apollo creative-image workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now publishes all intended image paths to the existing GitHub `main` branch in one guarded update and confirms them before replacing the BigQuery map. Existing public URLs and V3 matching remain unchanged, while the local media checkout is no longer required. The focused runner completed both the 63-row image-map refresh with nine published images and the 257,065-row V3 rebuild with all grain checks passing.

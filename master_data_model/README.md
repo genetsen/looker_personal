@@ -26,8 +26,9 @@ Interactive orientation:
 - [`docs/manual-data-editor-workflow-map.html`](docs/manual-data-editor-workflow-map.html) - clickable map of the Manual Data Editor loop from Sheet edit, request notification, loader writes, manual evidence tables, model merge, mart output, and troubleshooting path.
 - [Master Data Model Package Lookup Sheet](https://docs.google.com/spreadsheets/d/1Q_KK6WWqB4aUGNezFmWTMTKz43rQyARqXVGgNs5IT3c) - use one search box to find a partial Package ID, Package Name, or Package Friendly Name and return package-level flight, plan, delivery, advertiser, supplier, campaign, initiative, channel, and GS Channel fields.
 - [Direct CM360 conversion migration](docs/rtl-direct-cm360-conversion-migration.md) - deployed RTL conversion source, history-preserving staging, direct activity metrics, and the explicit conversion-only safety rule.
-- [FPD current state](model/branches/fpd/CURRENT_STATE.md) - shared Codex/Claude Code handoff for the active version 6 publisher, in-use template, canonical shortcut folder, and loader boundary.
-- [FPD partner-data template](model/branches/fpd/partner-data-collection-template.md) - the active workbook, workbook-bound Apps Script wrapper, version 6 publishing library, and canonical shortcut destination used by the FPD loader.
+- [FPD current state](model/branches/fpd/CURRENT_STATE.md) - shared Codex/Claude Code handoff for the active version 11 publisher, in-use template, canonical shortcut folder, and loader boundary.
+- [FPD partner-data template](model/branches/fpd/partner-data-collection-template.md) - the active workbook, workbook-bound Apps Script wrapper, version 11 publishing library, and canonical shortcut destination used by the FPD loader.
+- [Polaris FPD preview](model/branches/fpd/polaris/README.md) - QA-only local reader for the Purely Elizabeth Meta and TikTok exports, approved MIQ package candidates, source reconciliation, and read-only legacy-FPD overlap evidence. It is not a production input or automated load.
 - [Manual Data Editor product brief](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad-output/planning-artifacts/briefs/brief-master_data_model-2026-06-18/brief.md) - slide-ready brief for presenting what the editor is, how it works, and which correction bottlenecks it removes.
 
 ## Manual Package Edit Quick Reference
