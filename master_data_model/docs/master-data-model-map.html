@@ -930,21 +930,26 @@
       {
         id: "fpd",
         groupId: "digital-capture",
-        title: "FPD Layers",
-        summary: "Original and updated FPD sources.",
-        truth: "Tables: landing.fpd_data_ranged_shortcutsFolder and landing.adif_updated_fpd_daily.",
-        writes: "Refresh: shortcut FPD loader and updated FPD loader.",
-        freshness: "Current after both FPD tables refresh.",
+        title: "MIQ / FPD Layers",
+        summary: "MIQ delivery through Polaris Email or the existing FPD path.",
+        truth: "Tables: Polaris Email mapping/delivery plus original and updated FPD landing.",
+        writes: "Refresh: guarded Polaris Email loader, shortcut FPD loader, and updated FPD loader.",
+        freshness: "Current after the applicable MIQ ingestion path refreshes.",
         risk: "medium",
-        reviewReason: "Mapping: original and updated FPD stay separate, then combine into fpd_* fields.",
+        reviewReason: "Precedence: Polaris Email replaces both FPD inputs inside each loaded package range; FPD remains outside it.",
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
-          "Original and revised FPD inputs are resolved into one public fpd_* family, including final metrics, factor, creative, benchmark, and contributing-source lineage."
+          "MIQ is the partner for both paths; Polaris Email and FPD describe ingestion, while Facebook, Instagram, and TikTok describe platforms.",
+          "Polaris Email detail is preserved in V3 at package/date/platform/campaign/ad-group/ad grain with explicit polaris_* lineage.",
+          "Original and revised FPD inputs remain physically available for audit and continue outside Polaris Email coverage."
         ],
         sources: [
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
           ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
+          ["BigQuery: Polaris Email mapping", bq("landing", "polaris_email_package_mapping")],
+          ["BigQuery: Polaris Email delivery", bq("landing", "polaris_email_delivery_daily")],
+          ["Polaris Email runbook", "../model/branches/fpd/polaris/README.md"],
           ["Original FPD loader", "../FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r"],
           ["Updated FPD loader", "../adif/projects/updated_fpd_integration/util_process_updated_fpd.r"]
         ]
@@ -953,12 +958,12 @@
         id: "digital-join",
         groupId: "digital-shape",
         title: "Digital Join",
-        summary: "Aligns Prisma, DCM, and FPD by package/date.",
+        summary: "Aligns Prisma, DCM, Polaris Email, and FPD by package/date.",
         truth: "View logic: master_stg.data_model.",
-        writes: "View only. Refresh Prisma, DCM, and both FPD tables.",
-        freshness: "Current when digital inputs are current.",
+        writes: "View only. Refresh Prisma, DCM, Polaris Email, and the FPD tables.",
+        freshness: "Current when all applicable digital inputs are current.",
         risk: "medium",
-        reviewReason: "Mapping: package/date joins set planned-only, DCM, FPD, or combined rows.",
+        reviewReason: "Mapping: package/date joins apply Polaris Email coverage before choosing planned-only, DCM, or FPD-family delivery.",
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [
@@ -968,7 +973,8 @@
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
           ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
-          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")]
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
+          ["BigQuery: Polaris Email delivery", bq("landing", "polaris_email_delivery_daily")]
         ]
       },
       {
@@ -978,7 +984,7 @@
         summary: "Sets row source, source freshness, metadata, and final metrics.",
         truth: "View logic: master_stg.data_model.",
         writes: "View only. Refresh digital inputs.",
-        freshness: "Current when Prisma, DCM, and FPD inputs are current.",
+        freshness: "Current when Prisma, DCM, Polaris Email, and FPD inputs are current.",
         risk: "high",
         reviewReason: "Caveat: metric precedence affects spend, impressions, clicks, video, and rollups.",
         kind: "transform",
@@ -993,7 +999,8 @@
           ["BigQuery: Prisma expanded full", bq("20250327_data_model", "prisma_expanded_full")],
           ["BigQuery: DCM cost model", bq("DCM", "20250505_costModel_v5")],
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
-          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")]
+          ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
+          ["BigQuery: Polaris Email delivery", bq("landing", "polaris_email_delivery_daily")]
         ]
       },
       {

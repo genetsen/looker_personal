@@ -1,0 +1,159 @@
+{
+  "_purpose": "Validate the MIQ Polaris Email V3 package/date effect while requiring exact source detail, precedence, manual override, planned-carrier, supplier, and unrelated-package behavior.",
+  "keys": [
+    "package_id",
+    "date"
+  ],
+  "metrics": [
+    "spend",
+    "impressions",
+    "clicks",
+    "video_views",
+    "video_completions",
+    "planned_spend",
+    "planned_impressions"
+  ],
+  "derived_metrics": [
+    {
+      "name": "ctr",
+      "expr": "SAFE_DIVIDE(SUM(clicks), NULLIF(SUM(impressions), 0))"
+    }
+  ],
+  "comparison_dimensions": [
+    "package_id"
+  ],
+  "high_risk_metrics": [
+    "spend",
+    "impressions",
+    "clicks",
+    "video_views",
+    "video_completions",
+    "planned_spend",
+    "planned_impressions",
+    "ctr"
+  ],
+  "high_risk_dimensions": [
+    "package_id",
+    "date"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0.0
+    },
+    "spend": {
+      "max_abs_delta": 91235,
+      "max_abs_pct": 0.001
+    },
+    "impressions": {
+      "max_abs_delta": 21094754.001,
+      "max_abs_pct": 0.003
+    },
+    "clicks": {
+      "max_abs_delta": 27400,
+      "max_abs_pct": 0.0021
+    },
+    "video_views": {
+      "max_abs_delta": 17768428,
+      "max_abs_pct": 0.005
+    },
+    "video_completions": {
+      "max_abs_delta": 119487,
+      "max_abs_pct": 0.00012
+    },
+    "planned_spend": {
+      "max_abs_delta": 0.000001
+    },
+    "planned_impressions": {
+      "max_abs_delta": 0.0001
+    },
+    "ctr": {
+      "max_abs_pct": 0.01
+    },
+    "distinct_package_id": {
+      "max_abs_delta": 0
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 0,
+    "max_candidate_only": 0
+  },
+  "custom_checks": [
+    {
+      "name": "polaris_detail_row_count",
+      "severity": "critical",
+      "sql": "SELECT COUNT(*) AS value FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email'",
+      "equals": 992
+    },
+    {
+      "name": "polaris_spend_matches_landing",
+      "severity": "critical",
+      "sql": "SELECT ABS((SELECT SUM(_spend) FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email') - (SELECT SUM(spend) FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`)) AS value",
+      "equals": 0,
+      "equals_tolerance": 0.000001
+    },
+    {
+      "name": "polaris_impressions_match_landing",
+      "severity": "critical",
+      "sql": "SELECT ABS((SELECT SUM(_impressions) FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email') - (SELECT SUM(impressions) FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`)) AS value",
+      "equals": 0
+    },
+    {
+      "name": "polaris_clicks_match_landing",
+      "severity": "critical",
+      "sql": "SELECT ABS((SELECT SUM(_clicks) FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email') - (SELECT SUM(clicks) FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`)) AS value",
+      "equals": 0
+    },
+    {
+      "name": "polaris_video_views_match_landing",
+      "severity": "critical",
+      "sql": "SELECT ABS((SELECT SUM(_video_views) FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email') - (SELECT SUM(video_views) FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`)) AS value",
+      "equals": 0
+    },
+    {
+      "name": "polaris_video_completions_match_landing",
+      "severity": "critical",
+      "sql": "SELECT ABS((SELECT SUM(_video_comps) FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email') - (SELECT SUM(video_completions) FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`)) AS value",
+      "equals": 0
+    },
+    {
+      "name": "no_fpd_detail_inside_polaris_coverage",
+      "severity": "critical",
+      "sql": "WITH coverage AS (SELECT package_id, MIN(date) min_date, MAX(date) max_date FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily` GROUP BY package_id) SELECT COUNT(*) AS value FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` v JOIN coverage c ON v._package_id = c.package_id AND v._date BETWEEN c.min_date AND c.max_date WHERE v.qa_v3_source_detail_type IN ('fpd_original', 'fpd_updated_package')",
+      "equals": 0
+    },
+    {
+      "name": "fpd_detail_remains_outside_polaris_coverage",
+      "severity": "critical",
+      "sql": "SELECT COUNT(*) AS value FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type IN ('fpd_original', 'fpd_updated_package')",
+      "expected_min": 1
+    },
+    {
+      "name": "miq_supplier_is_preserved",
+      "severity": "critical",
+      "sql": "SELECT COUNTIF(_supplier_name != 'MIQ DIGITAL USA INC' OR _supplier_name IS NULL) AS value FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` WHERE qa_v3_source_detail_type = 'polaris_email'",
+      "equals": 0
+    },
+    {
+      "name": "manual_overrides_suppress_other_source_metrics",
+      "severity": "critical",
+      "sql": "SELECT COUNTIF((v._spend IS NOT NULL OR v._impressions IS NOT NULL OR v._clicks IS NOT NULL OR v._video_views IS NOT NULL OR v._video_comps IS NOT NULL) AND v.qa_v3_source_detail_type != 'manual_package_daily') AS value FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` v JOIN (SELECT DISTINCT package_id, date FROM `looker-studio-pro-452620.landing.master_data_model_manual_package_daily` WHERE man_daily_spend IS NOT NULL OR man_daily_impressions IS NOT NULL OR man_daily_clicks IS NOT NULL OR man_daily_video_plays IS NOT NULL OR man_daily_video_comps IS NOT NULL) m ON v._package_id = m.package_id AND v._date = m.date",
+      "equals": 0
+    },
+    {
+      "name": "one_planned_carrier_per_package_date",
+      "severity": "critical",
+      "sql": "SELECT COUNT(*) AS value FROM (SELECT _package_id, _date FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__data_model_v3` GROUP BY 1, 2 HAVING COUNTIF(_planned_spend IS NOT NULL OR _planned_impressions IS NOT NULL) > 1)",
+      "equals": 0
+    },
+    {
+      "name": "unrelated_package_dates_have_no_meaningful_metric_change",
+      "severity": "critical",
+      "sql": "WITH b AS (SELECT * FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__v3_package_daily_baseline` WHERE package_id NOT IN ('P3HF7QB','P3HF7T8','P3HF88Q')), c AS (SELECT * FROM `looker-studio-pro-452620.repo_stg.qa__polaris_email__v3_package_daily_candidate` WHERE package_id NOT IN ('P3HF7QB','P3HF7T8','P3HF88Q')) SELECT COUNTIF(ABS(COALESCE(b.spend,0)-COALESCE(c.spend,0)) >= 0.000001 OR ABS(COALESCE(b.impressions,0)-COALESCE(c.impressions,0)) >= 0.000001 OR ABS(COALESCE(b.clicks,0)-COALESCE(c.clicks,0)) >= 0.000001 OR ABS(COALESCE(b.video_views,0)-COALESCE(c.video_views,0)) >= 0.000001 OR ABS(COALESCE(b.video_completions,0)-COALESCE(c.video_completions,0)) >= 0.000001 OR ABS(COALESCE(b.planned_spend,0)-COALESCE(c.planned_spend,0)) >= 0.000001 OR ABS(COALESCE(b.planned_impressions,0)-COALESCE(c.planned_impressions,0)) >= 0.000001 OR (b.package_id IS NULL) != (c.package_id IS NULL)) AS value FROM b FULL OUTER JOIN c USING(package_id,date)",
+      "equals": 0
+    }
+  ],
+  "downstream_objects": [
+    "looker-studio-pro-452620.master_stg.data_model_v3"
+  ]
+}

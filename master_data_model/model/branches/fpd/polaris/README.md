@@ -1,6 +1,6 @@
-# Polaris FPD Preview
+# MIQ Polaris Email Reader and Loader
 
-This Stage 1 workflow reads the current Purely Elizabeth Meta and TikTok CSV exports from Polaris and creates local review files. It is deliberately isolated from production: it does not write BigQuery, Google Sheets, the Manual Data Editor, the master model, or automation.
+MIQ supplies delivery through two ingestion paths: the existing FPD path and the Polaris Email path. This folder contains the QA-only reader and the guarded manual production loader for the Polaris Email Meta and TikTok exports.
 
 ## Run The Preview
 
@@ -25,6 +25,40 @@ The default GCS prefix is the approved Polaris connection for Purely Elizabeth. 
 | Warehouse access | `--compare-live-model` issues a read-only `SELECT` against the v3 original-FPD rows. |
 | Output protection | Requires an explicit new or empty `--output-dir`; it does not mix runs or overwrite existing review files. |
 
+## Run the Guarded Manual Load
+
+The mapping and empty delivery contracts are created first:
+
+```bash
+bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
+  < model/branches/fpd/polaris/create_polaris_email_package_mapping.sql
+
+bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
+  < model/branches/fpd/polaris/create_polaris_email_delivery_daily.sql
+```
+
+Exercise the exact sources and live mapping table without writing delivery:
+
+```bash
+Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run
+```
+
+After the dry run passes, replace the production snapshot through staging:
+
+```bash
+Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R
+```
+
+| Production gate | Required behavior |
+|---|---|
+| Source inventory | Exactly one current Meta CSV and one current TikTok CSV. |
+| Mapping | Every row matches one active feed/platform/campaign/ad-group key in the mapping table. |
+| Row quality | Required dimensions and dates parse; metric text is numeric; natural keys are unique. |
+| Replacement | Upload to a described staging table, validate again in BigQuery, then replace the prior snapshot in one transaction. |
+| Failure | Keep the last good production snapshot. Retain a failed staging table only when warehouse validation evidence is needed. |
+
+The production model uses Polaris Email inside the loaded minimum-to-maximum date range for each package. Both existing FPD landing tables remain physically unchanged and continue to supply dates outside that range. Manual delivery edits still override every source path.
+
 ## Review Files
 
 | File | What it shows |
@@ -47,6 +81,6 @@ Rscript model/branches/fpd/polaris/tests/test_polaris_fpd_logic.R
 
 The fixtures cover Meta's UTF-8 header marker, TikTok's alternate schema, zero metrics, all three approved mappings, unknown platforms, missing required values, invalid dates and metrics, duplicate reporting, exact source reconciliation, Sunday-start week logic, and cumulative snapshot logic.
 
-## Stage Boundary
+## Current Boundary
 
-This preview does not decide source replacement. A later approval must cover the central mapping editor, unmapped-value workflow, overlap precedence, QA warehouse objects, production deployment, and automation.
+The [MVP plan](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris-email-v3-mvp-plan.md) is deployed manually through V3. The mapping table is the temporary central owner. A Google Sheet editor and automated scheduling are intentionally deferred; neither requires changing the loader's mapping or validation contract.

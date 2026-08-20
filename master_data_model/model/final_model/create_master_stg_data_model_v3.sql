@@ -54,7 +54,23 @@ stable AS (
     CAST(NULL AS TIMESTAMP) AS conv_loaded_at,
     CAST(NULL AS STRING) AS conv_source_sheet_id,
     CAST(NULL AS STRING) AS conv_source_sheet_tab,
-    CAST(NULL AS STRING) AS conv_source_sheet_gid
+    CAST(NULL AS STRING) AS conv_source_sheet_gid,
+    CAST(NULL AS STRING) AS polaris_partner,
+    CAST(NULL AS STRING) AS polaris_ingestion_path,
+    CAST(NULL AS STRING) AS polaris_source_feed,
+    CAST(NULL AS STRING) AS polaris_platform,
+    CAST(NULL AS STRING) AS polaris_campaign_name,
+    CAST(NULL AS STRING) AS polaris_ad_group_name,
+    CAST(NULL AS STRING) AS polaris_ad_name,
+    CAST(NULL AS STRING) AS polaris_source_object_uri,
+    CAST(NULL AS INT64) AS polaris_source_row_number,
+    CAST(NULL AS STRING) AS polaris_raw_date,
+    CAST(NULL AS STRING) AS polaris_raw_spend,
+    CAST(NULL AS STRING) AS polaris_raw_impressions,
+    CAST(NULL AS STRING) AS polaris_raw_clicks,
+    CAST(NULL AS STRING) AS polaris_raw_video_views,
+    CAST(NULL AS STRING) AS polaris_raw_video_completions,
+    CAST(NULL AS TIMESTAMP) AS polaris_loaded_at
   FROM stable_v3_context AS base
 ),
 
@@ -163,7 +179,16 @@ manual_delivery_rows AS (
     USING (`_package_id`, `_date`)
 ),
 
-fpd_package_daily AS (
+polaris_email_coverage AS (
+  SELECT
+    package_id AS `_package_id`,
+    MIN(date) AS minimum_date,
+    MAX(date) AS maximum_date
+  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+  GROUP BY package_id
+),
+
+legacy_fpd_package_daily AS (
   SELECT
     package_id AS `_package_id`,
     DATE(date_final) AS `_date`,
@@ -173,7 +198,32 @@ fpd_package_daily AS (
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
   WHERE DATE(date_final) >= DATE '2025-01-01'
     AND package_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM polaris_email_coverage AS coverage
+      WHERE coverage.`_package_id` = package_id
+        AND DATE(date_final) BETWEEN coverage.minimum_date AND coverage.maximum_date
+    )
   GROUP BY package_id, DATE(date_final)
+),
+
+polaris_email_package_daily AS (
+  SELECT
+    package_id AS `_package_id`,
+    date AS `_date`,
+    SUM(spend) AS fpd_orig_spend,
+    SUM(impressions) AS fpd_orig_impressions,
+    SUM(clicks) AS fpd_orig_clicks
+  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+  WHERE date >= DATE '2025-01-01'
+    AND package_id IS NOT NULL
+  GROUP BY package_id, date
+),
+
+fpd_package_daily AS (
+  SELECT * FROM legacy_fpd_package_daily
+  UNION ALL
+  SELECT * FROM polaris_email_package_daily
 ),
 
 fpd_updated_package_daily AS (
@@ -185,6 +235,12 @@ fpd_updated_package_daily AS (
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
   WHERE DATE(date) >= DATE '2025-01-01'
     AND package_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM polaris_email_coverage AS coverage
+      WHERE coverage.`_package_id` = package_id
+        AND DATE(date) BETWEEN coverage.minimum_date AND coverage.maximum_date
+    )
   GROUP BY package_id, DATE(date)
 ),
 
@@ -227,6 +283,22 @@ dcm_detail AS (
     CAST(NULL AS STRING) AS fpd_factor,
     CAST(NULL AS STRING) AS fpd_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
+    CAST(NULL AS STRING) AS polaris_partner,
+    CAST(NULL AS STRING) AS polaris_ingestion_path,
+    CAST(NULL AS STRING) AS polaris_source_feed,
+    CAST(NULL AS STRING) AS polaris_platform,
+    CAST(NULL AS STRING) AS polaris_campaign_name,
+    CAST(NULL AS STRING) AS polaris_ad_group_name,
+    CAST(NULL AS STRING) AS polaris_ad_name,
+    CAST(NULL AS STRING) AS polaris_source_object_uri,
+    CAST(NULL AS INT64) AS polaris_source_row_number,
+    CAST(NULL AS STRING) AS polaris_raw_date,
+    CAST(NULL AS STRING) AS polaris_raw_spend,
+    CAST(NULL AS STRING) AS polaris_raw_impressions,
+    CAST(NULL AS STRING) AS polaris_raw_clicks,
+    CAST(NULL AS STRING) AS polaris_raw_video_views,
+    CAST(NULL AS STRING) AS polaris_raw_video_completions,
+    CAST(NULL AS TIMESTAMP) AS polaris_loaded_at,
     ANY_VALUE(m.published_image_url) AS dcm_creative_img,
     SUM(d.daily_recalculated_cost) AS dcm_daily_recalculated_cost,
     SUM(d.daily_recalculated_imps) AS dcm_daily_recalculated_imps,
@@ -271,6 +343,22 @@ fpd_original_detail AS (
     CAST(f.factor AS STRING) AS fpd_factor,
     CAST(f.partner_creative_name AS STRING) AS fpd_creative,
     CAST(f.creative_git_link AS STRING) AS fpd_creative_img,
+    CAST(NULL AS STRING) AS polaris_partner,
+    CAST(NULL AS STRING) AS polaris_ingestion_path,
+    CAST(NULL AS STRING) AS polaris_source_feed,
+    CAST(NULL AS STRING) AS polaris_platform,
+    CAST(NULL AS STRING) AS polaris_campaign_name,
+    CAST(NULL AS STRING) AS polaris_ad_group_name,
+    CAST(NULL AS STRING) AS polaris_ad_name,
+    CAST(NULL AS STRING) AS polaris_source_object_uri,
+    CAST(NULL AS INT64) AS polaris_source_row_number,
+    CAST(NULL AS STRING) AS polaris_raw_date,
+    CAST(NULL AS STRING) AS polaris_raw_spend,
+    CAST(NULL AS STRING) AS polaris_raw_impressions,
+    CAST(NULL AS STRING) AS polaris_raw_clicks,
+    CAST(NULL AS STRING) AS polaris_raw_video_views,
+    CAST(NULL AS STRING) AS polaris_raw_video_completions,
+    CAST(NULL AS TIMESTAMP) AS polaris_loaded_at,
     CAST(NULL AS STRING) AS dcm_creative_img,
     CAST(NULL AS FLOAT64) AS dcm_daily_recalculated_cost,
     CAST(NULL AS INT64) AS dcm_daily_recalculated_imps,
@@ -287,6 +375,12 @@ fpd_original_detail AS (
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` AS f
   WHERE DATE(f.date_final) >= DATE '2025-01-01'
     AND f.package_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM polaris_email_coverage AS coverage
+      WHERE coverage.`_package_id` = f.package_id
+        AND DATE(f.date_final) BETWEEN coverage.minimum_date AND coverage.maximum_date
+    )
   GROUP BY
     f.package_id,
     DATE(f.date_final),
@@ -309,6 +403,22 @@ fpd_updated_detail AS (
     CAST(NULL AS STRING) AS fpd_factor,
     CAST(NULL AS STRING) AS fpd_creative,
     CAST(NULL AS STRING) AS fpd_creative_img,
+    CAST(NULL AS STRING) AS polaris_partner,
+    CAST(NULL AS STRING) AS polaris_ingestion_path,
+    CAST(NULL AS STRING) AS polaris_source_feed,
+    CAST(NULL AS STRING) AS polaris_platform,
+    CAST(NULL AS STRING) AS polaris_campaign_name,
+    CAST(NULL AS STRING) AS polaris_ad_group_name,
+    CAST(NULL AS STRING) AS polaris_ad_name,
+    CAST(NULL AS STRING) AS polaris_source_object_uri,
+    CAST(NULL AS INT64) AS polaris_source_row_number,
+    CAST(NULL AS STRING) AS polaris_raw_date,
+    CAST(NULL AS STRING) AS polaris_raw_spend,
+    CAST(NULL AS STRING) AS polaris_raw_impressions,
+    CAST(NULL AS STRING) AS polaris_raw_clicks,
+    CAST(NULL AS STRING) AS polaris_raw_video_views,
+    CAST(NULL AS STRING) AS polaris_raw_video_completions,
+    CAST(NULL AS TIMESTAMP) AS polaris_loaded_at,
     CAST(NULL AS STRING) AS dcm_creative_img,
     CAST(NULL AS FLOAT64) AS dcm_daily_recalculated_cost,
     CAST(NULL AS INT64) AS dcm_daily_recalculated_imps,
@@ -325,7 +435,59 @@ fpd_updated_detail AS (
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily` AS u
   WHERE DATE(u.date) >= DATE '2025-01-01'
     AND u.package_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM polaris_email_coverage AS coverage
+      WHERE coverage.`_package_id` = u.package_id
+        AND DATE(u.date) BETWEEN coverage.minimum_date AND coverage.maximum_date
+    )
   GROUP BY u.package_id, DATE(u.date)
+),
+
+polaris_email_detail AS (
+  SELECT
+    'polaris_email' AS source_detail_type,
+    package_id AS `_package_id`,
+    date AS `_date`,
+    TO_HEX(SHA256(CONCAT(source_feed, '|', platform, '|', campaign_name, '|', ad_group_name))) AS `_placement_id`,
+    ad_group_name AS `_placement_name`,
+    ad_name AS qa_v3_ad_name,
+    ad_name AS creative_name,
+    CAST(NULL AS STRING) AS fpd_factor,
+    ad_name AS fpd_creative,
+    CAST(NULL AS STRING) AS fpd_creative_img,
+    partner AS polaris_partner,
+    ingestion_path AS polaris_ingestion_path,
+    source_feed AS polaris_source_feed,
+    platform AS polaris_platform,
+    campaign_name AS polaris_campaign_name,
+    ad_group_name AS polaris_ad_group_name,
+    ad_name AS polaris_ad_name,
+    source_object_uri AS polaris_source_object_uri,
+    source_row_number AS polaris_source_row_number,
+    raw_date AS polaris_raw_date,
+    raw_spend AS polaris_raw_spend,
+    raw_impressions AS polaris_raw_impressions,
+    raw_clicks AS polaris_raw_clicks,
+    raw_video_views AS polaris_raw_video_views,
+    raw_video_completions AS polaris_raw_video_completions,
+    loaded_at AS polaris_loaded_at,
+    CAST(NULL AS STRING) AS dcm_creative_img,
+    CAST(NULL AS FLOAT64) AS dcm_daily_recalculated_cost,
+    CAST(NULL AS INT64) AS dcm_daily_recalculated_imps,
+    CAST(NULL AS INT64) AS dcm_impressions,
+    CAST(NULL AS FLOAT64) AS dcm_media_cost,
+    CAST(NULL AS INT64) AS dcm_clicks,
+    CAST(NULL AS INT64) AS dcm_video_plays,
+    CAST(NULL AS INT64) AS dcm_video_comps,
+    CAST(impressions AS FLOAT64) AS fpd_impressions,
+    CAST(spend AS FLOAT64) AS fpd_spend,
+    CAST(clicks AS FLOAT64) AS fpd_clicks,
+    CAST(video_views AS FLOAT64) AS fpd_video_views,
+    CAST(video_completions AS FLOAT64) AS fpd_video_comps
+  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+  WHERE date >= DATE '2025-01-01'
+    AND package_id IS NOT NULL
 ),
 
 digital_detail AS (
@@ -334,6 +496,8 @@ digital_detail AS (
   SELECT * FROM fpd_original_detail
   UNION ALL
   SELECT * FROM fpd_updated_detail
+  UNION ALL
+  SELECT * FROM polaris_email_detail
 ),
 
 digital_detail_ranked AS (
@@ -343,10 +507,11 @@ digital_detail_ranked AS (
       PARTITION BY d.`_package_id`, d.`_date`
       ORDER BY
         CASE d.source_detail_type
-          WHEN 'fpd_original' THEN 0
-          WHEN 'fpd_updated_package' THEN 1
-          WHEN 'dcm' THEN 2
-          ELSE 3
+          WHEN 'polaris_email' THEN 0
+          WHEN 'fpd_original' THEN 1
+          WHEN 'fpd_updated_package' THEN 2
+          WHEN 'dcm' THEN 3
+          ELSE 4
         END,
         d.`_placement_id`,
         d.qa_v3_ad_name,
@@ -361,6 +526,7 @@ digital_actual_rows AS (
     'source_actual' AS qa_v3_row_type,
     CASE
       WHEN d.source_detail_type = 'dcm' THEN 'package_date_placement_ad_creative'
+      WHEN d.source_detail_type = 'polaris_email' THEN 'package_date_platform_campaign_ad_group_ad'
       WHEN d.source_detail_type = 'fpd_original' THEN 'package_date_placement_factor_creative'
       ELSE 'package_date'
     END AS qa_v3_metric_grain,
@@ -368,6 +534,7 @@ digital_actual_rows AS (
     d.qa_v3_ad_name,
     CASE
       WHEN m.`_package_id` IS NOT NULL THEN 'manual override exists; final actuals intentionally null'
+      WHEN d.source_detail_type = 'polaris_email' THEN 'MIQ Polaris Email actuals replace FPD-path metrics inside loaded package coverage'
       WHEN d.source_detail_type = 'dcm' AND (COALESCE(f.fpd_spend, 0) != 0 OR COALESCE(f.fpd_impressions, 0) != 0)
         THEN 'FPD wins spend/impressions; DCM keeps clicks/video only where FPD does not provide clicks'
       WHEN d.source_detail_type = 'dcm' THEN 'DCM actuals at source detail grain; impressions use source impressions'
@@ -379,6 +546,7 @@ digital_actual_rows AS (
       d.source_detail_type AS qa_row_data_source_primary,
       CASE
         WHEN d.source_detail_type = 'dcm' THEN 'giant-spoon-299605.data_model_2025.new_md'
+        WHEN d.source_detail_type = 'polaris_email' THEN 'looker-studio-pro-452620.landing.polaris_email_delivery_daily'
         WHEN d.source_detail_type = 'fpd_original' THEN 'looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder'
         ELSE 'looker-studio-pro-452620.landing.adif_updated_fpd_daily'
       END AS qa_data_source,
@@ -389,6 +557,22 @@ digital_actual_rows AS (
       d.fpd_factor AS fpd_factor,
       d.fpd_creative AS fpd_creative,
       d.fpd_creative_img AS fpd_creative_img,
+      d.polaris_partner AS polaris_partner,
+      d.polaris_ingestion_path AS polaris_ingestion_path,
+      d.polaris_source_feed AS polaris_source_feed,
+      d.polaris_platform AS polaris_platform,
+      d.polaris_campaign_name AS polaris_campaign_name,
+      d.polaris_ad_group_name AS polaris_ad_group_name,
+      d.polaris_ad_name AS polaris_ad_name,
+      d.polaris_source_object_uri AS polaris_source_object_uri,
+      d.polaris_source_row_number AS polaris_source_row_number,
+      d.polaris_raw_date AS polaris_raw_date,
+      d.polaris_raw_spend AS polaris_raw_spend,
+      d.polaris_raw_impressions AS polaris_raw_impressions,
+      d.polaris_raw_clicks AS polaris_raw_clicks,
+      d.polaris_raw_video_views AS polaris_raw_video_views,
+      d.polaris_raw_video_completions AS polaris_raw_video_completions,
+      d.polaris_loaded_at AS polaris_loaded_at,
       d.creative_name AS `_creative_name`,
       COALESCE(d.dcm_creative_img, d.fpd_creative_img) AS `_creative_img`,
       IF(
@@ -437,6 +621,7 @@ digital_actual_rows AS (
       IF(m.`_package_id` IS NOT NULL OR NOT COALESCE(a.has_stable_video_plays, FALSE), NULL, CAST(d.dcm_video_plays AS FLOAT64)) AS `_video_plays`,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'polaris_email' THEN d.fpd_video_views
         WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_views
         WHEN NOT COALESCE(a.has_stable_video_views, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_video_plays AS FLOAT64)
@@ -444,6 +629,7 @@ digital_actual_rows AS (
       END AS `_video_views`,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'polaris_email' THEN d.fpd_video_comps
         WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_comps
         WHEN NOT COALESCE(a.has_stable_video_comps, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_video_comps AS FLOAT64)

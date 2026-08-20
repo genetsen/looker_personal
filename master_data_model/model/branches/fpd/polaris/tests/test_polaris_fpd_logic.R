@@ -30,6 +30,23 @@ source(logic_path)
 
   # Description: Prove both source shapes normalize to the approved common fields.
 
+  # ? Multiple current snapshots stop before a source file is selected
+    ambiguous_inventory_error <- tryCatch(
+      {
+        validate_polaris_source_inventory(data.frame(
+          source_object_uri = c("gs://fixture/meta-1.csv", "gs://fixture/meta-2.csv", "gs://fixture/tiktok.csv"),
+          source_feed = c("meta", "meta", "tiktok"),
+          stringsAsFactors = FALSE
+        ))
+        NULL
+      },
+      error = function(error) conditionMessage(error)
+    )
+    expect_true(
+      !is.null(ambiguous_inventory_error) && grepl("expected 1 Meta CSV; found 2", ambiguous_inventory_error),
+      "ambiguous source snapshots stop before normalization"
+    )
+
   # ? Meta BOM-style headers and observed zeros retain their intended meaning
     meta_fixture <- data.frame(
       campaign_name = c("Awareness Campaign", "Awareness Campaign"),
@@ -80,6 +97,40 @@ source(logic_path)
       "TikTok alternate headers retain campaign, ad-group, ad, and video detail"
     )
 
+  # ? Production mappings use the full feed/platform/campaign/ad-group key
+    production_mappings <- data.frame(
+      source_feed = c("meta", "meta", "meta", "meta", "tiktok"),
+      platform = c("Facebook", "Facebook", "Instagram", "Instagram", "TikTok"),
+      campaign_name = c(
+        rep("Awareness Campaign", 4),
+        "Purely Elizabeth - Awareness Q3"
+      ),
+      ad_group_name = c(
+        "ACR - Facebook", "Interests - Facebook",
+        "ACR - Instagram", "Interests - Instagram", "Interests"
+      ),
+      package_id = c("P3HF7QB", "P3HF7QB", "P3HF7T8", "P3HF7T8", "P3HF88Q"),
+      package_friendly_label = c(
+        "Facebook Awareness", "Facebook Awareness", "Instagram", "Instagram", "TikTok"
+      ),
+      is_active = TRUE,
+      stringsAsFactors = FALSE
+    )
+    production_meta <- apply_polaris_package_mappings(
+      normalize_polaris_meta(meta_fixture, "gs://fixture/meta.csv"),
+      production_mappings
+    )
+    production_tiktok <- apply_polaris_package_mappings(
+      normalize_polaris_tiktok(tiktok_fixture, "gs://fixture/tiktok.csv"),
+      production_mappings
+    )
+    expect_true(
+      identical(production_meta$package_id, c("P3HF7QB", "P3HF7T8")) &&
+        production_tiktok$package_id[[1]] == "P3HF88Q" &&
+        all(c(production_meta$mapping_status, production_tiktok$mapping_status) == "mapped"),
+      "all five approved production source keys map through the composite contract"
+    )
+
 
 # * SECTION [3]: REVIEW FAILURES AND DUPLICATES
 
@@ -97,6 +148,36 @@ source(logic_path)
         is.na(unknown_normalized$package_id[[1]]) &&
         unknown_normalized$review_status[[1]] == "needs_review",
       "unknown platforms remain unmapped and visible for review"
+    )
+
+  # ? A known platform with an unknown campaign/ad-group key still stops mapping
+    unknown_key_fixture <- meta_fixture[1, ]
+    names(unknown_key_fixture)[[1]] <- sub("^\ufeff", "", names(unknown_key_fixture)[[1]])
+    unknown_key_fixture$adset_name <- "Unapproved Audience"
+    unknown_key <- apply_polaris_package_mappings(
+      normalize_polaris_meta(unknown_key_fixture, "gs://fixture/unknown-key.csv"),
+      production_mappings
+    )
+    expect_true(
+      unknown_key$mapping_status[[1]] == "unmapped_source_key" &&
+        is.na(unknown_key$package_id[[1]]),
+      "production mapping does not infer a package from platform alone"
+    )
+
+  # ? Duplicate active mapping owners are rejected before source classification
+    ambiguous_mapping_error <- tryCatch(
+      {
+        apply_polaris_package_mappings(
+          normalize_polaris_meta(meta_fixture[1, ], "gs://fixture/ambiguous-map.csv"),
+          rbind(production_mappings, production_mappings[1, ])
+        )
+        NULL
+      },
+      error = function(error) conditionMessage(error)
+    )
+    expect_true(
+      !is.null(ambiguous_mapping_error) && grepl("ambiguous active source keys", ambiguous_mapping_error),
+      "duplicate active production mappings fail before a package is selected"
     )
 
   # ? Missing names, invalid dates, and invalid metrics receive specific statuses

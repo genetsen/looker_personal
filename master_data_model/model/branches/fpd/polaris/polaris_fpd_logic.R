@@ -58,6 +58,25 @@
       data
     }
 
+  # ? Enforce exactly one current file for each supported feed without guessing
+    validate_polaris_source_inventory <- function(inventory) {
+      inventory <- as.data.frame(inventory, stringsAsFactors = FALSE)
+      if (!"source_feed" %in% names(inventory)) {
+        stop("Polaris source inventory is missing source_feed", call. = FALSE)
+      }
+      counts <- table(factor(inventory$source_feed, levels = c("meta", "tiktok", "unsupported")))
+      problems <- character(0)
+      if (counts[["meta"]] != 1L) problems <- c(problems, paste("expected 1 Meta CSV; found", counts[["meta"]]))
+      if (counts[["tiktok"]] != 1L) problems <- c(problems, paste("expected 1 TikTok CSV; found", counts[["tiktok"]]))
+      if (counts[["unsupported"]] > 0L) {
+        problems <- c(problems, paste("found", counts[["unsupported"]], "unsupported CSV object(s)"))
+      }
+      if (length(problems) > 0) {
+        stop(paste("Ambiguous Polaris Email source inventory:", paste(problems, collapse = "; ")), call. = FALSE)
+      }
+      invisible(TRUE)
+    }
+
 
 # * SECTION [2]: SOURCE NORMALIZATION
 
@@ -160,14 +179,8 @@
 
   # Description: Attach approved package candidates and surface unsafe rows.
 
-  # ? Add mappings, validation results, and a visible natural-row duplicate count
-    classify_polaris_rows <- function(normalized_rows, mappings = polaris_preview_mappings()) {
-      normalized_rows <- as.data.frame(normalized_rows, stringsAsFactors = FALSE)
-      mapping_index <- match(tolower(normalized_rows$platform), tolower(mappings$platform))
-      normalized_rows$package_friendly_label <- mappings$package_friendly_label[mapping_index]
-      normalized_rows$package_id <- mappings$package_id[mapping_index]
-      normalized_rows$mapping_status <- ifelse(is.na(mapping_index), "unmapped_platform", "mapped")
-
+  # ? Add validation results and a visible natural-row duplicate count
+    validate_polaris_rows <- function(normalized_rows) {
       key_parts <- list(
         normalized_rows$source_feed,
         normalized_rows$platform,
@@ -214,6 +227,67 @@
         "needs_review"
       )
       normalized_rows
+    }
+
+  # ? Add Stage 1 platform-only preview mappings before shared validation
+    classify_polaris_rows <- function(normalized_rows, mappings = polaris_preview_mappings()) {
+      normalized_rows <- as.data.frame(normalized_rows, stringsAsFactors = FALSE)
+      mapping_index <- match(tolower(normalized_rows$platform), tolower(mappings$platform))
+      normalized_rows$package_friendly_label <- mappings$package_friendly_label[mapping_index]
+      normalized_rows$package_id <- mappings$package_id[mapping_index]
+      normalized_rows$mapping_status <- ifelse(is.na(mapping_index), "unmapped_platform", "mapped")
+      validate_polaris_rows(normalized_rows)
+    }
+
+  # ? Build a case-insensitive key shared by source rows and warehouse mappings
+    polaris_mapping_key <- function(source_feed, platform, campaign_name, ad_group_name) {
+      parts <- list(source_feed, platform, campaign_name, ad_group_name)
+      parts <- lapply(parts, function(value) {
+        value <- tolower(as_polaris_text(value))
+        ifelse(is.na(value), "<missing>", value)
+      })
+      do.call(paste, c(parts, sep = "|"))
+    }
+
+  # ? Apply the production composite mapping contract and reject ambiguous owners
+    apply_polaris_package_mappings <- function(normalized_rows, mappings) {
+      normalized_rows <- as.data.frame(normalized_rows, stringsAsFactors = FALSE)
+      mappings <- as.data.frame(mappings, stringsAsFactors = FALSE)
+      required_mapping_columns <- c(
+        "source_feed", "platform", "campaign_name", "ad_group_name",
+        "package_id", "package_friendly_label"
+      )
+      missing_columns <- setdiff(required_mapping_columns, names(mappings))
+      if (length(missing_columns) > 0) {
+        stop(
+          paste("Polaris mapping table is missing required columns:", paste(missing_columns, collapse = ", ")),
+          call. = FALSE
+        )
+      }
+      if ("is_active" %in% names(mappings)) {
+        mappings <- mappings[!is.na(mappings$is_active) & mappings$is_active, , drop = FALSE]
+      }
+      mapping_keys <- polaris_mapping_key(
+        mappings$source_feed, mappings$platform, mappings$campaign_name, mappings$ad_group_name
+      )
+      duplicate_mapping_keys <- unique(mapping_keys[duplicated(mapping_keys)])
+      if (length(duplicate_mapping_keys) > 0) {
+        stop(
+          paste("Polaris mapping table has ambiguous active source keys:", paste(duplicate_mapping_keys, collapse = ", ")),
+          call. = FALSE
+        )
+      }
+      source_keys <- polaris_mapping_key(
+        normalized_rows$source_feed,
+        normalized_rows$platform,
+        normalized_rows$campaign_name,
+        normalized_rows$ad_group_name
+      )
+      mapping_index <- match(source_keys, mapping_keys)
+      normalized_rows$package_friendly_label <- mappings$package_friendly_label[mapping_index]
+      normalized_rows$package_id <- mappings$package_id[mapping_index]
+      normalized_rows$mapping_status <- ifelse(is.na(mapping_index), "unmapped_source_key", "mapped")
+      validate_polaris_rows(normalized_rows)
     }
 
 

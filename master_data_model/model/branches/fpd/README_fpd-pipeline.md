@@ -5,15 +5,14 @@ This guide documents partner-reported first-party delivery (FPD) from partner re
 ## Pipeline Overview
 
 ```text
-Partner request template → partner-supplied delivery
-                         ↓
-Original FPD landing table + updated FPD daily table
-                         ↓
-Stable package/date base and FPD evidence fields
-                         ↓
-Master evidence model / v3 detail rows
-
-Polaris Meta/TikTok CSVs → local QA preview and overlap evidence only
+MIQ Google Sheet → FPD loader → original/revised FPD landing
+MIQ email reports → Polaris → GCS Meta/TikTok feeds
+                                      ↓
+                   guarded Polaris Email daily landing
+                                      ↓
+          package/date coverage chooses the ingestion path
+                                      ↓
+             compatibility base → V3 source-detail rows
 ```
 
 ## Source Inventory
@@ -23,16 +22,18 @@ Polaris Meta/TikTok CSVs → local QA preview and overlap evidence only
 | [First-Party Partner Data Collection Template](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/partner-data-collection-template.md) | Partner request and entry rows | Requested package context, date grain, dimensions, and partner-entered metrics. | It is a request builder, not the master-model source table. |
 | [Original FPD landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=fpd_data_ranged_shortcutsFolder&page=table) | Partner/package/date, with creative evidence | Spend, impressions, clicks, sends, opens, benchmark, factor, creative, source-file lineage. | Original FPD can preserve placement/factor/creative detail in v3. |
 | [Updated FPD daily table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=adif_updated_fpd_daily&page=table) | Package/date | Daily spend and impressions, supplier, initiative, and Sheet freshness. | Updated FPD has no creative/detail expansion in v3. |
-| [Polaris FPD preview](polaris/README.md) | Platform/date/campaign/ad group/ad; package/cumulative snapshot date for overlap review | Locally normalized Meta and TikTok delivery, approved MIQ package candidates, reconciliation, and cumulative current-FPD snapshot overlap evidence. | QA-only Stage 1 workflow. It preserves Polaris's daily grain and compares cumulative delivery through MIQ's native `date_final` snapshots. It does not publish a landing table, replace legacy FPD, edit a mapping Sheet, or feed the model. |
+| [Polaris Email package mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | Feed/platform/campaign/ad group | Central owner for the five approved source-key-to-Prisma-package mappings. | MIQ is the partner; this table chooses packages for the Polaris Email ingestion path. |
+| [Polaris Email daily delivery](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | Package/date/platform/campaign/ad group/ad | Normalized delivery metrics, raw source values, source object/row, package mapping, and load time. | The guarded loader replaces the full snapshot only after every source and warehouse check passes. |
+| [Polaris Email reader and loader](polaris/README.md) | Source detail plus package/cumulative snapshot review | Stage 1 review artifacts and the production manual loader for the approved MIQ connection. | Automation remains a separate next stage. |
 
 ## Lineage and Precedence
 
 | Stage | Behavior |
 |---|---|
-| [Stable package/date base SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql) | Aggregates original and updated FPD separately, then publishes their consolidated `fpd_*` evidence family. |
-| Package/date final metrics | Original and updated spend/impressions are added together. Their nonzero combined values take precedence over DCM spend and impressions. Original FPD clicks take precedence over DCM clicks when present. |
+| [Stable package/date base SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql) | Derives each Polaris Email package's loaded minimum and maximum date. Inside that range it uses Polaris Email; outside it keeps the existing FPD path. |
+| Package/date final metrics | Polaris Email replaces both FPD inputs only inside loaded coverage. Existing FPD precedence over DCM remains unchanged outside coverage. The original FPD landing rows are never deleted. |
 | [Delivery detail v2](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_delivery_detail_v2&page=table) | Unions DCM, original FPD, and updated FPD. Original FPD is package/date/placement/creative; updated FPD remains package/date. |
-| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Keeps original FPD at package/date/placement/factor/creative grain and updated FPD at package/date grain. It assigns planned metrics to one ranked natural row, not every detail row. |
+| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Adds `polaris_email` detail at package/date/platform/campaign/ad-group/ad grain, retains explicit `polaris_*` lineage, and assigns planned metrics to one ranked natural row. |
 
 ## Custom Logic
 
@@ -41,6 +42,7 @@ Polaris Meta/TikTok CSVs → local QA preview and overlap evidence only
 - Updated FPD contributes only its available daily spend and impressions. It does not invent clicks or creative detail.
 - A package/date can contain DCM and FPD evidence at the same time. `qa_data_issues` can surface an `actual_source_conflict`; this is evidence for review, not permission to combine metrics arbitrarily.
 - Valid manual delivery edits apply after source assembly. They are a later override path and leave FPD evidence visible for audit.
+- MIQ remains the partner for both ingestion paths. `Polaris Email` and `FPD` describe how the partner delivery reached the model; Facebook, Instagram, and TikTok remain platforms.
 
 ## Partner Template Boundary
 
@@ -57,6 +59,7 @@ The [partner template guide](/Users/eugenetsenter/Looker_clonedRepo/looker_perso
 
 ## Related Guides
 
-- [Polaris FPD preview](polaris/README.md)
+- [MIQ Polaris Email reader and loader](polaris/README.md)
+- [Polaris Email V3 MVP plan](polaris-email-v3-mvp-plan.md)
 - [DCM delivery pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md)
 - [Prisma planning pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/prisma/README_prisma-pipeline.md)

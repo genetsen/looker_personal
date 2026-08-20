@@ -44,6 +44,10 @@ source_refreshes AS (
       FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
     ) AS fpd_updated_refresh_at,
     (
+      SELECT MAX(loaded_at)
+      FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+    ) AS polaris_email_refresh_at,
+    (
       SELECT TIMESTAMP(MAX(data_refresh_date))
       FROM `looker-studio-pro-452620.landing.tv_combined_tbl`
     ) AS tv_refresh_at,
@@ -226,6 +230,15 @@ dcm_daily AS (
   GROUP BY d.package_id, DATE(d.date)
 ),
 
+polaris_email_coverage AS (
+  SELECT
+    package_id,
+    MIN(date) AS minimum_date,
+    MAX(date) AS maximum_date
+  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+  GROUP BY package_id
+),
+
 fpd_original_raw AS (
   SELECT
     f.package_id,
@@ -252,9 +265,15 @@ fpd_original_raw AS (
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` AS f
   WHERE DATE(f.date_final) >= DATE '2025-01-01'
     AND f.package_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM polaris_email_coverage AS coverage
+      WHERE coverage.package_id = f.package_id
+        AND DATE(f.date_final) BETWEEN coverage.minimum_date AND coverage.maximum_date
+    )
 ),
 
-fpd_original_daily AS (
+fpd_original_daily_source AS (
   SELECT
     package_id,
     date,
@@ -281,6 +300,41 @@ fpd_original_daily AS (
   GROUP BY package_id, date
 ),
 
+polaris_email_daily AS (
+  SELECT
+    package_id,
+    date,
+    SUM(impressions) AS fpd_orig_impressions,
+    SUM(clicks) AS fpd_orig_clicks,
+    SUM(spend) AS fpd_orig_spend,
+    SUM(video_views) AS fpd_orig_video_views,
+    SUM(video_completions) AS fpd_orig_video_comps,
+    CAST(NULL AS INT64) AS fpd_orig_sends,
+    CAST(NULL AS INT64) AS fpd_orig_opens,
+    CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
+    CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
+    'Polaris Email' AS fpd_orig_factor,
+    STRING_AGG(DISTINCT ad_name, ' | ' ORDER BY ad_name) AS fpd_orig_creative,
+    CAST(NULL AS STRING) AS fpd_creative_img,
+    STRING_AGG(DISTINCT source_object_uri, ' | ' ORDER BY source_object_uri) AS fpd_orig_source_files,
+    STRING_AGG(DISTINCT source_object_uri, ' | ' ORDER BY source_object_uri) AS fpd_orig_source_urls,
+    MAX(loaded_at) AS fpd_orig_source_modified_time,
+    CAST(NULL AS STRING) AS fpd_orig_client,
+    STRING_AGG(DISTINCT campaign_name, ' | ' ORDER BY campaign_name) AS fpd_orig_campaign_name,
+    'MIQ' AS fpd_orig_supplier_name,
+    ARRAY_AGG(package_friendly_label ORDER BY package_friendly_label LIMIT 1)[SAFE_OFFSET(0)] AS fpd_orig_package_name
+  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+  WHERE date >= DATE '2025-01-01'
+    AND package_id IS NOT NULL
+  GROUP BY package_id, date
+),
+
+fpd_original_daily AS (
+  SELECT * FROM fpd_original_daily_source
+  UNION ALL
+  SELECT * FROM polaris_email_daily
+),
+
 fpd_video_daily AS (
   -- Keep FPD views available for the final package/date video-view mapping
   -- without duplicating the broader FPD aggregate in later joins.
@@ -305,6 +359,12 @@ fpd_updated_daily AS (
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily` AS u
   WHERE DATE(u.date) >= DATE '2025-01-01'
     AND u.package_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM polaris_email_coverage AS coverage
+      WHERE coverage.package_id = u.package_id
+        AND DATE(u.date) BETWEEN coverage.minimum_date AND coverage.maximum_date
+    )
   GROUP BY u.package_id, DATE(u.date)
 ),
 
@@ -520,6 +580,7 @@ digital_final AS (
   SELECT
     'digital' AS row_type,
     CASE
+      WHEN fpd_orig_factor = 'Polaris Email' THEN 'polaris_email'
       WHEN fpd_updated_impressions IS NOT NULL
         OR fpd_updated_spend IS NOT NULL
         OR fpd_orig_impressions IS NOT NULL
@@ -535,10 +596,11 @@ digital_final AS (
           OR planned_clicks IS NOT NULL, ['prisma_daily'], []),
         IF(d_daily_recalculated_imps IS NOT NULL
           OR d_daily_recalculated_cost IS NOT NULL, ['dcm'], []),
-        IF(fpd_orig_impressions IS NOT NULL
+        IF(fpd_orig_factor = 'Polaris Email', ['polaris_email'], []),
+        IF(COALESCE(fpd_orig_factor, '') != 'Polaris Email' AND (fpd_orig_impressions IS NOT NULL
           OR fpd_orig_spend IS NOT NULL
           OR fpd_updated_impressions IS NOT NULL
-          OR fpd_updated_spend IS NOT NULL, ['fpd'], [])
+          OR fpd_updated_spend IS NOT NULL), ['fpd'], [])
       ), ' | '), ''),
       'none'
     ) AS row_data_sources_available,
@@ -2108,6 +2170,8 @@ SELECT
         ),
         ' | '
       ), '')
+    WHEN row_data_source_primary = 'polaris_email'
+      THEN 'looker-studio-pro-452620.landing.polaris_email_delivery_daily'
     WHEN row_data_source_primary = 'dcm'
       THEN 'giant-spoon-299605.data_model_2025.new_md'
     WHEN row_data_source_primary = 'planned_only'
@@ -2139,6 +2203,8 @@ SELECT
           END
         ELSE refresh.fpd_updated_refresh_at
       END
+    WHEN row_data_source_primary = 'polaris_email'
+      THEN refresh.polaris_email_refresh_at
     WHEN row_data_source_primary = 'dcm'
       THEN CASE
         WHEN refresh.dcm_raw_refresh_at IS NULL THEN refresh.dcm_cost_model_refresh_at
@@ -2175,6 +2241,8 @@ SELECT
         fpd_orig_source_modified_time,
         fpd_updated_source_sheet_modified_time
       )
+    WHEN row_data_source_primary = 'polaris_email'
+      THEN fpd_orig_source_modified_time
     ELSE NULL
   END AS `qa_data_source_content_modified_at`,
   row_data_sources_available AS `qa_row_data_sources_available`,
@@ -2424,7 +2492,8 @@ row_source_contributors AS (
         IF(
           `man_daily_spend` IS NULL AND `_spend` IS NOT NULL,
           [CASE
-            WHEN `qa_media_data_type` = 'digital' AND NULLIF(`fpd_spend`, 0) IS NOT NULL THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND NULLIF(`fpd_spend`, 0) IS NOT NULL
+              THEN IF(`qa_row_data_source_primary` = 'polaris_email', 'polaris_email', 'fpd')
             WHEN `qa_media_data_type` = 'digital' AND `dcm_daily_recalculated_cost` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'
@@ -2437,7 +2506,8 @@ row_source_contributors AS (
         IF(
           `man_daily_impressions` IS NULL AND `_impressions` IS NOT NULL,
           [CASE
-            WHEN `qa_media_data_type` = 'digital' AND NULLIF(`fpd_impressions`, 0) IS NOT NULL THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND NULLIF(`fpd_impressions`, 0) IS NOT NULL
+              THEN IF(`qa_row_data_source_primary` = 'polaris_email', 'polaris_email', 'fpd')
             WHEN `qa_media_data_type` = 'digital' AND `dcm_impressions` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'
@@ -2450,7 +2520,8 @@ row_source_contributors AS (
         IF(
           `man_daily_clicks` IS NULL AND `_clicks` IS NOT NULL,
           [CASE
-            WHEN `qa_media_data_type` = 'digital' AND `fpd_clicks` IS NOT NULL THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND `fpd_clicks` IS NOT NULL
+              THEN IF(`qa_row_data_source_primary` = 'polaris_email', 'polaris_email', 'fpd')
             WHEN `qa_media_data_type` = 'digital' AND `dcm_clicks` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'
@@ -2473,7 +2544,8 @@ row_source_contributors AS (
         IF(
           `_video_views` IS NOT NULL,
           [CASE
-            WHEN `qa_media_data_type` = 'digital' AND `qa_row_data_source_primary` = 'fpd' THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND `qa_row_data_source_primary` IN ('fpd', 'polaris_email')
+              THEN `qa_row_data_source_primary`
             WHEN `qa_media_data_type` = 'digital' AND `dcm_video_plays` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'
@@ -2485,7 +2557,8 @@ row_source_contributors AS (
         IF(
           `man_daily_video_comps` IS NULL AND `_video_comps` IS NOT NULL,
           [CASE
-            WHEN `qa_media_data_type` = 'digital' AND `qa_row_data_source_primary` = 'fpd' THEN 'fpd'
+            WHEN `qa_media_data_type` = 'digital' AND `qa_row_data_source_primary` IN ('fpd', 'polaris_email')
+              THEN `qa_row_data_source_primary`
             WHEN `qa_media_data_type` = 'digital' AND `dcm_video_comps` IS NOT NULL THEN 'dcm'
             WHEN `qa_media_data_type` = 'social' AND STARTS_WITH(COALESCE(`s_record_source`, ''), 'wp_') THEN 'wp_search_data_template'
             WHEN `qa_media_data_type` = 'social' THEN 'social'
