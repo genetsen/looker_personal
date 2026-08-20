@@ -2,7 +2,7 @@
 
 ## 2026-08-20
 
-**Polaris FPD can be reviewed safely before any production integration** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_fpd.R)) — 🟢 **Verified and committed**<br>The [QA-only Polaris preview](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) now preserves and normalizes all 992 daily creative-level Meta and TikTok rows, applies the three approved MIQ package candidates, reconciles every source metric, and compares Sunday-start Polaris weeks with MIQ's native weekly FPD records. It does not write BigQuery, Sheets, the Manual Data Editor, the production model, or automation.
+**Polaris Email delivery can be reviewed safely before production integration** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_fpd.R)) — 🟢 **Verified and committed**<br>The [QA-only Polaris Email preview](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) preserves and normalizes all 992 daily creative-level Meta and TikTok rows supplied by MIQ, applies the three approved package candidates, reconciles every source metric, and compares cumulative Polaris Email delivery through each native FPD snapshot date. Exact duplicate FPD snapshot rows remain visible for review instead of being presented as aligned. The preview does not write BigQuery, Sheets, the Manual Data Editor, the production model, or automation.
 
 ### Pending Next Actions
 

@@ -34,7 +34,7 @@ The default GCS prefix is the approved Polaris connection for Purely Elizabeth. 
 | `normalized_rows.csv` | Daily creative-level rows with source lineage, normalized metrics, package candidates, and review statuses. |
 | `mapping_review.csv` | Row counts by platform, package candidate, mapping result, and validation result. |
 | `source_reconciliation.csv` | Raw-versus-normalized row and metric totals by platform. |
-| `legacy_overlap.csv` | Optional package/week comparison between daily Polaris delivery and native weekly MIQ FPD. Weeks use the established Sunday start, retain each source's latest observed date, and label different period ends so non-matching coverage is not presented as like-for-like. |
+| `legacy_overlap.csv` | Optional package/snapshot comparison. Each row compares cumulative Polaris delivery through the native FPD `date_final` snapshot, not a weekly increment. It includes raw and distinct source-row counts and marks duplicate snapshots for review rather than presenting them as aligned. |
 | `run_summary.md` | Human-readable totals, unresolved counts, comparison status, and the production safety boundary. |
 
 Generated CSVs are local evidence and are excluded by the repository's existing CSV/output ignore rules. They are not production inputs.
@@ -45,7 +45,7 @@ Generated CSVs are local evidence and are excluded by the repository's existing 
 Rscript model/branches/fpd/polaris/tests/test_polaris_fpd_logic.R
 ```
 
-The fixtures cover Meta's UTF-8 header marker, TikTok's alternate schema, zero metrics, all three approved mappings, unknown platforms, missing required values, invalid dates and metrics, duplicate reporting, exact source reconciliation, and the Sunday-start weekly comparison boundary.
+The fixtures cover Meta's UTF-8 header marker, TikTok's alternate schema, zero metrics, all three approved mappings, unknown platforms, missing required values, invalid dates and metrics, duplicate reporting, exact source reconciliation, Sunday-start week logic, and cumulative snapshot logic.
 
 ## Stage Boundary
 

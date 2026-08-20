@@ -149,30 +149,32 @@
     }
 
 
-# * SECTION [3]: READ-ONLY WEEKLY OVERLAP
+# * SECTION [3]: READ-ONLY CUMULATIVE SNAPSHOT OVERLAP
 
-  # Description: Compare Sunday-start Polaris weeks to native weekly MIQ FPD evidence.
+  # Description: Compare cumulative Polaris delivery through native FPD snapshots.
 
-  # ? Query the native FPD week field and merge it with weekly Polaris totals
+  # ? Query each native snapshot without hiding duplicate source rows
     build_legacy_overlap <- function(normalized_rows, output_dir) {
-      polaris_weekly <- build_polaris_weekly_package_summary(normalized_rows)
-      if (nrow(polaris_weekly) == 0) return(NULL)
+      ready <- normalized_rows[
+        normalized_rows$mapping_status == "mapped" &
+          normalized_rows$validation_status == "valid", ]
+      if (nrow(ready) == 0) return(NULL)
 
-      package_values <- paste(sprintf("'%s'", unique(polaris_weekly$package_id)), collapse = ", ")
-      minimum_week <- min(polaris_weekly$week_start)
-      maximum_week <- max(polaris_weekly$week_start)
+      package_values <- paste(sprintf("'%s'", unique(ready$package_id)), collapse = ", ")
+      minimum_date <- min(ready$date)
+      maximum_date <- max(ready$date)
       query <- paste0(
-        "SELECT package_id, week AS week_start, ",
-        "MAX(date_final) AS latest_legacy_date, ",
-        "SUM(spend) AS legacy_fpd_spend, ",
-        "SUM(impressions) AS legacy_fpd_impressions, ",
-        "SUM(clicks) AS legacy_fpd_clicks, ",
-        "SUM(views) AS legacy_fpd_video_views, ",
-        "SUM(completed_views) AS legacy_fpd_video_completions ",
+        "WITH source_rows AS (SELECT package_id, date_final, spend, impressions, clicks, views, completed_views, ",
+        "FARM_FINGERPRINT(TO_JSON_STRING(STRUCT(week, date, package_id, partner_packagePlacement_name, partner_creative_name, spend, impressions, clicks, views, completed_views))) AS row_fingerprint ",
         "FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` ",
         "WHERE package_id IN (", package_values, ") ",
-        "AND week BETWEEN DATE '", minimum_week, "' AND DATE '", maximum_week, "' ",
-        "GROUP BY package_id, week_start ORDER BY package_id, week_start"
+        "AND date_final BETWEEN DATE '", minimum_date, "' AND DATE '", maximum_date, "') ",
+        "SELECT package_id, date_final AS snapshot_date, COUNT(*) AS legacy_snapshot_row_count, ",
+        "COUNT(DISTINCT row_fingerprint) AS legacy_distinct_row_count, ",
+        "SUM(spend) AS legacy_fpd_spend, SUM(impressions) AS legacy_fpd_impressions, ",
+        "SUM(clicks) AS legacy_fpd_clicks, SUM(views) AS legacy_fpd_video_views, ",
+        "SUM(completed_views) AS legacy_fpd_video_completions ",
+        "FROM source_rows GROUP BY package_id, snapshot_date ORDER BY package_id, snapshot_date"
       )
       query_path <- tempfile("polaris_overlap_", fileext = ".sql")
       error_path <- tempfile("polaris_overlap_", fileext = ".err")
@@ -196,34 +198,39 @@
         )
       }
       legacy <- read.csv(result_path, stringsAsFactors = FALSE)
-      legacy$week_start <- as.Date(legacy$week_start)
-      legacy$latest_legacy_date <- as.Date(legacy$latest_legacy_date)
+      legacy$snapshot_date <- as.Date(legacy$snapshot_date)
+      polaris_cumulative <- build_polaris_cumulative_package_summary(
+        normalized_rows,
+        legacy[, c("package_id", "snapshot_date")]
+      )
       overlap <- merge(
-        polaris_weekly,
+        polaris_cumulative,
         legacy,
-        by = c("package_id", "week_start"),
+        by = c("package_id", "snapshot_date"),
         all = TRUE,
         sort = TRUE
       )
-      overlap$week_end <- overlap$week_start + 6L
-      overlap$comparison_grain <- "package_sunday_start_week"
+      overlap$comparison_grain <- "package_cumulative_through_fpd_snapshot_date"
+      overlap$legacy_snapshot_status <- ifelse(
+        overlap$legacy_snapshot_row_count > overlap$legacy_distinct_row_count,
+        "duplicate_source_rows_present", "no_exact_duplicate_rows_detected"
+      )
       overlap$coverage_status <- ifelse(
         is.na(overlap$latest_polaris_date),
         "legacy_only",
         ifelse(
-          is.na(overlap$latest_legacy_date),
-          "polaris_only",
-          ifelse(
-            overlap$latest_polaris_date == overlap$latest_legacy_date,
-            "matched_period_end",
-            "different_period_end"
+          is.na(overlap$legacy_snapshot_row_count), "polaris_only",
+          ifelse(overlap$latest_polaris_date == overlap$snapshot_date,
+            "matched_snapshot_date", "polaris_coverage_ends_before_snapshot"
           )
         )
       )
       overlap$difference_interpretation <- ifelse(
-        overlap$coverage_status == "matched_period_end",
-        "like_for_like_period",
-        "review_coverage_before_comparing"
+        overlap$legacy_snapshot_status == "duplicate_source_rows_present",
+        "review_duplicate_snapshot_before_comparing",
+        ifelse(overlap$coverage_status == "matched_snapshot_date",
+          "cumulative_like_for_like_snapshot", "review_coverage_before_comparing"
+        )
       )
       metric_names <- c("spend", "impressions", "clicks", "video_views", "video_completions")
       for (metric in metric_names) {
@@ -233,8 +240,8 @@
       }
       overlap <- overlap[, c(
         "comparison_grain", "coverage_status", "difference_interpretation",
-        "package_id", "week_start", "week_end",
-        "latest_polaris_date", "latest_legacy_date",
+        "package_id", "snapshot_date", "latest_polaris_date",
+        "legacy_snapshot_row_count", "legacy_distinct_row_count", "legacy_snapshot_status",
         "polaris_spend", "legacy_fpd_spend", "spend_difference",
         "polaris_impressions", "legacy_fpd_impressions", "impressions_difference",
         "polaris_clicks", "legacy_fpd_clicks", "clicks_difference",
@@ -277,7 +284,7 @@
       unresolved <- sum(normalized_rows$review_status == "needs_review")
       duplicate_rows <- sum(normalized_rows$natural_row_occurrences > 1)
       overlap_line <- if (compared_live_model) {
-        "- `legacy_overlap.csv` compares Sunday-start Polaris weeks with native weekly MIQ FPD."
+        "- `legacy_overlap.csv` compares cumulative Polaris delivery through each native FPD snapshot date and exposes duplicate snapshot rows."
       } else {
         "- Live-model comparison was not requested; `legacy_overlap.csv` was not created."
       }

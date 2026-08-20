@@ -317,3 +317,55 @@
         "polaris_video_views", "polaris_video_completions"
       )]
     }
+
+  # ? Sum daily Polaris delivery through each native FPD snapshot date
+    build_polaris_cumulative_package_summary <- function(normalized_rows, snapshots) {
+      ready <- normalized_rows[
+        normalized_rows$mapping_status == "mapped" &
+          normalized_rows$validation_status == "valid",
+      ]
+      if (is.data.frame(snapshots)) {
+        grid <- unique(snapshots[, c("package_id", "snapshot_date")])
+        grid$snapshot_date <- as.Date(grid$snapshot_date)
+        grid <- grid[order(grid$package_id, grid$snapshot_date), ]
+      } else {
+        snapshot_dates <- sort(unique(as.Date(snapshots)))
+        grid <- expand.grid(
+          package_id = sort(unique(ready$package_id)), snapshot_date = snapshot_dates,
+          stringsAsFactors = FALSE
+        )
+      }
+      if (nrow(ready) == 0 || nrow(grid) == 0) {
+        return(data.frame(
+          package_id = character(0), snapshot_date = as.Date(character(0)),
+          latest_polaris_date = as.Date(character(0)),
+          polaris_spend = numeric(0), polaris_impressions = numeric(0),
+          polaris_clicks = numeric(0), polaris_video_views = numeric(0),
+          polaris_video_completions = numeric(0), stringsAsFactors = FALSE
+        ))
+      }
+      output <- lapply(seq_len(nrow(grid)), function(i) {
+        package_rows <- ready[
+          ready$package_id == grid$package_id[[i]] & ready$date <= grid$snapshot_date[[i]],
+        ]
+        if (nrow(package_rows) == 0) {
+          return(data.frame(
+            package_id = grid$package_id[[i]], snapshot_date = grid$snapshot_date[[i]],
+            latest_polaris_date = as.Date(NA), polaris_spend = 0,
+            polaris_impressions = 0, polaris_clicks = 0, polaris_video_views = 0,
+            polaris_video_completions = 0, stringsAsFactors = FALSE
+          ))
+        }
+        data.frame(
+          package_id = grid$package_id[[i]], snapshot_date = grid$snapshot_date[[i]],
+          latest_polaris_date = max(package_rows$date),
+          polaris_spend = sum(package_rows$spend, na.rm = TRUE),
+          polaris_impressions = sum(package_rows$impressions, na.rm = TRUE),
+          polaris_clicks = sum(package_rows$clicks, na.rm = TRUE),
+          polaris_video_views = sum(package_rows$video_views, na.rm = TRUE),
+          polaris_video_completions = sum(package_rows$video_completions, na.rm = TRUE),
+          stringsAsFactors = FALSE
+        )
+      })
+      do.call(rbind, output)
+    }

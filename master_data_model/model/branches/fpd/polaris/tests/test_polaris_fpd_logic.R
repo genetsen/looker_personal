@@ -158,4 +158,29 @@ source(logic_path)
       "Saturday and Sunday fall into separate Sunday-start FPD weeks"
     )
 
+  # ? Cumulative snapshots use all Polaris delivery through each native date
+    cumulative_summary <- build_polaris_cumulative_package_summary(
+      weekly_rows,
+      c("2026-07-25", "2026-07-26")
+    )
+    expect_true(
+      nrow(cumulative_summary) == 2 &&
+        identical(as.character(cumulative_summary$snapshot_date), c("2026-07-25", "2026-07-26")) &&
+        all(cumulative_summary$polaris_spend == c(20.5, 41)) &&
+        identical(as.character(cumulative_summary$latest_polaris_date), c("2026-07-25", "2026-07-26")),
+      "cumulative snapshot summaries include Polaris delivery through each snapshot date"
+    )
+
+  # ? Package-specific snapshot input does not invent cross-package dates
+    package_snapshot_summary <- build_polaris_cumulative_package_summary(
+      weekly_rows,
+      data.frame(package_id = "P3HF88Q", snapshot_date = as.Date("2026-07-26"))
+    )
+    expect_true(
+      nrow(package_snapshot_summary) == 1 &&
+        package_snapshot_summary$package_id == "P3HF88Q" &&
+        package_snapshot_summary$polaris_spend == 41,
+      "package-specific snapshots create only real comparison pairs"
+    )
+
 cat("All Polaris FPD preview logic tests passed.\n")
