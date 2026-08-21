@@ -1,9 +1,9 @@
 ################################################################################
-#### POLARIS FIRST-PARTY DATA PREVIEW LOGIC
+#### POLARIS EMAIL DELIVERY LOGIC
 ################################################################################
 # Purpose:
-#   Normalize Polaris Meta and TikTok CSV exports into one review-only FPD
-#   shape while preserving source-row identity and approved package mappings.
+#   Normalize Polaris Email Meta and TikTok CSV exports into the shared FPD
+#   delivery shape while preserving source-row identity and package mappings.
 # Inputs and outputs:
 #   Functions accept in-memory CSV-shaped data frames and return normalized
 #   rows plus reconciliation and mapping summaries.
@@ -15,7 +15,7 @@
 
 # * SECTION [1]: SHARED VALUES
 
-  # Description: Define the approved Stage 1 package mappings and value parsers.
+  # Description: Define the approved preview package mappings and value parsers.
 
   # ? Return the three explicitly approved platform-to-package preview mappings
     polaris_preview_mappings <- function() {
@@ -296,7 +296,7 @@
       normalized_rows
     }
 
-  # ? Add Stage 1 platform-only preview mappings before shared validation
+  # ? Add platform-only preview mappings before shared validation
     classify_polaris_rows <- function(normalized_rows, mappings = polaris_preview_mappings()) {
       normalized_rows <- as.data.frame(normalized_rows, stringsAsFactors = FALSE)
       mapping_index <- match(tolower(normalized_rows$platform), tolower(mappings$platform))

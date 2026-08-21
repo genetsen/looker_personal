@@ -1,3 +1,12 @@
+## 2026-08-21
+
+**Polaris Email selection and its operating guide now follow the FPD contract** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [Polaris Email delivery pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now identifies Meta and TikTok from CSV columns, selects each feed's uniquely newest business-date snapshot, and documents the canonical files, protected surfaces, source boundaries, output grain, precedence, commands, proof queries, maintenance, and troubleshooting needed to operate this MIQ FPD ingestion path. The guide, shared logic, preview, and tests now use descriptive Polaris Email delivery filenames; unsupported schemas and tied newest snapshots still stop before production data can change.
+
+### Pending Next Actions
+
+- **Since Jul 28** - Reconcile and remove any remaining superseded FPD preservation surfaces after canonical branch coverage is proven - BLOCKER
+- **Since Aug 20** - Add scheduling around the proven guarded Polaris Email loader without changing its validation contract - RECOMMENDED
+
 ## 2026-08-14
 
 **FPD publisher version 11 and the shortcut-aware loader share the canonical folder** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/CURRENT_STATE.md)) — 🟢 **User verified**<br>The publisher removes labeled unpublished warnings from outputs, opens the canonical shortcut folder from the confirmation and Log, supports Shared Drive shortcut creation, and remains aligned with the folder scanned by the loader. The live template was pulled back with version 11, and the user verified the complete fresh Publish flow; the production loader itself was not run.

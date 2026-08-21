@@ -1,5 +1,5 @@
 ################################################################################
-#### TEST POLARIS FIRST-PARTY DATA PREVIEW LOGIC
+#### TEST POLARIS EMAIL DELIVERY LOGIC
 ################################################################################
 # Purpose:
 #   Lock content-based Meta/TikTok source selection, approved mappings,
@@ -11,7 +11,7 @@
 
 test_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 test_path <- sub("^--file=", "", test_arg[[1]])
-logic_path <- file.path(dirname(dirname(normalizePath(test_path))), "polaris_fpd_logic.R")
+logic_path <- file.path(dirname(dirname(normalizePath(test_path))), "polaris_email_delivery_logic.R")
 source(logic_path)
 
 
@@ -309,4 +309,4 @@ source(logic_path)
       "package-specific snapshots create only real comparison pairs"
     )
 
-cat("All Polaris FPD preview logic tests passed.\n")
+cat("All Polaris Email delivery logic tests passed.\n")

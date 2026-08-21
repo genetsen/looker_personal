@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 ################################################################################
-#### PREVIEW POLARIS FIRST-PARTY DATA
+#### PREVIEW POLARIS EMAIL DELIVERY
 ################################################################################
 # Purpose:
 #   Classify Polaris CSVs by their headers, select the uniquely newest Meta and
@@ -23,7 +23,7 @@
     script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
     script_path <- if (length(script_arg) == 1) sub("^--file=", "", script_arg) else normalizePath(".")
     script_dir <- dirname(normalizePath(script_path, mustWork = TRUE))
-    source(file.path(script_dir, "polaris_fpd_logic.R"))
+    source(file.path(script_dir, "polaris_email_delivery_logic.R"))
 
   # ? Parse supported value and Boolean command-line options
     parse_preview_args <- function(arguments) {
@@ -124,7 +124,7 @@
         problem <- conditionMessage(selected_inventory)
         writeLines(
           c(
-            "# Polaris FPD Preview — Source Selection Stopped",
+            "# Polaris Email Delivery Preview — Source Selection Stopped",
             "",
             "No source rows were normalized because the GCS snapshot was ambiguous.",
             "",
@@ -274,7 +274,7 @@
       format(round(value, digits), big.mark = ",", nsmall = digits, scientific = FALSE, trim = TRUE)
     }
 
-  # ? Write the approved Stage 1 artifacts and unresolved-item counts
+  # ? Write the approved preview artifacts and unresolved-item counts
     write_polaris_artifacts <- function(normalized_rows, inventory, output_dir, compared_live_model) {
       mapping_review <- build_polaris_mapping_review(normalized_rows)
       reconciliation <- build_polaris_reconciliation(normalized_rows)
@@ -301,7 +301,7 @@
       }
       writeLines(
         c(
-          "# Polaris FPD Preview — Completed",
+          "# Polaris Email Delivery Preview — Completed",
           "",
           paste0(
             "The preview inspected ", summary_number(nrow(inventory)),
@@ -328,7 +328,7 @@
           "",
           "## Safety Boundary",
           "",
-          "This Stage 1 run did not write BigQuery, Google Sheets, the Manual Data Editor, the production model, or automation."
+          "This preview run did not write BigQuery, Google Sheets, the Manual Data Editor, the production model, or automation."
         ),
         file.path(output_dir, "run_summary.md")
       )
@@ -365,7 +365,7 @@
         output_dir,
         compared_live_model = config$compare_live_model
       )
-      cat("Polaris FPD preview completed:", output_dir, "\n")
+      cat("Polaris Email delivery preview completed:", output_dir, "\n")
       invisible(output_dir)
     }
 

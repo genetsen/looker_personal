@@ -38,6 +38,6 @@ This plan bootstraps MIQ delivery received through the Polaris Email ingestion p
 
 ## Safety Boundary
 
-The loader requires exactly one current Meta file and one current TikTok file. It stops before production replacement when the source inventory is ambiguous, a source value lacks one approved active mapping, a required value or metric is invalid, or a natural detail key is duplicated. It uploads to a staging table first and replaces the production delivery snapshot only after warehouse-side gates pass.
+The loader identifies Meta and TikTok from their required CSV headers, then selects each feed's uniquely newest rolling snapshot from the maximum valid source date inside the file. It stops before production replacement when a feed is missing, a schema is unsupported or ambiguous, a newest-date tie exists, a source value lacks one approved active mapping, a required value or metric is invalid, or a natural detail key is duplicated. It uploads to a staging table first and replaces the production delivery snapshot only after warehouse-side gates pass.
 
 Manual package edits continue to override source delivery. Planned metrics remain summable on only one natural row per package/date. The existing FPD duplicate-row issue remains outside this MVP because the new path replaces modeled FPD metrics during overlapping coverage without altering the underlying FPD evidence.

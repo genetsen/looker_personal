@@ -941,6 +941,7 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "MIQ is the partner for both paths; Polaris Email and FPD describe ingestion, while Facebook, Instagram, and TikTok describe platforms.",
+          "Polaris Email identifies feeds from required CSV headers and selects each feed's uniquely newest snapshot from the maximum source date; filenames and upload order are not selection inputs.",
           "Polaris Email detail is preserved in V3 at package/date/platform/campaign/ad-group/ad grain with explicit polaris_* lineage.",
           "Original and revised FPD inputs remain physically available for audit and continue outside Polaris Email coverage."
         ],
@@ -949,7 +950,7 @@
           ["BigQuery: Updated FPD", bq("landing", "adif_updated_fpd_daily")],
           ["BigQuery: Polaris Email mapping", bq("landing", "polaris_email_package_mapping")],
           ["BigQuery: Polaris Email delivery", bq("landing", "polaris_email_delivery_daily")],
-          ["Polaris Email runbook", "../model/branches/fpd/polaris/README.md"],
+          ["Polaris Email pipeline guide", "../model/branches/fpd/polaris/README_polaris-email-pipeline.md"],
           ["Original FPD loader", "../FPD/FPD_loader/util_collect_fpd_shortcutsFolder.r"],
           ["Updated FPD loader", "../adif/projects/updated_fpd_integration/util_process_updated_fpd.r"]
         ]

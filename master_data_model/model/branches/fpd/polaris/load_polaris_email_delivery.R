@@ -20,7 +20,7 @@
     script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
     script_path <- if (length(script_arg) == 1) sub("^--file=", "", script_arg) else normalizePath(".")
     script_dir <- dirname(normalizePath(script_path, mustWork = TRUE))
-    source(file.path(script_dir, "polaris_fpd_logic.R"))
+    source(file.path(script_dir, "polaris_email_delivery_logic.R"))
 
   # ? Parse the deliberately small manual-run interface
     parse_loader_args <- function(arguments) {

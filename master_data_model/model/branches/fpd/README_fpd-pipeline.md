@@ -24,7 +24,7 @@ MIQ email reports → Polaris → GCS Meta/TikTok feeds
 | [Updated FPD daily table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=adif_updated_fpd_daily&page=table) | Package/date | Daily spend and impressions, supplier, initiative, and Sheet freshness. | Updated FPD has no creative/detail expansion in v3. |
 | [Polaris Email package mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | Feed/platform/campaign/ad group | Central owner for the five approved source-key-to-Prisma-package mappings. | MIQ is the partner; this table chooses packages for the Polaris Email ingestion path. |
 | [Polaris Email daily delivery](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | Package/date/platform/campaign/ad group/ad | Normalized delivery metrics, raw source values, source object/row, package mapping, and load time. | The guarded loader replaces the full snapshot only after every source and warehouse check passes. |
-| [Polaris Email reader and loader](polaris/README.md) | Source detail plus package/cumulative snapshot review | Stage 1 review artifacts and the production manual loader for the approved MIQ connection. | Automation remains a separate next stage. |
+| [Polaris Email delivery pipeline](polaris/README_polaris-email-pipeline.md) | Source detail plus package/cumulative snapshot review | Schema-based source selection, local review artifacts, and the production manual loader for the approved MIQ connection. | Automation remains a separate next stage. |
 
 ## Lineage and Precedence
 
@@ -59,7 +59,7 @@ The [partner template guide](/Users/eugenetsenter/Looker_clonedRepo/looker_perso
 
 ## Related Guides
 
-- [MIQ Polaris Email reader and loader](polaris/README.md)
+- [MIQ Polaris Email delivery pipeline](polaris/README_polaris-email-pipeline.md)
 - [Polaris Email V3 MVP plan](polaris-email-v3-mvp-plan.md)
 - [DCM delivery pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md)
 - [Prisma planning pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/prisma/README_prisma-pipeline.md)
