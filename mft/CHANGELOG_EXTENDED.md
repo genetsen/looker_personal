@@ -4,6 +4,27 @@ Verbose session-level and implementation-level change details are documented in 
 For concise daily essentials, see `[BASE]/CHANGELOG.md`.
 All relative paths below resolve from `[BASE]` = /Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft.
 
+## 2026-08-21
+
+### Changed
+
+- **August 20 FY26 Q2/Q3 Basis UTM refresh** (`[BASE]/README.md` and the parent Basis UTM utility)
+  - Source: the new partner workbook `MASSMUTUAL005 - Creative Trafficking Sheet_Q3 8.20 Updates.xlsx`, worksheet `MASSMUTUAL005_Updated 8.18`, was loaded to its own landing table with 331 rows and 321 complete mappings.
+  - Difference: 243 complete mappings already matched July production values; 78 existing placement-and-creative keys carried corrected URLs. No new keys were introduced, and one July-only key remained available as historical coverage.
+  - Safety: SQL Change Guard passed with zero failures; the production union had 2,288 unique keys before and after promotion; a recovery clone preserves the exact pre-update union.
+  - Lookup refresh: `UTM UPDATES` run `6a91e6a7-0000-2997-a1ce-089e08253540` succeeded, leaving zero rows missing or extra between the 2,567-row source view and materialized lookup.
+  - MFT refresh: `ext_mm_mft_scheadule_s2` run `6a8c2e6d-0000-26b1-a10b-089e08254910` succeeded. The 3,546 delivered records affected by corrected keys have zero UTM mismatches in both the mart and stored table.
+  - Final totals: the live mart and stored Q2/Q3 output each contain 20,668 records, zero blank UTM records, 7,816,863 impressions, $260,159.90 cost, and 3,675 clicks.
+
+<details>
+<summary>Paths — August 20 FY26 Q2/Q3 Basis UTM refresh</summary>
+
+- [Basis UTM loader](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r>)
+- [Q2/Q3 promotion SQL](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/load_basis_utms_unioned_0929_from_fy26_q2_q3.sql>)
+- [MFT pipeline README](README.md)
+
+</details>
+
 ## 2026-07-23
 
 ### Fixed

@@ -1,27 +1,20 @@
 -- FY26 Q2/Q3 Basis UTM production promotion.
--- Reads the normalized Q2/Q3 landing table, excludes blank mappings, and
--- inserts only rows that are not already present in the active workbook union.
--- Safe to rerun after a newer Q2/Q3 workbook replaces the landing table.
+-- Reads the newest normalized Q2/Q3 landing table, excludes blank mappings,
+-- updates matching placement-and-creative keys, and inserts new keys.
+-- Historical keys omitted from the newest workbook remain available.
+-- Safe to rerun because the MERGE is idempotent and fails closed if the newest
+-- source contains more than one complete URL for the same business key.
 
 DECLARE target_rows_before INT64;
-DECLARE rows_inserted INT64;
 DECLARE target_rows_after INT64;
+DECLARE source_rows INT64;
 
 SET target_rows_before = (
   SELECT COUNT(*)
   FROM `looker-studio-pro-452620.landing.basis_utms_unioned-0929`
 );
 
-CREATE TEMP TABLE source_rows AS
-SELECT *
-FROM `looker-studio-pro-452620.landing.basis_utms_pivoted_fy26_q2_q3_previous`
-
-UNION ALL
-
-SELECT *
-FROM `looker-studio-pro-452620.landing.basis_utms_pivoted_fy26_q2_q3`;
-
-CREATE TEMP TABLE rows_to_insert AS
+CREATE TEMP TABLE latest_rows AS
 SELECT DISTINCT
   CAST(src.line_item AS STRING) AS line_item,
   CAST(src.tag_placement AS STRING) AS tag_placement,
@@ -37,40 +30,48 @@ SELECT DISTINCT
   ) AS size,
   CAST(src.formats AS STRING) AS formats,
   CAST(src.url AS STRING) AS url
-FROM source_rows AS src
+FROM `looker-studio-pro-452620.landing.basis_utms_pivoted_fy26_q2_q3_aug20` AS src
 WHERE src.name IS NOT NULL
   AND TRIM(CAST(src.name AS STRING)) != ''
   AND src.url IS NOT NULL
-  AND TRIM(CAST(src.url AS STRING)) != ''
-  AND NOT EXISTS (
-    SELECT 1
-    FROM `looker-studio-pro-452620.landing.basis_utms_unioned-0929` AS tgt
-    WHERE IFNULL(tgt.line_item, '') = IFNULL(CAST(src.line_item AS STRING), '')
-      AND IFNULL(tgt.tag_placement, '') = IFNULL(CAST(src.tag_placement AS STRING), '')
-      AND IFNULL(tgt.name, '') = IFNULL(CAST(src.name AS STRING), '')
-      AND IFNULL(tgt.end_date, DATE '1900-01-01') = IFNULL(SAFE_CAST(src.end_date AS DATE), DATE '1900-01-01')
-      AND IFNULL(tgt.start_date, DATE '1900-01-01') = IFNULL(SAFE_CAST(src.start_date AS DATE), DATE '1900-01-01')
-      AND IFNULL(tgt.size, '') = IFNULL(
-        LOWER(
-          COALESCE(
-            REGEXP_EXTRACT(CAST(src.name AS STRING), r'(?i)(\d{2,4}x\d{2,4})'),
-            REGEXP_EXTRACT(CAST(src.tag_placement AS STRING), r'(?i)(\d{2,4}x\d{2,4})'),
-            REGEXP_EXTRACT(CAST(src.line_item AS STRING), r'(?i)(\d{2,4}x\d{2,4})')
-          )
-        ),
-        ''
-      )
-      AND IFNULL(tgt.formats, '') = IFNULL(CAST(src.formats AS STRING), '')
-      AND IFNULL(tgt.url, '') = IFNULL(CAST(src.url AS STRING), '')
+  AND TRIM(CAST(src.url AS STRING)) != '';
+
+ASSERT (
+  SELECT COUNT(*)
+  FROM (
+    SELECT tag_placement, name
+    FROM latest_rows
+    GROUP BY tag_placement, name
+    HAVING COUNT(*) > 1
+  )
+) = 0 AS 'Newest FY26 Q2/Q3 Basis source has more than one row for a placement-and-creative key';
+
+SET source_rows = (SELECT COUNT(*) FROM latest_rows);
+
+MERGE `looker-studio-pro-452620.landing.basis_utms_unioned-0929` AS target
+USING latest_rows AS source
+ON target.tag_placement = source.tag_placement
+  AND target.name = source.name
+WHEN MATCHED THEN
+  UPDATE SET
+    line_item = source.line_item,
+    end_date = source.end_date,
+    start_date = source.start_date,
+    size = source.size,
+    formats = source.formats,
+    url = source.url
+WHEN NOT MATCHED THEN
+  INSERT (line_item, tag_placement, name, end_date, start_date, size, formats, url)
+  VALUES (
+    source.line_item,
+    source.tag_placement,
+    source.name,
+    source.end_date,
+    source.start_date,
+    source.size,
+    source.formats,
+    source.url
   );
-
-SET rows_inserted = (SELECT COUNT(*) FROM rows_to_insert);
-
-INSERT INTO `looker-studio-pro-452620.landing.basis_utms_unioned-0929`
-  (line_item, tag_placement, name, end_date, start_date, size, formats, url)
-SELECT
-  line_item, tag_placement, name, end_date, start_date, size, formats, url
-FROM rows_to_insert;
 
 SET target_rows_after = (
   SELECT COUNT(*)
@@ -79,5 +80,5 @@ SET target_rows_after = (
 
 SELECT
   target_rows_before,
-  rows_inserted,
+  source_rows,
   target_rows_after;

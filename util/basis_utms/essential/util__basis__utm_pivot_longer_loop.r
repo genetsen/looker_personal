@@ -18,7 +18,7 @@ library(bigrquery) # For BigQuery operations
 # DATA SOURCES CONFIGURATION =================================================
 # Define all data sources to process - modify these as needed
 data_sources <- data.frame(
-  source_id = c("flight1", "flight2", "flight3", "flight4_1", "flight4_2", "fy26_q1", "fy26_q2_q3_previous", "fy26_q2_q3"),
+  source_id = c("flight1", "flight2", "flight3", "flight4_1", "flight4_2", "fy26_q1", "fy26_q2_q3_previous", "fy26_q2_q3", "fy26_q2_q3_aug20"),
   excel_file_path = c(
     '/Users/eugenetsenter/Downloads/Flight 1_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
     '/Users/eugenetsenter/Downloads/Flight 2_Trafficking Sheet_MASSMUTUAL003CP_DSP.xlsx',
@@ -27,7 +27,8 @@ data_sources <- data.frame(
     '/Users/eugenetsenter/Downloads/Flight 4 Trafficking Sheet_MASSMUTUAL003CP_DSP_10.1 Launch_Flight 10.1-12.31.xlsx',
     '/Users/eugenetsenter/Downloads/MassMutual_FY26_Q1_Traffic Sheet.xlsx',
     '/Users/eugenetsenter/Downloads/MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx',
-    '/Users/eugenetsenter/Downloads/MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx'
+    '/Users/eugenetsenter/Downloads/MASSMUTUAL005 - Creative Trafficking Sheet_Q3 7.7.xlsx',
+    '/Users/eugenetsenter/Downloads/MASSMUTUAL005 - Creative Trafficking Sheet_Q3 8.20 Updates.xlsx'
     
   ),
   sheet_name = c(
@@ -38,7 +39,8 @@ data_sources <- data.frame(
     "10.1_Updated",
     "MASSMUTUAL004_updated 1.14.26",
     "MASSMUTUAL005_Updated 6.15",
-    "MASSMUTUAL005_Updated 7.7"
+    "MASSMUTUAL005_Updated 7.7",
+    "MASSMUTUAL005_Updated 8.18"
 
   ),
   bq_table_name = c(
@@ -49,7 +51,8 @@ data_sources <- data.frame(
     "basis_utms_pivoted_flight4_2",
     "basis_utms_pivoted_fy26_q1",
     "basis_utms_pivoted_fy26_q2_q3_previous",
-    "basis_utms_pivoted_fy26_q2_q3"
+    "basis_utms_pivoted_fy26_q2_q3",
+    "basis_utms_pivoted_fy26_q2_q3_aug20"
   ),
   stringsAsFactors = FALSE
 )
@@ -65,7 +68,7 @@ debug_mode <- TRUE              # Set to TRUE to enable detailed output
 continue_on_error <- TRUE       # Set to TRUE to continue processing other sources if one fails
 sources_to_process <- c(
   # "flight1", "flight2", "flight3", "flight4_1", "flight4_2", 
-  "fy26_q2_q3_previous", "fy26_q2_q3")  # Preserve historical and current mappings
+  "fy26_q2_q3_previous", "fy26_q2_q3", "fy26_q2_q3_aug20")  # Preserve historical and current mappings
 
 
 # DEBUGGING CONFIGURATION =====================================================

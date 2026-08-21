@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-21
+
+**Basis UTM mappings now use the August partner corrections** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r)) — 🟢 **Verified and committed**<br>The [Basis UTM utility](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/README.md) now preserves the August 20 workbook as a separate source and promotes its newest complete URLs without deleting historical-only mappings. The production lookup and MFT endpoint were refreshed successfully, and the affected delivery records match the approved values with reporting totals unchanged. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG_EXTENDED.md)
+
+### Pending Next Actions
+
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
+- **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-08-20
 
 **Polaris FPD has a production-isolated review path** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_fpd.R)) — 🟢 **Verified and committed**<br>The [master-model FPD workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) can now preserve and normalize the current 992 daily Purely Elizabeth Meta and TikTok rows, apply the three approved MIQ package candidates, and compare Sunday-start Polaris weeks with MIQ's native weekly FPD records without changing any live data or scheduled workflow.

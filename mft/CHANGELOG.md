@@ -3,6 +3,14 @@
 Concise daily essentials are documented in this file.
 Detailed session-level changes are documented in [CHANGELOG_EXTENDED.md](CHANGELOG_EXTENDED.md).
 
+## 2026-08-21
+
+**August Basis UTM corrections are live in MFT** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/load_basis_utms_unioned_0929_from_fy26_q2_q3.sql)) — 🟢 **Verified and committed**<br>The [MFT Basis UTM workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md) now loads the August 20 partner workbook separately, applies its current URLs by placement plus normalized creative, and preserves historical-only mappings. Both scheduled refreshes succeeded; all 3,546 delivered records affected by the 78 corrected keys match the approved UTM values in the mart and stored table, with Q2/Q3 totals unchanged.
+
+### Pending Next Actions
+
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
+
 ## 2026-08-10
 
 **Historical FY26 Basis UTM and partner-label repairs are preserved on the canonical branch** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/repo_stg__basis_plus_utms_v4_PnS_table.sql)) — 🟢 **Verified and committed**<br>The [MFT reporting workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md) retains the approved June historical and July current mappings plus the unique official-source fallback, and the scheduled-query source now preserves the deployed Basis-only partner correction. Historical UTM QA has zero duplicate keys and zero missing reported UTM keys at 15,203 rows, 4,631,190 impressions, $161,195.07 media cost, and 1,874 clicks; the partner-label guard also passed with zero failures against the current 204,480-row table, which has 126,193 Basis PMP rows through August 9 and zero remaining `S` or `UpperFunnel` placeholders. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/scripts/sql/qa__mft_partner_label_change_manifest.json)
