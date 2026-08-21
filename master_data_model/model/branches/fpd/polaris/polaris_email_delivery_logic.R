@@ -58,6 +58,121 @@
       data
     }
 
+  # ? Compare Cloud Storage object versions without converting long generations
+    polaris_generation_key <- function(value) {
+      value <- as.character(value)
+      width <- max(20L, nchar(value), na.rm = TRUE)
+      vapply(
+        value,
+        function(item) {
+          if (is.na(item)) return(NA_character_)
+          paste0(strrep("0", width - nchar(item)), item)
+        },
+        character(1)
+      )
+    }
+
+  # ? Select only the newest newly arrived object for each classified feed
+    select_new_polaris_objects <- function(inventory, source_state) {
+      inventory <- as.data.frame(inventory, stringsAsFactors = FALSE)
+      source_state <- as.data.frame(source_state, stringsAsFactors = FALSE)
+      required_inventory <- c(
+        "source_object_uri", "source_object_generation", "object_created_at", "source_feed"
+      )
+      missing_inventory <- setdiff(required_inventory, names(inventory))
+      if (length(missing_inventory) > 0) {
+        stop(
+          paste("Polaris object inventory is missing:", paste(missing_inventory, collapse = ", ")),
+          call. = FALSE
+        )
+      }
+      if (nrow(inventory) == 0L) {
+        inventory$selection_status <- character(0)
+        return(inventory)
+      }
+      unsupported <- !inventory$source_feed %in% c("meta", "tiktok")
+      if (any(unsupported)) {
+        stop(
+          paste0(
+            "New Polaris Email object inventory contains ", sum(unsupported),
+            " unsupported or ambiguous CSV object(s)"
+          ),
+          call. = FALSE
+        )
+      }
+
+      inventory$object_created_at <- as.POSIXct(inventory$object_created_at, tz = "UTC")
+      inventory$selection_status <- "not_new"
+      for (index in seq_len(nrow(inventory))) {
+        feed <- inventory$source_feed[[index]]
+        state_row <- source_state[source_state$source_feed == feed, , drop = FALSE]
+        if (nrow(state_row) == 0L) {
+          inventory$selection_status[[index]] <- "new_candidate"
+          next
+        }
+        if (nrow(state_row) != 1L) {
+          stop(paste("Polaris source state is ambiguous for feed:", feed), call. = FALSE)
+        }
+        if (
+          identical(
+            as.character(inventory$source_object_generation[[index]]),
+            as.character(state_row$source_object_generation[[1]])
+          ) && identical(
+            as.character(inventory$source_object_uri[[index]]),
+            as.character(state_row$source_object_uri[[1]])
+          )
+        ) {
+          next
+        }
+        state_created_at <- as.POSIXct(state_row$object_created_at[[1]], tz = "UTC")
+        is_newer <- inventory$object_created_at[[index]] > state_created_at ||
+          (
+            inventory$object_created_at[[index]] == state_created_at &&
+              polaris_generation_key(inventory$source_object_generation[[index]]) >
+                polaris_generation_key(state_row$source_object_generation[[1]])
+          )
+        if (isTRUE(is_newer)) inventory$selection_status[[index]] <- "new_candidate"
+      }
+
+      for (feed in intersect(c("meta", "tiktok"), inventory$source_feed)) {
+        candidates <- which(
+          inventory$source_feed == feed & inventory$selection_status == "new_candidate"
+        )
+        if (length(candidates) == 0L) next
+        ordering <- order(
+          inventory$object_created_at[candidates],
+          polaris_generation_key(inventory$source_object_generation[candidates]),
+          decreasing = TRUE
+        )
+        inventory$selection_status[candidates] <- "superseded_new_object"
+        inventory$selection_status[candidates[ordering[[1]]]] <- "selected_new"
+      }
+      inventory
+    }
+
+  # ? Prevent a newly arrived rolling snapshot from moving a feed backward
+    validate_polaris_source_progress <- function(selected_inventory, source_state) {
+      selected_inventory <- as.data.frame(selected_inventory, stringsAsFactors = FALSE)
+      source_state <- as.data.frame(source_state, stringsAsFactors = FALSE)
+      for (index in seq_len(nrow(selected_inventory))) {
+        feed <- selected_inventory$source_feed[[index]]
+        state_row <- source_state[source_state$source_feed == feed, , drop = FALSE]
+        if (nrow(state_row) == 0L) next
+        new_date <- as.Date(selected_inventory$source_snapshot_max_date[[index]])
+        prior_date <- as.Date(state_row$source_max_date[[1]])
+        if (is.na(new_date) || (!is.na(prior_date) && new_date < prior_date)) {
+          stop(
+            paste0(
+              "Polaris ", feed, " snapshot moved backward from ", prior_date,
+              " to ", ifelse(is.na(new_date), "an invalid date", as.character(new_date))
+            ),
+            call. = FALSE
+          )
+        }
+      }
+      invisible(TRUE)
+    }
+
   # ? Select one uniquely newest content snapshot for each supported feed
     validate_polaris_source_inventory <- function(inventory) {
       inventory <- as.data.frame(inventory, stringsAsFactors = FALSE)

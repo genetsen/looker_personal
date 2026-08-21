@@ -41,13 +41,14 @@ and [Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looke
 
 A **rolling snapshot** contains all available history through its newest source
 date. One output row has package/date/platform/campaign/ad-group/ad **grain**[^1].
-A successful load **rebuilds**[^2] the full Polaris landing snapshot.
+A successful load **rebuilds**[^2] only the feeds with new source objects.
 
 ## Safe Operating Path
 
 | Need | Use |
 |---|---|
 | Load | [Production loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R) |
+| Initialize source state once | [State-table setup](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/create_polaris_email_source_state.sql) |
 | Review without writing | [Preview](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_email_delivery.R) |
 | Consume Polaris detail | [V3 model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) |
 | Refresh downstream models | [Refresh wrapper](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) |
@@ -60,21 +61,25 @@ refreshes.
 ## Data Contract
 
 ```text
-Cloud Storage CSVs
-  -> identify Meta or TikTok from columns
-  -> select each feed's uniquely newest source-date snapshot
+Cloud Storage object metadata
+  -> discard accepted generations
+  -> identify new Meta or TikTok files from header bytes
+  -> download the newest new object for each affected feed
   -> validate and map every row
-  -> replace the Polaris landing snapshot
+  -> replace only affected feeds and update their state together
   -> refresh V3
 ```
 
-Filenames, folder names, upload times, and listing order never identify a feed or
-the current snapshot. The loader stops before writing when a feed is missing, a
-schema is unsupported, a date is invalid, or newest files tie.
+Filenames and folder names never identify a feed. Cloud Storage generation and
+creation time identify new objects; CSV columns identify Meta or TikTok. The
+loader stops before writing on unsupported schemas, invalid dates, backward
+source coverage, mapping failures, or duplicate rows. No new object is a clean
+no-op.
 
 | Source | Purpose | Boundary |
 |---|---|---|
 | Polaris CSVs | Rolling Meta or TikTok ad delivery | Feed identity comes only from required columns. |
+| Source state | One accepted object generation per feed | Updated in the same transaction as that feed's landing rows. |
 | [Package mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | Assign one Prisma package | Supplies identity, never metrics. |
 | [Polaris landing](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | Normalized ad-level snapshot | Source QA surface, not a package/date rollup. |
 | Original and updated FPD | Delivery fallback | Used outside Polaris coverage; never rewritten here. |
@@ -92,10 +97,9 @@ group. Every row must match exactly one active mapping:
 | Meta | Instagram | Awareness Campaign / Interests - Instagram | `P3HF7T8` |
 | TikTok | TikTok | Purely Elizabeth - Awareness Q3 / Interests | `P3HF88Q` |
 
-Discovery owns object listing; schema inspection owns feed identity; snapshot
-selection owns freshness; mapping owns package identity; the loader owns landing
-replacement; the model owns precedence. Fix the first failed stage rather than
-patching a later output.
+Metadata and source state own freshness; schema inspection owns feed identity;
+mapping owns package identity; the loader owns per-feed replacement; the model
+owns precedence. Fix the first failed stage rather than patching a later output.
 
 ## Output Contract
 
@@ -122,10 +126,11 @@ Run from the `master_data_model` folder.
 
 | Step | Command | Pass condition |
 |---|---|---|
+| One-time setup | Run `create_polaris_email_source_state.sql` in BigQuery | State contains one current row for Meta and TikTok. Requires explicit approval. |
 | Tests | `Rscript model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R` | Ends with `All Polaris Email delivery logic tests passed.` |
 | Preview | `Rscript model/branches/fpd/polaris/preview_polaris_email_delivery.R --output-dir /tmp/polaris-email-delivery-preview --compare-live-model` | Selects one file per feed and writes local evidence only. |
-| Dry run | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run` | Every row validates, maps once, and reconciles; no table changes. |
-| Approved load | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R` | Reports terminal production success. Requires explicit approval. |
+| Dry run | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run` | Reads headers only for new candidates, downloads selected objects, and validates without table changes. |
+| Approved load | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R` | Replaces only changed feeds and advances their state. Requires explicit approval. |
 | Publish | Run the [refresh wrapper](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) | Wrapper and its clustered/V3 checks pass. |
 
 Tests plus the live dry run prove source-code changes before writing. The loader's
@@ -133,9 +138,9 @@ terminal success proves landing replacement. The refresh wrapper plus the querie
 below prove publication. Script startup, schema presence, row count alone, a dry
 run, or a started BigQuery job do not prove publication.
 
-Maintenance is limited to four habits: test and dry-run before loading; review the
-inventory when source objects change; add mappings only after package ownership is
-confirmed; and refresh downstream models in the same session as a production load.
+Maintenance is limited to four habits: test and dry-run before loading; review
+new-object failures; add mappings only after package ownership is confirmed; and
+refresh downstream models in the same session as a production load.
 
 ## Verify Current State
 
@@ -194,6 +199,7 @@ SELECT * FROM checks ORDER BY check_name;
 ## Known Limits and Troubleshooting
 
 - Scheduling is not configured; production loading is manual.
+- The source-state table must be deployed before the first production run.
 - New campaign or ad-group names require reviewed mappings.
 - Meta and TikTok may legitimately have different newest dates.
 - Preview files are local evidence, never production inputs.
@@ -201,8 +207,9 @@ SELECT * FROM checks ORDER BY check_name;
 | Symptom | Check |
 |---|---|
 | `permission denied` | Run the loader with `Rscript`; it is not a shell executable. |
-| Unsupported or missing feed | Compare CSV columns with the schemas in the shared logic; ignore paths. |
-| Newest-date tie | Decide which snapshot is authoritative; do not use filename or upload order. |
+| Source state is not initialized | Run the state-table setup after verifying the current landing objects. |
+| Unsupported new object | Compare its CSV columns with the shared schemas; ignore its path. |
+| Snapshot moved backward | Confirm whether the vendor uploaded stale history or an intentional correction. |
 | Unmapped rows | Check the complete feed/platform/campaign/ad-group key. |
 | Landing changed but V3 did not | Run the dependent refresh wrapper. |
 | V3 is lower than landing | Check approved Manual Package Editor overlaps. |
@@ -210,4 +217,4 @@ SELECT * FROM checks ORDER BY check_name;
 ## Definitions
 
 [^1]: **Grain:** determines what one row represents and which fields can be safely grouped or summed.
-[^2]: **Rebuild:** replaces the prior snapshot; rows absent from the validated candidate do not remain.
+[^2]: **Rebuild:** replaces the prior snapshot for an affected feed; the other feed remains unchanged.

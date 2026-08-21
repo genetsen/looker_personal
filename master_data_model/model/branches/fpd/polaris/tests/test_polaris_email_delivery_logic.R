@@ -142,6 +142,81 @@ source(logic_path)
       "tied newest snapshots stop before normalization"
     )
 
+  # ? Object checkpoints select only the newest newly arrived object per feed
+    source_state_fixture <- data.frame(
+      source_feed = c("meta", "tiktok"),
+      source_object_uri = c(
+        "gs://fixture/accepted-meta.csv", "gs://fixture/accepted-tiktok.csv"
+      ),
+      source_object_generation = c("1787245252374637", "1787245228232875"),
+      object_created_at = as.POSIXct(
+        c("2026-08-20 17:00:52", "2026-08-20 17:00:28"),
+        tz = "UTC"
+      ),
+      source_max_date = as.Date(c("2026-08-17", "2026-08-17")),
+      stringsAsFactors = FALSE
+    )
+    metadata_inventory <- data.frame(
+      source_object_uri = paste0("gs://fixture/", c(
+        "accepted-meta.csv", "new-meta-a.csv", "new-meta-b.csv", "accepted-tiktok.csv"
+      )),
+      source_object_generation = c(
+        "1787245252374637", "1787340500000000", "1787340573113455", "1787245228232875"
+      ),
+      object_created_at = as.POSIXct(c(
+        "2026-08-20 17:00:52", "2026-08-21 19:28:00",
+        "2026-08-21 19:29:33", "2026-08-20 17:00:28"
+      ), tz = "UTC"),
+      source_feed = c("meta", "meta", "meta", "tiktok"),
+      stringsAsFactors = FALSE
+    )
+    incremental_inventory <- select_new_polaris_objects(
+      metadata_inventory,
+      source_state_fixture
+    )
+    expect_true(
+      identical(
+        incremental_inventory$selection_status,
+        c("not_new", "superseded_new_object", "selected_new", "not_new")
+      ),
+      "source checkpoints select only the newest newly arrived object per feed"
+    )
+
+  # ? An accepted generation stays processed when timestamp precision differs
+    accepted_with_time_drift <- metadata_inventory[4, , drop = FALSE]
+    accepted_with_time_drift$object_created_at <-
+      source_state_fixture$object_created_at[source_state_fixture$source_feed == "tiktok"] + 0.5
+    generation_match <- select_new_polaris_objects(
+      accepted_with_time_drift,
+      source_state_fixture
+    )
+    expect_true(
+      generation_match$selection_status[[1]] == "not_new",
+      "an accepted object generation is not reprocessed because of timestamp precision"
+    )
+
+  # ? Equal business dates allow corrected object generations but older dates stop
+    selected_progress <- incremental_inventory[
+      incremental_inventory$selection_status == "selected_new", , drop = FALSE
+    ]
+    selected_progress$source_snapshot_max_date <- as.Date("2026-08-17")
+    expect_true(
+      isTRUE(validate_polaris_source_progress(selected_progress, source_state_fixture)),
+      "a new object generation may correct an already loaded maximum business date"
+    )
+    selected_progress$source_snapshot_max_date <- as.Date("2026-08-16")
+    regression_error <- tryCatch(
+      {
+        validate_polaris_source_progress(selected_progress, source_state_fixture)
+        NULL
+      },
+      error = function(error) conditionMessage(error)
+    )
+    expect_true(
+      !is.null(regression_error) && grepl("moved backward", regression_error),
+      "a newly arrived snapshot cannot move a feed backward"
+    )
+
   # ? Production mappings use the full feed/platform/campaign/ad-group key
     production_mappings <- data.frame(
       source_feed = c("meta", "meta", "meta", "meta", "tiktok"),

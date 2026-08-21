@@ -3,14 +3,14 @@
 #### LOAD MIQ POLARIS EMAIL DELIVERY
 ################################################################################
 # Purpose:
-#   Normalize the current MIQ Polaris Email Meta and TikTok snapshots, apply
-#   warehouse-owned package mappings, and atomically replace the validated
-#   daily delivery snapshot in BigQuery.
+#   Find newly arrived MIQ Polaris Email objects from Cloud Storage metadata,
+#   normalize only the newest new snapshot for each affected feed, apply
+#   warehouse-owned package mappings, and atomically replace those feed rows.
 # Safe usage:
-#   The loader classifies files from their schemas and selects the uniquely
-#   newest content snapshot per feed. It fails before replacement on ambiguous
-#   files, unknown mappings, invalid rows, or duplicate natural keys. Use
-#   --dry-run to exercise every read and validation step without writes.
+#   The loader classifies new files from header bytes, never path names. It
+#   fails before replacement on ambiguous files, backward source dates, unknown
+#   mappings, invalid rows, or duplicate natural keys. Use --dry-run to exercise
+#   every read and validation step without writes.
 ################################################################################
 
 
@@ -18,7 +18,15 @@
 
   # ? Locate adjacent shared normalization logic
     script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
-    script_path <- if (length(script_arg) == 1) sub("^--file=", "", script_arg) else normalizePath(".")
+    command_path <- if (length(script_arg) == 1L) sub("^--file=", "", script_arg) else NA_character_
+    source_path <- tryCatch(sys.frame(1)$ofile, error = function(error) NULL)
+    script_path <- if (!is.na(command_path) && file.exists(command_path)) {
+      command_path
+    } else if (!is.null(source_path) && file.exists(source_path)) {
+      source_path
+    } else {
+      normalizePath(".")
+    }
     script_dir <- dirname(normalizePath(script_path, mustWork = TRUE))
     source(file.path(script_dir, "polaris_email_delivery_logic.R"))
 
@@ -32,6 +40,7 @@
         ),
         client_id = "C70545844",
         connection_id = "11694",
+        state_table = "polaris_email_source_state",
         dry_run = FALSE
       )
       index <- 1L
@@ -54,7 +63,7 @@
 
   # ? Load only the packages required by this production path
     require_loader_packages <- function() {
-      required <- c("bigrquery")
+      required <- c("bigrquery", "jsonlite")
       missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
       if (length(missing) > 0) {
         stop(paste("Install required R package(s):", paste(missing, collapse = ", ")), call. = FALSE)
@@ -74,33 +83,148 @@
       output
     }
 
-  # ? Classify every CSV by schema and select the newest content snapshot per feed
-    discover_current_objects <- function(source_prefix, run_dir) {
-      objects <- run_loader_command(
+  # ? Parse Cloud Storage timestamps returned by gcloud JSON
+    parse_storage_time <- function(value) {
+      parsed <- vapply(as.character(value), function(item) {
+        fraction_text <- regmatches(item, regexpr("\\.[0-9]+", item))
+        fraction <- if (length(fraction_text) == 0L) 0 else as.numeric(paste0("0", fraction_text))
+        whole_seconds <- sub("\\.[0-9]+", "", item)
+        normalized <- sub("([+-][0-9]{2}):([0-9]{2})$", "\\1\\2", whole_seconds)
+        as.numeric(as.POSIXct(
+          normalized,
+          format = "%Y-%m-%dT%H:%M:%S%z",
+          tz = "UTC"
+        )) + fraction
+      }, numeric(1))
+      as.POSIXct(parsed, origin = "1970-01-01", tz = "UTC")
+    }
+
+  # ? List object metadata without downloading CSV contents
+    list_source_object_metadata <- function(source_prefix) {
+      output <- run_loader_command(
         "gcloud",
-        c("storage", "ls", shQuote(paste0(sub("/$", "", source_prefix), "/**")))
+        c(
+          "storage", "ls", "--recursive", "--json",
+          shQuote(paste0(sub("/$", "", source_prefix), "/**"))
+        )
       )
-      objects <- trimws(objects[grepl("\\.csv$", objects, ignore.case = TRUE)])
-      inventory_rows <- lapply(seq_along(objects), function(index) {
-        uri <- objects[[index]]
-        destination <- file.path(run_dir, sprintf("source_%03d.csv", index))
-        run_loader_command("gcloud", c("storage", "cp", shQuote(uri), shQuote(destination)))
+      parsed <- jsonlite::fromJSON(paste(output, collapse = "\n"))
+      if (nrow(parsed) == 0L) {
+        return(data.frame(
+          source_object_uri = character(0), source_object_generation = character(0),
+          object_created_at = as.POSIXct(character(0), tz = "UTC"),
+          object_size_bytes = numeric(0),
+          stringsAsFactors = FALSE
+        ))
+      }
+      metadata <- parsed$metadata
+      inventory <- data.frame(
+        source_object_uri = paste0("gs://", metadata$bucket, "/", metadata$name),
+        source_object_generation = as.character(metadata$generation),
+        object_created_at = parse_storage_time(metadata$timeCreated),
+        object_size_bytes = as.numeric(metadata$size),
+        stringsAsFactors = FALSE
+      )
+      inventory[grepl("\\.csv$", inventory$source_object_uri, ignore.case = TRUE), , drop = FALSE]
+    }
+
+  # ? Read only the first object bytes needed to classify its CSV header
+    read_source_object_header <- function(
+      source_object_uri,
+      source_object_generation,
+      object_size_bytes
+    ) {
+      versioned_uri <- paste0(source_object_uri, "#", source_object_generation)
+      range_end <- max(0, min(65535, as.numeric(object_size_bytes) - 1))
+      output <- run_loader_command(
+        "gcloud",
+        c("storage", "cat", shQuote(versioned_uri), paste0("--range=0-", range_end))
+      )
+      if (length(output) == 0L) stop("Polaris source object has no readable header", call. = FALSE)
+      read.csv(
+        text = paste0(output[[1]], "\n"),
+        nrows = 0,
+        check.names = FALSE,
+        stringsAsFactors = FALSE,
+        fileEncoding = "UTF-8-BOM"
+      )
+    }
+
+  # ? Limit header reads to objects that could be newer than either feed checkpoint
+    prefilter_source_metadata <- function(metadata, source_state) {
+      if (nrow(metadata) == 0L || nrow(source_state) == 0L) return(metadata)
+      earliest_checkpoint <- min(as.POSIXct(source_state$object_created_at, tz = "UTC"))
+      accepted_versions <- paste(
+        source_state$source_object_uri,
+        source_state$source_object_generation,
+        sep = "#"
+      )
+      metadata_versions <- paste(
+        metadata$source_object_uri,
+        metadata$source_object_generation,
+        sep = "#"
+      )
+      metadata[
+        metadata$object_created_at >= earliest_checkpoint &
+          !metadata_versions %in% accepted_versions,
+        ,
+        drop = FALSE
+      ]
+    }
+
+  # ? Classify only new object headers and download only selected full snapshots
+    discover_new_objects <- function(source_prefix, source_state, run_dir) {
+      metadata <- list_source_object_metadata(source_prefix)
+      candidates <- prefilter_source_metadata(metadata, source_state)
+      if (nrow(candidates) == 0L) {
+        candidates$source_feed <- character(0)
+        candidates$selection_status <- character(0)
+        candidates$source_snapshot_max_date <- as.Date(character(0))
+        candidates$local_path <- character(0)
+        return(list(total_objects = nrow(metadata), header_objects = 0L, inventory = candidates))
+      }
+
+      candidates$source_feed <- vapply(
+        seq_len(nrow(candidates)),
+        function(index) {
+          header <- read_source_object_header(
+            candidates$source_object_uri[[index]],
+            candidates$source_object_generation[[index]],
+            candidates$object_size_bytes[[index]]
+          )
+          classify_polaris_source_schema(header)
+        },
+        character(1)
+      )
+      inventory <- select_new_polaris_objects(candidates, source_state)
+      inventory$source_snapshot_max_date <- as.Date(NA)
+      inventory$local_path <- NA_character_
+      selected_indexes <- which(inventory$selection_status == "selected_new")
+      for (index in selected_indexes) {
+        versioned_uri <- paste0(
+          inventory$source_object_uri[[index]], "#",
+          inventory$source_object_generation[[index]]
+        )
+        destination <- file.path(run_dir, sprintf("selected_%s.csv", inventory$source_feed[[index]]))
+        run_loader_command(
+          "gcloud",
+          c("storage", "cp", shQuote(versioned_uri), shQuote(destination))
+        )
         source_data <- read.csv(
           destination,
           check.names = FALSE,
           stringsAsFactors = FALSE,
           fileEncoding = "UTF-8-BOM"
         )
-        source_feed <- classify_polaris_source_schema(source_data)
-        data.frame(
-          source_object_uri = uri,
-          source_feed = source_feed,
-          source_snapshot_max_date = polaris_snapshot_max_date(source_data, source_feed),
-          local_path = destination,
-          stringsAsFactors = FALSE
+        inventory$source_snapshot_max_date[[index]] <- polaris_snapshot_max_date(
+          source_data,
+          inventory$source_feed[[index]]
         )
-      })
-      validate_polaris_source_inventory(do.call(rbind, inventory_rows))
+        inventory$local_path[[index]] <- destination
+      }
+      selected <- inventory[selected_indexes, , drop = FALSE]
+      validate_polaris_source_progress(selected, source_state)
+      list(total_objects = nrow(metadata), header_objects = nrow(candidates), inventory = inventory)
     }
 
   # ? Copy exact source bytes into an isolated temporary run directory
@@ -151,6 +275,94 @@
   # ? Run a SELECT and return its downloadable destination table
     run_bq_query <- function(project, sql) {
       bigrquery::bq_project_query(project, sql, use_legacy_sql = FALSE, quiet = TRUE)
+    }
+
+  # ? Identify whether the current per-feed checkpoint table has been deployed
+    source_state_table_exists <- function(config) {
+      bigrquery::bq_table_exists(
+        bigrquery::bq_table(config$project, "landing", config$state_table)
+      )
+    }
+
+  # ? Read one object's exact generation and creation time for state bootstrap
+    describe_source_object <- function(source_object_uri) {
+      output <- run_loader_command(
+        "gcloud",
+        c("storage", "objects", "describe", shQuote(source_object_uri), "--format=json")
+      )
+      metadata <- jsonlite::fromJSON(paste(output, collapse = "\n"))
+      data.frame(
+        source_object_generation = as.character(metadata$generation),
+        object_created_at = parse_storage_time(metadata$creation_time),
+        stringsAsFactors = FALSE
+      )
+    }
+
+  # ? Derive the initial checkpoints from the exact objects already in landing
+    derive_source_state_from_landing <- function(config) {
+      sql <- sprintf(
+        paste0(
+          "WITH source_objects AS (",
+          "SELECT source_feed, source_object_uri, MAX(date) AS source_max_date, ",
+          "MAX(loaded_at) AS successful_load_at ",
+          "FROM `%s.landing.polaris_email_delivery_daily` ",
+          "WHERE client_id = '%s' AND connection_id = '%s' ",
+          "GROUP BY source_feed, source_object_uri) ",
+          "SELECT * FROM source_objects ",
+          "QUALIFY ROW_NUMBER() OVER (PARTITION BY source_feed ",
+          "ORDER BY successful_load_at DESC, source_object_uri DESC) = 1"
+        ),
+        config$project,
+        gsub("'", "''", config$client_id),
+        gsub("'", "''", config$connection_id)
+      )
+      state <- bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+      if (!setequal(state$source_feed, c("meta", "tiktok"))) {
+        stop("Cannot bootstrap Polaris source state: landing does not contain both feeds", call. = FALSE)
+      }
+      metadata <- lapply(state$source_object_uri, describe_source_object)
+      state$source_object_generation <- vapply(
+        metadata, function(item) item$source_object_generation[[1]], character(1)
+      )
+      state$object_created_at <- as.POSIXct(
+        vapply(metadata, function(item) as.numeric(item$object_created_at[[1]]), numeric(1)),
+        origin = "1970-01-01",
+        tz = "UTC"
+      )
+      state
+    }
+
+  # ? Read the deployed checkpoints or derive them read-only for a dry run
+    read_source_state <- function(config) {
+      state <- data.frame()
+      if (source_state_table_exists(config)) {
+        sql <- sprintf(
+          paste0(
+            "SELECT source_feed, source_object_uri, source_object_generation, ",
+            "object_created_at, source_max_date, successful_load_at ",
+            "FROM `%s.landing.%s` ",
+            "WHERE client_id = '%s' AND connection_id = '%s'"
+          ),
+          config$project,
+          config$state_table,
+          gsub("'", "''", config$client_id),
+          gsub("'", "''", config$connection_id)
+        )
+        state <- bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+      }
+      if (setequal(state$source_feed, c("meta", "tiktok")) && nrow(state) == 2L) return(state)
+      if (!config$dry_run) {
+        stop(
+          paste0(
+            "Polaris source state is not initialized. Run ",
+            file.path(script_dir, "create_polaris_email_source_state.sql"),
+            " before a production load."
+          ),
+          call. = FALSE
+        )
+      }
+      message("Polaris source state is not initialized; deriving read-only checkpoints from landing.")
+      derive_source_state_from_landing(config)
     }
 
   # ? Read active mappings for only this client and connection
@@ -232,29 +444,66 @@
       output
     }
 
+  # ? Build one checkpoint row for each feed selected in this run
+    prepare_source_state_rows <- function(selected_inventory, config, successful_load_at) {
+      data.frame(
+        client_id = config$client_id,
+        connection_id = config$connection_id,
+        source_feed = selected_inventory$source_feed,
+        source_object_uri = selected_inventory$source_object_uri,
+        source_object_generation = selected_inventory$source_object_generation,
+        object_created_at = as.POSIXct(selected_inventory$object_created_at, tz = "UTC"),
+        source_max_date = as.Date(selected_inventory$source_snapshot_max_date),
+        successful_load_at = as.POSIXct(successful_load_at, tz = "UTC"),
+        stringsAsFactors = FALSE
+      )
+    }
+
 
 # * SECTION [4]: GUARDED SNAPSHOT REPLACEMENT
 
-  # ? Stage, validate again in BigQuery, then replace the prior snapshot atomically
-    replace_delivery_snapshot <- function(rows, config) {
+  # ? Stage, validate, replace affected feeds, and advance their state atomically
+    replace_delivery_feeds <- function(rows, state_rows, config) {
       suffix <- format(Sys.time(), "%Y%m%d_%H%M%S", tz = "UTC")
-      staging_name <- paste0("polaris_email_delivery_daily_staging_", suffix, "_", Sys.getpid())
-      staging_id <- paste(config$project, "landing", staging_name, sep = ".")
+      delivery_staging_name <- paste0(
+        "polaris_email_delivery_daily_staging_", suffix, "_", Sys.getpid()
+      )
+      state_staging_name <- paste0(
+        "polaris_email_source_state_staging_", suffix, "_", Sys.getpid()
+      )
+      delivery_staging_id <- paste(config$project, "landing", delivery_staging_name, sep = ".")
+      state_staging_id <- paste(config$project, "landing", state_staging_name, sep = ".")
       production_id <- paste(config$project, "landing", "polaris_email_delivery_daily", sep = ".")
+      state_id <- paste(config$project, "landing", config$state_table, sep = ".")
 
-      create_staging <- sprintf(
+      create_delivery_staging <- sprintf(
         paste0(
           "CREATE TABLE `%s` LIKE `%s` OPTIONS (description = ",
-          "'Temporary guarded MIQ Polaris Email load candidate. Safe to delete after the load completes; the loader owns cleanup.')"
+          "'Temporary guarded Polaris Email feed candidate. Safe to delete after the load completes; the loader owns cleanup.')"
         ),
-        staging_id,
+        delivery_staging_id,
         production_id
       )
-      run_bq_statement(config$project, create_staging)
-      staging_table <- bigrquery::bq_table(config$project, "landing", staging_name)
+      create_state_staging <- sprintf(
+        paste0(
+          "CREATE TABLE `%s` LIKE `%s` OPTIONS (description = ",
+          "'Temporary Polaris Email source checkpoint candidate. Safe to delete after the load completes; the loader owns cleanup.')"
+        ),
+        state_staging_id,
+        state_id
+      )
+      run_bq_statement(config$project, create_delivery_staging)
+      run_bq_statement(config$project, create_state_staging)
       bigrquery::bq_table_upload(
-        staging_table,
+        bigrquery::bq_table(config$project, "landing", delivery_staging_name),
         rows,
+        create_disposition = "CREATE_NEVER",
+        write_disposition = "WRITE_APPEND",
+        quiet = TRUE
+      )
+      bigrquery::bq_table_upload(
+        bigrquery::bq_table(config$project, "landing", state_staging_name),
+        state_rows,
         create_disposition = "CREATE_NEVER",
         write_disposition = "WRITE_APPEND",
         quiet = TRUE
@@ -262,21 +511,32 @@
 
       validation_sql <- sprintf(
         paste0(
-          "SELECT COUNT(*) AS row_count, COUNTIF(mapping_status != 'mapped') AS unmapped_rows, ",
-          "COUNTIF(package_id IS NULL OR date IS NULL OR platform IS NULL OR campaign_name IS NULL ",
-          "OR ad_group_name IS NULL OR ad_name IS NULL) AS invalid_rows, ",
-          "COUNT(*) - COUNT(DISTINCT natural_row_key) AS duplicate_rows ",
-          "FROM `%s`"
+          "SELECT ",
+          "(SELECT COUNT(*) FROM `%s`) AS row_count, ",
+          "(SELECT COUNTIF(mapping_status != 'mapped') FROM `%s`) AS unmapped_rows, ",
+          "(SELECT COUNTIF(package_id IS NULL OR date IS NULL OR platform IS NULL ",
+          "OR campaign_name IS NULL OR ad_group_name IS NULL OR ad_name IS NULL) FROM `%s`) AS invalid_rows, ",
+          "(SELECT COUNT(*) - COUNT(DISTINCT natural_row_key) FROM `%s`) AS duplicate_rows, ",
+          "(SELECT COUNT(*) FROM `%s`) AS state_rows, ",
+          "(SELECT COUNT(DISTINCT source_feed) FROM `%s`) AS state_feeds, ",
+          "(SELECT COUNT(*) FROM `%s` d LEFT JOIN `%s` s ",
+          "USING (client_id, connection_id, source_feed) WHERE s.source_feed IS NULL) AS rows_without_state"
         ),
-        staging_id
+        delivery_staging_id, delivery_staging_id, delivery_staging_id, delivery_staging_id,
+        state_staging_id, state_staging_id, delivery_staging_id, state_staging_id
       )
       gate <- bigrquery::bq_table_download(run_bq_query(config$project, validation_sql), quiet = TRUE)
       if (
         gate$row_count[[1]] != nrow(rows) ||
-          gate$unmapped_rows[[1]] != 0 || gate$invalid_rows[[1]] != 0 || gate$duplicate_rows[[1]] != 0
+          gate$unmapped_rows[[1]] != 0 || gate$invalid_rows[[1]] != 0 || gate$duplicate_rows[[1]] != 0 ||
+          gate$state_rows[[1]] != nrow(state_rows) ||
+          gate$state_feeds[[1]] != nrow(state_rows) || gate$rows_without_state[[1]] != 0
       ) {
         stop(
-          paste("Warehouse validation failed; prior production snapshot is unchanged. Staging table retained:", staging_id),
+          paste(
+            "Warehouse validation failed; production is unchanged. Staging tables retained:",
+            delivery_staging_id, state_staging_id
+          ),
           call. = FALSE
         )
       }
@@ -284,59 +544,109 @@
       replacement_sql <- sprintf(
         paste0(
           "BEGIN TRANSACTION; ",
-          "DELETE FROM `%s` WHERE TRUE; ",
+          "DELETE FROM `%s` AS production WHERE EXISTS (",
+          "SELECT 1 FROM `%s` AS candidate ",
+          "WHERE production.client_id = candidate.client_id ",
+          "AND production.connection_id = candidate.connection_id ",
+          "AND production.source_feed = candidate.source_feed); ",
           "INSERT INTO `%s` SELECT * FROM `%s`; ",
+          "MERGE `%s` AS target USING `%s` AS source ",
+          "ON target.client_id = source.client_id ",
+          "AND target.connection_id = source.connection_id ",
+          "AND target.source_feed = source.source_feed ",
+          "WHEN MATCHED THEN UPDATE SET ",
+          "source_object_uri = source.source_object_uri, ",
+          "source_object_generation = source.source_object_generation, ",
+          "object_created_at = source.object_created_at, ",
+          "source_max_date = source.source_max_date, ",
+          "successful_load_at = source.successful_load_at ",
+          "WHEN NOT MATCHED THEN INSERT (",
+          "client_id, connection_id, source_feed, source_object_uri, ",
+          "source_object_generation, object_created_at, source_max_date, successful_load_at",
+          ") VALUES (source.client_id, source.connection_id, source.source_feed, ",
+          "source.source_object_uri, source.source_object_generation, source.object_created_at, ",
+          "source.source_max_date, source.successful_load_at); ",
           "COMMIT TRANSACTION;"
         ),
-        production_id, production_id, staging_id
+        production_id, state_staging_id,
+        production_id, delivery_staging_id,
+        state_id, state_staging_id
       )
       run_bq_statement(config$project, replacement_sql)
-      run_bq_statement(config$project, sprintf("DROP TABLE `%s`", staging_id))
+      run_bq_statement(
+        config$project,
+        sprintf("DROP TABLE `%s`; DROP TABLE `%s`", delivery_staging_id, state_staging_id)
+      )
       invisible(gate)
     }
 
 
 # * SECTION [5]: MANUAL ENTRYPOINT
 
-    config <- parse_loader_args(commandArgs(trailingOnly = TRUE))
-    require_loader_packages()
-    run_dir <- tempfile("polaris_email_load_")
-    dir.create(run_dir, recursive = TRUE)
-    on.exit(unlink(run_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  # ? Run metadata-first discovery and update only feeds with new objects
+    run_polaris_email_loader <- function(arguments = commandArgs(trailingOnly = TRUE)) {
+      config <- parse_loader_args(arguments)
+      require_loader_packages()
+      run_dir <- tempfile("polaris_email_load_")
+      dir.create(run_dir, recursive = TRUE)
+      on.exit(unlink(run_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
-    inventory <- discover_current_objects(config$source_prefix, run_dir)
-    selected_inventory <- inventory[inventory$selection_status == "selected_current", , drop = FALSE]
-    normalized <- normalize_source_inventory(selected_inventory, run_dir)
-    mappings <- read_active_mappings(config)
-    classified <- apply_polaris_package_mappings(normalized, mappings)
-    validate_ready_snapshot(classified)
-    loaded_at <- Sys.time()
-    delivery <- prepare_delivery_rows(classified, config, loaded_at)
+      source_state <- read_source_state(config)
+      discovery <- discover_new_objects(config$source_prefix, source_state, run_dir)
+      inventory <- discovery$inventory
+      selected_inventory <- inventory[
+        inventory$selection_status == "selected_new", , drop = FALSE
+      ]
+      if (nrow(selected_inventory) == 0L) {
+        cat(
+          if (config$dry_run) "DRY RUN PASSED — NO NEW SOURCE OBJECTS\n" else "NO NEW SOURCE OBJECTS\n",
+          "Source object metadata listed: ", discovery$total_objects, "\n",
+          "Candidate headers inspected: ", discovery$header_objects, "\n",
+          "Production data changed: no\n",
+          sep = ""
+        )
+        return(invisible(NULL))
+      }
 
-    reconciliation <- build_polaris_reconciliation(classified)
-    difference_columns <- grep("_difference$", names(reconciliation), value = TRUE)
-    if (!all(vapply(reconciliation[difference_columns], function(value) all(value == 0), logical(1)))) {
-      stop("Polaris Email raw-to-normalized reconciliation failed", call. = FALSE)
+      normalized <- normalize_source_inventory(selected_inventory, run_dir)
+      mappings <- read_active_mappings(config)
+      classified <- apply_polaris_package_mappings(normalized, mappings)
+      validate_ready_snapshot(classified)
+      loaded_at <- Sys.time()
+      delivery <- prepare_delivery_rows(classified, config, loaded_at)
+      state_rows <- prepare_source_state_rows(selected_inventory, config, loaded_at)
+
+      reconciliation <- build_polaris_reconciliation(classified)
+      difference_columns <- grep("_difference$", names(reconciliation), value = TRUE)
+      if (!all(vapply(reconciliation[difference_columns], function(value) all(value == 0), logical(1)))) {
+        stop("Polaris Email raw-to-normalized reconciliation failed", call. = FALSE)
+      }
+
+      if (!config$dry_run) replace_delivery_feeds(delivery, state_rows, config)
+
+      package_summary <- aggregate(
+        cbind(spend, impressions, clicks, video_views, video_completions) ~ package_id,
+        data = delivery,
+        FUN = sum,
+        na.rm = TRUE
+      )
+      cat(
+        if (config$dry_run) "DRY RUN PASSED\n" else "PRODUCTION FEEDS REPLACED\n",
+        "Rows: ", nrow(delivery), "\n",
+        "Source object metadata listed: ", discovery$total_objects, "\n",
+        "Candidate headers inspected: ", discovery$header_objects, "\n",
+        "Full source objects downloaded: ", nrow(selected_inventory), "\n",
+        "Feeds selected: ", paste(selected_inventory$source_feed, collapse = ", "), "\n",
+        "Mappings used: ", length(unique(classified$natural_row_key)),
+        " validated source rows across ",
+        length(unique(polaris_mapping_key(
+          classified$source_feed, classified$platform,
+          classified$campaign_name, classified$ad_group_name
+        ))), " source keys\n",
+        sep = ""
+      )
+      print(package_summary, row.names = FALSE)
+      invisible(list(inventory = inventory, state_rows = state_rows, delivery = delivery))
     }
 
-    if (!config$dry_run) replace_delivery_snapshot(delivery, config)
-
-    package_summary <- aggregate(
-      cbind(spend, impressions, clicks, video_views, video_completions) ~ package_id,
-      data = delivery,
-      FUN = sum,
-      na.rm = TRUE
-    )
-    cat(
-      if (config$dry_run) "DRY RUN PASSED\n" else "PRODUCTION SNAPSHOT REPLACED\n",
-      "Rows:", nrow(delivery), "\n",
-      "Source objects inspected: ", nrow(inventory), "\n",
-      "Current source objects selected: ", nrow(selected_inventory), "\n",
-      "Mappings used: ", length(unique(classified$natural_row_key)), " validated source rows across ",
-      length(unique(polaris_mapping_key(
-        classified$source_feed, classified$platform,
-        classified$campaign_name, classified$ad_group_name
-      ))), " source keys\n",
-      sep = ""
-    )
-    print(package_summary, row.names = FALSE)
+    if (sys.nframe() == 0L) run_polaris_email_loader()
