@@ -58,23 +58,63 @@
       data
     }
 
-  # ? Enforce exactly one current file for each supported feed without guessing
+  # ? Select one uniquely newest content snapshot for each supported feed
     validate_polaris_source_inventory <- function(inventory) {
       inventory <- as.data.frame(inventory, stringsAsFactors = FALSE)
-      if (!"source_feed" %in% names(inventory)) {
-        stop("Polaris source inventory is missing source_feed", call. = FALSE)
+      required_columns <- c("source_feed", "source_snapshot_max_date")
+      missing_columns <- setdiff(required_columns, names(inventory))
+      if (length(missing_columns) > 0) {
+        stop(
+          paste("Polaris source inventory is missing:", paste(missing_columns, collapse = ", ")),
+          call. = FALSE
+        )
       }
-      counts <- table(factor(inventory$source_feed, levels = c("meta", "tiktok", "unsupported")))
+
+      counts <- table(factor(
+        inventory$source_feed,
+        levels = c("meta", "tiktok", "unsupported", "ambiguous")
+      ))
       problems <- character(0)
-      if (counts[["meta"]] != 1L) problems <- c(problems, paste("expected 1 Meta CSV; found", counts[["meta"]]))
-      if (counts[["tiktok"]] != 1L) problems <- c(problems, paste("expected 1 TikTok CSV; found", counts[["tiktok"]]))
+      if (counts[["meta"]] == 0L) problems <- c(problems, "found no Meta-schema CSV")
+      if (counts[["tiktok"]] == 0L) problems <- c(problems, "found no TikTok-schema CSV")
       if (counts[["unsupported"]] > 0L) {
         problems <- c(problems, paste("found", counts[["unsupported"]], "unsupported CSV object(s)"))
+      }
+      if (counts[["ambiguous"]] > 0L) {
+        problems <- c(problems, paste("found", counts[["ambiguous"]], "schema-ambiguous CSV object(s)"))
+      }
+
+      supported <- inventory$source_feed %in% c("meta", "tiktok")
+      invalid_snapshot_date <- supported & is.na(inventory$source_snapshot_max_date)
+      if (any(invalid_snapshot_date)) {
+        problems <- c(
+          problems,
+          paste("found", sum(invalid_snapshot_date), "supported CSV object(s) without a valid source date")
+        )
       }
       if (length(problems) > 0) {
         stop(paste("Ambiguous Polaris Email source inventory:", paste(problems, collapse = "; ")), call. = FALSE)
       }
-      invisible(TRUE)
+
+      inventory$selection_status <- "superseded_snapshot"
+      for (source_feed in c("meta", "tiktok")) {
+        feed_indexes <- which(inventory$source_feed == source_feed)
+        newest_date <- max(inventory$source_snapshot_max_date[feed_indexes])
+        selected_indexes <- feed_indexes[
+          inventory$source_snapshot_max_date[feed_indexes] == newest_date
+        ]
+        if (length(selected_indexes) != 1L) {
+          stop(
+            paste0(
+              "Ambiguous Polaris Email source inventory: found ", length(selected_indexes),
+              " ", source_feed, " CSV objects tied for newest source date ", newest_date
+            ),
+            call. = FALSE
+          )
+        }
+        inventory$selection_status[[selected_indexes]] <- "selected_current"
+      }
+      inventory
     }
 
 
@@ -98,6 +138,33 @@
         ),
         stop(paste("Unsupported Polaris source feed:", source_feed), call. = FALSE)
       )
+    }
+
+  # ? Identify a supported feed from its CSV headers without trusting its path
+    classify_polaris_source_schema <- function(data) {
+      data <- clean_polaris_headers(as.data.frame(data, stringsAsFactors = FALSE))
+      matches <- vapply(
+        c("meta", "tiktok"),
+        function(source_feed) {
+          all(polaris_required_headers(source_feed) %in% names(data))
+        },
+        logical(1)
+      )
+      matched_feeds <- names(matches)[matches]
+      if (length(matched_feeds) == 1L) return(matched_feeds[[1]])
+      if (length(matched_feeds) == 0L) return("unsupported")
+      "ambiguous"
+    }
+
+  # ? Read the newest valid business date represented inside one snapshot
+    polaris_snapshot_max_date <- function(data, source_feed) {
+      data <- clean_polaris_headers(as.data.frame(data, stringsAsFactors = FALSE))
+      if (!source_feed %in% c("meta", "tiktok")) return(as.Date(NA))
+      date_column <- if (source_feed == "meta") "date" else "Date Start"
+      dates <- parse_polaris_date(polaris_column(data, date_column))
+      dates <- dates[!is.na(dates)]
+      if (length(dates) == 0L) return(as.Date(NA))
+      max(dates)
     }
 
   # ? Stop when a source file no longer satisfies its documented schema contract

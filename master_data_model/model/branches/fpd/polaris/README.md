@@ -18,8 +18,9 @@ The default GCS prefix is the approved Polaris connection for Purely Elizabeth. 
 
 | Control | Behavior |
 |---|---|
-| Source selection | Requires exactly one Meta CSV and one TikTok CSV. Multiple snapshots stop the run and remain listed in `source_inventory.csv`. |
-| Raw preservation | Copies the two source CSVs byte-for-byte into the local `raw` folder. |
+| Source selection | Identifies Meta and TikTok from their required CSV headers, then selects the uniquely newest snapshot for each feed from the latest valid source date inside the file. Filenames and folder names are not classification inputs. |
+| Snapshot ambiguity | Unsupported schemas, missing feeds, invalid source dates, or multiple same-feed snapshots tied for the newest date stop the run. Older snapshots remain listed as superseded in `source_inventory.csv`. |
+| Raw preservation | Copies the two selected current source CSVs byte-for-byte into the local `raw` folder. |
 | Mapping | Applies only Facebook → Facebook Awareness (`P3HF7QB`), Instagram → Instagram (`P3HF7T8`), and TikTok → TikTok (`P3HF88Q`). |
 | Invalid data | Retains and labels unmapped platforms, missing required values, invalid dates or metrics, and duplicate natural keys. |
 | Warehouse access | `--compare-live-model` issues a read-only `SELECT` against the v3 original-FPD rows. |
@@ -51,7 +52,7 @@ Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R
 
 | Production gate | Required behavior |
 |---|---|
-| Source inventory | Exactly one current Meta CSV and one current TikTok CSV. |
+| Source inventory | Every CSV is classified from its headers; one uniquely newest content snapshot is selected for Meta and one for TikTok. |
 | Mapping | Every row matches one active feed/platform/campaign/ad-group key in the mapping table. |
 | Row quality | Required dimensions and dates parse; metric text is numeric; natural keys are unique. |
 | Replacement | Upload to a described staging table, validate again in BigQuery, then replace the prior snapshot in one transaction. |
@@ -64,7 +65,7 @@ The production model uses Polaris Email inside the loaded minimum-to-maximum dat
 | File | What it shows |
 |---|---|
 | `raw/meta/*.csv` and `raw/tiktok/*.csv` | Exact source-file copies for field-level comparison. |
-| `source_inventory.csv` | Every CSV found under the requested prefix and its classified feed. |
+| `source_inventory.csv` | Every CSV found under the requested prefix, its schema-classified feed, latest represented source date, and whether it was selected or superseded. |
 | `normalized_rows.csv` | Daily creative-level rows with source lineage, normalized metrics, package candidates, and review statuses. |
 | `mapping_review.csv` | Row counts by platform, package candidate, mapping result, and validation result. |
 | `source_reconciliation.csv` | Raw-versus-normalized row and metric totals by platform. |

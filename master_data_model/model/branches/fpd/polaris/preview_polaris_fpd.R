@@ -3,8 +3,9 @@
 #### PREVIEW POLARIS FIRST-PARTY DATA
 ################################################################################
 # Purpose:
-#   Read exactly one Meta and one TikTok Polaris CSV from the configured GCS
-#   prefix and produce local review artifacts without changing live systems.
+#   Classify Polaris CSVs by their headers, select the uniquely newest Meta and
+#   TikTok content snapshots, and produce local review artifacts without
+#   changing live systems.
 # Inputs and outputs:
 #   Requires --output-dir. Optional --source-prefix and --compare-live-model
 #   control the read-only inputs. All generated artifacts stay in output-dir.
@@ -84,7 +85,7 @@
       output
     }
 
-  # ? List CSV objects and classify only the two approved Stage 1 feeds
+  # ? Classify each CSV by schema and record its newest represented source date
     discover_polaris_objects <- function(source_prefix) {
       objects <- run_preview_command(
         "gcloud",
@@ -92,40 +93,50 @@
       )
       objects <- trimws(objects)
       objects <- objects[grepl("\\.csv$", objects, ignore.case = TRUE)]
-      feed <- ifelse(
-        grepl("meta", objects, ignore.case = TRUE),
-        "meta",
-        ifelse(grepl("tiktok", objects, ignore.case = TRUE), "tiktok", "unsupported")
-      )
-      data.frame(source_object_uri = objects, source_feed = feed, stringsAsFactors = FALSE)
+      inspection_dir <- tempfile("polaris_source_inspection_")
+      dir.create(inspection_dir, recursive = TRUE)
+      on.exit(unlink(inspection_dir, recursive = TRUE, force = TRUE), add = TRUE)
+      inventory_rows <- lapply(seq_along(objects), function(index) {
+        uri <- objects[[index]]
+        local_path <- file.path(inspection_dir, sprintf("source_%03d.csv", index))
+        run_preview_command("gcloud", c("storage", "cp", shQuote(uri), shQuote(local_path)))
+        source_data <- read_polaris_csv(local_path)
+        source_feed <- classify_polaris_source_schema(source_data)
+        data.frame(
+          source_object_uri = uri,
+          source_feed = source_feed,
+          source_snapshot_max_date = polaris_snapshot_max_date(source_data, source_feed),
+          stringsAsFactors = FALSE
+        )
+      })
+      do.call(rbind, inventory_rows)
     }
 
-  # ? Record discovered objects and stop instead of guessing across snapshots
+  # ? Record all discovered objects and stop on unsafe content ambiguity
     validate_source_inventory <- function(inventory, output_dir) {
-      write.csv(inventory, file.path(output_dir, "source_inventory.csv"), row.names = FALSE, na = "")
-      counts <- table(factor(inventory$source_feed, levels = c("meta", "tiktok", "unsupported")))
-      problems <- character(0)
-      if (counts[["meta"]] != 1L) problems <- c(problems, paste("Expected 1 Meta CSV; found", counts[["meta"]]))
-      if (counts[["tiktok"]] != 1L) problems <- c(problems, paste("Expected 1 TikTok CSV; found", counts[["tiktok"]]))
-      if (counts[["unsupported"]] > 0L) {
-        problems <- c(problems, paste("Found", counts[["unsupported"]], "unsupported CSV object(s)"))
-      }
-      if (length(problems) > 0) {
+      selected_inventory <- tryCatch(
+        validate_polaris_source_inventory(inventory),
+        error = function(error) error
+      )
+      inventory_to_write <- if (inherits(selected_inventory, "error")) inventory else selected_inventory
+      write.csv(inventory_to_write, file.path(output_dir, "source_inventory.csv"), row.names = FALSE, na = "")
+      if (inherits(selected_inventory, "error")) {
+        problem <- conditionMessage(selected_inventory)
         writeLines(
           c(
             "# Polaris FPD Preview — Source Selection Stopped",
             "",
             "No source rows were normalized because the GCS snapshot was ambiguous.",
             "",
-            paste0("- ", problems),
+            paste0("- ", problem),
             "",
             "Review `source_inventory.csv`; no cloud or production data was changed."
           ),
           file.path(output_dir, "run_summary.md")
         )
-        stop(paste(problems, collapse = "; "), call. = FALSE)
+        stop(problem, call. = FALSE)
       }
-      invisible(TRUE)
+      selected_inventory
     }
 
   # ? Copy the exact source bytes into the explicit local review directory
@@ -292,7 +303,12 @@
         c(
           "# Polaris FPD Preview — Completed",
           "",
-          "The preview read two GCS CSVs and wrote local review files. No cloud or production data was changed.",
+          paste0(
+            "The preview inspected ", summary_number(nrow(inventory)),
+            " GCS CSVs, selected ",
+            summary_number(sum(inventory$selection_status == "selected_current")),
+            " current snapshots, and wrote local review files. No cloud or production data was changed."
+          ),
           "",
           "## Source Results",
           "",
@@ -303,7 +319,11 @@
           paste0("- Total normalized rows: ", summary_number(nrow(normalized_rows))),
           paste0("- Rows needing review: ", summary_number(unresolved)),
           paste0("- Rows participating in duplicate natural keys: ", summary_number(duplicate_rows)),
-          paste0("- Source CSVs preserved unchanged: ", summary_number(nrow(inventory))),
+          paste0("- Source CSVs inventoried: ", summary_number(nrow(inventory))),
+          paste0(
+            "- Current source CSVs preserved unchanged: ",
+            summary_number(sum(inventory$selection_status == "selected_current"))
+          ),
           overlap_line,
           "",
           "## Safety Boundary",
@@ -323,11 +343,12 @@
     run_polaris_preview <- function(config) {
       output_dir <- prepare_output_dir(config$output_dir)
       inventory <- discover_polaris_objects(config$source_prefix)
-      validate_source_inventory(inventory, output_dir)
+      inventory <- validate_source_inventory(inventory, output_dir)
+      selected_inventory <- inventory[inventory$selection_status == "selected_current", , drop = FALSE]
 
-      normalized_parts <- lapply(seq_len(nrow(inventory)), function(index) {
-        source_uri <- inventory$source_object_uri[[index]]
-        source_feed <- inventory$source_feed[[index]]
+      normalized_parts <- lapply(seq_len(nrow(selected_inventory)), function(index) {
+        source_uri <- selected_inventory$source_object_uri[[index]]
+        source_feed <- selected_inventory$source_feed[[index]]
         local_path <- copy_polaris_source(source_uri, source_feed, output_dir)
         source_rows <- read_polaris_csv(local_path)
         if (source_feed == "meta") {

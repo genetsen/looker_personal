@@ -2,8 +2,8 @@
 #### TEST POLARIS FIRST-PARTY DATA PREVIEW LOGIC
 ################################################################################
 # Purpose:
-#   Lock the Stage 1 Meta/TikTok schema, approved mappings, validation statuses,
-#   duplicate reporting, and metric reconciliation.
+#   Lock content-based Meta/TikTok source selection, approved mappings,
+#   validation statuses, duplicate reporting, and metric reconciliation.
 # Safe usage:
 #   This test uses only in-memory fixtures. It does not access GCS or BigQuery
 #   and does not write files.
@@ -29,23 +29,6 @@ source(logic_path)
 # * SECTION [2]: SOURCE SCHEMAS AND MAPPINGS
 
   # Description: Prove both source shapes normalize to the approved common fields.
-
-  # ? Multiple current snapshots stop before a source file is selected
-    ambiguous_inventory_error <- tryCatch(
-      {
-        validate_polaris_source_inventory(data.frame(
-          source_object_uri = c("gs://fixture/meta-1.csv", "gs://fixture/meta-2.csv", "gs://fixture/tiktok.csv"),
-          source_feed = c("meta", "meta", "tiktok"),
-          stringsAsFactors = FALSE
-        ))
-        NULL
-      },
-      error = function(error) conditionMessage(error)
-    )
-    expect_true(
-      !is.null(ambiguous_inventory_error) && grepl("expected 1 Meta CSV; found 2", ambiguous_inventory_error),
-      "ambiguous source snapshots stop before normalization"
-    )
 
   # ? Meta BOM-style headers and observed zeros retain their intended meaning
     meta_fixture <- data.frame(
@@ -95,6 +78,68 @@ source(logic_path)
         tiktok_normalized$campaign_name[[1]] == "Purely Elizabeth - Awareness Q3" &&
         tiktok_normalized$video_completions[[1]] == 9,
       "TikTok alternate headers retain campaign, ad-group, ad, and video detail"
+    )
+
+  # ? Arbitrary paths are classified only from the documented source schemas
+    expect_true(
+      classify_polaris_source_schema(meta_fixture) == "meta" &&
+        classify_polaris_source_schema(tiktok_fixture) == "tiktok" &&
+        classify_polaris_source_schema(data.frame(unrelated = "value")) == "unsupported",
+      "source schemas classify independently of filenames and folder names"
+    )
+
+  # ? The uniquely newest business-date snapshot is selected for each feed
+    selected_inventory <- validate_polaris_source_inventory(data.frame(
+      source_object_uri = c(
+        "gs://fixture/arbitrary-a.csv", "gs://fixture/arbitrary-b.csv",
+        "gs://fixture/arbitrary-c.csv"
+      ),
+      source_feed = c("meta", "meta", "tiktok"),
+      source_snapshot_max_date = as.Date(c("2026-08-17", "2026-08-20", "2026-08-17")),
+      stringsAsFactors = FALSE
+    ))
+    expect_true(
+      identical(
+        selected_inventory$selection_status,
+        c("superseded_snapshot", "selected_current", "selected_current")
+      ),
+      "newest source dates select current snapshots without using paths"
+    )
+
+  # ? Unsupported schemas remain a hard stop even when both feeds are present
+    unsupported_inventory_error <- tryCatch(
+      {
+        validate_polaris_source_inventory(data.frame(
+          source_object_uri = c("gs://fixture/a.csv", "gs://fixture/b.csv", "gs://fixture/c.csv"),
+          source_feed = c("meta", "tiktok", "unsupported"),
+          source_snapshot_max_date = as.Date(c("2026-08-20", "2026-08-17", NA)),
+          stringsAsFactors = FALSE
+        ))
+        NULL
+      },
+      error = function(error) conditionMessage(error)
+    )
+    expect_true(
+      !is.null(unsupported_inventory_error) && grepl("unsupported CSV object", unsupported_inventory_error),
+      "unsupported source schemas stop before normalization"
+    )
+
+  # ? Tied newest snapshots stop rather than relying on filename or upload order
+    tied_inventory_error <- tryCatch(
+      {
+        validate_polaris_source_inventory(data.frame(
+          source_object_uri = c("gs://fixture/a.csv", "gs://fixture/b.csv", "gs://fixture/c.csv"),
+          source_feed = c("meta", "meta", "tiktok"),
+          source_snapshot_max_date = as.Date(c("2026-08-20", "2026-08-20", "2026-08-17")),
+          stringsAsFactors = FALSE
+        ))
+        NULL
+      },
+      error = function(error) conditionMessage(error)
+    )
+    expect_true(
+      !is.null(tied_inventory_error) && grepl("tied for newest source date", tied_inventory_error),
+      "tied newest snapshots stop before normalization"
     )
 
   # ? Production mappings use the full feed/platform/campaign/ad-group key

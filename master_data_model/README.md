@@ -28,7 +28,7 @@ Interactive orientation:
 - [Direct CM360 conversion migration](docs/rtl-direct-cm360-conversion-migration.md) - deployed RTL conversion source, history-preserving staging, direct activity metrics, and the explicit conversion-only safety rule.
 - [FPD current state](model/branches/fpd/CURRENT_STATE.md) - shared Codex/Claude Code handoff for the active version 11 publisher, in-use template, canonical shortcut folder, and loader boundary.
 - [FPD partner-data template](model/branches/fpd/partner-data-collection-template.md) - the active workbook, workbook-bound Apps Script wrapper, version 11 publishing library, and canonical shortcut destination used by the FPD loader.
-- [MIQ Polaris Email path](model/branches/fpd/polaris/README.md) - QA reader and guarded manual loader for the Purely Elizabeth Meta and TikTok exports. Polaris Email is preferred inside successfully loaded package coverage; the existing MIQ FPD path remains the fallback outside it.
+- [MIQ Polaris Email path](model/branches/fpd/polaris/README.md) - QA reader and guarded manual loader for the Purely Elizabeth Meta and TikTok exports. It identifies feeds from CSV headers rather than filenames and selects the uniquely newest source-date snapshot for each feed. Polaris Email is preferred inside successfully loaded package coverage; the existing MIQ FPD path remains the fallback outside it.
 - [Manual Data Editor product brief](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/_bmad-output/planning-artifacts/briefs/brief-master_data_model-2026-06-18/brief.md) - slide-ready brief for presenting what the editor is, how it works, and which correction bottlenecks it removes.
 
 ## Manual Package Edit Quick Reference

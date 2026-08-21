@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-21
+
+**Polaris Email loads no longer depend on export filenames** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [guarded Polaris Email loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) now identifies Meta and TikTok exports from their CSV columns and selects each feed's uniquely newest business-date snapshot. Renamed rolling exports can load safely, older snapshots remain visible as superseded evidence, and unsupported formats or tied newest snapshots still stop before production data can change.
+
 ## 2026-08-20
 
 **MIQ Polaris Email delivery now feeds the production V3 model** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [MIQ Polaris Email path](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README.md) now maps and loads all 992 Meta and TikTok source rows through guarded landing tables and publishes their daily creative detail in V3. Polaris Email replaces modeled FPD only inside each loaded package range; existing FPD remains available outside coverage and physically unchanged, MIQ remains the supplier, manual overrides still win, and planned metrics remain summable once per package/date. SQL Change Guard passed all 26 checks, and the live compatibility base, clustered dependency, and 259,325-row V3 table were refreshed and verified. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris-email-v3-mvp-plan.md)

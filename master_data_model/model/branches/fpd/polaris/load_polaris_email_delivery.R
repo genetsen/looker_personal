@@ -7,9 +7,10 @@
 #   warehouse-owned package mappings, and atomically replace the validated
 #   daily delivery snapshot in BigQuery.
 # Safe usage:
-#   The loader fails before replacement on ambiguous files, unknown mappings,
-#   invalid rows, or duplicate natural keys. Use --dry-run to exercise every
-#   read and validation step without creating or changing BigQuery tables.
+#   The loader classifies files from their schemas and selects the uniquely
+#   newest content snapshot per feed. It fails before replacement on ambiguous
+#   files, unknown mappings, invalid rows, or duplicate natural keys. Use
+#   --dry-run to exercise every read and validation step without writes.
 ################################################################################
 
 
@@ -73,21 +74,33 @@
       output
     }
 
-  # ? Require one and only one current object for each supported feed
-    discover_current_objects <- function(source_prefix) {
+  # ? Classify every CSV by schema and select the newest content snapshot per feed
+    discover_current_objects <- function(source_prefix, run_dir) {
       objects <- run_loader_command(
         "gcloud",
         c("storage", "ls", shQuote(paste0(sub("/$", "", source_prefix), "/**")))
       )
       objects <- trimws(objects[grepl("\\.csv$", objects, ignore.case = TRUE)])
-      feeds <- ifelse(
-        grepl("meta", objects, ignore.case = TRUE),
-        "meta",
-        ifelse(grepl("tiktok", objects, ignore.case = TRUE), "tiktok", "unsupported")
-      )
-      inventory <- data.frame(source_object_uri = objects, source_feed = feeds, stringsAsFactors = FALSE)
-      validate_polaris_source_inventory(inventory)
-      inventory
+      inventory_rows <- lapply(seq_along(objects), function(index) {
+        uri <- objects[[index]]
+        destination <- file.path(run_dir, sprintf("source_%03d.csv", index))
+        run_loader_command("gcloud", c("storage", "cp", shQuote(uri), shQuote(destination)))
+        source_data <- read.csv(
+          destination,
+          check.names = FALSE,
+          stringsAsFactors = FALSE,
+          fileEncoding = "UTF-8-BOM"
+        )
+        source_feed <- classify_polaris_source_schema(source_data)
+        data.frame(
+          source_object_uri = uri,
+          source_feed = source_feed,
+          source_snapshot_max_date = polaris_snapshot_max_date(source_data, source_feed),
+          local_path = destination,
+          stringsAsFactors = FALSE
+        )
+      })
+      validate_polaris_source_inventory(do.call(rbind, inventory_rows))
     }
 
   # ? Copy exact source bytes into an isolated temporary run directory
@@ -95,10 +108,8 @@
       rows <- lapply(seq_len(nrow(inventory)), function(index) {
         feed <- inventory$source_feed[[index]]
         uri <- inventory$source_object_uri[[index]]
-        destination <- file.path(run_dir, paste0(feed, "_", basename(uri)))
-        run_loader_command("gcloud", c("storage", "cp", shQuote(uri), shQuote(destination)))
         source_data <- read.csv(
-          destination,
+          inventory$local_path[[index]],
           check.names = FALSE,
           stringsAsFactors = FALSE,
           fileEncoding = "UTF-8-BOM"
@@ -293,8 +304,9 @@
     dir.create(run_dir, recursive = TRUE)
     on.exit(unlink(run_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
-    inventory <- discover_current_objects(config$source_prefix)
-    normalized <- normalize_source_inventory(inventory, run_dir)
+    inventory <- discover_current_objects(config$source_prefix, run_dir)
+    selected_inventory <- inventory[inventory$selection_status == "selected_current", , drop = FALSE]
+    normalized <- normalize_source_inventory(selected_inventory, run_dir)
     mappings <- read_active_mappings(config)
     classified <- apply_polaris_package_mappings(normalized, mappings)
     validate_ready_snapshot(classified)
@@ -318,7 +330,8 @@
     cat(
       if (config$dry_run) "DRY RUN PASSED\n" else "PRODUCTION SNAPSHOT REPLACED\n",
       "Rows:", nrow(delivery), "\n",
-      "Source objects:", nrow(inventory), "\n",
+      "Source objects inspected: ", nrow(inventory), "\n",
+      "Current source objects selected: ", nrow(selected_inventory), "\n",
       "Mappings used: ", length(unique(classified$natural_row_key)), " validated source rows across ",
       length(unique(polaris_mapping_key(
         classified$source_feed, classified$platform,
