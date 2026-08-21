@@ -1,11 +1,9 @@
 ## 2026-08-21
 
-**Polaris Email loader now reads only newly arrived source objects** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟡 **Verified in dry run; not deployed**<br>The loader lists Cloud Storage metadata, discards accepted object generations, reads headers only for new candidates, and downloads the newest new object for each affected feed. Meta and TikTok can advance independently; the changed feed and its checkpoint update in one transaction while the other feed remains untouched. The live dry run listed three objects, inspected one header, downloaded one new Meta file, and validated 488 rows without changing production. The source-state table has not been created and no production load has run. The compact guide also retains the schema-based feed contract and live V3 field guidance. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md)
+**Polaris loading and FPD evidence now have separate model responsibilities** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)) — 🟢 **Verified and committed**<br>The [FPD and Polaris workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) keeps the metadata-driven Polaris ingestion path while preserving `fpd_*` and `polaris_*` as independent evidence inside overlapping package-dates. Polaris replaces only the underscore-prefixed final reporting fields; live FPD and Polaris totals reconcile independently, and neither source populates the other source's evidence fields.
 
 ### Pending Next Actions
 
-- **Since Jul 28** - Reconcile and remove any remaining superseded FPD preservation surfaces after canonical branch coverage is proven - BLOCKER
-- **Since Aug 21** - Deploy and verify the Polaris Email source-state table before the first metadata-first production load - BLOCKER
 - **Since Aug 20** - Add scheduling around the proven guarded Polaris Email loader without changing its validation contract - RECOMMENDED
 
 ## 2026-08-14
@@ -15,7 +13,6 @@
 
 ### Pending Next Actions
 
-- **Since Jul 28** - Reconcile and remove any remaining superseded FPD preservation surfaces after canonical branch coverage is proven - BLOCKER
 
 ## 2026-08-13
 
@@ -28,7 +25,6 @@
 
 ### Pending Next Actions
 
-- **Since Jul 28** - Reconcile and remove any remaining superseded FPD preservation surfaces after canonical branch coverage is proven - BLOCKER
 
 ## 2026-07-10
 

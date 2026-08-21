@@ -86,7 +86,7 @@ no-op.
 | Source state | One accepted object generation per feed | Updated in the same transaction as that feed's landing rows. |
 | [Package mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | Assign one Prisma package | Supplies identity, never metrics. |
 | [Polaris landing](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | Normalized ad-level snapshot | Source QA surface, not a package/date rollup. |
-| Original and updated FPD | Delivery fallback | Used outside Polaris coverage; never rewritten here. |
+| Original and updated FPD | Independent partner-reported evidence | Retained inside and outside Polaris coverage; Polaris never rewrites or replaces the `fpd_*` evidence fields. |
 | Prisma plans | Package context and plan | Does not supply Polaris actuals. |
 | Manual Package Editor | Approved corrections | Outranks automated actuals. |
 
@@ -115,14 +115,18 @@ owns precedence. Fix the first failed stage rather than patching a later output.
 | Platform | `polaris_platform` — `s_platform` is empty for current Polaris rows |
 | Campaign/ad group/ad | `polaris_campaign_name`, `polaris_ad_group_name`, `polaris_ad_name` |
 | Reporting actuals | `_spend`, `_impressions`, `_clicks`, `_video_views`, `_video_comps` |
+| Polaris evidence | `polaris_spend`, `polaris_impressions`, `polaris_clicks`, `polaris_video_views`, `polaris_video_completions` |
+| FPD evidence | `fpd_spend`, `fpd_impressions`, `fpd_clicks`, `fpd_video_views`, `fpd_video_completions` |
 | Source trace | `polaris_raw_date` is `DATE`; `polaris_raw_spend` is `NUMERIC`; raw impression, click, and video fields are `INT64`; object URI and row number retain source identity. |
 | Summable plan | `_planned_spend`, `_planned_impressions` on at most one row per package/date |
 | Reference-only plan | `qa_v3_package_planned_*_doNotSum` — never sum these fields |
 
-Polaris replaces original and updated FPD only between each package's minimum and
-maximum loaded Polaris dates. FPD remains outside that range. Manual corrections
-still win. The compatibility model remains available for existing consumers but
-does not preserve Polaris ad detail; use V3 for new work.
+FPD and Polaris are separate evidence sources at all dates. Between each package's
+minimum and maximum loaded Polaris dates, Polaris supplies only the final reporting
+fields (`_spend`, `_impressions`, `_clicks`, `_video_views`, and `_video_comps`);
+the FPD rows and `fpd_*` values remain visible for comparison. Manual corrections
+still win as a later approved override. The compatibility model keeps both evidence
+families at package/date grain; use V3 when Polaris ad detail is required.
 
 ## Run and Prove
 
@@ -181,11 +185,26 @@ WITH coverage AS (
     GROUP BY 1, 2, 3, 4 HAVING COUNT(*) != 1
   )
   UNION ALL
-  SELECT 'fpd_inside_polaris_coverage', COUNT(*)
+  SELECT 'missing_fpd_evidence_inside_polaris_coverage', COUNTIF(
+    v.fpd_spend IS NULL
+    AND v.fpd_impressions IS NULL
+    AND v.fpd_clicks IS NULL
+    AND v.fpd_video_views IS NULL
+    AND v.fpd_video_completions IS NULL
+  )
   FROM `looker-studio-pro-452620.master_stg.data_model_v3` v
   JOIN coverage c ON v._package_id = c.package_id
     AND v._date BETWEEN c.first_date AND c.last_date
-  WHERE v.qa_v3_source_detail_type IN ('fpd_original', 'fpd_updated_package')
+  WHERE v.qa_v3_source_detail_type = 'fpd_original'
+  UNION ALL
+  SELECT 'non_polaris_final_metrics_inside_polaris_coverage', COUNTIF(
+    v.qa_v3_source_detail_type != 'polaris_email'
+    AND (v._spend IS NOT NULL OR v._impressions IS NOT NULL OR v._clicks IS NOT NULL
+      OR v._video_views IS NOT NULL OR v._video_comps IS NOT NULL)
+  )
+  FROM `looker-studio-pro-452620.master_stg.data_model_v3` v
+  JOIN coverage c ON v._package_id = c.package_id
+    AND v._date BETWEEN c.first_date AND c.last_date
   UNION ALL
   SELECT 'multiple_planned_carriers', COUNT(*)
   FROM (
@@ -198,7 +217,8 @@ WITH coverage AS (
 SELECT * FROM checks ORDER BY check_name;
 ```
 
-**Expected:** three rows, each with `failures = 0`.
+**Expected:** four rows, each with `failures = 0`. This proves that FPD evidence
+remains present while only Polaris rows carry final metrics in Polaris coverage.
 
 ## Known Limits and Troubleshooting
 

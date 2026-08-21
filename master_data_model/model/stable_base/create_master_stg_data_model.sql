@@ -265,12 +265,6 @@ fpd_original_raw AS (
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` AS f
   WHERE DATE(f.date_final) >= DATE '2025-01-01'
     AND f.package_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-      FROM polaris_email_coverage AS coverage
-      WHERE coverage.package_id = f.package_id
-        AND DATE(f.date_final) BETWEEN coverage.minimum_date AND coverage.maximum_date
-    )
 ),
 
 fpd_original_daily_source AS (
@@ -304,25 +298,11 @@ polaris_email_daily AS (
   SELECT
     package_id,
     date,
-    SUM(impressions) AS fpd_orig_impressions,
-    SUM(clicks) AS fpd_orig_clicks,
-    SUM(spend) AS fpd_orig_spend,
-    SUM(video_views) AS fpd_orig_video_views,
-    SUM(video_completions) AS fpd_orig_video_comps,
-    CAST(NULL AS INT64) AS fpd_orig_sends,
-    CAST(NULL AS INT64) AS fpd_orig_opens,
-    CAST(NULL AS FLOAT64) AS fpd_orig_benchmark,
-    CAST(NULL AS INT64) AS fpd_orig_benchmark_metric,
-    'Polaris Email' AS fpd_orig_factor,
-    STRING_AGG(DISTINCT ad_name, ' | ' ORDER BY ad_name) AS fpd_orig_creative,
-    CAST(NULL AS STRING) AS fpd_creative_img,
-    STRING_AGG(DISTINCT source_object_uri, ' | ' ORDER BY source_object_uri) AS fpd_orig_source_files,
-    STRING_AGG(DISTINCT source_object_uri, ' | ' ORDER BY source_object_uri) AS fpd_orig_source_urls,
-    MAX(loaded_at) AS fpd_orig_source_modified_time,
-    CAST(NULL AS STRING) AS fpd_orig_client,
-    STRING_AGG(DISTINCT campaign_name, ' | ' ORDER BY campaign_name) AS fpd_orig_campaign_name,
-    'MIQ' AS fpd_orig_supplier_name,
-    ARRAY_AGG(package_friendly_label ORDER BY package_friendly_label LIMIT 1)[SAFE_OFFSET(0)] AS fpd_orig_package_name
+    SUM(spend) AS polaris_spend,
+    SUM(impressions) AS polaris_impressions,
+    SUM(clicks) AS polaris_clicks,
+    SUM(video_views) AS polaris_video_views,
+    SUM(video_completions) AS polaris_video_completions
   FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
   WHERE date >= DATE '2025-01-01'
     AND package_id IS NOT NULL
@@ -331,8 +311,6 @@ polaris_email_daily AS (
 
 fpd_original_daily AS (
   SELECT * FROM fpd_original_daily_source
-  UNION ALL
-  SELECT * FROM polaris_email_daily
 ),
 
 fpd_video_daily AS (
@@ -341,7 +319,8 @@ fpd_video_daily AS (
   SELECT
     package_id AS fpd_package_id,
     date AS fpd_date,
-    fpd_orig_video_views
+    fpd_orig_video_views,
+    fpd_orig_video_comps
   FROM fpd_original_daily
 ),
 
@@ -359,12 +338,6 @@ fpd_updated_daily AS (
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily` AS u
   WHERE DATE(u.date) >= DATE '2025-01-01'
     AND u.package_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-      FROM polaris_email_coverage AS coverage
-      WHERE coverage.package_id = u.package_id
-        AND DATE(u.date) BETWEEN coverage.minimum_date AND coverage.maximum_date
-    )
   GROUP BY u.package_id, DATE(u.date)
 ),
 
@@ -530,11 +503,12 @@ prisma_meta AS (
 
 digital_joined AS (
   SELECT
-    COALESCE(d.package_id, fo.package_id, fu.package_id, p.package_id) AS package_id_joined,
-    COALESCE(d.date, fo.date, fu.date, p.date) AS date,
+    COALESCE(d.package_id, fo.package_id, fu.package_id, pe.package_id, p.package_id) AS package_id_joined,
+    COALESCE(d.date, fo.date, fu.date, pe.date, p.date) AS date,
     d.* EXCEPT(package_id, date),
     fo.* EXCEPT(package_id, date),
     fu.* EXCEPT(package_id, date),
+    pe.* EXCEPT(package_id, date),
     p.* EXCEPT(package_id, date)
   FROM dcm_daily AS d
   FULL OUTER JOIN fpd_original_daily AS fo
@@ -543,9 +517,12 @@ digital_joined AS (
   FULL OUTER JOIN fpd_updated_daily AS fu
     ON COALESCE(d.package_id, fo.package_id) = fu.package_id
    AND COALESCE(d.date, fo.date) = fu.date
+  FULL OUTER JOIN polaris_email_daily AS pe
+    ON COALESCE(d.package_id, fo.package_id, fu.package_id) = pe.package_id
+   AND COALESCE(d.date, fo.date, fu.date) = pe.date
   FULL OUTER JOIN prisma_daily AS p
-    ON COALESCE(d.package_id, fo.package_id, fu.package_id) = p.package_id
-   AND COALESCE(d.date, fo.date, fu.date) = p.date
+    ON COALESCE(d.package_id, fo.package_id, fu.package_id, pe.package_id) = p.package_id
+   AND COALESCE(d.date, fo.date, fu.date, pe.date) = p.date
 ),
 
 digital_with_meta AS (
@@ -580,7 +557,11 @@ digital_final AS (
   SELECT
     'digital' AS row_type,
     CASE
-      WHEN fpd_orig_factor = 'Polaris Email' THEN 'polaris_email'
+      WHEN polaris_spend IS NOT NULL
+        OR polaris_impressions IS NOT NULL
+        OR polaris_clicks IS NOT NULL
+        OR polaris_video_views IS NOT NULL
+        OR polaris_video_completions IS NOT NULL THEN 'polaris_email'
       WHEN fpd_updated_impressions IS NOT NULL
         OR fpd_updated_spend IS NOT NULL
         OR fpd_orig_impressions IS NOT NULL
@@ -596,11 +577,15 @@ digital_final AS (
           OR planned_clicks IS NOT NULL, ['prisma_daily'], []),
         IF(d_daily_recalculated_imps IS NOT NULL
           OR d_daily_recalculated_cost IS NOT NULL, ['dcm'], []),
-        IF(fpd_orig_factor = 'Polaris Email', ['polaris_email'], []),
-        IF(COALESCE(fpd_orig_factor, '') != 'Polaris Email' AND (fpd_orig_impressions IS NOT NULL
+        IF(polaris_spend IS NOT NULL
+          OR polaris_impressions IS NOT NULL
+          OR polaris_clicks IS NOT NULL
+          OR polaris_video_views IS NOT NULL
+          OR polaris_video_completions IS NOT NULL, ['polaris_email'], []),
+        IF(fpd_orig_impressions IS NOT NULL
           OR fpd_orig_spend IS NOT NULL
           OR fpd_updated_impressions IS NOT NULL
-          OR fpd_updated_spend IS NOT NULL), ['fpd'], [])
+          OR fpd_updated_spend IS NOT NULL, ['fpd'], [])
       ), ' | '), ''),
       'none'
     ) AS row_data_sources_available,
@@ -777,6 +762,7 @@ digital_final AS (
     CASE
       WHEN prisma_package_id IS NULL THEN NULL
       ELSE COALESCE(
+        polaris_spend,
         NULLIF(COALESCE(fpd_orig_spend, 0) + COALESCE(fpd_updated_spend, 0), 0),
         d_daily_recalculated_cost
       )
@@ -784,6 +770,7 @@ digital_final AS (
     CASE
       WHEN prisma_package_id IS NULL THEN NULL
       ELSE COALESCE(
+        polaris_impressions,
         NULLIF(COALESCE(fpd_orig_impressions, 0) + COALESCE(fpd_updated_impressions, 0), 0),
         
         d_impressions
@@ -791,7 +778,7 @@ digital_final AS (
     END AS final_impressions,
     CASE
       WHEN prisma_package_id IS NULL THEN NULL
-      ELSE COALESCE(fpd_orig_clicks, d_clicks)
+      ELSE COALESCE(polaris_clicks, fpd_orig_clicks, d_clicks)
     END AS final_clicks,
     CASE
       WHEN prisma_package_id IS NULL THEN NULL
@@ -799,7 +786,7 @@ digital_final AS (
     END AS final_video_plays,
     CASE
       WHEN prisma_package_id IS NULL THEN NULL
-      ELSE COALESCE(fpd_orig_video_comps, CAST(d_video_comps AS FLOAT64))
+      ELSE COALESCE(polaris_video_completions, fpd_orig_video_comps, CAST(d_video_comps AS FLOAT64))
     END AS final_video_comps,
     CAST(NULL AS DATE) AS tv_data_refresh_date,
     CAST(NULL AS STRING) AS tv_media_outlet,
@@ -2341,11 +2328,18 @@ SELECT
   fpd_clicks AS `fpd_clicks`,
   fpd_sends AS `fpd_sends`,
   fpd_opens AS `fpd_opens`,
+  fpd_video.fpd_orig_video_views AS `fpd_video_views`,
+  fpd_video.fpd_orig_video_comps AS `fpd_video_completions`,
+  polaris_evidence.polaris_spend AS `polaris_spend`,
+  polaris_evidence.polaris_impressions AS `polaris_impressions`,
+  polaris_evidence.polaris_clicks AS `polaris_clicks`,
+  polaris_evidence.polaris_video_views AS `polaris_video_views`,
+  polaris_evidence.polaris_video_completions AS `polaris_video_completions`,
   final_spend AS `_spend`,
   final_impressions AS `_impressions`,
   final_clicks AS `_clicks`,
   final_video_plays AS `_video_plays`,
-  COALESCE(social_video_views, fpd_video.fpd_orig_video_views, final_video_plays) AS `_video_views`,
+  COALESCE(social_video_views, polaris_evidence.polaris_video_views, fpd_video.fpd_orig_video_views, final_video_plays) AS `_video_views`,
   final_video_comps AS `_video_comps`,
   tv_data_refresh_date AS `tv_data_refresh_date`,
   tv_media_outlet AS `tv_media_outlet`,
@@ -2474,6 +2468,19 @@ LEFT JOIN social_source_by_final_row AS social_source
 LEFT JOIN fpd_video_daily AS fpd_video
   ON with_standardized_advertiser.package_id_joined = fpd_video.fpd_package_id
  AND with_standardized_advertiser.date = fpd_video.fpd_date
+LEFT JOIN (
+  SELECT
+    package_id AS polaris_package_id,
+    date AS polaris_date,
+    polaris_spend,
+    polaris_impressions,
+    polaris_clicks,
+    polaris_video_views,
+    polaris_video_completions
+  FROM polaris_email_daily
+) AS polaris_evidence
+  ON with_standardized_advertiser.package_id_joined = polaris_evidence.polaris_package_id
+ AND with_standardized_advertiser.date = polaris_evidence.polaris_date
 WHERE standardized_advertiser_name != 'Highlights'
 ),
 

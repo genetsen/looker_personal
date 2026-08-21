@@ -6,6 +6,8 @@ All notable changes to this repository are documented in this file.
 
 **Basis UTM mappings now use the August partner corrections** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r)) — 🟢 **Verified and committed**<br>The [Basis UTM utility](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/README.md) now preserves the August 20 workbook as a separate source and promotes its newest complete URLs without deleting historical-only mappings. The production lookup and MFT endpoint were refreshed successfully, and the affected delivery records match the approved values with reporting totals unchanged. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG_EXTENDED.md)
 
+**FPD and Polaris now remain separate evidence in the master model** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql)) — 🟢 **Verified and committed**<br>The [FPD and Polaris workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now preserves both source families in overlapping package-dates while allowing Polaris to supply only the final reporting metrics. Production reconciliation matched each source exactly, found no cross-populated evidence, and confirmed that non-Polaris rows contribute no final metrics during Polaris coverage.
+
 ### Pending Next Actions
 
 - **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
@@ -19,7 +21,7 @@ All notable changes to this repository are documented in this file.
 
 ### Pending Next Actions
 
-- **Since Aug 20** - Review the Polaris mapping and overlap evidence before approving Stage 2 - RECOMMENDED
+- **Since Aug 20** - Review the Polaris mapping and overlap evidence before approving Stage 2 - DONE
 - **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
 - **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
 - **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use

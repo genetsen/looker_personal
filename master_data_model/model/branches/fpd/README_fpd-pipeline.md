@@ -10,7 +10,9 @@ MIQ email reports → Polaris → GCS Meta/TikTok feeds
                                       ↓
                    guarded Polaris Email daily landing
                                       ↓
-          package/date coverage chooses the ingestion path
+          both ingestion paths remain separate evidence
+                                      ↓
+     final fields choose Polaris in covered package/dates
                                       ↓
              compatibility base → V3 source-detail rows
 ```
@@ -30,10 +32,10 @@ MIQ email reports → Polaris → GCS Meta/TikTok feeds
 
 | Stage | Behavior |
 |---|---|
-| [Stable package/date base SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql) | Derives each Polaris Email package's loaded minimum and maximum date. Inside that range it uses Polaris Email; outside it keeps the existing FPD path. |
-| Package/date final metrics | Polaris Email replaces both FPD inputs only inside loaded coverage. Existing FPD precedence over DCM remains unchanged outside coverage. The original FPD landing rows are never deleted. |
+| [Stable package/date base SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql) | Keeps `fpd_*` and `polaris_*` as separate evidence families. It derives each Polaris Email package's loaded minimum and maximum date only to choose the final reporting fields. |
+| Package/date final metrics | Inside loaded Polaris coverage, only `_spend`, `_impressions`, `_clicks`, `_video_views`, and `_video_comps` use Polaris. FPD evidence remains visible and is not added to those final metrics. Existing FPD precedence over DCM remains unchanged outside coverage. |
 | [Delivery detail v2](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_delivery_detail_v2&page=table) | Unions DCM, original FPD, and updated FPD. Original FPD is package/date/placement/creative; updated FPD remains package/date. |
-| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Adds `polaris_email` detail at package/date/platform/campaign/ad-group/ad grain, retains explicit `polaris_*` lineage, and assigns planned metrics to one ranked natural row. |
+| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Keeps original FPD detail as `fpd_original` rows and Polaris detail as `polaris_email` rows, with non-overlapping `fpd_*` and `polaris_*` evidence fields. Only Polaris rows carry final metrics during Polaris coverage. |
 
 ## Custom Logic
 
@@ -41,6 +43,7 @@ MIQ email reports → Polaris → GCS Meta/TikTok feeds
 - Original FPD preserves source file, source URL, content-modified time, creative image, factor, sends, opens, and benchmark evidence; these fields explain the final value rather than replace it.
 - Updated FPD contributes only its available daily spend and impressions. It does not invent clicks or creative detail.
 - A package/date can contain DCM and FPD evidence at the same time. `qa_data_issues` can surface an `actual_source_conflict`; this is evidence for review, not permission to combine metrics arbitrarily.
+- A package/date can also contain both FPD and Polaris evidence. This is intentional: compare the prefixed fields, and use the underscore-prefixed final fields for reporting.
 - Valid manual delivery edits apply after source assembly. They are a later override path and leave FPD evidence visible for audit.
 - MIQ remains the partner for both ingestion paths. `Polaris Email` and `FPD` describe how the partner delivery reached the model; Facebook, Instagram, and TikTok remain platforms.
 

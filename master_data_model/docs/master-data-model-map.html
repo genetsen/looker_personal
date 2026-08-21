@@ -936,14 +936,14 @@
         writes: "Refresh: guarded Polaris Email loader, shortcut FPD loader, and updated FPD loader.",
         freshness: "Current after the applicable MIQ ingestion path refreshes.",
         risk: "medium",
-        reviewReason: "Precedence: Polaris Email replaces both FPD inputs inside each loaded package range; FPD remains outside it.",
+        reviewReason: "Precedence: FPD and Polaris remain separate evidence; Polaris supplies only final metrics inside each loaded package range.",
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
           "MIQ is the partner for both paths; Polaris Email and FPD describe ingestion, while Facebook, Instagram, and TikTok describe platforms.",
           "The deployed Polaris Email loader lists object metadata, ignores accepted URI-generation pairs, classifies only new headers, and replaces only affected feeds; filenames are never feed inputs. Universal runner job 12 loads it before job 20 rebuilds the clustered model and V3.",
           "Polaris Email detail is preserved in V3 at package/date/platform/campaign/ad-group/ad grain with explicit polaris_* lineage.",
-          "Original and revised FPD inputs remain physically available for audit and continue outside Polaris Email coverage."
+          "Original and revised FPD inputs remain visible as separate fpd_* evidence inside and outside Polaris Email coverage; they are not added to final metrics during covered dates."
         ],
         sources: [
           ["BigQuery: Original FPD", bq("landing", "fpd_data_ranged_shortcutsFolder")],
@@ -964,7 +964,7 @@
         writes: "View only. Refresh Prisma, DCM, Polaris Email, and the FPD tables.",
         freshness: "Current when all applicable digital inputs are current.",
         risk: "medium",
-        reviewReason: "Mapping: package/date joins apply Polaris Email coverage before choosing planned-only, DCM, or FPD-family delivery.",
+        reviewReason: "Mapping: package/date joins preserve FPD and Polaris independently, then apply Polaris coverage only to the final metric choice.",
         kind: "transform",
         callouts: { truth: "logic", writes: false },
         notes: [

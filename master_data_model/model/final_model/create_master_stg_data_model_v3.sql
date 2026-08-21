@@ -156,6 +156,13 @@ manual_delivery_rows AS (
       CAST(NULL AS STRING) AS `_placement_name`,
       CAST(NULL AS STRING) AS fpd_factor,
       CAST(NULL AS STRING) AS fpd_creative,
+      CAST(NULL AS FLOAT64) AS fpd_video_views,
+      CAST(NULL AS FLOAT64) AS fpd_video_completions,
+      CAST(NULL AS FLOAT64) AS polaris_spend,
+      CAST(NULL AS FLOAT64) AS polaris_impressions,
+      CAST(NULL AS FLOAT64) AS polaris_clicks,
+      CAST(NULL AS FLOAT64) AS polaris_video_views,
+      CAST(NULL AS FLOAT64) AS polaris_video_completions,
       CAST(NULL AS STRING) AS `_creative_name`,
       p.planned_spend AS `_planned_spend`,
       p.planned_impressions AS `_planned_impressions`,
@@ -198,12 +205,6 @@ legacy_fpd_package_daily AS (
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder`
   WHERE DATE(date_final) >= DATE '2025-01-01'
     AND package_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-      FROM polaris_email_coverage AS coverage
-      WHERE coverage.`_package_id` = package_id
-        AND DATE(date_final) BETWEEN coverage.minimum_date AND coverage.maximum_date
-    )
   GROUP BY package_id, DATE(date_final)
 ),
 
@@ -211,9 +212,11 @@ polaris_email_package_daily AS (
   SELECT
     package_id AS `_package_id`,
     date AS `_date`,
-    SUM(spend) AS fpd_orig_spend,
-    SUM(impressions) AS fpd_orig_impressions,
-    SUM(clicks) AS fpd_orig_clicks
+    SUM(spend) AS polaris_spend,
+    SUM(impressions) AS polaris_impressions,
+    SUM(clicks) AS polaris_clicks,
+    SUM(video_views) AS polaris_video_views,
+    SUM(video_completions) AS polaris_video_completions
   FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
   WHERE date >= DATE '2025-01-01'
     AND package_id IS NOT NULL
@@ -222,8 +225,6 @@ polaris_email_package_daily AS (
 
 fpd_package_daily AS (
   SELECT * FROM legacy_fpd_package_daily
-  UNION ALL
-  SELECT * FROM polaris_email_package_daily
 ),
 
 fpd_updated_package_daily AS (
@@ -235,12 +236,6 @@ fpd_updated_package_daily AS (
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily`
   WHERE DATE(date) >= DATE '2025-01-01'
     AND package_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-      FROM polaris_email_coverage AS coverage
-      WHERE coverage.`_package_id` = package_id
-        AND DATE(date) BETWEEN coverage.minimum_date AND coverage.maximum_date
-    )
   GROUP BY package_id, DATE(date)
 ),
 
@@ -307,6 +302,11 @@ dcm_detail AS (
     SUM(d.clicks) AS dcm_clicks,
     SUM(d.rich_media_video_plays) AS dcm_video_plays,
     SUM(d.rich_media_video_completions) AS dcm_video_comps,
+    CAST(NULL AS FLOAT64) AS polaris_spend,
+    CAST(NULL AS FLOAT64) AS polaris_impressions,
+    CAST(NULL AS FLOAT64) AS polaris_clicks,
+    CAST(NULL AS FLOAT64) AS polaris_video_views,
+    CAST(NULL AS FLOAT64) AS polaris_video_completions,
     CAST(NULL AS FLOAT64) AS fpd_impressions,
     CAST(NULL AS FLOAT64) AS fpd_spend,
     CAST(NULL AS FLOAT64) AS fpd_clicks,
@@ -367,6 +367,11 @@ fpd_original_detail AS (
     CAST(NULL AS INT64) AS dcm_clicks,
     CAST(NULL AS INT64) AS dcm_video_plays,
     CAST(NULL AS INT64) AS dcm_video_comps,
+    CAST(NULL AS FLOAT64) AS polaris_spend,
+    CAST(NULL AS FLOAT64) AS polaris_impressions,
+    CAST(NULL AS FLOAT64) AS polaris_clicks,
+    CAST(NULL AS FLOAT64) AS polaris_video_views,
+    CAST(NULL AS FLOAT64) AS polaris_video_completions,
     SUM(f.impressions) AS fpd_impressions,
     SUM(f.spend) AS fpd_spend,
     SUM(f.clicks) AS fpd_clicks,
@@ -375,12 +380,6 @@ fpd_original_detail AS (
   FROM `looker-studio-pro-452620.landing.fpd_data_ranged_shortcutsFolder` AS f
   WHERE DATE(f.date_final) >= DATE '2025-01-01'
     AND f.package_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-      FROM polaris_email_coverage AS coverage
-      WHERE coverage.`_package_id` = f.package_id
-        AND DATE(f.date_final) BETWEEN coverage.minimum_date AND coverage.maximum_date
-    )
   GROUP BY
     f.package_id,
     DATE(f.date_final),
@@ -427,6 +426,11 @@ fpd_updated_detail AS (
     CAST(NULL AS INT64) AS dcm_clicks,
     CAST(NULL AS INT64) AS dcm_video_plays,
     CAST(NULL AS INT64) AS dcm_video_comps,
+    CAST(NULL AS FLOAT64) AS polaris_spend,
+    CAST(NULL AS FLOAT64) AS polaris_impressions,
+    CAST(NULL AS FLOAT64) AS polaris_clicks,
+    CAST(NULL AS FLOAT64) AS polaris_video_views,
+    CAST(NULL AS FLOAT64) AS polaris_video_completions,
     SUM(u.daily_fpd_impressions) AS fpd_impressions,
     SUM(u.daily_fpd_spend) AS fpd_spend,
     CAST(NULL AS FLOAT64) AS fpd_clicks,
@@ -435,12 +439,6 @@ fpd_updated_detail AS (
   FROM `looker-studio-pro-452620.landing.adif_updated_fpd_daily` AS u
   WHERE DATE(u.date) >= DATE '2025-01-01'
     AND u.package_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-      FROM polaris_email_coverage AS coverage
-      WHERE coverage.`_package_id` = u.package_id
-        AND DATE(u.date) BETWEEN coverage.minimum_date AND coverage.maximum_date
-    )
   GROUP BY u.package_id, DATE(u.date)
 ),
 
@@ -480,11 +478,16 @@ polaris_email_detail AS (
     CAST(NULL AS INT64) AS dcm_clicks,
     CAST(NULL AS INT64) AS dcm_video_plays,
     CAST(NULL AS INT64) AS dcm_video_comps,
-    CAST(impressions AS FLOAT64) AS fpd_impressions,
-    CAST(spend AS FLOAT64) AS fpd_spend,
-    CAST(clicks AS FLOAT64) AS fpd_clicks,
-    CAST(video_views AS FLOAT64) AS fpd_video_views,
-    CAST(video_completions AS FLOAT64) AS fpd_video_comps
+    CAST(spend AS FLOAT64) AS polaris_spend,
+    CAST(impressions AS FLOAT64) AS polaris_impressions,
+    CAST(clicks AS FLOAT64) AS polaris_clicks,
+    CAST(video_views AS FLOAT64) AS polaris_video_views,
+    CAST(video_completions AS FLOAT64) AS polaris_video_completions,
+    CAST(NULL AS FLOAT64) AS fpd_impressions,
+    CAST(NULL AS FLOAT64) AS fpd_spend,
+    CAST(NULL AS FLOAT64) AS fpd_clicks,
+    CAST(NULL AS FLOAT64) AS fpd_video_views,
+    CAST(NULL AS FLOAT64) AS fpd_video_comps
   FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
   WHERE date >= DATE '2025-01-01'
     AND package_id IS NOT NULL
@@ -534,7 +537,8 @@ digital_actual_rows AS (
     d.qa_v3_ad_name,
     CASE
       WHEN m.`_package_id` IS NOT NULL THEN 'manual override exists; final actuals intentionally null'
-      WHEN d.source_detail_type = 'polaris_email' THEN 'MIQ Polaris Email actuals replace FPD-path metrics inside loaded package coverage'
+      WHEN d.source_detail_type = 'polaris_email' THEN 'MIQ Polaris Email evidence is separate and carries final metrics inside loaded package coverage'
+      WHEN pc.`_package_id` IS NOT NULL AND d.source_detail_type IN ('fpd_original', 'fpd_updated_package') THEN 'FPD evidence remains visible; final metrics are carried by separate Polaris rows'
       WHEN d.source_detail_type = 'dcm' AND (COALESCE(f.fpd_spend, 0) != 0 OR COALESCE(f.fpd_impressions, 0) != 0)
         THEN 'FPD wins spend/impressions; DCM keeps clicks/video only where FPD does not provide clicks'
       WHEN d.source_detail_type = 'dcm' THEN 'DCM actuals at source detail grain; impressions use source impressions'
@@ -594,11 +598,20 @@ digital_actual_rows AS (
       d.dcm_clicks AS dcm_clicks,
       d.dcm_video_plays AS dcm_video_plays,
       d.dcm_video_comps AS dcm_video_comps,
+      d.polaris_spend AS polaris_spend,
+      d.polaris_impressions AS polaris_impressions,
+      d.polaris_clicks AS polaris_clicks,
+      d.polaris_video_views AS polaris_video_views,
+      d.polaris_video_completions AS polaris_video_completions,
       d.fpd_impressions AS fpd_impressions,
       d.fpd_spend AS fpd_spend,
       d.fpd_clicks AS fpd_clicks,
+      d.fpd_video_views AS fpd_video_views,
+      d.fpd_video_comps AS fpd_video_completions,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_spend
+        WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN NOT COALESCE(a.has_stable_spend, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' AND COALESCE(f.fpd_spend, 0) != 0 THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN d.dcm_daily_recalculated_cost
@@ -606,6 +619,8 @@ digital_actual_rows AS (
       END AS `_spend`,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_impressions
+        WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN NOT COALESCE(a.has_stable_impressions, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' AND COALESCE(f.fpd_impressions, 0) != 0 THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_impressions AS FLOAT64)
@@ -613,6 +628,8 @@ digital_actual_rows AS (
       END AS `_impressions`,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_clicks
+        WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN NOT COALESCE(a.has_stable_clicks, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' AND f.fpd_orig_clicks IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_clicks AS FLOAT64)
@@ -621,7 +638,8 @@ digital_actual_rows AS (
       IF(m.`_package_id` IS NOT NULL OR NOT COALESCE(a.has_stable_video_plays, FALSE), NULL, CAST(d.dcm_video_plays AS FLOAT64)) AS `_video_plays`,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
-        WHEN d.source_detail_type = 'polaris_email' THEN d.fpd_video_views
+        WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_video_views
+        WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_views
         WHEN NOT COALESCE(a.has_stable_video_views, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_video_plays AS FLOAT64)
@@ -629,7 +647,8 @@ digital_actual_rows AS (
       END AS `_video_views`,
       CASE
         WHEN m.`_package_id` IS NOT NULL THEN NULL
-        WHEN d.source_detail_type = 'polaris_email' THEN d.fpd_video_comps
+        WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_video_completions
+        WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_comps
         WHEN NOT COALESCE(a.has_stable_video_comps, FALSE) THEN NULL
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_video_comps AS FLOAT64)
@@ -643,6 +662,8 @@ digital_actual_rows AS (
   LEFT JOIN manual_delivery_daily AS m
     USING (`_package_id`, `_date`)
   LEFT JOIN fpd_winners AS f
+    USING (`_package_id`, `_date`)
+  LEFT JOIN polaris_email_package_daily AS pc
     USING (`_package_id`, `_date`)
   LEFT JOIN stable_actual_flags AS a
     USING (`_package_id`, `_date`)
