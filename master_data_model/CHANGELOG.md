@@ -10,7 +10,6 @@
 
 ### Pending Next Actions
 
-- **Since Aug 20** - Add scheduling around the proven guarded Polaris Email loader without changing its validation contract - RECOMMENDED
 - **Since Aug 11** - Build the per-partner BigQuery source before any published sheet is shared externally - BLOCKER
 - **Since Aug 12** - Map the remaining clients to their shared-drive `First Party Data` folders
 - **Since Jul 14** - Run one final Package Lookup menu search and confirm its result against the live warehouse

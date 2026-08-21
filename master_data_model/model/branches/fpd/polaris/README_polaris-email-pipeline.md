@@ -6,10 +6,11 @@ output_grain: package_date_platform_campaign_ad_group_ad
 source_tables:
   - looker-studio-pro-452620.landing.polaris_email_package_mapping
   - looker-studio-pro-452620.landing.polaris_email_delivery_daily
-refresh: guarded manual load, then the master-model refresh wrapper
+refresh: universal runner jobs 12 and 20, or direct loader followed by the refresh wrapper
 loader_script: load_polaris_email_delivery.R
 verified: 2026-08-21
 verified_against:
+  - universal runner jobs 12 and 20 with a new Meta object
   - load_polaris_email_delivery.R --dry-run
   - preview_polaris_email_delivery.R
   - master_stg.data_model_v3 live schema and Polaris field values
@@ -48,6 +49,7 @@ A successful load **rebuilds**[^2] only the feeds with new source objects.
 | Need | Use |
 |---|---|
 | Load | [Production loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R) |
+| Scheduled load | Universal runner job 12, `Polaris Email Loader` |
 | Initialize source state once | [State-table setup](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/create_polaris_email_source_state.sql) |
 | Review without writing | [Preview](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_email_delivery.R) |
 | Consume Polaris detail | [V3 model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) |
@@ -130,8 +132,8 @@ Run from the `master_data_model` folder.
 | Tests | `Rscript model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R` | Ends with `All Polaris Email delivery logic tests passed.` |
 | Preview | `Rscript model/branches/fpd/polaris/preview_polaris_email_delivery.R --output-dir /tmp/polaris-email-delivery-preview --compare-live-model` | Selects one file per feed and writes local evidence only. |
 | Dry run | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run` | Reads headers only for new candidates, downloads selected objects, and validates without table changes. |
-| Approved load | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R` | Replaces only changed feeds and advances their state. Requires explicit approval. |
-| Publish | Run the [refresh wrapper](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) | Wrapper and its clustered/V3 checks pass. |
+| Approved direct load | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R` | Replaces only changed feeds and advances their state. Requires explicit approval. |
+| Runner load and publish | `Rscript /Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/universal_script_runner.R --12 --20` | Runs the loader first, then passes the clustered/V3 checks. |
 
 Tests plus the live dry run prove source-code changes before writing. The loader's
 terminal success proves landing replacement. The refresh wrapper plus the queries
@@ -198,8 +200,8 @@ SELECT * FROM checks ORDER BY check_name;
 
 ## Known Limits and Troubleshooting
 
-- Scheduling is not configured; production loading is manual.
-- The source-state table must be deployed before the first production run.
+- The universal runner schedules the loader; direct `Rscript` execution remains supported for approved manual runs.
+- The source-state table is deployed and tracks one accepted generation per feed.
 - New campaign or ad-group names require reviewed mappings.
 - Meta and TikTok may legitimately have different newest dates.
 - Preview files are local evidence, never production inputs.

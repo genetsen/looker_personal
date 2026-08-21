@@ -20,7 +20,7 @@ OPTIONS (
 
 MERGE `looker-studio-pro-452620.landing.polaris_email_source_state` AS target
 USING (
-  SELECT *
+  SELECT seed.*
   FROM UNNEST([
     STRUCT(
       'C70545844' AS client_id,
@@ -42,20 +42,17 @@ USING (
       DATE '2026-08-17',
       TIMESTAMP '2026-08-20 20:33:06+00'
     )
-  ])
+  ]) AS seed
+  JOIN (
+    SELECT DISTINCT client_id, connection_id, source_feed, source_object_uri
+    FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
+  ) AS production
+    USING (client_id, connection_id, source_feed, source_object_uri)
 ) AS seed
 ON target.client_id = seed.client_id
   AND target.connection_id = seed.connection_id
   AND target.source_feed = seed.source_feed
-WHEN NOT MATCHED AND EXISTS (
-  SELECT 1
-  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily` AS production
-  WHERE production.client_id = seed.client_id
-    AND production.connection_id = seed.connection_id
-    AND production.source_feed = seed.source_feed
-    AND production.source_object_uri = seed.source_object_uri
-)
-THEN INSERT (
+WHEN NOT MATCHED THEN INSERT (
   client_id,
   connection_id,
   source_feed,

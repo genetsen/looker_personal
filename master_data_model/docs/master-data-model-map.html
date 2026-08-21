@@ -941,7 +941,7 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "MIQ is the partner for both paths; Polaris Email and FPD describe ingestion, while Facebook, Instagram, and TikTok describe platforms.",
-          "The repository Polaris Email loader lists object metadata, ignores accepted URI-generation pairs, classifies only new headers, and replaces only affected feeds; filenames are never feed inputs. This path remains undeployed until the per-feed source-state table is created.",
+          "The deployed Polaris Email loader lists object metadata, ignores accepted URI-generation pairs, classifies only new headers, and replaces only affected feeds; filenames are never feed inputs. Universal runner job 12 loads it before job 20 rebuilds the clustered model and V3.",
           "Polaris Email detail is preserved in V3 at package/date/platform/campaign/ad-group/ad grain with explicit polaris_* lineage.",
           "Original and revised FPD inputs remain physically available for audit and continue outside Polaris Email coverage."
         ],
