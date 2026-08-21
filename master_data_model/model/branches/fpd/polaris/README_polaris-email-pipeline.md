@@ -40,9 +40,10 @@ and [Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looke
 
 ## Terms
 
-A **rolling snapshot** contains all available history through its newest source
-date. One output row has package/date/platform/campaign/ad-group/ad **grain**[^1].
-A successful load **rebuilds**[^2] only the feeds with new source objects.
+A source file contains a recent delivery window through its newest source date;
+it is not guaranteed to contain all prior history. One output row has
+package/date/platform/campaign/ad-group/ad **grain**[^1].
+A successful load **upserts**[^2] rows from new source objects.
 
 ## Safe Operating Path
 
@@ -66,9 +67,10 @@ refreshes.
 Cloud Storage object metadata
   -> discard accepted generations
   -> identify new Meta or TikTok files from header bytes
-  -> download the newest new object for each affected feed
-  -> validate and map every row
-  -> replace only affected feeds and update their state together
+  -> download every object added after each feed's last successful checkpoint
+  -> process oldest to newest, validate, and map every row
+  -> keep the newest copy only where delivery windows overlap
+  -> update overlapping natural keys, append new keys, and advance feed state
   -> refresh V3
 ```
 
@@ -100,7 +102,7 @@ group. Every row must match exactly one active mapping:
 | TikTok | TikTok | Purely Elizabeth - Awareness Q3 / Interests | `P3HF88Q` |
 
 Metadata and source state own freshness; schema inspection owns feed identity;
-mapping owns package identity; the loader owns per-feed replacement; the model
+mapping owns package identity; the loader owns natural-key upserts; the model
 owns precedence. Fix the first failed stage rather than patching a later output.
 
 ## Output Contract
@@ -136,7 +138,7 @@ Run from the `master_data_model` folder.
 | Runner load and publish | `Rscript /Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/universal_script_runner.R --12 --20` | Runs the loader first, then passes the clustered/V3 checks. |
 
 Tests plus the live dry run prove source-code changes before writing. The loader's
-terminal success proves landing replacement. The refresh wrapper plus the queries
+terminal success proves the landing upsert. The refresh wrapper plus the queries
 below prove publication. Script startup, schema presence, row count alone, a dry
 run, or a started BigQuery job do not prove publication.
 
@@ -219,4 +221,4 @@ SELECT * FROM checks ORDER BY check_name;
 ## Definitions
 
 [^1]: **Grain:** determines what one row represents and which fields can be safely grouped or summed.
-[^2]: **Rebuild:** replaces the prior snapshot for an affected feed; the other feed remains unchanged.
+[^2]: **Upsert:** updates a row when its natural key already exists and appends it when the key is new; older non-overlapping history remains unchanged.

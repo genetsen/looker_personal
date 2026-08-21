@@ -72,7 +72,7 @@
       )
     }
 
-  # ? Select only the newest newly arrived object for each classified feed
+  # ? Select every newly arrived object so partial delivery windows cannot be skipped
     select_new_polaris_objects <- function(inventory, source_state) {
       inventory <- as.data.frame(inventory, stringsAsFactors = FALSE)
       source_state <- as.data.frame(source_state, stringsAsFactors = FALSE)
@@ -134,40 +134,54 @@
         if (isTRUE(is_newer)) inventory$selection_status[[index]] <- "new_candidate"
       }
 
-      for (feed in intersect(c("meta", "tiktok"), inventory$source_feed)) {
-        candidates <- which(
-          inventory$source_feed == feed & inventory$selection_status == "new_candidate"
-        )
-        if (length(candidates) == 0L) next
-        ordering <- order(
-          inventory$object_created_at[candidates],
-          polaris_generation_key(inventory$source_object_generation[candidates]),
-          decreasing = TRUE
-        )
-        inventory$selection_status[candidates] <- "superseded_new_object"
-        inventory$selection_status[candidates[ordering[[1]]]] <- "selected_new"
-      }
+      inventory$selection_status[inventory$selection_status == "new_candidate"] <- "selected_new"
       inventory
+    }
+
+  # ? Put selected objects in ingestion order so later files win on overlapping rows
+    order_polaris_objects <- function(inventory) {
+      inventory <- as.data.frame(inventory, stringsAsFactors = FALSE)
+      if (nrow(inventory) == 0L) return(inventory)
+      inventory$object_created_at <- as.POSIXct(inventory$object_created_at, tz = "UTC")
+      inventory[
+        order(
+          inventory$object_created_at,
+          polaris_generation_key(inventory$source_object_generation)
+        ),
+        ,
+        drop = FALSE
+      ]
+    }
+
+  # ? Keep only the newest successfully processed object as each feed checkpoint
+    latest_polaris_objects_by_feed <- function(inventory) {
+      inventory <- order_polaris_objects(inventory)
+      inventory[!duplicated(inventory$source_feed, fromLast = TRUE), , drop = FALSE]
     }
 
   # ? Prevent a newly arrived rolling snapshot from moving a feed backward
     validate_polaris_source_progress <- function(selected_inventory, source_state) {
       selected_inventory <- as.data.frame(selected_inventory, stringsAsFactors = FALSE)
       source_state <- as.data.frame(source_state, stringsAsFactors = FALSE)
-      for (index in seq_len(nrow(selected_inventory))) {
-        feed <- selected_inventory$source_feed[[index]]
+      selected_inventory <- order_polaris_objects(selected_inventory)
+      for (feed in unique(selected_inventory$source_feed)) {
+        feed_inventory <- selected_inventory[
+          selected_inventory$source_feed == feed, , drop = FALSE
+        ]
         state_row <- source_state[source_state$source_feed == feed, , drop = FALSE]
-        if (nrow(state_row) == 0L) next
-        new_date <- as.Date(selected_inventory$source_snapshot_max_date[[index]])
-        prior_date <- as.Date(state_row$source_max_date[[1]])
-        if (is.na(new_date) || (!is.na(prior_date) && new_date < prior_date)) {
-          stop(
-            paste0(
-              "Polaris ", feed, " snapshot moved backward from ", prior_date,
-              " to ", ifelse(is.na(new_date), "an invalid date", as.character(new_date))
-            ),
-            call. = FALSE
-          )
+        prior_date <- if (nrow(state_row) == 0L) as.Date(NA) else as.Date(state_row$source_max_date[[1]])
+        for (index in seq_len(nrow(feed_inventory))) {
+          new_date <- as.Date(feed_inventory$source_snapshot_max_date[[index]])
+          if (is.na(new_date) || (!is.na(prior_date) && new_date < prior_date)) {
+            stop(
+              paste0(
+                "Polaris ", feed, " snapshot moved backward from ", prior_date,
+                " to ", ifelse(is.na(new_date), "an invalid date", as.character(new_date))
+              ),
+              call. = FALSE
+            )
+          }
+          prior_date <- new_date
         }
       }
       invisible(TRUE)
@@ -413,6 +427,26 @@
         "needs_review"
       )
       normalized_rows
+    }
+
+  # ? Collapse overlap between delivery windows while rejecting duplicates inside one file
+    collapse_polaris_object_overlaps <- function(rows) {
+      rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+      if (nrow(rows) == 0L) return(rows)
+      required_columns <- c("source_object_uri", "natural_row_key")
+      missing_columns <- setdiff(required_columns, names(rows))
+      if (length(missing_columns) > 0L) {
+        stop(
+          paste("Polaris overlap collapse is missing:", paste(missing_columns, collapse = ", ")),
+          call. = FALSE
+        )
+      }
+      object_row_key <- paste(rows$source_object_uri, rows$natural_row_key, sep = "\r")
+      if (anyDuplicated(object_row_key) > 0L) {
+        stop("Polaris source object contains duplicate natural row keys", call. = FALSE)
+      }
+      newest_rows <- rows[!duplicated(rows$natural_row_key, fromLast = TRUE), , drop = FALSE]
+      validate_polaris_rows(newest_rows)
     }
 
   # ? Add platform-only preview mappings before shared validation

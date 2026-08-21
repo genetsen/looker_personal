@@ -154,7 +154,7 @@ source(logic_path)
       "tied newest snapshots stop before normalization"
     )
 
-  # ? Object checkpoints select only the newest newly arrived object per feed
+  # ? Object checkpoints select every newly arrived object per feed
     source_state_fixture <- data.frame(
       source_feed = c("meta", "tiktok"),
       source_object_uri = c(
@@ -189,9 +189,21 @@ source(logic_path)
     expect_true(
       identical(
         incremental_inventory$selection_status,
-        c("not_new", "superseded_new_object", "selected_new", "not_new")
+        c("not_new", "selected_new", "selected_new", "not_new")
       ),
-      "source checkpoints select only the newest newly arrived object per feed"
+      "source checkpoints select every newly arrived object per feed"
+    )
+
+  # ? Multiple objects are processed oldest first and checkpoint only the newest
+    ordered_incremental <- order_polaris_objects(incremental_inventory[
+      incremental_inventory$selection_status == "selected_new", , drop = FALSE
+    ])
+    latest_incremental <- latest_polaris_objects_by_feed(ordered_incremental)
+    expect_true(
+      identical(ordered_incremental$source_object_uri, paste0(
+        "gs://fixture/", c("new-meta-a.csv", "new-meta-b.csv")
+      )) && latest_incremental$source_object_uri[[1]] == "gs://fixture/new-meta-b.csv",
+      "multiple arrivals run oldest to newest and checkpoint the newest success"
     )
 
   # ? An accepted generation stays processed when timestamp precision differs
@@ -394,6 +406,56 @@ source(logic_path)
         package_snapshot_summary$package_id == "P3HF88Q" &&
         package_snapshot_summary$polaris_spend == 41,
       "package-specific snapshots create only real comparison pairs"
+    )
+
+# * SECTION [7]: PRODUCTION UPSERT CONTRACT
+
+  # Description: Prevent a future loader edit from deleting an entire feed again.
+
+  # ? Confirm production deletion is limited to the staged natural keys
+    loader_path <- file.path(dirname(dirname(normalizePath(test_path))), "load_polaris_email_delivery.R")
+    loader_text <- paste(readLines(loader_path, warn = FALSE), collapse = "\n")
+    expect_true(
+      grepl(
+        "production.natural_row_key = candidate.natural_row_key",
+        loader_text,
+        fixed = TRUE
+      ),
+      "production upsert deletes only overlapping natural keys and preserves older history"
+    )
+    expect_true(
+      grepl(
+        "production_id, delivery_staging_id",
+        loader_text,
+        fixed = TRUE
+      ),
+      "production upsert compares row keys against delivery staging"
+    )
+
+  # ? Overlapping files keep the later row while same-file duplicates remain errors
+    older_overlap <- production_meta[1, , drop = FALSE]
+    newer_overlap <- older_overlap
+    older_overlap$source_object_uri <- "gs://fixture/older.csv"
+    newer_overlap$source_object_uri <- "gs://fixture/newer.csv"
+    newer_overlap$spend <- 99
+    collapsed_overlap <- collapse_polaris_object_overlaps(rbind(older_overlap, newer_overlap))
+    expect_true(
+      nrow(collapsed_overlap) == 1L &&
+        collapsed_overlap$source_object_uri[[1]] == "gs://fixture/newer.csv" &&
+        collapsed_overlap$spend[[1]] == 99 &&
+        collapsed_overlap$natural_row_occurrences[[1]] == 1L,
+      "later delivery windows replace only their overlapping natural rows"
+    )
+    same_file_duplicate_error <- tryCatch(
+      {
+        collapse_polaris_object_overlaps(rbind(older_overlap, older_overlap))
+        NULL
+      },
+      error = function(error) conditionMessage(error)
+    )
+    expect_true(
+      !is.null(same_file_duplicate_error) && grepl("duplicate natural row keys", same_file_duplicate_error),
+      "duplicates inside one source object still stop the load"
     )
 
 cat("All Polaris Email delivery logic tests passed.\n")

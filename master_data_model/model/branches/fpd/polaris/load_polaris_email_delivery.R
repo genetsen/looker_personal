@@ -4,11 +4,11 @@
 ################################################################################
 # Purpose:
 #   Find newly arrived MIQ Polaris Email objects from Cloud Storage metadata,
-#   normalize only the newest new snapshot for each affected feed, apply
-#   warehouse-owned package mappings, and atomically replace those feed rows.
+#   normalize every object added after the last successful feed checkpoint, apply
+#   warehouse-owned package mappings, and atomically upsert those source rows.
 # Safe usage:
 #   The loader classifies new files from header bytes, never path names. It
-#   fails before replacement on ambiguous files, backward source dates, unknown
+#   fails before upsert on ambiguous files, backward source dates, unknown
 #   mappings, invalid rows, or duplicate natural keys. Use --dry-run to exercise
 #   every read and validation step without writes.
 ################################################################################
@@ -172,7 +172,7 @@
       ]
     }
 
-  # ? Classify only new object headers and download only selected full snapshots
+  # ? Classify only new object headers and download every selected delivery window
     discover_new_objects <- function(source_prefix, source_state, run_dir) {
       metadata <- list_source_object_metadata(source_prefix)
       candidates <- prefilter_source_metadata(metadata, source_state)
@@ -200,12 +200,33 @@
       inventory$source_snapshot_max_date <- as.Date(NA)
       inventory$local_path <- NA_character_
       selected_indexes <- which(inventory$selection_status == "selected_new")
+      if (length(selected_indexes) > 0L) {
+        selected_order <- order_polaris_objects(inventory[selected_indexes, , drop = FALSE])
+        selected_versions <- paste(
+          selected_order$source_object_uri,
+          selected_order$source_object_generation,
+          sep = "#"
+        )
+        inventory_versions <- paste(
+          inventory$source_object_uri,
+          inventory$source_object_generation,
+          sep = "#"
+        )
+        selected_indexes <- match(selected_versions, inventory_versions)
+      }
       for (index in selected_indexes) {
         versioned_uri <- paste0(
           inventory$source_object_uri[[index]], "#",
           inventory$source_object_generation[[index]]
         )
-        destination <- file.path(run_dir, sprintf("selected_%s.csv", inventory$source_feed[[index]]))
+        destination <- file.path(
+          run_dir,
+          sprintf(
+            "selected_%s_%s.csv",
+            inventory$source_feed[[index]],
+            inventory$source_object_generation[[index]]
+          )
+        )
         run_loader_command(
           "gcloud",
           c("storage", "cp", shQuote(versioned_uri), shQuote(destination))
@@ -444,8 +465,9 @@
       output
     }
 
-  # ? Build one checkpoint row for each feed selected in this run
+  # ? Build one checkpoint row from the newest successfully processed object per feed
     prepare_source_state_rows <- function(selected_inventory, config, successful_load_at) {
+      selected_inventory <- latest_polaris_objects_by_feed(selected_inventory)
       data.frame(
         client_id = config$client_id,
         connection_id = config$connection_id,
@@ -462,8 +484,8 @@
 
 # * SECTION [4]: GUARDED SNAPSHOT REPLACEMENT
 
-  # ? Stage, validate, replace affected feeds, and advance their state atomically
-    replace_delivery_feeds <- function(rows, state_rows, config) {
+  # ? Stage, validate, upsert new rows, and advance affected feed state atomically
+    upsert_delivery_feeds <- function(rows, state_rows, config) {
       suffix <- format(Sys.time(), "%Y%m%d_%H%M%S", tz = "UTC")
       delivery_staging_name <- paste0(
         "polaris_email_delivery_daily_staging_", suffix, "_", Sys.getpid()
@@ -541,14 +563,15 @@
         )
       }
 
-      replacement_sql <- sprintf(
+      upsert_sql <- sprintf(
         paste0(
           "BEGIN TRANSACTION; ",
           "DELETE FROM `%s` AS production WHERE EXISTS (",
           "SELECT 1 FROM `%s` AS candidate ",
           "WHERE production.client_id = candidate.client_id ",
           "AND production.connection_id = candidate.connection_id ",
-          "AND production.source_feed = candidate.source_feed); ",
+          "AND production.source_feed = candidate.source_feed ",
+          "AND production.natural_row_key = candidate.natural_row_key); ",
           "INSERT INTO `%s` SELECT * FROM `%s`; ",
           "MERGE `%s` AS target USING `%s` AS source ",
           "ON target.client_id = source.client_id ",
@@ -568,11 +591,11 @@
           "source.source_max_date, source.successful_load_at); ",
           "COMMIT TRANSACTION;"
         ),
-        production_id, state_staging_id,
+        production_id, delivery_staging_id,
         production_id, delivery_staging_id,
         state_id, state_staging_id
       )
-      run_bq_statement(config$project, replacement_sql)
+      run_bq_statement(config$project, upsert_sql)
       run_bq_statement(
         config$project,
         sprintf("DROP TABLE `%s`; DROP TABLE `%s`", delivery_staging_id, state_staging_id)
@@ -611,6 +634,7 @@
       normalized <- normalize_source_inventory(selected_inventory, run_dir)
       mappings <- read_active_mappings(config)
       classified <- apply_polaris_package_mappings(normalized, mappings)
+      classified <- collapse_polaris_object_overlaps(classified)
       validate_ready_snapshot(classified)
       loaded_at <- Sys.time()
       delivery <- prepare_delivery_rows(classified, config, loaded_at)
@@ -622,7 +646,7 @@
         stop("Polaris Email raw-to-normalized reconciliation failed", call. = FALSE)
       }
 
-      if (!config$dry_run) replace_delivery_feeds(delivery, state_rows, config)
+      if (!config$dry_run) upsert_delivery_feeds(delivery, state_rows, config)
 
       package_summary <- aggregate(
         cbind(spend, impressions, clicks, video_views, video_completions) ~ package_id,
@@ -631,7 +655,7 @@
         na.rm = TRUE
       )
       cat(
-        if (config$dry_run) "DRY RUN PASSED\n" else "PRODUCTION FEEDS REPLACED\n",
+        if (config$dry_run) "DRY RUN PASSED\n" else "PRODUCTION ROWS UPSERTED\n",
         "Rows: ", nrow(delivery), "\n",
         "Source object metadata listed: ", discovery$total_objects, "\n",
         "Candidate headers inspected: ", discovery$header_objects, "\n",

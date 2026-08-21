@@ -1,5 +1,5 @@
--- Create the normalized MIQ Polaris Email snapshot table. The guarded loader
--- replaces its contents only after source, mapping, row, and warehouse checks.
+-- Create the normalized MIQ Polaris Email history table. The guarded loader
+-- upserts source rows only after source, mapping, row, and warehouse checks.
 
 CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.polaris_email_delivery_daily` (
   partner STRING NOT NULL,
@@ -34,5 +34,5 @@ CREATE TABLE IF NOT EXISTS `looker-studio-pro-452620.landing.polaris_email_deliv
 PARTITION BY date
 CLUSTER BY package_id, platform, source_feed
 OPTIONS (
-  description = 'Normalized daily creative-level MIQ delivery received through Polaris Email. This is a guarded full-snapshot landing table; raw FPD landing evidence remains separate.'
+  description = 'Normalized daily creative-level MIQ delivery received through Polaris Email. New source objects update overlapping natural keys and append new keys; raw FPD landing evidence remains separate.'
 );
