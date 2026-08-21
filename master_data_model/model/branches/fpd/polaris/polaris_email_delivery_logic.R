@@ -317,12 +317,19 @@
         clicks = parse_polaris_numeric(data[["Link_click"]]),
         video_views = parse_polaris_numeric(data[["video_view"]]),
         video_completions = parse_polaris_numeric(data[["Video View to 100%"]]),
-        raw_date = as_polaris_text(data[["date"]]),
-        raw_spend = as_polaris_text(data[["Billable Spend"]]),
-        raw_impressions = as_polaris_text(data[["impressions"]]),
-        raw_clicks = as_polaris_text(data[["Link_click"]]),
-        raw_video_views = as_polaris_text(data[["video_view"]]),
-        raw_video_completions = as_polaris_text(data[["Video View to 100%"]]),
+        raw_date = parse_polaris_date(data[["date"]]),
+        raw_spend = parse_polaris_numeric(data[["Billable Spend"]]),
+        raw_impressions = as.integer(parse_polaris_numeric(data[["impressions"]])),
+        raw_clicks = as.integer(parse_polaris_numeric(data[["Link_click"]])),
+        raw_video_views = as.integer(parse_polaris_numeric(data[["video_view"]])),
+        raw_video_completions = as.integer(parse_polaris_numeric(data[["Video View to 100%"]])),
+        source_date_present = !is.na(as_polaris_text(data[["date"]])),
+        source_metric_invalid =
+          (!is.na(as_polaris_text(data[["Billable Spend"]])) & is.na(parse_polaris_numeric(data[["Billable Spend"]]))) |
+          (!is.na(as_polaris_text(data[["impressions"]])) & is.na(parse_polaris_numeric(data[["impressions"]]))) |
+          (!is.na(as_polaris_text(data[["Link_click"]])) & is.na(parse_polaris_numeric(data[["Link_click"]]))) |
+          (!is.na(as_polaris_text(data[["video_view"]])) & is.na(parse_polaris_numeric(data[["video_view"]]))) |
+          (!is.na(as_polaris_text(data[["Video View to 100%"]])) & is.na(parse_polaris_numeric(data[["Video View to 100%"]]))),
         stringsAsFactors = FALSE
       )
     }
@@ -346,12 +353,19 @@
         clicks = parse_polaris_numeric(data[["Clicks (Destination)"]]),
         video_views = parse_polaris_numeric(data[["Video Views"]]),
         video_completions = parse_polaris_numeric(data[["Video Views at 100%"]]),
-        raw_date = as_polaris_text(data[["Date Start"]]),
-        raw_spend = as_polaris_text(data[["Billable Spend"]]),
-        raw_impressions = as_polaris_text(data[["Impressions"]]),
-        raw_clicks = as_polaris_text(data[["Clicks (Destination)"]]),
-        raw_video_views = as_polaris_text(data[["Video Views"]]),
-        raw_video_completions = as_polaris_text(data[["Video Views at 100%"]]),
+        raw_date = parse_polaris_date(data[["Date Start"]]),
+        raw_spend = parse_polaris_numeric(data[["Billable Spend"]]),
+        raw_impressions = as.integer(parse_polaris_numeric(data[["Impressions"]])),
+        raw_clicks = as.integer(parse_polaris_numeric(data[["Clicks (Destination)"]])),
+        raw_video_views = as.integer(parse_polaris_numeric(data[["Video Views"]])),
+        raw_video_completions = as.integer(parse_polaris_numeric(data[["Video Views at 100%"]])),
+        source_date_present = !is.na(as_polaris_text(data[["Date Start"]])),
+        source_metric_invalid =
+          (!is.na(as_polaris_text(data[["Billable Spend"]])) & is.na(parse_polaris_numeric(data[["Billable Spend"]]))) |
+          (!is.na(as_polaris_text(data[["Impressions"]])) & is.na(parse_polaris_numeric(data[["Impressions"]]))) |
+          (!is.na(as_polaris_text(data[["Clicks (Destination)"]])) & is.na(parse_polaris_numeric(data[["Clicks (Destination)"]]))) |
+          (!is.na(as_polaris_text(data[["Video Views"]])) & is.na(parse_polaris_numeric(data[["Video Views"]]))) |
+          (!is.na(as_polaris_text(data[["Video Views at 100%"]])) & is.na(parse_polaris_numeric(data[["Video Views at 100%"]]))),
         stringsAsFactors = FALSE
       )
     }
@@ -383,19 +397,9 @@
         is.na(normalized_rows$campaign_name) |
         is.na(normalized_rows$ad_group_name) |
         is.na(normalized_rows$ad_name) |
-        is.na(normalized_rows$raw_date)
-      invalid_date <- !is.na(normalized_rows$raw_date) & is.na(normalized_rows$date)
-      raw_metric_names <- c(
-        "raw_spend", "raw_impressions", "raw_clicks", "raw_video_views",
-        "raw_video_completions"
-      )
-      metric_names <- c("spend", "impressions", "clicks", "video_views", "video_completions")
-      invalid_metric <- rep(FALSE, nrow(normalized_rows))
-      for (index in seq_along(metric_names)) {
-        invalid_metric <- invalid_metric |
-          (!is.na(normalized_rows[[raw_metric_names[[index]]]]) &
-            is.na(normalized_rows[[metric_names[[index]]]]))
-      }
+        !normalized_rows$source_date_present
+      invalid_date <- normalized_rows$source_date_present & is.na(normalized_rows$date)
+      invalid_metric <- normalized_rows$source_metric_invalid
 
       normalized_rows$validation_status <- "valid"
       normalized_rows$validation_status[normalized_rows$natural_row_occurrences > 1] <-

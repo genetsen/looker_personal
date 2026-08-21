@@ -113,7 +113,7 @@ owns precedence. Fix the first failed stage rather than patching a later output.
 | Platform | `polaris_platform` — `s_platform` is empty for current Polaris rows |
 | Campaign/ad group/ad | `polaris_campaign_name`, `polaris_ad_group_name`, `polaris_ad_name` |
 | Reporting actuals | `_spend`, `_impressions`, `_clicks`, `_video_views`, `_video_comps` |
-| Source trace | `polaris_raw_*`, `polaris_source_object_uri`, `polaris_source_row_number` |
+| Source trace | `polaris_raw_date` is `DATE`; `polaris_raw_spend` is `NUMERIC`; raw impression, click, and video fields are `INT64`; object URI and row number retain source identity. |
 | Summable plan | `_planned_spend`, `_planned_impressions` on at most one row per package/date |
 | Reference-only plan | `qa_v3_package_planned_*_doNotSum` — never sum these fields |
 

@@ -51,8 +51,14 @@ source(logic_path)
       nrow(meta_normalized) == 2 &&
         identical(meta_normalized$package_id, c("P3HF7QB", "P3HF7T8")) &&
         meta_normalized$spend[[1]] == 0 &&
+        inherits(meta_normalized$raw_date, "Date") &&
+        is.numeric(meta_normalized$raw_spend) &&
+        is.integer(meta_normalized$raw_impressions) &&
+        is.integer(meta_normalized$raw_clicks) &&
+        is.integer(meta_normalized$raw_video_views) &&
+        is.integer(meta_normalized$raw_video_completions) &&
         all(meta_normalized$validation_status == "valid"),
-      "Meta BOM headers, zero metrics, and Facebook/Instagram mappings normalize safely"
+      "Meta dates and metrics, including upstream audit fields, remain typed"
     )
 
   # ? TikTok alternate headers normalize into the same daily creative-level fields
@@ -76,8 +82,14 @@ source(logic_path)
       tiktok_normalized$platform[[1]] == "TikTok" &&
         tiktok_normalized$package_id[[1]] == "P3HF88Q" &&
         tiktok_normalized$campaign_name[[1]] == "Purely Elizabeth - Awareness Q3" &&
-        tiktok_normalized$video_completions[[1]] == 9,
-      "TikTok alternate headers retain campaign, ad-group, ad, and video detail"
+        tiktok_normalized$video_completions[[1]] == 9 &&
+        inherits(tiktok_normalized$raw_date, "Date") &&
+        is.numeric(tiktok_normalized$raw_spend) &&
+        is.integer(tiktok_normalized$raw_impressions) &&
+        is.integer(tiktok_normalized$raw_clicks) &&
+        is.integer(tiktok_normalized$raw_video_views) &&
+        is.integer(tiktok_normalized$raw_video_completions),
+      "TikTok dates and metrics, including upstream audit fields, remain typed"
     )
 
   # ? Arbitrary paths are classified only from the documented source schemas
