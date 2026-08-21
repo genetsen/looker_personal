@@ -6,194 +6,130 @@ output_grain: package_date_platform_campaign_ad_group_ad
 source_tables:
   - looker-studio-pro-452620.landing.polaris_email_package_mapping
   - looker-studio-pro-452620.landing.polaris_email_delivery_daily
-refresh: guarded manual loader followed by the master-model refresh wrapper
+refresh: guarded manual load, then the master-model refresh wrapper
 loader_script: load_polaris_email_delivery.R
 verified: 2026-08-21
 verified_against:
   - load_polaris_email_delivery.R --dry-run
   - preview_polaris_email_delivery.R
+  - master_stg.data_model_v3 live schema and Polaris field values
   - create_master_stg_data_model.sql
   - create_master_stg_data_model_v3.sql
+reviewers: []
 ---
 
 # MIQ Polaris Email Delivery Pipeline
 
-This pipeline turns rolling Meta and TikTok CSV exports delivered through Polaris
-Email into guarded MIQ first-party delivery rows in the
-[Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table).
+**Who this is for:** people loading, validating, or consuming Purely Elizabeth
+Meta and TikTok delivery received through Polaris Email.
 
-Polaris Email is an ingestion path, not a new supplier or standalone social
-source. MIQ remains the supplier; Facebook, Instagram, and TikTok remain the
-platforms. Inside each loaded package's date coverage, Polaris Email replaces
-the older modeled FPD path. Existing FPD evidence remains physically unchanged
-and continues outside that coverage.
+**What it covers:** how the files are identified, mapped to Prisma packages,
+loaded safely, published in the master model, and verified.
+
+**Where to go next:** use the
+[FPD pipeline guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/README_fpd-pipeline.md)
+for the wider first-party-data workflow and the
+[Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README_v2.md)
+for downstream model behavior.
+
+The final output for new work is the
+[Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table).
 
 ## Table of Contents
 
-- [Terminology](#terminology)
-- [Pipeline Overview](#pipeline-overview)
-- [Canonical Files](#canonical-files)
-- [Protected Surfaces](#protected-surfaces)
-- [Sources and Boundaries](#sources-and-boundaries)
-- [Layer Responsibilities](#layer-responsibilities)
-- [How Files Are Selected](#how-files-are-selected)
-- [How Rows Are Mapped and Loaded](#how-rows-are-mapped-and-loaded)
-- [Output Grain and Field Meaning](#output-grain-and-field-meaning)
-- [Precedence in the Master Model](#precedence-in-the-master-model)
-- [Run and Refresh](#run-and-refresh)
+- [Terms Used Below](#terms-used-below)
+- [Canonical and Protected Surfaces](#canonical-and-protected-surfaces)
+- [How the Data Arrives](#how-the-data-arrives)
+- [Source and Output Contract](#source-and-output-contract)
+- [How Rows Are Selected, Mapped, and Published](#how-rows-are-selected-mapped-and-published)
+- [Output Fields and Precedence](#output-fields-and-precedence)
 - [Known Gaps and Durable Warnings](#known-gaps-and-durable-warnings)
-- [Useful Queries](#useful-queries)
-- [Verification Contract](#verification-contract)
+- [Run and Refresh](#run-and-refresh)
+- [Verify Current State Yourself](#verify-current-state-yourself)
 - [Maintenance](#maintenance)
 - [Troubleshooting](#troubleshooting)
-- [Related Guides](#related-guides)
+- [Definitions](#definitions)
 
-## Terminology
+## Terms Used Below
 
-- **Polaris Email:** the Wpromote delivery mechanism that places the exported
-  CSV snapshots in Cloud Storage. It describes how MIQ data arrives.
-- **Feed:** one supported source shape. This pipeline currently supports Meta
-  and TikTok feeds.
-- **Schema:** the required CSV column names that identify a feed. Filenames and
-  folder names do not identify feeds.
-- **Rolling snapshot:** a file containing the available history through its
-  newest source date, rather than only new rows since the previous file.
-- **Business date:** the delivery date stored inside a source row. The loader
-  uses the greatest valid business date in each file to choose the current
-  rolling snapshot.
-- **Mapping key:** feed, platform, campaign, and ad group together. That key
-  assigns a source row to one approved Prisma package.
-- **Natural row key:** feed, platform, date, campaign, ad group, and ad. It
-  represents one unique source-detail row and must not repeat.
-- **Coverage:** the minimum through maximum loaded date for one package. Polaris
-  Email takes precedence over modeled FPD only inside that interval.
-- **Grain:** what one output row represents. Polaris rows preserve package,
-  date, platform, campaign, ad group, and ad detail.
-- **Full replacement:** a successful production load replaces the entire prior
-  Polaris delivery table in one transaction; it does not append new rows.
+A **rolling snapshot** contains the available history through its newest business
+date, not only rows added since the previous file. The **grain**[^1] of a Polaris
+output row is package, date, platform, campaign, ad group, and ad. A successful
+load performs a full **rebuild**[^2] of the Polaris landing snapshot after every
+candidate row passes the contract[^3].
 
-## Pipeline Overview
+## Canonical and Protected Surfaces
+
+The [FPD pipeline guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/README_fpd-pipeline.md)
+owns project-level canonical status. For this workflow, use the surfaces below.
+
+| Responsibility | Current surface | Rule |
+|---|---|---|
+| Production entrypoint | [Polaris Email loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R) | Use `Rscript`; do not launch the `.R` file as a shell program. |
+| Read-only review | [Polaris Email preview](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_email_delivery.R) | Writes local evidence only. |
+| Published output | [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Use for Polaris source detail and reporting metrics. |
+| Refresh path | [Master-model refresh wrapper](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) | Required after an approved production load. |
+
+The source Cloud Storage prefix, the original and updated FPD landing tables, the
+Manual Package Editor, and production model tables are protected. This workflow
+may read them but must not rename, move, delete, patch, or directly edit them.
+Production replacement is allowed only through the guarded loader; model refresh
+is allowed only through the named builders or wrapper.
+
+## How the Data Arrives
 
 ```text
-Polaris Email Cloud Storage prefix
+Polaris Email Cloud Storage CSVs
   -> inspect every CSV header
-  -> identify Meta or TikTok schema
-  -> choose each feed's uniquely newest business-date snapshot
-  -> normalize and validate every source row
-  -> join the active feed/platform/campaign/ad-group mapping
-  -> upload and validate an isolated staging table
-  -> atomically replace landing.polaris_email_delivery_daily
-  -> refresh the package/date compatibility base and dependent tables
-  -> publish natural-detail rows in master_stg.data_model_v3
+  -> identify the Meta or TikTok schema
+  -> select each feed's uniquely newest source-date snapshot
+  -> normalize and validate source rows
+  -> map each row to one approved Prisma package
+  -> stage and atomically replace the Polaris landing snapshot
+  -> refresh the stable model and V3
+  -> verify live V3 fields, grain, precedence, and totals
 ```
 
-The preview follows the same discovery, schema, selection, normalization, and
-reconciliation logic but writes only local review files.
+Feed identity comes from the CSV columns. Filename, folder name, upload time,
+and object-list order are never feed or freshness evidence.
 
-## Canonical Files
-
-**What this means:** these are the supported files for this pipeline. No root-
-level or alternate Polaris copies are canonical.
-
-| Responsibility | Canonical file |
-|---|---|
-| Production loader | [load_polaris_email_delivery.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R) |
-| Shared schema, normalization, mapping, and reconciliation rules | [polaris_email_delivery_logic.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/polaris_email_delivery_logic.R) |
-| Read-only preview | [preview_polaris_email_delivery.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/preview_polaris_email_delivery.R) |
-| Logic tests | [test_polaris_email_delivery_logic.R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R) |
-| Mapping-table setup | [create_polaris_email_package_mapping.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/create_polaris_email_package_mapping.sql) |
-| Delivery-table setup | [create_polaris_email_delivery_daily.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/create_polaris_email_delivery_daily.sql) |
-| Package/date precedence | [stable base builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql) |
-| Natural-detail output | [V3 builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql) |
-| Historical deployment decision | [Polaris Email V3 MVP plan](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris-email-v3-mvp-plan.md) |
-
-## Protected Surfaces
-
-**What this means:** these objects contain source, user-owned, or production
-state. Use the named workflow instead of writing to them directly.
-
-| Surface | Protection rule |
-|---|---|
-| `gs://bkt-plrs-prd-data-imports-7nqd/data/client_id=C70545844/connection_id=11694/` | Read-only source prefix. Do not rename, move, overwrite, or delete vendor objects from this pipeline. |
-| [Polaris package mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | Change mappings only through reviewed mapping SQL or another explicitly approved mapping owner. |
-| [Polaris delivery snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | Replace only through the guarded loader. Direct append, delete, or manual editing bypasses its validation and transaction. |
-| Original and updated FPD landing tables | Read-only evidence for this workflow. Polaris precedence must not delete or rewrite them. |
-| Manual Package Editor tables and Sheet | User-owned override path. Polaris must not write to them or outrank valid manual edits. |
-| `master_stg.data_model` and `master_stg.data_model_v3` | Shared production outputs. Refresh with their canonical builders or wrapper; do not patch individual rows. |
-
-## Sources and Boundaries
-
-**What this means:** several sources describe the same packages, but each has a
-different responsibility. Similar subject matter does not make them interchangeable.
-
-| Source | Purpose and grain | Boundary |
-|---|---|---|
-| Polaris Email Cloud Storage CSVs | Rolling Meta or TikTok creative-level delivery snapshots | May feed only the guarded Polaris reader/loader. A path name is not a feed contract. |
-| [Package mapping table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | One active mapping per feed/platform/campaign/ad-group key | Assigns package identity only. It must not supply or alter delivery metrics. |
-| [Delivery landing table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | One package/date/platform/campaign/ad-group/ad source row | Full-snapshot source for the model. It is not a package/date rollup and must not be joined as though it were one. |
-| Original FPD landing | Partner/package/date with available placement and creative evidence | Remains the fallback outside Polaris coverage. It is suppressed in the model, not deleted, inside coverage. |
-| Updated FPD landing | Package/date revised spend and impressions | Remains the fallback outside Polaris coverage. It does not provide Polaris creative detail. |
-| Prisma planning data | Package identity, dates, metadata, and planned metrics | Supplies plan/context, not Polaris actual delivery. |
-| Manual Package Editor | Approved package/date corrections | Applies after source assembly and remains authoritative over Polaris metrics. |
-
-## Layer Responsibilities
-
-**What this means:** each stage owns one decision. Debug the first stage whose
-contract is wrong instead of patching a downstream output.
-
-| Stage | Responsibility | Does not own |
-|---|---|---|
-| Cloud Storage discovery | List every CSV under the approved client/connection prefix | Feed identity, package identity, or freshness by filename |
-| Schema inspection | Identify Meta or TikTok from required headers | Which rolling snapshot is current |
-| Snapshot selection | Choose one uniquely newest business-date file per feed | Package assignment or metric precedence |
-| Shared normalization logic | Parse dates/metrics, preserve raw values, build natural keys, and reconcile totals | Warehouse writes |
-| Active mapping table | Assign each feed/platform/campaign/ad-group key to one Prisma package | Delivery values or source-row validation |
-| Guarded production loader | Validate, stage, and atomically replace the delivery landing snapshot | Refreshing the master model |
-| Stable package/date base | Apply package-specific Polaris-versus-FPD coverage precedence | Natural creative-detail publication |
-| V3 builder | Publish source-detail rows, final metrics, lineage, and one planned carrier | Source ingestion or mapping maintenance |
-| Manual Package Editor | Apply approved package/date corrections after source assembly | Altering Polaris landing evidence |
-
-## How Files Are Selected
-
-**What this means:** feed identity comes from columns inside the CSV, and current
-snapshot identity comes from delivery dates inside the rows. Neither decision
-uses a filename, folder name, upload timestamp, or listing order.
-
-### Supported schemas
-
-| Feed | Required columns |
+| Feed | Required source columns |
 |---|---|
 | Meta | `campaign_name`, `adset_name`, `Platform`, `ad_name`, `date`, `Billable Spend`, `impressions`, `Link_click`, `video_view`, `Video View to 100%` |
 | TikTok | `Campaign Name`, `Ad Group Name`, `Ad Name`, `Date Start`, `Billable Spend`, `Impressions`, `Clicks (Destination)`, `Video Views`, `Video Views at 100%` |
 
-The loader removes a UTF-8 byte-order marker from the first header before
-classification. A file matching neither schema is unsupported. A file matching
-more than one supported schema is ambiguous.
+For each feed, the loader selects the single file with the greatest valid source
+date. Older matching files remain visible as `superseded_snapshot` evidence. The
+run stops before any warehouse write if a schema is unsupported or ambiguous, a
+feed is missing, a file has no valid source date, or two files tie for newest.
 
-### Current-snapshot rule
+## Source and Output Contract
 
-For each feed, the loader finds the greatest valid source date represented in
-each matching file. It selects the single file with the newest date and marks
-older files `superseded_snapshot` in the preview inventory.
+| Source or layer | Purpose and grain | Boundary |
+|---|---|---|
+| Polaris Email CSVs | Rolling Meta or TikTok ad-level delivery snapshots | May feed only the guarded reader and loader. Paths cannot identify a feed. |
+| [Package mapping](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_package_mapping&page=table) | One active package assignment per feed, platform, campaign, and ad-group key | Assigns package identity only; it must not supply delivery metrics. |
+| [Polaris landing snapshot](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | One package/date/platform/campaign/ad-group/ad row | Source QA and lineage surface; do not treat it as a package/date rollup. |
+| Original and updated FPD | Established package/date delivery evidence | Remains the fallback outside Polaris coverage and is never rewritten by Polaris. |
+| Prisma planning data | Package identity, dates, metadata, and planned metrics | Supplies plan context, not Polaris actual delivery. |
+| Manual Package Editor | Approved package/date corrections | Applies after source assembly and outranks source actuals. |
+| [Compatibility model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Package/date compatibility output | Preserves existing consumers but intentionally loses Polaris ad detail. |
+| [V3 model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Natural Polaris detail plus the other master-model sources | Current output for new work. |
 
-The run stops before mapping or upload when:
+Each layer owns one decision: discovery lists objects; schema inspection identifies
+feeds; snapshot selection chooses current files; normalization parses metrics and
+keys; the mapping table assigns packages; the loader validates and replaces
+landing; the stable model applies coverage precedence; V3 publishes source detail;
+the Manual Package Editor applies approved corrections. Debug the first broken
+contract rather than patching a later output.
 
-- Meta or TikTok is missing;
-- a CSV has an unsupported or ambiguous schema;
-- a supported file has no valid source date; or
-- two files for one feed tie for the newest source date.
+## How Rows Are Selected, Mapped, and Published
 
-Meta and TikTok are selected independently. Their newest dates may differ; that
-is visible evidence, not an automatic failure.
+The join key is the trimmed, case-insensitive combination of `source_feed`,
+`platform`, `campaign_name`, and `ad_group_name`. Every row must match exactly one
+active mapping. Platform alone is never enough to assign a package.
 
-## How Rows Are Mapped and Loaded
-
-**What this means:** recognizing a feed does not authorize a package assignment.
-Every source row must separately match one active warehouse mapping.
-
-### Approved mapping keys
-
-| Feed | Platform | Campaign | Ad group | Package |
+| Feed | Platform | Campaign | Ad group | Prisma package |
 |---|---|---|---|---|
 | Meta | Facebook | Awareness Campaign | ACR - Facebook | Facebook Awareness (`P3HF7QB`) |
 | Meta | Facebook | Awareness Campaign | Interests - Facebook | Facebook Awareness (`P3HF7QB`) |
@@ -201,219 +137,118 @@ Every source row must separately match one active warehouse mapping.
 | Meta | Instagram | Awareness Campaign | Interests - Instagram | Instagram (`P3HF7T8`) |
 | TikTok | TikTok | Purely Elizabeth - Awareness Q3 | Interests | TikTok (`P3HF88Q`) |
 
-Names are matched case-insensitively after trimming. The loader does not infer a
-package from platform alone and stops when a key is unmapped or maps to multiple
-active packages.
+The natural row key is feed, platform, date, campaign, ad group, and ad. After
+normalization, the loader requires every row to be valid, uniquely keyed, mapped,
+and reconciled to the parsed source totals. It then uploads a timestamped staging
+table, repeats the gates in BigQuery, and replaces production in one transaction.
+If a warehouse gate fails, production remains unchanged and the staging candidate
+is retained for investigation.
 
-### Replacement sequence
+## Output Fields and Precedence
 
-1. Normalize the two selected files without collapsing creative detail.
-2. Require every row to be mapped, valid, and unique at its natural key.
-3. Reconcile parsed and normalized row/metric totals exactly.
-4. Create a timestamped staging table with a deletion-safe description.
-5. Upload the candidate and repeat row-count, mapping, required-field, and
-   duplicate checks in BigQuery.
-6. In one transaction, delete the old production snapshot and insert the
-   validated staging rows.
-7. Delete the staging table after success. If warehouse validation fails, keep
-   it for investigation and leave production unchanged.
+Live V3 inspection on 2026-08-21 confirmed `polaris_email` rows at
+`package_date_platform_campaign_ad_group_ad` grain, sourced from MIQ with Meta and
+TikTok feeds and Facebook, Instagram, and TikTok platform values.
 
-## Output Grain and Field Meaning
+| Consumer need | Field to read | Meaning or warning |
+|---|---|---|
+| Polaris row filter | `qa_v3_source_detail_type` | `polaris_email` identifies these rows. |
+| Detail grain | `qa_v3_metric_grain` | `package_date_platform_campaign_ad_group_ad`. |
+| Package and date | `_package_id`, `_date` | Approved Prisma package and source business date. |
+| Platform | `polaris_platform` | Live Polaris platform field. Do not use `s_platform`; it is currently empty on Polaris rows. |
+| Campaign, ad group, ad | `polaris_campaign_name`, `polaris_ad_group_name`, `polaris_ad_name` | Source-detail names preserved for lineage. |
+| Placement identity | `_placement_id` | A synthetic SHA-256 hash[^4] of feed, platform, campaign, and ad group; it does not include the ad. |
+| Reporting actuals | `_spend`, `_impressions`, `_clicks`, `_video_views`, `_video_comps` | Canonical delivery metrics after precedence and manual-override rules. `_video_plays` is not populated by Polaris. |
+| Raw source evidence | `polaris_raw_*`, `polaris_source_object_uri`, `polaris_source_row_number` | Use to trace the normalized value back to its source row. |
+| Summable plan | `_planned_spend`, `_planned_impressions` | May be populated on at most one source row per package/date. |
+| Repeated plan context | `qa_v3_package_planned_*_doNotSum` | Reference only; never sum across detail rows. |
 
-**What this means:** one Polaris V3 row is one package, date, platform, campaign,
-ad group, and ad. Summing repeated package-level context would overstate totals.
-
-### Output objects
-
-| Object | Current role |
-|---|---|
-| [Polaris delivery landing](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=landing&t=polaris_email_delivery_daily&page=table) | Canonical normalized Polaris source snapshot at natural detail grain. Use it for source QA and lineage. |
-| [Master evidence model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Compatibility package/date view. It applies Polaris coverage precedence but intentionally aggregates source detail. |
-| [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) | Current production output for new work. Use it when Polaris platform, campaign, ad-group, ad, raw metric, or source-object lineage matters. |
-| Clustered advertiser support table | Stored compatibility support refreshed with V3 dependencies. Do not use it as the Polaris source of truth. |
-
-### Field contract
-
-| Field | Meaning and safe use |
-|---|---|
-| `qa_v3_source_detail_type` | Use `polaris_email` to isolate Polaris source rows. |
-| `qa_v3_metric_grain` | `package_date_platform_campaign_ad_group_ad` for Polaris rows. |
-| `_package_id`, `_date` | Approved Prisma package and source delivery date. |
-| `_placement_id` | SHA-256 identity from feed, platform, campaign, and ad group. It does not include the ad. |
-| `_placement_name` | Polaris ad-group name. |
-| `_creative_name` | Polaris ad name. |
-| `_spend`, `_impressions`, `_clicks` | Canonical reporting metrics after precedence and manual-override checks. |
-| `_video_views`, `_video_comps` | Polaris video views and 100-percent completions. Polaris does not populate `_video_plays`. |
-| `fpd_*` | FPD-compatible evidence fields used by the model's existing actuals logic. |
-| `polaris_*` | Raw Polaris lineage: partner, ingestion path, feed, platform, campaign, ad group, ad, object URI, row number, raw metric text, and load time. |
-| `_planned_spend`, `_planned_impressions` | Summable on at most one natural row per package/date. Do not fill or sum repeated plan context as delivery. |
-| `qa_v3_package_planned_*_doNotSum` | Repeated package-level context for reference only. Never sum it across source-detail rows. |
-
-## Precedence in the Master Model
-
-**What this means:** source selection happens twice—first among rolling Polaris
-files, then among modeled delivery paths for the same package and date.
-
-1. The landing table defines each mapped package's minimum and maximum loaded
-   Polaris dates.
-2. Inside that interval, original and updated FPD rows are excluded from modeled
-   actuals and Polaris supplies the FPD-compatible metrics.
-3. Outside that interval, the established original/updated FPD behavior remains.
-4. The underlying FPD landing rows are never deleted.
-5. A valid Manual Package Editor delivery override suppresses Polaris and other
-   source actuals for its package/date.
-6. Planned metrics are attached to only one ranked source row per package/date;
-   Polaris ranks before original FPD, updated FPD, and DCM for that carrier.
-
-## Run and Refresh
-
-**What this means:** a passing loader changes only the landing snapshot. The
-master-model refresh and downstream proof are separate required steps.
-
-Run commands from the `master_data_model` folder.
-
-### Read-only preview
-
-```bash
-Rscript model/branches/fpd/polaris/preview_polaris_email_delivery.R \
-  --output-dir /tmp/polaris-email-delivery-preview \
-  --compare-live-model
-```
-
-The output folder must be new or empty. The preview writes exact copies of the
-two selected source files, the complete source inventory, normalized rows,
-mapping review, source reconciliation, optional FPD overlap, and a readable run
-summary. It does not change cloud data.
-
-### Logic tests
-
-```bash
-Rscript model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R
-```
-
-### Production dry run
-
-```bash
-Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run
-```
-
-This reads Cloud Storage and the live mapping table but does not create, replace,
-update, or delete BigQuery tables.
-
-### Production snapshot replacement
-
-```bash
-Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R
-```
-
-This is a production write. Run it only after the dry-run evidence is reviewed
-and the replacement is explicitly approved.
-
-### Dependent master-model refresh
-
-After a successful production replacement, run the canonical wrapper:
-
-```bash
-/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh
-```
-
-The wrapper must finish successfully, reconcile the clustered support table,
-preserve `_advertiser` clustering, rebuild V3, and pass its visible-grain and
-planned-carrier checks before the new source snapshot is considered published.
-
-The two table-creation SQL files are bootstrap/schema tools, not daily refresh
-commands. They mutate BigQuery and require separate approval when used.
+Polaris replaces original and updated FPD actuals only between each mapped
+package's minimum and maximum loaded Polaris dates. Existing FPD remains available
+outside that interval and is never deleted. A valid Manual Package Editor override
+still outranks Polaris. Planned metrics attach to one ranked row per package/date,
+with Polaris ranked before the other automated actual sources.
 
 ## Known Gaps and Durable Warnings
 
-- Scheduling remains deferred. The supported production entrypoint is manual.
-- The mapping table owns only the approved campaign/ad-group keys. A new name in
-  either feed stops the load until its package ownership is reviewed.
-- Source identity is name-based because the exports do not provide durable
-  platform IDs. Do not replace the maintained mapping with generated name hashes.
-- The feed schemas are exact contracts. A vendor column rename is a source-
-  contract change and should fail visibly until reviewed.
-- Meta and TikTok can have different newest business dates. A successful load
-  means each feed had one uniquely newest snapshot, not that their dates match.
-- The Cloud Storage prefix and BigQuery dataset are in incompatible location
-  scopes for a direct external table; the guarded copy-and-load path is intentional.
+- Scheduling remains deferred; the production entrypoint is manual.
+- A new campaign or ad-group name stops the load until package ownership is reviewed.
+- The exports provide names rather than durable platform IDs, so the maintained
+  mapping cannot safely be replaced with generated name matches.
+- Meta and TikTok may have different newest source dates. That difference is visible
+  evidence, not an automatic failure.
 - Preview CSVs are local evidence, excluded from Git, and never production inputs.
-- Loader success does not prove that V3 or a dashboard is fresh. The dependent
-  refresh and live output queries below own that proof.
+- Loader success proves only the landing replacement. It does not prove that V3 or
+  a dashboard is fresh.
 
-## Useful Queries
+<details><summary>A vendor column rename stops the load before production changes</summary>
 
-### Current landing coverage and freshness
+The required columns are an exact source contract. Review a vendor schema change,
+update the tests and shared logic deliberately, and rerun the preview and dry run.
+Do not work around it by recognizing a filename.
+
+</details>
+
+<details><summary>Cloud Storage cannot be queried as a direct BigQuery external table here</summary>
+
+The source prefix and dataset use incompatible location scopes. The guarded
+copy-and-load path is intentional.
+
+</details>
+
+## Run and Refresh
+
+Run from `/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model`.
+
+| Work | Command | Expected result |
+|---|---|---|
+| Logic tests | `Rscript model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R` | Ends with `All Polaris Email delivery logic tests passed.` |
+| Read-only preview | `Rscript model/branches/fpd/polaris/preview_polaris_email_delivery.R --output-dir /tmp/polaris-email-delivery-preview --compare-live-model` | Completes without a warehouse write; inventory includes every CSV and exactly one selected file for each feed. The output folder must be new or empty. |
+| Production dry run | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run` | All selected rows validate, map uniquely, and reconcile; no BigQuery table is created or replaced. |
+| Approved production load | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R` | Reports terminal production success after staging and production validation. Requires explicit approval because it replaces the live snapshot. |
+| Dependent refresh | `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh` | Wrapper succeeds, reconciles the clustered table, preserves clustering, rebuilds V3, and passes visible-grain and planned-carrier checks. |
+
+The preview proves file selection and transformation behavior. The dry run proves
+the current source and mapping pass without writing. Neither proves production
+freshness. A production-load message without the dependent refresh also does not
+prove V3 freshness.
+
+## Verify Current State Yourself
+
+### Confirm the published Polaris field contract
 
 ```sql
 SELECT
-  package_id,
-  source_feed,
-  MIN(date) AS minimum_date,
-  MAX(date) AS maximum_date,
-  COUNT(*) AS source_rows,
-  MAX(loaded_at) AS loaded_at
-FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
-GROUP BY package_id, source_feed
-ORDER BY package_id, source_feed;
+  qa_v3_source_detail_type,
+  qa_v3_metric_grain,
+  ARRAY_AGG(DISTINCT polaris_source_feed IGNORE NULLS ORDER BY polaris_source_feed) AS feeds,
+  ARRAY_AGG(DISTINCT polaris_platform IGNORE NULLS ORDER BY polaris_platform) AS platforms,
+  ARRAY_AGG(DISTINCT polaris_partner IGNORE NULLS ORDER BY polaris_partner) AS partners
+FROM `looker-studio-pro-452620.master_stg.data_model_v3`
+WHERE qa_v3_source_detail_type = 'polaris_email'
+GROUP BY 1, 2;
 ```
 
-### Active mapping ownership
+**Expected result:** one row with source type `polaris_email`, grain
+`package_date_platform_campaign_ad_group_ad`, feeds `meta` and `tiktok`, platforms
+Facebook, Instagram, and TikTok, and partner MIQ.
+
+### Find conflicting active mappings
 
 ```sql
-SELECT
-  source_feed,
-  platform,
-  campaign_name,
-  ad_group_name,
-  ARRAY_AGG(package_id ORDER BY package_id) AS package_ids,
-  COUNT(*) AS active_mapping_rows
+SELECT source_feed, platform, campaign_name, ad_group_name, COUNT(*) AS mapping_rows
 FROM `looker-studio-pro-452620.landing.polaris_email_package_mapping`
 WHERE client_id = 'C70545844'
   AND connection_id = '11694'
   AND is_active
 GROUP BY 1, 2, 3, 4
-ORDER BY 1, 2, 3, 4;
+HAVING COUNT(*) != 1;
 ```
 
-Every row should have exactly one active mapping and one package ID.
+**Expected result:** no rows. Any result means the loader cannot assign that key
+to exactly one package.
 
-### V3 rows and landing-metric reconciliation
-
-```sql
-WITH landing AS (
-  SELECT
-    SUM(spend) AS spend,
-    SUM(impressions) AS impressions,
-    SUM(clicks) AS clicks,
-    SUM(video_views) AS video_views,
-    SUM(video_completions) AS video_completions
-  FROM `looker-studio-pro-452620.landing.polaris_email_delivery_daily`
-),
-v3 AS (
-  SELECT
-    SUM(_spend) AS spend,
-    SUM(_impressions) AS impressions,
-    SUM(_clicks) AS clicks,
-    SUM(_video_views) AS video_views,
-    SUM(_video_comps) AS video_completions
-  FROM `looker-studio-pro-452620.master_stg.data_model_v3`
-  WHERE qa_v3_source_detail_type = 'polaris_email'
-)
-SELECT
-  v3.spend - landing.spend AS spend_difference,
-  v3.impressions - landing.impressions AS impressions_difference,
-  v3.clicks - landing.clicks AS clicks_difference,
-  v3.video_views - landing.video_views AS video_views_difference,
-  v3.video_completions - landing.video_completions AS video_completions_difference
-FROM landing, v3;
-```
-
-All differences should be zero unless an approved manual override suppresses a
-Polaris package/date in V3. When a difference exists, check manual overrides
-before treating it as a source-load defect.
-
-### FPD exclusion inside Polaris coverage
+### Confirm older FPD is excluded inside Polaris coverage
 
 ```sql
 WITH coverage AS (
@@ -429,9 +264,9 @@ JOIN coverage AS c
 WHERE v.qa_v3_source_detail_type IN ('fpd_original', 'fpd_updated_package');
 ```
 
-The result should be zero.
+**Expected result:** `conflicting_fpd_rows = 0`.
 
-### One summable planned carrier per package/date
+### Confirm planned metrics remain summable
 
 ```sql
 SELECT _package_id, _date
@@ -440,65 +275,46 @@ GROUP BY _package_id, _date
 HAVING COUNTIF(_planned_spend IS NOT NULL OR _planned_impressions IS NOT NULL) > 1;
 ```
 
-The query should return no rows.
+**Expected result:** no rows. Any result would allow package/date plan totals to be
+counted more than once.
 
-## Verification Contract
+For source-code changes, the logic tests and current dry run own pre-write proof.
+For a production landing replacement, the loader's terminal success plus landing
+coverage and metric checks own proof. For stable-base or V3 behavior changes, SQL
+Change Guard owns the broad comparison. For publication, the refresh wrapper and
+the focused live queries above own proof.
 
-**What this means:** different changes require different proof. Reusing one
-successful owner is safer than stacking unrelated checks that appear thorough.
-
-| Work type | Proof owner | Minimum acceptable proof |
-|---|---|---|
-| Schema, selection, normalization, or mapping-code change | Logic tests plus the real `--dry-run` | Tests pass; live inventory identifies current files by schema/date; all rows map, validate, remain unique, and reconcile exactly. |
-| Preview-only change | Preview command and generated artifacts | Run completes in a new folder; inventory records every file and selection status; normalized and reconciliation artifacts agree. |
-| Production landing replacement | Guarded loader plus landing queries | Terminal production success; staging gate passes; production table has the intended load time, coverage, keys, and metrics. |
-| Stable-base or V3 behavior change | SQL Change Guard | Schema, package/date coverage, metrics, precedence, supplier, manual override, planned carrier, and unrelated-package checks pass. |
-| Published source refresh | Canonical dependent-refresh wrapper plus focused V3 queries | Wrapper succeeds; dependent tables are fresh; V3 reconciles to landing with approved manual exceptions. |
-
-The following are not completion proof by themselves:
-
-- `Rscript` exiting without a production-success message;
-- a dry run when production freshness is being claimed;
-- a passing schema check without mapping and row validation;
-- a successful landing load without dependent model refresh;
-- row counts without metric, grain, precedence, and lineage checks; or
-- a transfer or query job that has started but has not reached terminal success.
+Do not treat script startup, schema presence, row count alone, a dry run, or a
+started-but-incomplete BigQuery job as proof of publication.
 
 ## Maintenance
 
-- Run the logic tests before changing supported headers, dates, mapping keys, or
-  normalization rules.
-- Run `--dry-run` before every approved production replacement.
-- Review `source_inventory.csv` when the number of source objects changes; older
-  objects are expected, but unsupported schemas and newest-date ties are not.
-- Add mapping keys deliberately through the mapping owner; never infer a package
+- Run the logic tests and current dry run before every approved production load.
+- Review the preview inventory whenever the number of source objects changes.
+- Add mapping keys only after package ownership is confirmed; never infer them
   from platform alone.
-- Refresh the dependent master-model tables in the same session after a source
-  replacement.
-- Keep this guide, the FPD branch guide, and the architecture map aligned when
-  the stable source semantics, precedence, grain, or refresh path changes.
+- Refresh the dependent master-model tables in the same session after replacing
+  the landing snapshot.
+- Revise this guide when the source schema, mapping key, grain, precedence, field
+  contract, or refresh path changes.
 
 ## Troubleshooting
 
-**What this means:** begin with the failing stage and preserve the last good
-production snapshot. A nearby warning is not automatically the cause.
-
-| Symptom | Check | Why |
+| Symptom | Check first | Why |
 |---|---|---|
-| `permission denied` when launching the loader | Invoke it with `Rscript`; do not execute the `.R` file as a shell program. | The file is an R entrypoint, not a directly executable binary. |
-| `unsupported CSV object` | Compare the file headers with [Supported schemas](#supported-schemas). | Paths are intentionally ignored; an unsupported message means the columns do not match. |
-| `found no Meta-schema CSV` or `found no TikTok-schema CSV` | Inspect every CSV header and confirm the required columns still exist. | A renamed folder cannot cause this; a missing feed or schema change can. |
-| `tied for newest source date` | Compare the tied files' contents and determine which source snapshot is authoritative. | Upload order and filenames are not safe tie-breakers. |
-| `unmapped row(s)` | Group the rejected rows by feed, platform, campaign, and ad group; compare with the active mapping table. | Package assignment requires the full maintained mapping key. |
-| `duplicate natural key` | Compare feed, platform, date, campaign, ad group, and ad across the selected files. | Loading both copies would double-count source delivery. |
-| Warehouse validation failed | Inspect the retained staging table named in the error. | Production remains unchanged; the staging table is the exact failed candidate. |
-| Landing changed but V3 did not | Run the dependent-refresh wrapper and inspect its terminal result. | The loader does not rebuild V3. |
-| V3 is lower than landing | Check Manual Package Editor overlaps before investigating load loss. | Valid manual actuals intentionally suppress source metrics. |
-| Package is missing outside Polaris dates | Trace original and updated FPD separately. | Polaris owns only the package's loaded minimum-to-maximum interval. |
+| `permission denied` when launching the loader | Run it with `Rscript`. | The file is an R entrypoint, not a shell executable. |
+| `unsupported CSV object` | Compare the CSV headers with the required schemas above. | Path names are intentionally ignored. |
+| Missing Meta or TikTok schema | Inspect every CSV header and its source-date column. | A missing feed or vendor schema change can cause this; folder names cannot. |
+| Newest-date tie | Compare the tied snapshots and identify the authoritative export. | Filename and upload order are unsafe tie-breakers. |
+| Unmapped rows | Compare the full feed/platform/campaign/ad-group key with active mappings. | Package assignment requires all four values. |
+| Duplicate natural key | Compare feed, platform, date, campaign, ad group, and ad. | Loading both copies would double-count delivery. |
+| Warehouse validation failed | Inspect the retained staging table named in the error. | It preserves the exact failed candidate while production remains unchanged. |
+| Landing changed but V3 did not | Run the dependent refresh and inspect its terminal result. | The loader does not rebuild V3. |
+| V3 metrics are lower than landing | Check Manual Package Editor overlaps. | Valid manual corrections intentionally suppress source actuals. |
 
-## Related Guides
+## Definitions
 
-- [FPD pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/README_fpd-pipeline.md)
-- [Master Data Model Pipeline v2](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README_v2.md)
-- [Polaris Email V3 MVP plan](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris-email-v3-mvp-plan.md)
-- [Master-model architecture map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html)
+[^1]: **Grain:** determines what one row represents and therefore which fields may be safely grouped or summed.
+[^2]: **Rebuild:** replaces the complete prior snapshot; anything absent from the validated candidate will not remain in the rebuilt table.
+[^3]: **Contract:** defines the required inputs, keys, outputs, and failure conditions between stages; breaking it must stop the workflow rather than silently alter data.
+[^4]: **Hash:** produces a repeatable fixed-length identity from source values; changing any included value creates a different placement ID.
