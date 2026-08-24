@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-24
+
+**All DXC advertiser variants now report under one DXC group** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/mappings/create_advertiser_mapping.sql)) — 🟢 **Verified and committed**<br>The [master data model](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now resolves both the `DXC` short code and `DXC Technology Services` source name to `DXC`. The compatibility view, clustered support table, and V3 model were refreshed and each now has zero DXC-coded rows outside the canonical group; schema, row identity, coverage, and all protected delivery and planned metrics remained unchanged.
+
+### Pending Next Actions
+
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
+- **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-08-21
 
 **Basis UTM mappings now use the August partner corrections** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/essential/util__basis__utm_pivot_longer_loop.r)) — 🟢 **Verified and committed**<br>The [Basis UTM utility](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/basis_utms/README.md) now preserves the August 20 workbook as a separate source and promotes its newest complete URLs without deleting historical-only mappings. The production lookup and MFT endpoint were refreshed successfully, and the affected delivery records match the approved values with reporting totals unchanged. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/CHANGELOG_EXTENDED.md)

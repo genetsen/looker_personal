@@ -25,6 +25,7 @@ SELECT
 FROM UNNEST([
   STRUCT('advertiser_short_name' AS match_field, 'ADSK' AS match_value, 'Autodesk, Inc' AS prisma_advertiser_name, 'Autodesk' AS standardized_advertiser_name, 'Approved canonical advertiser.' AS mapping_note),
   STRUCT('advertiser_short_name', 'APO', 'Apollo Global Management', 'Apollo', 'Approved canonical advertiser.'),
+  STRUCT('advertiser_short_name', 'DXC', 'DXC Technology Services', 'DXC', 'Approved canonical advertiser.'),
   STRUCT('advertiser_short_name', 'FMUS', 'Forevermark US', 'A Diamond Is Forever', 'Approved canonical advertiser.'),
   STRUCT('advertiser_short_name', 'GEA', 'GE AEROSPACE', 'GE Aerospace', 'Approved canonical advertiser.'),
   STRUCT('advertiser_short_name', 'ICE', 'Intercontinental Exchange', 'ICE', 'Approved canonical advertiser.'),
@@ -48,6 +49,7 @@ FROM UNNEST([
   STRUCT('advertiser_name', 'Autodesk, Inc', 'Autodesk, Inc', 'Autodesk', 'Prisma source name.'),
   STRUCT('advertiser_name', 'ADSK', 'Autodesk, Inc', 'Autodesk', 'Existing source alias.'),
   STRUCT('advertiser_name', 'Cumberland Packing Corp', 'Cumberland Packing Corp', 'Cumberland Packing', 'Prisma source name.'),
+  STRUCT('advertiser_name', 'DXC Technology Services', 'DXC Technology Services', 'DXC', 'Prisma source name.'),
   STRUCT('advertiser_name', 'GE AEROSPACE', 'GE AEROSPACE', 'GE Aerospace', 'Prisma source name.'),
   STRUCT('advertiser_name', 'GEA', 'GE AEROSPACE', 'GE Aerospace', 'Existing source alias.'),
   STRUCT('advertiser_name', 'Highlights', 'Highlights', 'Highlights', 'Existing non-Prisma advertiser.'),
