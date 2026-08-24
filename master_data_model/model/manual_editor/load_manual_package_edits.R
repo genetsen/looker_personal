@@ -129,13 +129,34 @@ auth_manual_editor <- function() {
     stop("Missing account-specific Google ADC file: ", auth_file, call. = FALSE)
   }
 
-  token <- gargle::credentials_app_default(
-    scopes = GOOGLE_AUTH_SCOPES,
-    path = auth_file
+  token <- tryCatch(
+    gargle::credentials_app_default(
+      scopes = GOOGLE_AUTH_SCOPES,
+      path = auth_file
+    ),
+    error = function(auth_error) {
+      cat(
+        "Account-specific ADC was unavailable; trying cached service tokens. Detail: ",
+        conditionMessage(auth_error),
+        "\n",
+        sep = ""
+      )
+      NULL
+    }
   )
-  gs4_auth(token = token)
-  drive_auth(token = token)
-  bq_auth(token = token)
+
+  if (is.null(token)) {
+    gs4_auth(email = AUTH_EMAIL, cache = TRUE)
+    drive_auth(email = AUTH_EMAIL, cache = TRUE)
+    bq_auth(email = AUTH_EMAIL, cache = TRUE)
+    auth_route <- paste0("cached Sheets, Drive, and BigQuery tokens for ", AUTH_EMAIL)
+  } else {
+    gs4_auth(token = token)
+    drive_auth(token = token)
+    bq_auth(token = token)
+    auth_route <- paste0("account-specific ADC at ", auth_file)
+  }
+
   sheets_request <- googlesheets4:::gs4_token()
   sheets_access_token <- sheets_request$auth_token$credentials$access_token
   if (!is.null(sheets_access_token) && nzchar(sheets_access_token)) {
@@ -144,7 +165,7 @@ auth_manual_editor <- function() {
     # credential store to mint a second token.
     Sys.setenv(MASTER_MANUAL_EDIT_ACCESS_TOKEN = sheets_access_token)
   }
-  cat("Authenticated with account-specific ADC: ", auth_file, "\n", sep = "")
+  cat("Authenticated with ", auth_route, "\n", sep = "")
   invisible(token)
 }
 
