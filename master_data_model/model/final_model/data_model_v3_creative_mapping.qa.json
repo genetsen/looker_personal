@@ -1,0 +1,153 @@
+{
+  "keys": [
+    "qa_cm360_record_key"
+  ],
+  "metrics": [
+    "_spend",
+    "_impressions",
+    "_clicks",
+    "_video_plays",
+    "_video_views",
+    "_video_comps",
+    "_planned_spend",
+    "_planned_impressions"
+  ],
+  "derived_metrics": [],
+  "comparison_dimensions": [
+    "_advertiser",
+    "qa_v3_source_detail_type"
+  ],
+  "high_risk_metrics": [
+    "_spend",
+    "_impressions",
+    "_clicks",
+    "_video_plays",
+    "_video_views",
+    "_video_comps",
+    "_planned_spend",
+    "_planned_impressions"
+  ],
+  "high_risk_dimensions": [
+    "_advertiser",
+    "initiative",
+    "_creative_name",
+    "qa_v3_source_detail_type"
+  ],
+  "allowed_deltas": {
+    "row_count": {
+      "max_abs_delta": 0,
+      "max_abs_pct": 0
+    },
+    "_spend": {
+      "max_abs_delta": 0.001
+    },
+    "_impressions": {
+      "max_abs_delta": 0.0001
+    },
+    "_clicks": {
+      "max_abs_delta": 0
+    },
+    "_video_plays": {
+      "max_abs_delta": 0
+    },
+    "_video_views": {
+      "max_abs_delta": 0
+    },
+    "_video_comps": {
+      "max_abs_delta": 0
+    },
+    "_planned_spend": {
+      "max_abs_delta": 0.001
+    },
+    "_planned_impressions": {
+      "max_abs_delta": 0.001
+    },
+    "distinct__advertiser": {
+      "max_abs_delta": 0
+    },
+    "distinct_qa_v3_source_detail_type": {
+      "max_abs_delta": 0
+    }
+  },
+  "key_overlap_tolerance": {
+    "max_baseline_only": 0,
+    "max_candidate_only": 0
+  },
+  "custom_checks": [
+    {
+      "name": "full_table_row_count_is_unchanged",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT ABS((SELECT COUNT(*) FROM {table}) - (SELECT COUNT(*) FROM {baseline_table})) AS value",
+      "equals": 0
+    },
+    {
+      "name": "all_requested_metric_tuples_match_exactly",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(*) AS value FROM ((SELECT qa_cm360_record_key, _spend, _impressions, _clicks, _video_plays, _video_views, _video_comps, _planned_spend, _planned_impressions FROM {table} EXCEPT DISTINCT SELECT qa_cm360_record_key, _spend, _impressions, _clicks, _video_plays, _video_views, _video_comps, _planned_spend, _planned_impressions FROM {baseline_table}) UNION ALL (SELECT qa_cm360_record_key, _spend, _impressions, _clicks, _video_plays, _video_views, _video_comps, _planned_spend, _planned_impressions FROM {baseline_table} EXCEPT DISTINCT SELECT qa_cm360_record_key, _spend, _impressions, _clicks, _video_plays, _video_views, _video_comps, _planned_spend, _planned_impressions FROM {table}))",
+      "equals": 0
+    },
+    {
+      "name": "raw_name_is_preserved",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(*) AS value FROM ((SELECT qa_cm360_record_key, _creative_name_raw FROM {table} EXCEPT DISTINCT SELECT qa_cm360_record_key, _creative_name_raw FROM {baseline_table}) UNION ALL (SELECT qa_cm360_record_key, _creative_name_raw FROM {baseline_table} EXCEPT DISTINCT SELECT qa_cm360_record_key, _creative_name_raw FROM {table}))",
+      "equals": 0
+    },
+    {
+      "name": "non_pe_names_unchanged",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(_advertiser != 'Purely Elizabeth' AND _creative_name IS DISTINCT FROM _creative_name_raw) AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "quan_mapping_is_exact",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(_advertiser = 'Purely Elizabeth' AND _supplier_code = 'QUAN' AND initiative = 'Columbus Circle DOOH' AND _creative_name IS DISTINCT FROM 'Protein Maddness') AS value FROM {table}",
+      "equals": 0
+    },
+    {
+      "name": "quan_mapping_has_rows",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(_advertiser = 'Purely Elizabeth' AND _supplier_code = 'QUAN' AND initiative = 'Columbus Circle DOOH' AND _creative_name = 'Protein Maddness') AS value FROM {table}",
+      "expected_min": 1
+    },
+    {
+      "name": "mapping_changes_at_least_one_name",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(_creative_name IS DISTINCT FROM _creative_name_raw) AS value FROM {table}",
+      "expected_min": 1
+    },
+    {
+      "name": "unmapped_pe_names_retain_raw_value",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF(candidate._creative_name IS DISTINCT FROM candidate._creative_name_raw) AS value FROM {table} AS candidate WHERE LOWER(TRIM(candidate._advertiser)) = 'purely elizabeth' AND NOT EXISTS (SELECT 1 FROM `looker-studio-pro-452620.master_stg.creative_mapping` AS mapping WHERE LOWER(TRIM(mapping.advertiser)) = LOWER(TRIM(candidate._advertiser)) AND ((mapping.match_scope = 'tactic_creative' AND LOWER(TRIM(mapping.initiative)) = LOWER(TRIM(candidate.initiative)) AND NULLIF(LOWER(TRIM(mapping.source_creative_name)), '') IS NOT DISTINCT FROM NULLIF(LOWER(TRIM(candidate._creative_name_raw)), '')) OR (mapping.match_scope = 'creative' AND NULLIF(LOWER(TRIM(mapping.source_creative_name)), '') IS NOT DISTINCT FROM NULLIF(LOWER(TRIM(candidate._creative_name_raw)), ''))))",
+      "equals": 0
+    },
+    {
+      "name": "tactic_specific_names_remain_isolated",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNTIF((initiative = 'YouTubeInStream15' AND _creative_name IS DISTINCT FROM 'Protein Madness 15') OR (initiative = 'YouTubeInStream30' AND _creative_name IS DISTINCT FROM 'Protein Maddness 30')) AS value FROM {table} WHERE LOWER(TRIM(_advertiser)) = 'purely elizabeth' AND _creative_name_raw = 'ProteinGranola_1 x 1' AND initiative IN ('YouTubeInStream15', 'YouTubeInStream30')",
+      "equals": 0
+    },
+    {
+      "name": "tactic_isolation_example_has_both_sides",
+      "severity": "critical",
+      "scope": "candidate",
+      "sql": "SELECT COUNT(DISTINCT initiative) AS value FROM {table} WHERE LOWER(TRIM(_advertiser)) = 'purely elizabeth' AND _creative_name_raw = 'ProteinGranola_1 x 1' AND initiative IN ('YouTubeInStream15', 'YouTubeInStream30')",
+      "equals": 2
+    }
+  ],
+  "downstream_objects": [
+    "looker-studio-pro-452620.master_ext_west.data_model",
+    "looker-studio-pro-452620.master_ext_west.mart_data_model_purelyElizabeth"
+  ],
+  "downstream_checks": []
+}

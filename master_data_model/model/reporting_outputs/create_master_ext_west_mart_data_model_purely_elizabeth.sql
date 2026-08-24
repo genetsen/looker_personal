@@ -52,6 +52,7 @@ SELECT
   `_video_plays`,
   `_video_views`,
   `_video_comps`,
+  `_creative_name_raw`,
   `_creative_name`,
   p_planned_amount_doNotSum,
   p_planned_impressions_doNotSum,

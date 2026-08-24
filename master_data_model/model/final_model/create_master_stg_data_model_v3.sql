@@ -834,9 +834,45 @@ CREATE TEMP TABLE v3_delivery_base AS
 SELECT *
 FROM `looker-studio-pro-452620.master_stg.data_model_v3`;
 
+-- A duplicated mapping key would multiply delivery rows during the final join.
+-- Stop instead of choosing an arbitrary friendly name or changing metrics.
+ASSERT (
+  SELECT COUNT(*) = COUNT(DISTINCT TO_JSON_STRING(STRUCT(
+    LOWER(TRIM(advertiser)) AS advertiser_key,
+    match_scope,
+    IF(
+      match_scope = 'creative',
+      '<not_applicable>',
+      COALESCE(LOWER(TRIM(initiative)), '<null>')
+    ) AS initiative_key,
+    COALESCE(LOWER(TRIM(source_creative_name)), '<null>') AS creative_key
+  )))
+  FROM `looker-studio-pro-452620.master_stg.creative_mapping`
+) AS 'master_stg.creative_mapping contains duplicate match keys';
+
+ASSERT (
+  SELECT COUNTIF(
+    match_scope NOT IN ('creative', 'tactic_creative')
+    OR NULLIF(TRIM(advertiser), '') IS NULL
+    OR NULLIF(TRIM(mapped_creative_name), '') IS NULL
+    OR (match_scope = 'tactic_creative' AND NULLIF(TRIM(initiative), '') IS NULL)
+    OR (match_scope = 'creative' AND NULLIF(TRIM(source_creative_name), '') IS NULL)
+  ) = 0
+  FROM `looker-studio-pro-452620.master_stg.creative_mapping`
+) AS 'master_stg.creative_mapping contains invalid active mappings';
+
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.master_stg.data_model_v3`
 CLUSTER BY _advertiser AS
-WITH cm360_by_detail AS (
+WITH creative_mapping AS (
+  SELECT
+    advertiser,
+    match_scope,
+    initiative,
+    source_creative_name,
+    mapped_creative_name
+  FROM `looker-studio-pro-452620.master_stg.creative_mapping`
+),
+cm360_by_detail AS (
   SELECT
     model_detail_key,
     ANY_VALUE(date) AS conversion_date,
@@ -912,6 +948,7 @@ base_with_direct AS (
       IF(c.model_detail_key IS NOT NULL, CAST(NULL AS STRING), b.conv_source_sheet_tab) AS conv_source_sheet_tab,
       IF(c.model_detail_key IS NOT NULL, CAST(NULL AS STRING), b.conv_source_sheet_gid) AS conv_source_sheet_gid
     ),
+    b._creative_name AS _creative_name_raw,
     c.advertiser AS conv_advertiser,
     c.conv_activity_groups,
     c.conv_activities,
@@ -988,6 +1025,7 @@ conversion_only_rows AS (
       CAST(NULL AS STRING) AS conv_source_sheet_tab,
       CAST(NULL AS STRING) AS conv_source_sheet_gid
     ),
+    c.creative AS _creative_name_raw,
     c.advertiser AS conv_advertiser,
     c.conv_activity_groups,
     c.conv_activities,
@@ -1014,11 +1052,34 @@ conversion_only_rows AS (
   FROM cm360_ready AS c
   LEFT JOIN v3_delivery_base AS b ON FALSE
   WHERE c.conv_model_detail_join_status != 'matched_unique'
+),
+conversion_enriched_rows AS (
+  SELECT * FROM base_with_direct
+  UNION ALL
+  SELECT * FROM conversion_only_rows
 )
--- Direct CM360 source values are joined only at the approved delivery detail grain.
-SELECT * FROM base_with_direct
-UNION ALL
-SELECT * FROM conversion_only_rows;
+-- Direct CM360 values join on the raw creative first. Friendly-name mapping is
+-- the last step so it cannot change conversion keys or source-level metrics.
+SELECT
+  r.* REPLACE (
+    COALESCE(
+      tactic_map.mapped_creative_name,
+      creative_map.mapped_creative_name,
+      r._creative_name_raw
+    ) AS _creative_name
+  )
+FROM conversion_enriched_rows AS r
+LEFT JOIN creative_mapping AS tactic_map
+  ON tactic_map.match_scope = 'tactic_creative'
+ AND LOWER(TRIM(r._advertiser)) = LOWER(TRIM(tactic_map.advertiser))
+ AND LOWER(TRIM(r.initiative)) = LOWER(TRIM(tactic_map.initiative))
+ AND NULLIF(LOWER(TRIM(r._creative_name_raw)), '') IS NOT DISTINCT FROM
+     NULLIF(LOWER(TRIM(tactic_map.source_creative_name)), '')
+LEFT JOIN creative_mapping AS creative_map
+  ON creative_map.match_scope = 'creative'
+ AND LOWER(TRIM(r._advertiser)) = LOWER(TRIM(creative_map.advertiser))
+ AND NULLIF(LOWER(TRIM(r._creative_name_raw)), '') IS NOT DISTINCT FROM
+     NULLIF(LOWER(TRIM(creative_map.source_creative_name)), '');
 
 ALTER TABLE `looker-studio-pro-452620.master_stg.data_model_v3`
 SET OPTIONS (
