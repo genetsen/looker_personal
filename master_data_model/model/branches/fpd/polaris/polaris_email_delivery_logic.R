@@ -569,6 +569,134 @@
       )
     }
 
+  # ? Format large terminal values compactly while retaining readable precision
+    format_polaris_compact_value <- function(value, currency = FALSE) {
+      value <- as.numeric(value)
+      if (length(value) != 1L || is.na(value)) return("—")
+
+      absolute_value <- abs(value)
+      sign_text <- if (value < 0) "-" else ""
+      currency_text <- if (currency) "$" else ""
+      if (absolute_value >= 1000000) {
+        digits <- 2L
+        number_text <- sprintf(paste0("%.", digits, "fM"), absolute_value / 1000000)
+      } else if (absolute_value >= 1000) {
+        digits <- if (currency) 1L else if (absolute_value >= 100000) 0L else 1L
+        number_text <- sprintf(paste0("%.", digits, "fK"), absolute_value / 1000)
+      } else if (currency) {
+        number_text <- sprintf("%.2f", absolute_value)
+      } else {
+        number_text <- format(round(absolute_value), big.mark = ",", scientific = FALSE, trim = TRUE)
+      }
+      paste0(sign_text, currency_text, number_text)
+    }
+
+  # ? Add an explicit sign to the compact net change printed after each total
+    format_polaris_compact_change <- function(value, currency = FALSE) {
+      value <- as.numeric(value)
+      if (length(value) != 1L || is.na(value)) return("—")
+      formatted <- format_polaris_compact_value(value, currency = currency)
+      if (value > 0) paste0("+", formatted) else formatted
+    }
+
+  # ? Render one friendly month-day range without exposing internal date fields
+    format_polaris_date_range <- function(start_date, end_date) {
+      start_date <- as.Date(start_date)
+      end_date <- as.Date(end_date)
+      if (is.na(start_date) || is.na(end_date)) return("—")
+      format_one <- function(value) {
+        paste(format(value, "%b"), as.integer(format(value, "%d")))
+      }
+      if (format(start_date, "%Y") == format(end_date, "%Y")) {
+        paste0(format_one(start_date), "–", format_one(end_date))
+      } else {
+        paste0(format_one(start_date), ", ", format(start_date, "%Y"), "–",
+          format_one(end_date), ", ", format(end_date, "%Y"))
+      }
+    }
+
+  # ? Compare package coverage and totals before and after one production upsert
+    build_polaris_production_comparison <- function(before_summary, after_summary) {
+      before_summary <- as.data.frame(before_summary, stringsAsFactors = FALSE)
+      after_summary <- as.data.frame(after_summary, stringsAsFactors = FALSE)
+      required <- c(
+        "package_id", "package_friendly_label", "record_count", "start_date",
+        "end_date", "spend", "impressions"
+      )
+      if (!all(required %in% names(before_summary)) || !all(required %in% names(after_summary))) {
+        stop("Polaris production summaries do not have the required comparison fields", call. = FALSE)
+      }
+
+      comparison <- merge(
+        before_summary,
+        after_summary,
+        by = "package_id",
+        all = TRUE,
+        suffixes = c("_before", "_after"),
+        sort = FALSE
+      )
+      comparison$package_friendly_label <- ifelse(
+        !is.na(comparison$package_friendly_label_after),
+        comparison$package_friendly_label_after,
+        comparison$package_friendly_label_before
+      )
+      for (field in c("record_count", "spend", "impressions")) {
+        before_field <- paste0(field, "_before")
+        after_field <- paste0(field, "_after")
+        comparison[[before_field]][is.na(comparison[[before_field]])] <- 0
+        comparison[[after_field]][is.na(comparison[[after_field]])] <- 0
+        comparison[[paste0(field, "_change")]] <-
+          comparison[[after_field]] - comparison[[before_field]]
+      }
+      comparison <- comparison[order(comparison$package_friendly_label), , drop = FALSE]
+      rownames(comparison) <- NULL
+      comparison
+    }
+
+  # ? Build aligned spend and impression lines for the concise terminal summary
+    render_polaris_production_totals <- function(comparison) {
+      comparison <- as.data.frame(comparison, stringsAsFactors = FALSE)
+      render_row <- function(package_name, spend_before, spend_after, impressions_before,
+                             impressions_after) {
+        spend_text <- sprintf(
+          "%s → %s (%s)",
+          format_polaris_compact_value(spend_before, currency = TRUE),
+          format_polaris_compact_value(spend_after, currency = TRUE),
+          format_polaris_compact_change(spend_after - spend_before, currency = TRUE)
+        )
+        impressions_text <- sprintf(
+          "%s → %s (%s)",
+          format_polaris_compact_value(impressions_before),
+          format_polaris_compact_value(impressions_after),
+          format_polaris_compact_change(impressions_after - impressions_before)
+        )
+        sprintf("  %-22s %-29s %s", package_name, spend_text, impressions_text)
+      }
+
+      package_lines <- vapply(seq_len(nrow(comparison)), function(index) {
+        render_row(
+          comparison$package_friendly_label[[index]],
+          comparison$spend_before[[index]],
+          comparison$spend_after[[index]],
+          comparison$impressions_before[[index]],
+          comparison$impressions_after[[index]]
+        )
+      }, character(1))
+      total_line <- render_row(
+        "All packages",
+        sum(comparison$spend_before),
+        sum(comparison$spend_after),
+        sum(comparison$impressions_before),
+        sum(comparison$impressions_after)
+      )
+      c(
+        "  Package                Spend                         Impressions",
+        package_lines,
+        paste0("  ", strrep("─", 76)),
+        total_line
+      )
+    }
+
   # ? Convert daily dates to the established Sunday FPD week-start boundary
     polaris_week_start <- function(date) {
       date <- as.Date(date)

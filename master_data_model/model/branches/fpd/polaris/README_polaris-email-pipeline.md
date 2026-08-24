@@ -8,10 +8,11 @@ source_tables:
   - looker-studio-pro-452620.landing.polaris_email_delivery_daily
 refresh: universal runner jobs 12 and 20, or direct loader followed by the refresh wrapper
 loader_script: load_polaris_email_delivery.R
-verified: 2026-08-21
+verified: 2026-08-24
 verified_against:
   - universal runner jobs 12 and 20 with a new Meta object
-  - load_polaris_email_delivery.R --dry-run
+  - runner-owned Polaris wrapper --dry-run with no new source files
+  - in-memory August 24 terminal-report regression fixture
   - preview_polaris_email_delivery.R
   - master_stg.data_model_v3 live schema and Polaris field values
   - create_master_stg_data_model.sql
@@ -135,16 +136,20 @@ Run from the `master_data_model` folder.
 | Step | Command | Pass condition |
 |---|---|---|
 | One-time setup | Run `create_polaris_email_source_state.sql` in BigQuery | State contains one current row for Meta and TikTok. Requires explicit approval. |
-| Tests | `Rscript model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R` | Ends with `All Polaris Email delivery logic tests passed.` |
+| Tests | `Rscript --no-init-file model/branches/fpd/polaris/tests/test_polaris_email_delivery_logic.R` | Ends with `All Polaris Email delivery logic tests passed.` and proves the reader-facing report against an in-memory fixture. |
 | Preview | `Rscript model/branches/fpd/polaris/preview_polaris_email_delivery.R --output-dir /tmp/polaris-email-delivery-preview --compare-live-model` | Selects one file per feed and writes local evidence only. |
-| Dry run | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run` | Reads headers only for new candidates, downloads selected objects, and validates without table changes. |
-| Approved direct load | `Rscript model/branches/fpd/polaris/load_polaris_email_delivery.R` | Replaces only changed feeds and advances their state. Requires explicit approval. |
+| Dry run | `Rscript --no-init-file model/branches/fpd/polaris/load_polaris_email_delivery.R --dry-run` | Reads headers only for new candidates, downloads selected objects, and validates without table changes or personal R startup output. |
+| Approved direct load | `Rscript --no-init-file model/branches/fpd/polaris/load_polaris_email_delivery.R` | Replaces only matching natural rows, appends new rows, advances source state, and prints the exact ingested objects plus package-level production changes. Requires explicit approval. |
 | Runner load and publish | `Rscript /Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/universal_script_runner.R --12 --20` | Runs the loader first, then passes the clustered/V3 checks. |
 
 Tests plus the live dry run prove source-code changes before writing. The loader's
-terminal success proves the landing upsert. The refresh wrapper plus the queries
-below prove publication. Script startup, schema presence, row count alone, a dry
-run, or a started BigQuery job do not prove publication.
+terminal success names every ingested Cloud Storage object, its incoming date range,
+rows replaced and added, package coverage before and after, source ad-group assignment,
+and compact before/after/change values for production spend and impressions. The
+refresh wrapper plus the queries below prove publication. Script startup, schema
+presence, row count alone, a dry run, or a started BigQuery job do not prove
+publication. A no-new-file dry run also cannot prove the complete production report;
+that proof requires a genuinely new source object.
 
 Maintenance is limited to four habits: test and dry-run before loading; review
 new-object failures; add mappings only after package ownership is confirmed; and

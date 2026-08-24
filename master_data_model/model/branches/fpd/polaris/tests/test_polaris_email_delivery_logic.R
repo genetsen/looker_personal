@@ -25,6 +25,24 @@ source(logic_path)
       cat("PASS:", label, "\n")
     }
 
+  # ? Load one top-level function without invoking the executable loader entrypoint
+    load_loader_definition <- function(loader_path, definition_name) {
+      loader_expressions <- parse(loader_path)
+      matching_expression <- loader_expressions[vapply(
+        loader_expressions,
+        function(expression) {
+          is.call(expression) &&
+            identical(as.character(expression[[1L]]), "<-") &&
+            identical(as.character(expression[[2L]]), definition_name)
+        },
+        logical(1)
+      )]
+      if (length(matching_expression) != 1L) {
+        stop(paste("Could not load loader definition:", definition_name), call. = FALSE)
+      }
+      eval(matching_expression[[1L]], envir = .GlobalEnv)
+    }
+
 
 # * SECTION [2]: SOURCE SCHEMAS AND MAPPINGS
 
@@ -408,12 +426,113 @@ source(logic_path)
       "package-specific snapshots create only real comparison pairs"
     )
 
-# * SECTION [7]: PRODUCTION UPSERT CONTRACT
+# * SECTION [7]: READER-FACING RUN SUMMARY
+
+  # Description: Lock the approved date, rounding, comparison, and alignment behavior.
+
+  # ? The real August 24 package totals render as the approved compact comparison
+    before_summary <- data.frame(
+      package_id = c("P3HF7QB", "P3HF7T8", "P3HF88Q"),
+      package_friendly_label = c("Facebook Awareness", "Instagram", "TikTok"),
+      record_count = c(482L, 429L, 174L),
+      start_date = as.Date(c("2026-07-20", "2026-07-25", "2026-07-20")),
+      end_date = as.Date(c("2026-08-20", "2026-08-20", "2026-08-17")),
+      spend = c(21582.0538, 23656.8735, 40514.6361),
+      impressions = c(6010484, 4682870, 8885325),
+      stringsAsFactors = FALSE
+    )
+    after_summary <- data.frame(
+      package_id = c("P3HF7QB", "P3HF7T8", "P3HF88Q"),
+      package_friendly_label = c("Facebook Awareness", "Instagram", "TikTok"),
+      record_count = c(526L, 477L, 210L),
+      start_date = as.Date(c("2026-07-20", "2026-07-25", "2026-07-20")),
+      end_date = as.Date(c("2026-08-23", "2026-08-23", "2026-08-23")),
+      spend = c(23353.0172, 26500.6740, 48622.8360),
+      impressions = c(6452902, 5223467, 10538002),
+      stringsAsFactors = FALSE
+    )
+    production_comparison <- build_polaris_production_comparison(
+      before_summary, after_summary
+    )
+    production_lines <- render_polaris_production_totals(production_comparison)
+    expect_true(
+      identical(production_comparison$record_count_change, c(44, 48, 36)) &&
+        format_polaris_date_range(
+          production_comparison$start_date_before[[1]],
+          production_comparison$end_date_before[[1]]
+        ) == "Jul 20–Aug 20" &&
+        any(grepl(
+          "Facebook Awareness     $21.6K → $23.4K (+$1.8K)",
+          production_lines,
+          fixed = TRUE
+        )) &&
+        any(grepl(
+          "All packages           $85.8K → $98.5K (+$12.7K)",
+          production_lines,
+          fixed = TRUE
+        )) &&
+        any(grepl("19.58M → 22.21M (+2.64M)", production_lines, fixed = TRUE)),
+      "production totals use friendly names, compact values, and aligned before-after changes"
+    )
+
+  # ? New packages remain visible when a future run has no prior production rows
+    new_package_after <- after_summary[1, , drop = FALSE]
+    empty_before <- before_summary[0, , drop = FALSE]
+    new_package_comparison <- build_polaris_production_comparison(
+      empty_before, new_package_after
+    )
+    expect_true(
+      new_package_comparison$record_count_before[[1]] == 0 &&
+        new_package_comparison$record_count_change[[1]] == 526 &&
+        new_package_comparison$spend_before[[1]] == 0 &&
+        new_package_comparison$spend_after[[1]] == 23353.0172,
+      "a newly introduced package compares against a zero production baseline"
+    )
+
+  # ? The complete report names exact GCS files and omits rejected metric sections
+    loader_path <- file.path(dirname(dirname(normalizePath(test_path))), "load_polaris_email_delivery.R")
+    load_loader_definition(loader_path, "build_source_file_report")
+    load_loader_definition(loader_path, "print_production_run_report")
+    source_rows_fixture <- data.frame(
+      source_object_uri = c(
+        "gs://fixture/meta/report.csv", "gs://fixture/meta/report.csv",
+        "gs://fixture/tiktok/report.csv"
+      ),
+      source_feed = c("meta", "meta", "tiktok"),
+      date = as.Date(c("2026-08-08", "2026-08-23", "2026-08-23")),
+      stringsAsFactors = FALSE
+    )
+    classified_fixture <- data.frame(
+      source_feed = c("meta", "meta", "tiktok"),
+      platform = c("Facebook", "Instagram", "TikTok"),
+      ad_group_name = c("ACR - Facebook", "Interests - Instagram", "Interests"),
+      package_friendly_label = c("Facebook Awareness", "Instagram", "TikTok"),
+      stringsAsFactors = FALSE
+    )
+    report_lines <- capture.output(print_production_run_report(
+      source_rows = source_rows_fixture,
+      delivery = source_rows_fixture,
+      classified = classified_fixture,
+      comparison = production_comparison,
+      replaced_rows = 2L,
+      elapsed_seconds = 47
+    ))
+    expect_true(
+      any(grepl("GCS:   gs://fixture/meta/report.csv", report_lines, fixed = TRUE)) &&
+        any(grepl("2 existing production rows replaced", report_lines, fixed = TRUE)) &&
+        any(grepl("ACR - Facebook", report_lines, fixed = TRUE)) &&
+        any(grepl("$21.6K → $23.4K (+$1.8K)", report_lines, fixed = TRUE)) &&
+        !any(grepl("Video views", report_lines, fixed = TRUE)) &&
+        !any(grepl("Mappings used", report_lines, fixed = TRUE)) &&
+        !any(grepl("Production rows:", report_lines, fixed = TRUE)),
+      "complete output names source files and keeps only approved production metrics"
+    )
+
+# * SECTION [8]: PRODUCTION UPSERT CONTRACT
 
   # Description: Prevent a future loader edit from deleting an entire feed again.
 
   # ? Confirm production deletion is limited to the staged natural keys
-    loader_path <- file.path(dirname(dirname(normalizePath(test_path))), "load_polaris_email_delivery.R")
     loader_text <- paste(readLines(loader_path, warn = FALSE), collapse = "\n")
     expect_true(
       grepl(
@@ -430,6 +549,14 @@ source(logic_path)
         fixed = TRUE
       ),
       "production upsert compares row keys against delivery staging"
+    )
+    expect_true(
+      grepl("AS replaced_rows", loader_text, fixed = TRUE),
+      "production validation reports matching rows before the upsert"
+    )
+    expect_true(
+      grepl("source_rows = normalized", loader_text, fixed = TRUE),
+      "source file reporting includes every downloaded object before overlap collapse"
     )
 
   # ? Overlapping files keep the later row while same-file duplicates remain errors

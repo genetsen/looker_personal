@@ -402,6 +402,29 @@
       bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
     }
 
+  # ? Read the small package-level production summary used in the run comparison
+    read_production_package_summary <- function(config) {
+      sql <- sprintf(
+        paste0(
+          "SELECT package_id, ",
+          "ARRAY_AGG(package_friendly_label IGNORE NULLS ORDER BY loaded_at DESC LIMIT 1)",
+          "[SAFE_OFFSET(0)] AS package_friendly_label, ",
+          "COUNT(*) AS record_count, MIN(date) AS start_date, MAX(date) AS end_date, ",
+          "SUM(spend) AS spend, SUM(impressions) AS impressions ",
+          "FROM `%s.landing.polaris_email_delivery_daily` ",
+          "WHERE client_id = '%s' AND connection_id = '%s' ",
+          "GROUP BY package_id"
+        ),
+        config$project,
+        gsub("'", "''", config$client_id),
+        gsub("'", "''", config$connection_id)
+      )
+      summary <- bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+      summary$start_date <- as.Date(summary$start_date)
+      summary$end_date <- as.Date(summary$end_date)
+      summary
+    }
+
   # ? Stop unless every source row is mapped, valid, and naturally unique
     validate_ready_snapshot <- function(rows) {
       problems <- character(0)
@@ -542,10 +565,16 @@
           "(SELECT COUNT(*) FROM `%s`) AS state_rows, ",
           "(SELECT COUNT(DISTINCT source_feed) FROM `%s`) AS state_feeds, ",
           "(SELECT COUNT(*) FROM `%s` d LEFT JOIN `%s` s ",
-          "USING (client_id, connection_id, source_feed) WHERE s.source_feed IS NULL) AS rows_without_state"
+          "USING (client_id, connection_id, source_feed) WHERE s.source_feed IS NULL) AS rows_without_state, ",
+          "(SELECT COUNT(*) FROM `%s` candidate JOIN `%s` production ",
+          "ON production.client_id = candidate.client_id ",
+          "AND production.connection_id = candidate.connection_id ",
+          "AND production.source_feed = candidate.source_feed ",
+          "AND production.natural_row_key = candidate.natural_row_key) AS replaced_rows"
         ),
         delivery_staging_id, delivery_staging_id, delivery_staging_id, delivery_staging_id,
-        state_staging_id, state_staging_id, delivery_staging_id, state_staging_id
+        state_staging_id, state_staging_id, delivery_staging_id, state_staging_id,
+        delivery_staging_id, production_id
       )
       gate <- bigrquery::bq_table_download(run_bq_query(config$project, validation_sql), quiet = TRUE)
       if (
@@ -604,10 +633,165 @@
     }
 
 
-# * SECTION [5]: MANUAL ENTRYPOINT
+# * SECTION [5]: READER-FACING RUN REPORT
+
+  # ? Summarize every exact source object downloaded during this run
+    build_source_file_report <- function(source_rows) {
+      source_objects <- unique(source_rows$source_object_uri)
+      output <- lapply(source_objects, function(source_object_uri) {
+        selected <- source_rows[
+          source_rows$source_object_uri == source_object_uri,
+          ,
+          drop = FALSE
+        ]
+        data.frame(
+          source_feed = selected$source_feed[[1]],
+          source_object_uri = source_object_uri,
+          start_date = min(selected$date),
+          end_date = max(selected$date),
+          record_count = nrow(selected),
+          stringsAsFactors = FALSE
+        )
+      })
+      output <- do.call(rbind, output)
+      output <- output[order(output$source_feed, output$source_object_uri), , drop = FALSE]
+      rownames(output) <- NULL
+      output
+    }
+
+  # ? Print exact files, row effects, package coverage, totals, and assignments
+    print_production_run_report <- function(
+      source_rows,
+      delivery,
+      classified,
+      comparison,
+      replaced_rows,
+      elapsed_seconds
+    ) {
+      source_files <- build_source_file_report(source_rows)
+      new_rows <- nrow(delivery) - replaced_rows
+      assignments <- unique(classified[, c(
+        "source_feed", "platform", "ad_group_name", "package_friendly_label"
+      )])
+      assignments <- assignments[
+        order(assignments$source_feed, assignments$platform, assignments$ad_group_name),
+        ,
+        drop = FALSE
+      ]
+
+      cat("\n✅ POLARIS EMAIL LOAD COMPLETED\n\n")
+      cat("SOURCE FILES INGESTED\n\n")
+      for (index in seq_len(nrow(source_files))) {
+        source_name <- if (source_files$source_feed[[index]] == "meta") {
+          "Meta daily report"
+        } else {
+          "TikTok daily report"
+        }
+        cat("  ", source_name, "\n", sep = "")
+        cat("    File:  ", basename(source_files$source_object_uri[[index]]), "\n", sep = "")
+        cat("    GCS:   ", source_files$source_object_uri[[index]], "\n", sep = "")
+        cat(
+          "    Dates: ",
+          format_polaris_date_range(
+            source_files$start_date[[index]], source_files$end_date[[index]]
+          ),
+          ", ", format(source_files$end_date[[index]], "%Y"), "\n",
+          sep = ""
+        )
+        cat("    Rows:  ", format(source_files$record_count[[index]], big.mark = ","), "\n\n", sep = "")
+      }
+      cat("  Total incoming rows: ", format(nrow(delivery), big.mark = ","), "\n\n\n", sep = "")
+
+      cat("WHAT CHANGED\n\n")
+      cat(
+        "  ", format(nrow(delivery), big.mark = ","),
+        " incoming rows validated and written:\n",
+        "    • ", format(replaced_rows, big.mark = ","),
+        " existing production rows replaced\n",
+        "    • ", format(new_rows, big.mark = ","),
+        " new production rows added\n\n\n",
+        sep = ""
+      )
+
+      cat("DATE COVERAGE\n\n")
+      cat("  Package                Before             After\n")
+      for (index in seq_len(nrow(comparison))) {
+        cat(sprintf(
+          "  %-22s %-18s %s\n",
+          comparison$package_friendly_label[[index]],
+          format_polaris_date_range(
+            comparison$start_date_before[[index]], comparison$end_date_before[[index]]
+          ),
+          format_polaris_date_range(
+            comparison$start_date_after[[index]], comparison$end_date_after[[index]]
+          )
+        ))
+      }
+
+      cat("\n\nPRODUCTION TOTALS — Before → After (Change)\n\n")
+      cat(paste(render_polaris_production_totals(comparison), collapse = "\n"), "\n")
+
+      cat("\n\nSOURCE AD GROUP ASSIGNMENTS\n\n")
+      for (source_feed in unique(assignments$source_feed)) {
+        cat("  ", if (source_feed == "meta") "Meta" else "TikTok", "\n", sep = "")
+        feed_assignments <- assignments[assignments$source_feed == source_feed, , drop = FALSE]
+        for (index in seq_len(nrow(feed_assignments))) {
+          cat(sprintf(
+            "    %-24s → %s\n",
+            feed_assignments$ad_group_name[[index]],
+            feed_assignments$package_friendly_label[[index]]
+          ))
+        }
+        cat("\n")
+      }
+
+      cat("\nRESULT\n\n")
+      cat("  ✓ Production load succeeded\n")
+      cat(
+        "  ✓ Meta and TikTok updated through ",
+        format(max(delivery$date), "%b %d, %Y"), "\n",
+        sep = ""
+      )
+      cat("  ✓ Loader completed in ", round(elapsed_seconds), " seconds\n", sep = "")
+    }
+
+  # ? Keep dry-run output explicit without pretending production was changed
+    print_dry_run_report <- function(source_rows, delivery, classified) {
+      source_files <- build_source_file_report(source_rows)
+      assignments <- unique(classified[, c(
+        "source_feed", "ad_group_name", "package_friendly_label"
+      )])
+      assignments <- assignments[order(assignments$source_feed, assignments$ad_group_name), , drop = FALSE]
+      cat("\nDRY RUN PASSED — PRODUCTION UNCHANGED\n\n")
+      cat("SOURCE FILES VALIDATED\n")
+      for (index in seq_len(nrow(source_files))) {
+        cat(
+          "  ", source_files$source_feed[[index]], ": ",
+          source_files$source_object_uri[[index]], " (",
+          format(source_files$record_count[[index]], big.mark = ","), " rows, ",
+          format_polaris_date_range(
+            source_files$start_date[[index]], source_files$end_date[[index]]
+          ), ")\n",
+          sep = ""
+        )
+      }
+      cat("\nSOURCE AD GROUP ASSIGNMENTS\n")
+      for (index in seq_len(nrow(assignments))) {
+        cat(
+          "  ", assignments$ad_group_name[[index]], " → ",
+          assignments$package_friendly_label[[index]], "\n",
+          sep = ""
+        )
+      }
+      cat("\n  ✓ ", format(nrow(delivery), big.mark = ","), " incoming rows validated\n", sep = "")
+    }
+
+
+# * SECTION [6]: MANUAL ENTRYPOINT
 
   # ? Run metadata-first discovery and update only feeds with new objects
     run_polaris_email_loader <- function(arguments = commandArgs(trailingOnly = TRUE)) {
+      run_started_at <- Sys.time()
       config <- parse_loader_args(arguments)
       require_loader_packages()
       run_dir <- tempfile("polaris_email_load_")
@@ -622,9 +806,11 @@
       ]
       if (nrow(selected_inventory) == 0L) {
         cat(
-          if (config$dry_run) "DRY RUN PASSED — NO NEW SOURCE OBJECTS\n" else "NO NEW SOURCE OBJECTS\n",
-          "Source object metadata listed: ", discovery$total_objects, "\n",
-          "Candidate headers inspected: ", discovery$header_objects, "\n",
+          if (config$dry_run) {
+            "DRY RUN PASSED — NO NEW SOURCE FILES\n"
+          } else {
+            "✅ POLARIS EMAIL LOAD COMPLETED — NO NEW SOURCE FILES\n"
+          },
           "Production data changed: no\n",
           sep = ""
         )
@@ -646,31 +832,33 @@
         stop("Polaris Email raw-to-normalized reconciliation failed", call. = FALSE)
       }
 
-      if (!config$dry_run) upsert_delivery_feeds(delivery, state_rows, config)
+      if (config$dry_run) {
+        print_dry_run_report(normalized, delivery, classified)
+        return(invisible(list(
+          inventory = inventory, state_rows = state_rows, delivery = delivery
+        )))
+      }
 
-      package_summary <- aggregate(
-        cbind(spend, impressions, clicks, video_views, video_completions) ~ package_id,
-        data = delivery,
-        FUN = sum,
-        na.rm = TRUE
+      before_summary <- read_production_package_summary(config)
+      load_gate <- upsert_delivery_feeds(delivery, state_rows, config)
+      after_summary <- read_production_package_summary(config)
+      comparison <- build_polaris_production_comparison(before_summary, after_summary)
+      print_production_run_report(
+        source_rows = normalized,
+        delivery = delivery,
+        classified = classified,
+        comparison = comparison,
+        replaced_rows = as.integer(load_gate$replaced_rows[[1]]),
+        elapsed_seconds = as.numeric(difftime(Sys.time(), run_started_at, units = "secs"))
       )
-      cat(
-        if (config$dry_run) "DRY RUN PASSED\n" else "PRODUCTION ROWS UPSERTED\n",
-        "Rows: ", nrow(delivery), "\n",
-        "Source object metadata listed: ", discovery$total_objects, "\n",
-        "Candidate headers inspected: ", discovery$header_objects, "\n",
-        "Full source objects downloaded: ", nrow(selected_inventory), "\n",
-        "Feeds selected: ", paste(selected_inventory$source_feed, collapse = ", "), "\n",
-        "Mappings used: ", length(unique(classified$natural_row_key)),
-        " validated source rows across ",
-        length(unique(polaris_mapping_key(
-          classified$source_feed, classified$platform,
-          classified$campaign_name, classified$ad_group_name
-        ))), " source keys\n",
-        sep = ""
-      )
-      print(package_summary, row.names = FALSE)
-      invisible(list(inventory = inventory, state_rows = state_rows, delivery = delivery))
+      invisible(list(
+        inventory = inventory,
+        state_rows = state_rows,
+        delivery = delivery,
+        before_summary = before_summary,
+        after_summary = after_summary,
+        comparison = comparison
+      ))
     }
 
     if (sys.nframe() == 0L) run_polaris_email_loader()

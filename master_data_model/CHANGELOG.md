@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-24
+
+**Polaris production loads now report their exact source and business effect** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟡 **Partially verified**<br>The [Polaris Email loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now replaces opaque object and mapping counts with the exact ingested Cloud Storage files, their reporting windows, replaced and added rows, friendly package coverage, original source ad-group assignments, and compact before/after/change values for production spend and impressions. Existing natural-key upserts, validation gates, source checkpoints, and metric fields remain unchanged. Focused in-memory tests passed against the approved August 24 example, and the exact no-write loader path passed with no new source files.
+- **⚠️ Unverified** - The complete report has not yet run against a genuinely new production source object.
+
+### Pending Next Actions
+
+- **Since Aug 24** - Confirm the complete Polaris production report on the next genuinely new source delivery
+- **Since Aug 21** - Reconcile the DCM lineage label between the documented source and the live builder - NEEDS PROJECT ACCESS
+- **Since Aug 21** - Decide whether six always-NULL `conv_*` columns are reserved or dead before removing them from the v3 builder
+- **Since Aug 21** - Decide whether structurally valid TV estimate rows without a media outlet should be excluded - NEEDS SOURCE OWNER
+
 ## 2026-08-21
 
 **Polaris Email loads preserve prior delivery history** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [Polaris Email pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now processes every CSV added after the last successful checkpoint, updates only overlapping natural rows, appends new rows, and leaves older non-overlapping history intact. A forced non-skip universal-runner load preserved the complete Meta and TikTok history, advanced the checkpoint, and refreshed the dependent V3 table; landing and V3 raw dates and metrics also retain their numeric warehouse types. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md)
