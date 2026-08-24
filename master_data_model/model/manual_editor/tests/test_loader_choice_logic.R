@@ -33,7 +33,13 @@ parse_date <- function(x) {
   }
   y <- trimws(as.character(x))
   y[y == "" | tolower(y) %in% c("na", "nan", "null")] <- NA_character_
-  parsed <- suppressWarnings(as.Date(y))
+  parsed <- as.Date(rep(NA_character_, length(y)))
+  for (date_format in c("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d", "%b %d, %Y", "%B %d, %Y")) {
+    needs_format <- is.na(parsed) & !is.na(y)
+    if (any(needs_format)) {
+      parsed[needs_format] <- suppressWarnings(as.Date(y[needs_format], format = date_format))
+    }
+  }
   serial_date <- suppressWarnings(as.numeric(y))
   serial_date[is.na(serial_date)] <- NA_real_
   out <- parsed
@@ -377,6 +383,37 @@ detect_manual_edit_loss <- function(previous_raw, proposed_raw) {
   for (row_idx in seq_len(nrow(previous_manual))) {
     prior <- previous_manual[row_idx, , drop = FALSE]
     same_key_rows <- proposed[proposed$manual_row_key == prior$manual_row_key[[1]], , drop = FALSE]
+
+    same_key_has_valid_row <- nrow(same_key_rows) > 0 && any(
+      same_key_rows$is_active %in% TRUE &
+        as_trimmed_character(same_key_rows$validation_status) %in% "valid"
+    )
+    if (
+      !same_key_has_valid_row &&
+        as_trimmed_character(prior$validation_status)[[1]] %in% "blocked"
+    ) {
+      same_package_rows <- proposed[
+        proposed$package_id == prior$package_id[[1]],
+        ,
+        drop = FALSE
+      ]
+      newer_valid_rows <- same_package_rows[
+        same_package_rows$is_active %in% TRUE &
+          as_trimmed_character(same_package_rows$validation_status) %in% "valid",
+        ,
+        drop = FALSE
+      ]
+      if (nrow(newer_valid_rows) > 0) {
+        has_new_audit <- vapply(seq_len(nrow(newer_valid_rows)), function(match_idx) {
+          has_new_user_audit_evidence(prior, newer_valid_rows[match_idx, , drop = FALSE])
+        }, logical(1))
+        corrected_rows <- newer_valid_rows[has_new_audit, , drop = FALSE]
+        if (nrow(corrected_rows) > 0) {
+          same_key_rows <- corrected_rows
+        }
+      }
+    }
+
     active_valid_rows <- same_key_rows[
       same_key_rows$is_active %in% TRUE &
         as_trimmed_character(same_key_rows$validation_status) %in% "valid",
@@ -558,7 +595,20 @@ merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows)
     kept_editor_rows$delivery_end_date
   )[kept_explicit_evidence]
   previous_keys <- manual_row_key(previous_editor_rows$package_id, previous_editor_rows$delivery_start_date, previous_editor_rows$delivery_end_date)
-  dplyr::bind_rows(kept_editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
+  superseded_blocked_draft <- vapply(seq_len(nrow(previous_editor_rows)), function(previous_idx) {
+    previous_row <- previous_editor_rows[previous_idx, , drop = FALSE]
+    if (!same_text(previous_row$validation_status, "blocked")) return(FALSE)
+    candidates <- kept_editor_rows[
+      kept_explicit_evidence &
+        as_trimmed_character(kept_editor_rows$package_id) == as_trimmed_character(previous_row$package_id)[[1]],
+      , drop = FALSE
+    ]
+    nrow(candidates) > 0 && any(vapply(seq_len(nrow(candidates)), function(candidate_idx) {
+      has_new_user_audit_evidence(previous_row, candidates[candidate_idx, , drop = FALSE])
+    }, logical(1)))
+  }, logical(1))
+  keep_previous <- !(previous_keys %in% editor_keys_with_evidence) & !superseded_blocked_draft
+  dplyr::bind_rows(kept_editor_rows, previous_editor_rows[keep_previous, , drop = FALSE])
 }
 
 expect_choice <- function(label, actual, expected_value, expected_edited) {
@@ -611,6 +661,12 @@ expect_date_parse(
   parse_date(list("2026-08-02")),
   as.Date("2026-08-02")
 )
+
+mixed_date_probe <- parse_date(c("2026-08-24", "8/24/2026", "9/13/2026"))
+if (!identical(mixed_date_probe, as.Date(c("2026-08-24", "2026-08-24", "2026-09-13")))) {
+  stop("mixed ISO and US-formatted Sheet dates parse independently failed", call. = FALSE)
+}
+cat("PASS: mixed ISO and US-formatted Sheet dates parse independently\n")
 
 expect_sheet_value <- function(label, actual, expected) {
   if (!identical(actual, expected)) {
@@ -835,6 +891,28 @@ expect_sheet_value(
   "explicit same-package user edit is preserved beside previous durable edit",
   nrow(explicit_same_package_probe),
   2L
+)
+
+blocked_prior_editor <- prior_restored_row
+blocked_prior_editor$validation_status <- "blocked"
+blocked_prior_editor$delivery_start_date <- as.Date(NA)
+blocked_prior_editor$delivery_end_date <- as.Date(NA)
+blocked_prior_editor$manual_edit_at <- as.POSIXct("2026-08-24 19:23:16", tz = "UTC")
+corrected_editor_row <- blocked_prior_editor
+corrected_editor_row$delivery_start_date <- as.Date("2026-08-24")
+corrected_editor_row$delivery_end_date <- as.Date("2026-09-13")
+corrected_editor_row$manual_edit_at <- as.POSIXct("2026-08-24 19:42:54", tz = "UTC")
+corrected_editor_row$validation_status <- NA_character_
+blocked_draft_merge_probe <- merge_previous_manual_editor_rows(corrected_editor_row, blocked_prior_editor)
+expect_sheet_value(
+  "newer audited Sheet row replaces its obsolete blocked blank-date draft",
+  nrow(blocked_draft_merge_probe),
+  1L
+)
+expect_date_parse(
+  "corrected delivery start date survives blocked-draft merge",
+  blocked_draft_merge_probe$delivery_start_date[[1]],
+  as.Date("2026-08-24")
 )
 
 published_only_same_package_probe <- merge_previous_manual_editor_rows(
@@ -1214,6 +1292,36 @@ expect_sheet_value(
   "newer user audit stamp allows an intentional correction to a prior edit",
   nrow(manual_loss_allowed_update),
   0L
+)
+
+blocked_date_draft <- manual_loss_prior
+blocked_date_draft$package_id <- "PE-xac-tv"
+blocked_date_draft$validation_status <- "blocked"
+blocked_date_draft$man_start_date <- as.Date(NA)
+blocked_date_draft$man_end_date <- as.Date(NA)
+blocked_date_draft$manual_edit_at <- as.POSIXct("2026-08-24 19:23:16", tz = "UTC")
+
+corrected_date_draft <- blocked_date_draft
+corrected_date_draft$validation_status <- "valid"
+corrected_date_draft$man_start_date <- as.Date("2026-08-24")
+corrected_date_draft$man_end_date <- as.Date("2026-09-13")
+corrected_date_draft$manual_edit_at <- as.POSIXct("2026-08-24 19:42:54", tz = "UTC")
+
+corrected_date_proposal <- dplyr::bind_rows(blocked_date_draft, corrected_date_draft)
+corrected_date_loss <- detect_manual_edit_loss(blocked_date_draft, corrected_date_proposal)
+expect_sheet_value(
+  "newer valid dates can replace the same package's blocked blank-date draft",
+  nrow(corrected_date_loss),
+  0L
+)
+
+previously_valid_date_row <- blocked_date_draft
+previously_valid_date_row$validation_status <- "valid"
+valid_date_key_loss <- detect_manual_edit_loss(previously_valid_date_row, corrected_date_draft)
+expect_sheet_value(
+  "previously valid edits remain protected when a different date key appears",
+  nrow(valid_date_key_loss),
+  1L
 )
 
 # A source-only whitespace variation must not create a false visible-versus-

@@ -1,198 +1,237 @@
-# Manual Package Edits
+---
+pipeline: Manual Data Editor
+source_type: user-entered package corrections
+output: looker-studio-pro-452620.master_stg.data_model_v3
+output_grain: lowest available source detail, with manual delivery overrides at package/date
+source_tables:
+  - looker-studio-pro-452620.landing.master_data_model_manual_package_edits_raw
+  - looker-studio-pro-452620.landing.master_data_model_manual_package_daily
+  - looker-studio-pro-452620.master_stg.data_model
+refresh: manual loader, then master-model clustered and V3 refresh
+loader_script: model/manual_editor/load_manual_package_edits.R
+verified: 2026-08-24
+verified_against:
+  - manual_package_edits/README.md
+  - model/manual_editor/load_manual_package_edits.R
+  - model/final_model/create_master_stg_data_model_v3.sql
+  - universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh
+reviewers: []
+---
 
-This folder owns the manual package editor for the master data model. The goal is simple: let a media buyer find a package, edit the dashboard value they need to correct, and let the loader turn that edit into auditable backend `man_*` fields.
+# Manual Data Editor
 
-For deep QA, troubleshooting, scripts, tables, filters, and package-trace queries, use `QA_RUNBOOK.md`.
+This guide is for the person who adds or publishes a manual package correction. It covers the normal Sheet workflow, the required refresh into [Master Data Model V3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table), and the shortest useful checks. For investigation queries and full QA, use the [QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md).
 
-## Sheet Workflow
+## Contents
 
-Use the `Package Editor` tab in the Google Sheet.
+- [Terms](#terms)
+- [Normal workflow: edit through V3](#normal-workflow-edit-through-v3)
+- [What you may edit](#what-you-may-edit)
+- [Date and row rules](#date-and-row-rules)
+- [How the data moves](#how-the-data-moves)
+- [Canonical files and protected surfaces](#canonical-files-and-protected-surfaces)
+- [Known limits and maintenance](#known-limits-and-maintenance)
+- [Troubleshooting](#troubleshooting)
 
-1. Use the standard column header filters to narrow by Advertiser, Channel, Campaign, Site, or any other visible field.
-2. Find the package row by `Package ID`, `Site`, and `Package Friendly Name`.
-3. Edit the visible value that needs to change.
-   - Orange means the value differs from the current dashboard snapshot.
-   - Purple means the value is already using a validated manual update.
-   - Red means a specific cell in a started new row needs to be fixed before it can load.
-   - Package-level fields: `Flight Start Date`, `Flight End Date`, and visible metadata such as `GS Channel`, `Campaign`, `Package Name`, `Package Type`, `Benchmark KPI`, and `Benchmark Value`.
-   - Metric date window: `Delivery Override Start Date` and `Delivery Override End Date`.
-   - Delivered actual metrics: `Spend`, `Impressions`, `Clicks`, `Video Plays`, `Video Completions`
-   - Planned flight totals: `Planned Spend`, `Planned Impressions`
-4. Run the loader.
+## Terms
 
-The loader compares edited cells to source-derived baselines and the last loader run, then writes active valid rows into the manual landing tables. Text values are normalized consistently on both sides of that comparison, so harmless source spacing cannot appear as an edit. Planned package totals come directly from PRISMA package totals. Delivered metric baselines are recalculated from raw delivery fields, not from manual-affected final `_` fields.
+| Term | Meaning here |
+|---|---|
+| Manual evidence | The saved record showing which value a person intentionally replaced, when it was edited, and whether it passed validation. |
+| V3 rebuild[^1] | Re-creating the stored V3 table from the current base model and source-detail tables. |
+| Grain[^2] | What one row represents. Manual delivery rows are one package on one date; V3 can retain lower source detail such as placement or creative. |
 
-The source lookup decides which normal package rows exist. The Sheet can supply edits to those known packages, but an old Sheet-only package ID cannot create a normal visible row. A Sheet-only row is retained only when it has real audit evidence and qualifies as a manual-only package; an inactive, unedited leftover is removed on the next safe refresh. If an unknown Sheet-only row contains values but lacks audit evidence, the loader stops before clearing anything so it cannot erase possible user work.
+## Normal workflow: edit through V3
 
-Trusted prior raw manual rows are the durable edit state. During a refresh, generated rows from the rewritten `Package Editor` do not override or duplicate that durable state unless a source-backed row has real user edit evidence: `Manual Edit At` or `Manual Edit By`, or trusted prior raw history already accepted by the loader. `Manual Edit Published At` alone on a loose sheet row is loader output, not proof of a new user edit. Before any BigQuery table replacement or visible sheet rewrite, the loader compares the last accepted manual rows to the proposed upload and stops if a prior accepted edit would go missing, become inactive or blocked, or lose an edited field without a newer user audit stamp.
+The `Request refresh` control only sends a notification. It does **not** run either command below.
 
-If users need a refresh but do not run the loader themselves, they can use the `Request refresh` checkbox-style control at the top of the sheet. It sends Gene an email. If the bound Apps Script has a `MANUAL_EDITOR_SLACK_WEBHOOK_URL` script property, it also posts the same request to Slack. This checkbox is only a notification; it does not validate rows, run the loader, or write to the warehouse by itself.
+### 1. Make the edit
 
-Started audited manual-only rows highlight the specific missing required cells or invalid date cells. A source-backed row with blank flight dates is not treated as a new package. Planned cells turn red only when their planned flight range is blank or invalid; delivery override dates do not affect planned-cell validation. Orange means a meaningful normalized difference from the current source baseline; values already backed by validated manual updates turn purple. The loader also blocks invalid rows backend-side, so red frontend feedback is a warning to fix the row before requesting a refresh.
+In the production Google Sheet:
 
-Filtering uses the standard Google Sheets column header filter controls. They are intentionally not powered by Apps Script, because users need browsing to feel responsive while editing the real source rows.
+1. Open the `Package Editor` tab.
+2. Find the row using `Package ID`, `Site`, and `Package Friendly Name`.
+3. Change only an editable field listed in [What you may edit](#what-you-may-edit).
+4. Fix any red cells before publishing.
 
-The `Instructions` tab is the user-facing quick guide. It explains the normal edit flow, date-range rules, new-row requirements, color meanings, and what not to edit.
+### 2. Publish the manual edit
 
-Existing package identity fields, table headers, request-helper text, visible status/context fields, and hidden baseline comparison fields are protected in the sheet. The intended editable fields are the visible flight dates, delivery override dates, metric values, and metadata correction columns. Blank rows below the current package list remain available for manual-only package rows, including the required identity and metadata fields.
+Run the Manual Data Editor loader:
 
-The editor includes audit columns for `Manually Edited?`, `Manual Edit At`, `Manual Edit By`, and `Manual Edit Published At`. `Manual Edit At` and `Manual Edit By` are stamped by the bound Apps Script when a user edits an editable package row. Google may hide the editor email in some trigger/security contexts, so `Manual Edit By` can show an unidentified-editor message instead of an email. `Manual Edit Published At` is set by the loader after a valid manual edit is accepted into BigQuery.
+```bash
+Rscript /Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/load_manual_package_edits.R
+```
 
-The request checkbox requires the bound Apps Script's installable edit trigger. If the checkbox does not send, use `Manual Editor` -> `Authorize request button` once from the sheet menu, then try again.
+This command writes the live manual raw, history, and daily tables and refreshes the Sheet values. It does not rebuild V3.
 
-## Displayed Data Sources
+**Pass condition:** the output says `Completed manual package editor load.` and its final summary shows `blocked_package_rows` as `0` and `daily_total_proof_status` as `passed`.
 
-The editor displays a current dashboard snapshot from the combined reporting model.
+If `blocked_package_rows` is above zero, use the row’s `Validation Reason` before continuing. Do not treat a completed R process by itself as proof that the edit published.
 
-- Planned values come from media planning, buying, trafficking, and package setup sources.
-- Delivered actuals come from ad server, platform, partner, and delivery reporting sources.
-- Package context comes from package setup and reporting metadata sources.
-- User-facing instructions should describe sources this way:
-  - Planned Values: Planned spend, planned impressions, rates, and flight date information come from PRISMA.
-  - Delivered values: Delivered spend, impressions, clicks, video plays, and video completions come from ad server, platform, or partner-specific First Party Data sheets.
-  - Package metadata: Advertiser, campaign, channel, supplier, site, package name, initiative, and classification fields come from PRISMA.
-  - Benchmark values: Benchmark KPI is editable text. Benchmark Value is editable numeric data and falls back to the FPD benchmark when no manual value is active.
-- Prior valid manual corrections are kept as user-owned manual override evidence and used before normal source values.
-- When the normal source later matches a manual correction, the loader preserves the manual evidence and marker instead of clearing it automatically. A script can block invalid input, but it should not delete a user's edit or draft value unless the user explicitly clears or deletes it.
+### 3. Refresh V3
 
-The sheet should use general business labels for users. Do not expose warehouse table names in the user-facing instructions.
+After the loader passes, run the master-model refresh wrapper:
 
-## Data Model Overview
+```bash
+bash /Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh
+```
 
-The data model combines planning, delivery, and package metadata into one package/date reporting layer. Dashboards and partner reporting use that combined layer so package fields, dates, planned values, delivered values, and manual evidence stay aligned.
+This command performs two dependent refreshes in the required order:
 
-When the loader runs, it compares edited Sheet values to the current dashboard snapshot. Valid edits are written as backend `man_*` fields and take priority in the final reporting fields. Benchmark edits write to `man_benchmark_kpi` and `man_benchmark_value`, then feed final `_benchmark_kpi` and `_benchmark_value` fields. Edits are reflected in client dashboards and external partner reporting after the loader and downstream reporting refresh finish.
+1. Refreshes and verifies the clustered support table used by the model workflow.
+2. Rebuilds [Master Data Model V3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table) from the canonical V3 SQL.
 
-## Date-Range Rules
+**Pass condition:** the output ends with both of these messages:
 
-Flight dates and delivery override dates do different jobs.
+```text
+✓ Clustered advertiser table refresh verified.
+✓ Master data model v3 refresh verified.
+```
 
-- `Flight Start Date` and `Flight End Date` are the planned package flight. A manual correction to those fields applies to the whole package and determines the daily range for Planned Spend and Planned Impressions.
-- `Delivery Override Start Date` and `Delivery Override End Date` are the metric override window.
-- Planned totals use the full planned flight. Delivery override dates do not change the planned-total range.
-- To correct one week of delivered data, add or duplicate a row, set the delivery override dates to that week, and enter the replacement delivered totals for that week only.
-- Dates outside the edited delivery override range keep the normal dashboard metric values.
-- Duplicate active edits for the same package, date, and metric are blocked.
+The wrapper also checks that V3 is a non-empty table clustered by advertiser, has no retired `package_plan` rows, has no duplicate visible keys, and has at most one row carrying summable planned metrics per package/date.
 
-## Metadata Rules
+### 4. Confirm your package in V3
 
-Metadata corrections are package-level.
+Replace `PACKAGE_ID_HERE`, then run this read-only query:
 
-- Editing `Advertiser`, `Package Type`, `Channel`, `Campaign`, `Initiative`, `Supplier Code`, `Supplier Name`, `Package Name`, `Package Friendly Name`, `GS Channel`, `Benchmark KPI`, or `Benchmark Value` creates backend `man_*` metadata evidence.
-- `Primary Row Data Source`, `Validation Status`, and `Validation Reason` are read-only context fields. They explain where the package row is coming from and whether the loader will publish or block the row.
-- Metadata overrides do not need a metric edit to become active.
-- Metadata overrides apply to all rows for the package, including delivery dates outside a metric override window.
-- Metric overrides stay date-bound to the delivery override dates.
+```sql
+SELECT
+  `_package_id`,
+  MIN(`_date`) AS first_date,
+  MAX(`_date`) AS last_date,
+  COUNT(*) AS record_count,
+  COUNTIF(qa_manual_edit_flag) AS manual_evidence_record_count,
+  SUM(`_spend`) AS spend,
+  SUM(`_impressions`) AS impressions,
+  SUM(`_clicks`) AS clicks,
+  STRING_AGG(DISTINCT qa_v3_source_detail_type, ', ' ORDER BY qa_v3_source_detail_type) AS v3_source_types
+FROM `looker-studio-pro-452620.master_stg.data_model_v3`
+WHERE `_package_id` = 'PACKAGE_ID_HERE'
+GROUP BY `_package_id`;
+```
 
-## Planned Metric Rules
+**Pass condition:** the package is returned, its dates and edited totals match the intended correction, and `manual_evidence_record_count` is above zero. A delivered-metric correction should include `manual_package_daily` in `v3_source_types`.
 
-Planned metrics are flight-level only.
+For metadata-only or planned-value edits, use the [package trace query](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) because those changes do not necessarily create the same delivered-metric row type.
 
-- `Planned Spend` and `Planned Impressions` must have a complete valid planned-flight start and end date.
-- Partial-week or day-level planned edits are blocked by the loader.
-- In the sheet, planned cells are independent of delivery override dates. They are valid when the planned flight range is complete and ordered.
-- The sheet displays planned values as full-flight totals, not daily prorated values.
-- Planned package totals are compared against PRISMA package totals, not filtered mart row sums, so low-signal row filtering cannot create false manual planned markers.
-- The final model keeps package-level planned totals aligned with the manual replacement total.
-- The model stores daily planned values across the planned flight and daily actual overrides across the delivery override range, so dashboard sums stay correct without mixing their dates.
+## What you may edit
 
-## Undo And Corrections
+| Edit | Editable fields | Where it applies |
+|---|---|---|
+| Delivered actuals | `Spend`, `Impressions`, `Clicks`, `Video Plays`, `Video Completions` | Only the delivery override dates on that row |
+| Planned totals | `Planned Spend`, `Planned Impressions` | The package’s complete flight |
+| Flight dates | `Flight Start Date`, `Flight End Date` | Every row for the package |
+| Package metadata | `Advertiser`, `Package Type`, `Channel`, `Campaign`, `Initiative`, supplier fields, package names, `GS Channel` | Every row for the package |
+| Benchmark | `Benchmark KPI`, `Benchmark Value` | Every row for the package |
 
-- To undo a manual correction, clear the visible edited cell or set it back to a different displayed source/baseline value and rerun the loader. If that would remove a previously accepted edit without a newer user edit stamp, the loader stops before publishing so the row can be restored or explicitly deleted instead of silently erased.
-- If an edited value needs another correction, overwrite the same visible cell with the new intended value and rerun the loader.
-- If source delivery or PRISMA later catches up to a manual value, the loader keeps the `man_*` value as user-owned evidence until an explicit undo or row deletion.
-- If a prior loader run marked a row as blocked but there is no manual-edit evidence, the next run treats that prior replacement as stale display state instead of preserving it as a real manual correction.
-- If a blocked manual-only draft has no live source baseline to fall back to, the loader preserves the entered metric, date, and metadata values so the row can be fixed instead of erased.
-- Blank metric cells mean no manual override for that metric; they revert to the current source baseline rather than zero.
+Do not edit package identity cells on an existing source-backed row, headers, status fields, audit fields, hidden baselines, hidden manual markers, or helper columns.
 
-## Delivered Metric Rules
+### Color guide
 
-Delivered actual metrics can be edited for any valid date range.
+| Color | Meaning | What to do |
+|---|---|---|
+| Orange | The visible value differs from the current source baseline. | Confirm the value is intentional, then run the loader. |
+| Purple | A valid manual correction is already active. | Leave it unless you intend to correct or remove it. |
+| Red | A started row contains missing or invalid required values. | Read `Validation Reason`, fix the highlighted cells, and rerun the loader. |
 
-- For one-day edits, set `Delivery Override Start Date` and `Delivery Override End Date` to the same date.
-- For one-week edits, set the dates to that week and enter weekly replacement totals.
-- The loader spreads replacement totals across the selected dates while preserving the exact total after upload. Count metrics allocate whole units across days; spend metrics preserve decimal precision from the source/editor value.
-- The daily proof step blocks the upload if daily rows do not sum back to the replacement total beyond a one-cent tolerance.
+## Date and row rules
 
-## New Manual-Only Packages
+| Situation | Required setup |
+|---|---|
+| One-day delivered correction | Use the same delivery override start and end date. |
+| One-week delivered correction | Add or duplicate a row, use that week as the delivery override range, and enter that week’s replacement totals. |
+| Planned correction | Use a complete, valid flight start and end date. Planned edits cannot use a partial week or day range. |
+| Metadata-only correction | Edit the metadata field on the existing package row; no metric edit is required. |
+| New manual-only package | Add a row only when the package is absent, then provide package ID, site, friendly name, flight dates, delivery dates, at least one value, and the required reporting metadata. |
+| Undo | Clear the edited value or restore the current source value, then rerun the loader. The preservation guard may stop the run when the user’s intent is not safely proven. |
 
-Manual-only packages can enter the model only when required metadata is complete.
+Each date cell is parsed independently. ISO dates, U.S.-formatted dates, Google Sheets date serials, and R date serials can coexist in the column without forcing other rows into the same format.
 
-Add a new row only when the package does not already exist in the editor, or when you need a separate date range for delivered actuals, such as one specific week.
+Common blockers are a missing package ID, invalid dates, no actual changed value, duplicate active package/date/metric edits, a partial-range planned edit, or missing metadata on a new package.
 
-Visible required fields:
+## How the data moves
 
-- `Package ID`
-- `Site`
-- `Package Friendly Name`
-- `Flight Start Date`
-- `Flight End Date`
-- `Delivery Override Start Date`
-- `Delivery Override End Date`
-- At least one metric value
+```text
+Package Editor
+    |
+    | Manual Data Editor loader
+    v
+Raw manual snapshot + permanent history
+    |
+    v
+Daily manual package/date rows
+    |
+    v
+Compatibility base model and clustered support table
+    |
+    | Master-model refresh wrapper
+    v
+Master Data Model V3
+```
 
-Required metadata fields at the far right of the editor:
+### Active inputs
 
-- `Advertiser`
-- `Package Type`
-- `Channel`
-- `Campaign`
-- `Package Name`
-- `GS Channel`
+| Input | Purpose | Warning |
+|---|---|---|
+| Production `Package Editor` Sheet | Holds intentional user corrections and audit stamps | A visible value without accepted edit evidence is not automatically a manual override. |
+| [Package lookup table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=manual_package_editor_package_lookup&page=table) | Supplies the current source-backed package list | An old Sheet-only package does not become a normal source package. |
+| PRISMA package data | Supplies planned totals, flight dates, and metadata baselines | Planned values are complete-flight totals, not daily editor values. |
+| [Reporting mart](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_mart&page=table) | Supplies the visible current-value snapshot and delivered baselines | Final fields may already contain manual values, so the loader uses source-derived comparisons where needed. |
 
-Optional benchmark fields at the far right of the editor:
+| Layer | One row represents | Responsibility |
+|---|---|---|
+| Raw manual table | One editor row | Stores the entered replacement, validation result, and audit evidence. |
+| Manual history table | One accepted editor state at one publish time | Preserves recoverable history before the raw snapshot is replaced. |
+| Daily manual table | One package on one date | Spreads valid delivered or planned replacements across the approved date range. |
+| Compatibility base model | Usually one package on one date | Applies manual values to final `_` fields and retains `man_*` evidence. |
+| V3 | Lowest available source detail | Keeps detailed source evidence while manual package/date delivery rows replace final actuals for edited dates. |
 
-- `Benchmark KPI`
-- `Benchmark Value`
+### Source boundaries
 
-Those metadata fields are visible because brand-new packages need them for grouping, filtering, and reporting. They are also editable for package-level metadata corrections on existing packages. The backend still fills redundant internal fields from these visible values where needed.
+- PRISMA supplies planned totals, flight dates, and package metadata baselines.
+- Delivery sources supply spend, impressions, clicks, and video baselines.
+- The live Sheet supplies intentional corrections only; it is not an authority for unedited source rows.
+- Prior accepted manual evidence is user-owned state. A refresh must not silently remove it.
+- Final `_` fields are the reporting values. `man_*` and `qa_manual_*` fields explain whether manual evidence affected them.
 
-New-row steps:
+## Canonical files and protected surfaces
 
-1. Insert a new row below the existing package list, or duplicate a similar fee/package row and replace the values.
-2. Fill `Package ID`, `Site`, `Package Friendly Name`, flight dates, delivery override dates, and at least one metric value.
-3. Fill the required metadata fields at the far right.
-4. Keep planned metrics on the full-flight date range; use partial ranges only for delivered actuals.
-5. Check `Request refresh` when the row is complete.
+| Surface | Role | Safety boundary |
+|---|---|---|
+| [Canonical loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/manual_editor/load_manual_package_edits.R) | Implements edit detection, validation, warehouse writes, and Sheet refresh | The shorter script in this folder is only the supported launcher. |
+| [Canonical V3 builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql) | Rebuilds the stored V3 table | Run it through the verified refresh wrapper for normal operations. |
+| [Master-model refresh wrapper](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh) | Refreshes the clustered dependency, rebuilds V3, and verifies both | This writes production BigQuery tables. Do not run it as a diagnostic probe. |
+| [QA runbook](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/manual_package_edits/QA_RUNBOOK.md) | Owns full trace queries and troubleshooting | Use it when the short checks in this guide disagree. |
+| Live Sheet formatting | User-owned working interface | Do not run `setup_manual_package_editor_sheet.mjs` unless the user explicitly requests a full formatting rebuild. |
 
-Common blockers: missing `Package ID`, invalid dates, no changed metric/date value, duplicate active package/date/metric edits, or missing required metadata for a new package.
+Routine data refreshes use the loader only. They must not rebuild the Sheet’s formatting. Before any future header, column-order, visibility, or conditional-formatting change, take a read-only formatting snapshot and verify the live rendered result.
 
-## Scripts
+## Known limits and maintenance
 
-- `create_manual_package_editor_package_lookup.sql` refreshes the package-level lookup table that the loader downloads. It builds the lookup from source-backed rows in the materialized master support table, excludes rows already produced by manual package edits, applies the same reporting-only low-signal DCM and excluded-campaign removals, joins PRISMA package totals, and carries current benchmark KPI/value baselines for the editable benchmark columns.
-- For social rows that do not expose true flight dates, the lookup leaves the editor flight dates blank. If a user fills those blank cells, the loader treats the entered dates as manual flight-date changes.
-- `load_manual_package_edits.R` in this folder is a launcher for the canonical loader in [model/manual_editor](</Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/manual_editor/load_manual_package_edits.R>). The canonical loader refreshes the package-level lookup table, downloads it into the editor, detects changed cells, validates rows, writes raw and daily manual tables, rewrites the editor data values, and refreshes column header filter ranges plus narrow column visibility/protection settings after header shifts. When called from the universal script runner, it resolves sibling helper scripts from the canonical folder and checks `MASTER_MANUAL_EDIT_NODE`, `PATH`, `/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node` for Node.
-- Trusted prior raw manual rows outrank generated rows from a refreshed `Package Editor`. A source-backed row needs `Manual Edit At`, `Manual Edit By`, or trusted prior raw history before it can become a new manual edit. Status labels, manual-marker labels, and loose `Manual Edit Published At` sheet values are display state, not enough by themselves to prove the user intended a new edit.
-- The loader refuses to publish if a manual-only package row would be rewritten as inactive and blank. It also preserves prior manual-only metric, date, and metadata values when there is no live baseline to fall back to. Restore or intentionally delete that draft row before rerunning, because manual-only rows have no live baseline that can safely recreate the user's values.
-- The loader also refuses to publish if any previously accepted manual edit would be missing, inactive, blocked, or missing an edited field in the proposed upload. The stop message lists package friendly names first so the affected rows can be restored or explicitly deleted before another refresh.
-- The loader reads editor cells as text, writes editor dates back as ISO text, and accepts both Google Sheets date serials and R date serials for modern campaign dates, so a refreshed sheet value cannot turn a 2026 flight date into a 1950s date or blank date on the next run.
-- For manual-only rows, a valid delivery/manual date range can fill missing package flight dates instead of blocking the row and erasing the publishable manual values.
-- Valid user-owned rows are eligible for daily publication when they contain metric, metadata, or flight-date manual evidence. A row is not dropped from daily publication just because the manual evidence is not in a metric replacement column.
-- Stale source rows that are visibly marked `No`, `inactive`, and `not edited` do not block a refresh just because they disappeared from the current lookup; real manual-only drafts and rows with manual evidence still block instead of being erased.
-- Legacy-tab cleanup and tab-relocation checks run after the raw/daily writes. If Google throttles those metadata calls, the loader warns and keeps the completed data refresh result instead of failing the whole run after the important writes have already succeeded.
-- The production Manual Data Editor sheet is the loader default. Use `MASTER_MANUAL_EDIT_SHEET_ID=...` only when intentionally testing another sheet copy.
-- The default script-auth account is `gene.tsenter@giantspoon.com`. If a refresh fails after BigQuery upload with a Sheet permission error, grant that account access to the production Sheet and confirm its `gcloud` token includes Drive/Sheets OAuth scope before rerunning the Sheet repair helper.
-- `setup_manual_package_editor_sheet.mjs` is a rebuild tool for Google Sheet formatting, the `Instructions` tab, visible metadata columns, hidden internal baseline/manual-marker columns, notes, warnings, widths, and colors. Do not run it against the live sheet after user-made manual formatting edits unless the user explicitly asks for a full formatting rebuild. The script is guarded and now requires `MASTER_MANUAL_EDIT_ALLOW_FORMAT_REBUILD=YES` to run.
-- `repair_manual_package_editor_filters.mjs` is a narrow sheet-geometry repair tool. It removes slicers, expands the standard column header filter range to the full current sheet grid, keeps user-facing audit/status columns visible, and keeps backend baseline/marker/helper columns hidden and protected.
-- `apps_script/Code.js` is the bound Apps Script for the update-request notification control and row-level manual-edit audit stamps. Filtering should stay native through Google Sheets column header filters.
-- The universal script runner entrypoint is `/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/master_manual_package_edits/load_master_manual_package_edits.R`. It launches this loader, and the loader refreshes the lookup table before reading package rows.
+- The `Request refresh` control sends email and optional Slack notification only. Someone must still run both production commands.
+- V3 is a stored table, so a successful loader does not make V3 current until the V3 refresh finishes.
+- Global V3 checks do not prove one package’s value. Always run the package-specific check for the correction you published.
+- Preserve the live Sheet’s user-created formatting. Use the loader for routine refreshes and the setup script only after explicit full-rebuild approval.
+- Keep the loader, V3 builder, wrapper, and this guide aligned whenever the refresh order or pass messages change.
 
-R should stay focused on data loading. The current live sheet formatting is the source of truth once users have made manual formatting edits. Before future formatting work, take a read-only formatting snapshot and preserve user-made changes unless a full rebuild is explicitly requested.
+## Troubleshooting
 
-## Verification Checklist
+| Symptom | First check | Healthy result |
+|---|---|---|
+| Loader reports blocked rows | `Validation Status` and `Validation Reason` in the Sheet | Every intended edit is `valid`; unintended rows are not active. |
+| Loader passes, but V3 still shows the old value | Confirm the V3 refresh wrapper ran after the loader | Both wrapper verification messages are present. |
+| V3 refresh fails before the rebuild | Read the scheduled transfer’s final state | The transfer must be `SUCCEEDED`; `PENDING` or `RUNNING` is not completion. |
+| V3 refresh fails its final QA | Use the QA runbook before rerunning | Duplicate-key, planned-carrier, and retired-row checks all return zero. |
+| Sheet refresh fails with a Google permission error | Confirm the configured account can access the Sheet and has Drive and Sheets scopes | The same account can read and update the production Sheet. |
+| A prior valid edit may disappear | Stop and read the preservation-guard message | Restore the row or make an explicit newer edit; do not bypass the guard. |
 
-Before calling the path ready:
+### What does not prove the workflow finished
 
-1. Run the loader and confirm it completes with daily proof status `passed`.
-2. Run the loader again and confirm the `Package Editor` formatting still holds after the loader writes values. Do not run the setup script unless the user explicitly requested a full formatting rebuild.
-3. Test a fee package delivered metric edit on a short date range.
-4. Test that a started but incomplete new row is blocked and visibly marked red.
-5. Test that a complete temporary fee/manual-only row enters the raw table, daily table, final model, and mart with the exact replacement totals.
-6. Test that a partial-date planned edit is blocked.
-7. Test a full-flight planned edit and confirm package planned totals match the replacement.
-8. Confirm the manual daily table totals equal replacement totals.
-9. Confirm the final model exposes `man_*` evidence fields and uses manual values for final `_` fields, including `man_benchmark_kpi`, `man_benchmark_value`, `_benchmark_kpi`, and `_benchmark_value`.
-10. Confirm cleanup removes temporary test rows from the sheet, raw table, daily table, final model, and mart. Existing legitimate manual rows may remain.
-11. Confirm the request-refresh checkbox resets, updates the status cell, and delivers the notification email.
+- Checking `Request refresh`
+- A loader process that exits without the final proof summary
+- A successful raw-table upload without a passing daily-total proof
+- A successful V3 build query without the wrapper’s table and grain checks
+- A global row count without checking the edited package and values
 
-For exact queries and proof paths, use `QA_RUNBOOK.md`. The short checklist above is only a reminder; the runbook is the operational source for QA.
+[^1]: Rebuild: replaces the stored table with a new result derived from the current sources; any required input not present at rebuild time will not survive automatically.
+[^2]: Grain: the business meaning of one row, which determines which values may be safely summed or joined.

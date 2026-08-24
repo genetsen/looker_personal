@@ -370,11 +370,13 @@ parse_date <- function(x) {
   }
   y <- str_trim(as.character(x))
   y[y == "" | str_to_lower(y) %in% c("na", "nan", "null")] <- NA_character_
-  parsed <- suppressWarnings(as.Date(
-    y,
-    tryFormats = c("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d", "%b %d, %Y", "%B %d, %Y"),
-    optional = TRUE
-  ))
+  parsed <- as.Date(rep(NA_character_, length(y)))
+  for (date_format in c("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d", "%b %d, %Y", "%B %d, %Y")) {
+    needs_format <- is.na(parsed) & !is.na(y)
+    if (any(needs_format)) {
+      parsed[needs_format] <- suppressWarnings(as.Date(y[needs_format], format = date_format))
+    }
+  }
   serial_date <- suppressWarnings(as.numeric(y))
   serial_date[is.na(serial_date)] <- NA_real_
   out <- dplyr::coalesce(parsed, choose_serial_date(serial_date))
@@ -875,7 +877,20 @@ merge_previous_manual_editor_rows <- function(editor_rows, previous_editor_rows)
     kept_editor_rows$delivery_end_date
   )[kept_explicit_evidence]
   previous_keys <- manual_row_key(previous_editor_rows$package_id, previous_editor_rows$delivery_start_date, previous_editor_rows$delivery_end_date)
-  bind_rows(kept_editor_rows, previous_editor_rows[!(previous_keys %in% editor_keys_with_evidence), , drop = FALSE])
+  superseded_blocked_draft <- vapply(seq_len(nrow(previous_editor_rows)), function(previous_idx) {
+    previous_row <- previous_editor_rows[previous_idx, , drop = FALSE]
+    if (!same_text(previous_row$validation_status, "blocked")) return(FALSE)
+    candidates <- kept_editor_rows[
+      kept_explicit_evidence &
+        as_trimmed_character(kept_editor_rows$package_id) == as_trimmed_character(previous_row$package_id)[[1]],
+      , drop = FALSE
+    ]
+    nrow(candidates) > 0 && any(vapply(seq_len(nrow(candidates)), function(candidate_idx) {
+      has_new_user_audit_evidence(previous_row, candidates[candidate_idx, , drop = FALSE])
+    }, logical(1)))
+  }, logical(1))
+  keep_previous <- !(previous_keys %in% editor_keys_with_evidence) & !superseded_blocked_draft
+  bind_rows(kept_editor_rows, previous_editor_rows[keep_previous, , drop = FALSE])
 }
 
 choose_metric_value <- function(sheet_value, live_value, prior_current, prior_replacement, prior_replacement_trusted = TRUE) {
@@ -1119,6 +1134,41 @@ detect_manual_edit_loss <- function(previous_raw, proposed_raw) {
   for (row_idx in seq_len(nrow(previous_manual))) {
     prior <- previous_manual[row_idx, , drop = FALSE]
     same_key_rows <- proposed[proposed$manual_row_key == prior$manual_row_key[[1]], , drop = FALSE]
+
+    # A blocked draft can become valid only after the user fixes its dates. That
+    # changes the row key, so match the newer audited correction by package ID.
+    # Never use this fallback for a previously valid edit: its date key remains
+    # protected against accidental replacement.
+    same_key_has_valid_row <- nrow(same_key_rows) > 0 && any(
+      same_key_rows$is_active %in% TRUE &
+        as_trimmed_character(same_key_rows$validation_status) %in% "valid"
+    )
+    if (
+      !same_key_has_valid_row &&
+        as_trimmed_character(prior$validation_status)[[1]] %in% "blocked"
+    ) {
+      same_package_rows <- proposed[
+        proposed$package_id == prior$package_id[[1]],
+        ,
+        drop = FALSE
+      ]
+      newer_valid_rows <- same_package_rows[
+        same_package_rows$is_active %in% TRUE &
+          as_trimmed_character(same_package_rows$validation_status) %in% "valid",
+        ,
+        drop = FALSE
+      ]
+      if (nrow(newer_valid_rows) > 0) {
+        has_new_audit <- vapply(seq_len(nrow(newer_valid_rows)), function(match_idx) {
+          has_new_user_audit_evidence(prior, newer_valid_rows[match_idx, , drop = FALSE])
+        }, logical(1))
+        corrected_rows <- newer_valid_rows[has_new_audit, , drop = FALSE]
+        if (nrow(corrected_rows) > 0) {
+          same_key_rows <- corrected_rows
+        }
+      }
+    }
+
     active_valid_rows <- same_key_rows[
       same_key_rows$is_active %in% TRUE &
         as_trimmed_character(same_key_rows$validation_status) %in% "valid",
