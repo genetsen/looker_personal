@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-26
+
+**Purely Elizabeth mapping and benchmark rows are live-linked to BigQuery** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/mappings/create_master_stg_purely_elizabeth_creative_mapping_sheet.sql)) — 🟢 **Verified and committed**<br>The [creative mapping workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/mappings/README.md) now exposes the source Sheet's 13 mapping and benchmark columns through a read-only external table and a clean linked view that removes only unused blank grid rows. Source values remain text so percentages, ranges, descriptions, errors, and blanks are preserved; the existing mapping loader and V3 behavior remain unchanged. A Google Drive-enabled BigQuery credential read the live populated rows and confirmed the current XACTV mapping through the new view.
+
 ## 2026-08-24
 
 **All DXC advertiser variants now report under one DXC group** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/mappings/create_advertiser_mapping.sql)) — 🟢 **Verified and committed**<br>The [advertiser mapping workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now resolves both the `DXC` short code and `DXC Technology Services` source name to `DXC`. The compatibility view, clustered support table, and V3 model were refreshed and each now has zero DXC-coded rows outside the canonical group; SQL Change Guard passed all 13 schema, identity, coverage, and metric checks with no delivery or planned-metric change.
