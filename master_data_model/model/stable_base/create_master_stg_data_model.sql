@@ -1619,9 +1619,26 @@ all_rows AS (
   SELECT * FROM amazon_final
 ),
 
+-- Manual delivery values arrive at package/date grain, while several source
+-- branches legitimately retain more than one row at that grain. Choose one
+-- deterministic carrier so a manual daily metric is reported exactly once
+-- without removing the remaining source-evidence rows.
+all_rows_with_manual_carrier AS (
+  SELECT
+    r.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY r.package_id_joined, r.date
+      ORDER BY
+        r.row_data_source_primary,
+        COALESCE(r.placement_id, ''),
+        TO_JSON_STRING(r)
+    ) AS manual_metric_carrier_rank
+  FROM all_rows AS r
+),
+
 manual_existing_rows AS (
   SELECT
-    r.* REPLACE (
+    r.* EXCEPT(manual_metric_carrier_rank) REPLACE (
       IF(COALESCE(m.edit_id, pm.edit_id) IS NOT NULL, 'manual_package_edits', r.row_data_source_primary) AS row_data_source_primary,
       CASE
         WHEN COALESCE(m.edit_id, pm.edit_id) IS NULL THEN r.row_data_sources_available
@@ -1662,13 +1679,41 @@ manual_existing_rows AS (
       COALESCE(SAFE_CAST(ROUND(m.p_planned_units_doNotSum) AS INT64), r.planned_units) AS planned_units,
       COALESCE(m.p_unit_type, r.unit_type) AS unit_type,
       COALESCE(m.p_rate, r.payable_rate) AS payable_rate,
-      COALESCE(m.man_daily_planned_spend, r.planned_daily_spend_pk) AS planned_daily_spend_pk,
-      COALESCE(m.man_daily_planned_impressions, r.planned_daily_impressions_pk) AS planned_daily_impressions_pk,
-      COALESCE(m.man_daily_spend, r.final_spend) AS final_spend,
-      COALESCE(m.man_daily_impressions, r.final_impressions) AS final_impressions,
-      COALESCE(m.man_daily_clicks, r.final_clicks) AS final_clicks,
-      COALESCE(m.man_daily_video_plays, r.final_video_plays) AS final_video_plays,
-      COALESCE(m.man_daily_video_comps, r.final_video_comps) AS final_video_comps
+      CASE
+        WHEN m.man_daily_planned_spend IS NULL THEN r.planned_daily_spend_pk
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_planned_spend
+        ELSE NULL
+      END AS planned_daily_spend_pk,
+      CASE
+        WHEN m.man_daily_planned_impressions IS NULL THEN r.planned_daily_impressions_pk
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_planned_impressions
+        ELSE NULL
+      END AS planned_daily_impressions_pk,
+      CASE
+        WHEN m.man_daily_spend IS NULL THEN r.final_spend
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_spend
+        ELSE NULL
+      END AS final_spend,
+      CASE
+        WHEN m.man_daily_impressions IS NULL THEN r.final_impressions
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_impressions
+        ELSE NULL
+      END AS final_impressions,
+      CASE
+        WHEN m.man_daily_clicks IS NULL THEN r.final_clicks
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_clicks
+        ELSE NULL
+      END AS final_clicks,
+      CASE
+        WHEN m.man_daily_video_plays IS NULL THEN r.final_video_plays
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_video_plays
+        ELSE NULL
+      END AS final_video_plays,
+      CASE
+        WHEN m.man_daily_video_comps IS NULL THEN r.final_video_comps
+        WHEN r.manual_metric_carrier_rank = 1 THEN m.man_daily_video_comps
+        ELSE NULL
+      END AS final_video_comps
     ),
     COALESCE(m.edit_id, pm.edit_id) AS man_edit_id,
     COALESCE(m.edit_reason, pm.edit_reason) AS man_edit_reason,
@@ -1681,13 +1726,13 @@ manual_existing_rows AS (
     COALESCE(m.manual_edit_published_at, pm.manual_edit_published_at) AS man_manual_edit_published_at,
     m.man_start_date,
     m.man_end_date,
-    m.man_daily_spend,
-    m.man_daily_impressions,
-    m.man_daily_planned_spend,
-    m.man_daily_planned_impressions,
-    m.man_daily_clicks,
-    m.man_daily_video_plays,
-    m.man_daily_video_comps,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_spend, NULL) AS man_daily_spend,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_impressions, NULL) AS man_daily_impressions,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_planned_spend, NULL) AS man_daily_planned_spend,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_planned_impressions, NULL) AS man_daily_planned_impressions,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_clicks, NULL) AS man_daily_clicks,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_video_plays, NULL) AS man_daily_video_plays,
+    IF(r.manual_metric_carrier_rank = 1, m.man_daily_video_comps, NULL) AS man_daily_video_comps,
     m.man_total_spend_doNotSum,
     m.man_total_impressions_doNotSum,
     m.man_total_planned_spend_doNotSum,
@@ -1697,7 +1742,7 @@ manual_existing_rows AS (
     m.man_total_video_comps_doNotSum,
     COALESCE(m.man_benchmark_kpi, pm.man_benchmark_kpi) AS man_benchmark_kpi,
     COALESCE(m.man_benchmark_value, pm.man_benchmark_value) AS man_benchmark_value
-  FROM all_rows AS r
+  FROM all_rows_with_manual_carrier AS r
   LEFT JOIN manual_package_daily AS m
     ON r.package_id_joined = m.package_id
    AND r.date = m.date

@@ -14,8 +14,8 @@
 --   * Digital DCM and original FPD actuals expand to placement/ad/creative or
 --     placement/creative/factor grain instead of collapsing those fields into
 --     pipe-delimited package/date values.
---   * If a package/date has a manual delivery override, lower-grain final
---     actual metrics are suppressed and the manual row is the final actual row.
+--   * Manual delivery overrides are metric-specific: the manual row carries
+--     only replaced metrics, while source rows preserve non-overridden actuals.
 --   * DCM final impressions use source `impressions`; `daily_recalculated_imps`
 --     remains source/QA context only.
 
@@ -144,7 +144,7 @@ manual_delivery_rows AS (
     'package_date' AS qa_v3_metric_grain,
     'manual_package_daily' AS qa_v3_source_detail_type,
     CAST(NULL AS STRING) AS qa_v3_ad_name,
-    'manual delivery override wins; lower-grain final actuals suppressed' AS qa_v3_metric_behavior,
+    'manual metrics override matching source metrics; non-overridden actuals preserved' AS qa_v3_metric_behavior,
     p.planned_spend AS qa_v3_package_planned_spend_doNotSum,
     p.planned_impressions AS qa_v3_package_planned_impressions_doNotSum,
     ctx.c.* REPLACE(
@@ -536,7 +536,7 @@ digital_actual_rows AS (
     d.source_detail_type AS qa_v3_source_detail_type,
     d.qa_v3_ad_name,
     CASE
-      WHEN m.`_package_id` IS NOT NULL THEN 'manual override exists; final actuals intentionally null'
+      WHEN m.`_package_id` IS NOT NULL THEN 'matching manual metrics suppressed; non-overridden source actuals preserved'
       WHEN d.source_detail_type = 'polaris_email' THEN 'MIQ Polaris Email evidence is separate and carries final metrics inside loaded package coverage'
       WHEN pc.`_package_id` IS NOT NULL AND d.source_detail_type IN ('fpd_original', 'fpd_updated_package') THEN 'FPD evidence remains visible; final metrics are carried by separate Polaris rows'
       WHEN d.source_detail_type = 'dcm' AND (COALESCE(f.fpd_spend, 0) != 0 OR COALESCE(f.fpd_impressions, 0) != 0)
@@ -609,7 +609,7 @@ digital_actual_rows AS (
       d.fpd_video_views AS fpd_video_views,
       d.fpd_video_comps AS fpd_video_completions,
       CASE
-        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN m.man_daily_spend IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_spend
         WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN NOT COALESCE(a.has_stable_spend, FALSE) THEN NULL
@@ -618,7 +618,7 @@ digital_actual_rows AS (
         ELSE d.fpd_spend
       END AS `_spend`,
       CASE
-        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN m.man_daily_impressions IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_impressions
         WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN NOT COALESCE(a.has_stable_impressions, FALSE) THEN NULL
@@ -627,7 +627,7 @@ digital_actual_rows AS (
         ELSE d.fpd_impressions
       END AS `_impressions`,
       CASE
-        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN m.man_daily_clicks IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_clicks
         WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN NOT COALESCE(a.has_stable_clicks, FALSE) THEN NULL
@@ -635,9 +635,9 @@ digital_actual_rows AS (
         WHEN d.source_detail_type = 'dcm' THEN CAST(d.dcm_clicks AS FLOAT64)
         ELSE d.fpd_clicks
       END AS `_clicks`,
-      IF(m.`_package_id` IS NOT NULL OR NOT COALESCE(a.has_stable_video_plays, FALSE), NULL, CAST(d.dcm_video_plays AS FLOAT64)) AS `_video_plays`,
+      IF(m.man_daily_video_plays IS NOT NULL OR NOT COALESCE(a.has_stable_video_plays, FALSE), NULL, CAST(d.dcm_video_plays AS FLOAT64)) AS `_video_plays`,
       CASE
-        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN m.man_daily_video_plays IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_video_views
         WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_views
@@ -646,7 +646,7 @@ digital_actual_rows AS (
         ELSE NULL
       END AS `_video_views`,
       CASE
-        WHEN m.`_package_id` IS NOT NULL THEN NULL
+        WHEN m.man_daily_video_comps IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'polaris_email' THEN d.polaris_video_completions
         WHEN pc.`_package_id` IS NOT NULL THEN NULL
         WHEN d.source_detail_type = 'fpd_original' THEN d.fpd_video_comps
@@ -674,6 +674,27 @@ digital_actual_rows AS (
 non_digital_source_ranked AS (
   SELECT
     s.*,
+    CASE
+      WHEN s.qa_media_data_type = 'tv' THEN 'tv_combined'
+      WHEN s.qa_media_data_type = 'amazon_ads' THEN 'amazon_ads'
+      WHEN s.qa_media_data_type = 'social'
+        AND STARTS_WITH(COALESCE(s.s_record_source, ''), 'wp_')
+        THEN 'wp_search_data_template'
+      WHEN s.qa_media_data_type = 'social' THEN 'social'
+      ELSE s.qa_row_data_source_primary
+    END AS source_detail_type,
+    CASE
+      WHEN s.qa_media_data_type = 'tv'
+        THEN 'looker-studio-pro-452620.landing.tv_combined_tbl'
+      WHEN s.qa_media_data_type = 'amazon_ads'
+        THEN 'looker-studio-pro-452620.landing.rit_amzn_report_daily'
+      WHEN s.qa_media_data_type = 'social'
+        AND STARTS_WITH(COALESCE(s.s_record_source, ''), 'wp_')
+        THEN 'looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily'
+      WHEN s.qa_media_data_type = 'social'
+        THEN 'looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl'
+      ELSE s.qa_data_source
+    END AS source_data_source,
     ROW_NUMBER() OVER (
       PARTITION BY s.`_package_id`, s.`_date`
       ORDER BY
@@ -689,7 +710,7 @@ non_digital_source_ranked AS (
     ) AS planned_carrier_rank
   FROM stable AS s
   WHERE s.qa_media_data_type NOT IN ('digital', 'manual')
-    AND s.qa_row_data_source_primary NOT IN ('planned_only', 'manual_package_edits')
+    AND s.qa_row_data_source_primary != 'planned_only'
 ),
 
 non_digital_source_rows AS (
@@ -701,24 +722,26 @@ non_digital_source_rows AS (
       WHEN s.qa_media_data_type = 'tv' THEN 'source_tv_daily'
       ELSE 'stable_source_daily'
     END AS qa_v3_metric_grain,
-    s.qa_row_data_source_primary AS qa_v3_source_detail_type,
+    s.source_detail_type AS qa_v3_source_detail_type,
     CAST(NULL AS STRING) AS qa_v3_ad_name,
     IF(
       m.`_package_id` IS NOT NULL,
-      'manual override exists; final actuals intentionally null',
+      'matching manual metrics suppressed; non-overridden source actuals preserved',
       'source actual row; planned metrics intentionally null'
     ) AS qa_v3_metric_behavior,
     p.planned_spend AS qa_v3_package_planned_spend_doNotSum,
     p.planned_impressions AS qa_v3_package_planned_impressions_doNotSum,
-    s.* EXCEPT(planned_carrier_rank) REPLACE(
+    s.* EXCEPT(planned_carrier_rank, source_detail_type, source_data_source) REPLACE(
+      s.source_detail_type AS qa_row_data_source_primary,
+      s.source_data_source AS qa_data_source,
       IF(m.`_package_id` IS NULL AND s.planned_carrier_rank = 1, p.planned_spend, NULL) AS `_planned_spend`,
       IF(m.`_package_id` IS NULL AND s.planned_carrier_rank = 1, p.planned_impressions, NULL) AS `_planned_impressions`,
-      IF(m.`_package_id` IS NOT NULL, NULL, s.`_spend`) AS `_spend`,
-      IF(m.`_package_id` IS NOT NULL, NULL, s.`_impressions`) AS `_impressions`,
-      IF(m.`_package_id` IS NOT NULL, NULL, s.`_clicks`) AS `_clicks`,
-      IF(m.`_package_id` IS NOT NULL, NULL, s.`_video_plays`) AS `_video_plays`,
-      IF(m.`_package_id` IS NOT NULL, NULL, s.`_video_views`) AS `_video_views`,
-      IF(m.`_package_id` IS NOT NULL, NULL, s.`_video_comps`) AS `_video_comps`,
+      IF(m.man_daily_spend IS NOT NULL, NULL, s.`_spend`) AS `_spend`,
+      IF(m.man_daily_impressions IS NOT NULL, NULL, s.`_impressions`) AS `_impressions`,
+      IF(m.man_daily_clicks IS NOT NULL, NULL, s.`_clicks`) AS `_clicks`,
+      IF(m.man_daily_video_plays IS NOT NULL, NULL, s.`_video_plays`) AS `_video_plays`,
+      IF(m.man_daily_video_plays IS NOT NULL, NULL, s.`_video_views`) AS `_video_views`,
+      IF(m.man_daily_video_comps IS NOT NULL, NULL, s.`_video_comps`) AS `_video_comps`,
       IF(m.`_package_id` IS NOT NULL, TRUE, COALESCE(s.qa_manual_edit_flag, FALSE)) AS qa_manual_edit_flag
     )
   FROM non_digital_source_ranked AS s

@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-26
+
+**Manual impression overrides preserve spend and count once** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The master model now applies each populated manual metric once at package/date grain and preserves every unedited source metric. `DXCQ3 | National TV | FXBS` reports $50,000.40 spend and 15,909,800 impressions in the compatibility model, reporting mart, and V3, with zero active manual-metric mismatches. A separate V3 identity assertion still flags five legitimate weekly TV program groups sharing one placement ID; the warning is documented without changing those source rows.
+
 ## 2026-08-24
 
 **All DXC advertiser variants now report under one DXC group** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/mappings/create_advertiser_mapping.sql)) — 🟢 **Verified and committed**<br>The [master data model](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now resolves both the `DXC` short code and `DXC Technology Services` source name to `DXC`. The compatibility view, clustered support table, and V3 model were refreshed and each now has zero DXC-coded rows outside the canonical group; schema, row identity, coverage, and all protected delivery and planned metrics remained unchanged.
