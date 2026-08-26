@@ -117,6 +117,9 @@ unless the operator separately enables the empty-table override.
 | `_creative_name_raw` | Original V3 creative value before friendly-name mapping. Use for source reconciliation and matching. |
 | `initiative` / PE view `_tactic` | Tactic portion of a `tactic_creative` key. |
 | `_supplier_code` | Context only; changing it does not change the creative match. |
+| PE view `bm_ctr_range_min` / `bm_ctr_range_max` | Decimal CTR benchmark range repeated on matching reporting rows; do not sum. |
+| PE view `bm_social_er_bm` | Decimal social engagement benchmark repeated on matching reporting rows; do not sum. |
+| PE view `bm_vcr_range_min` / `bm_vcr_range_max` | Decimal VCR benchmark range repeated on matching reporting rows; do not sum. |
 
 V3 applies the mapping after direct CM360 conversion enrichment. This preserves raw creative keys for conversion
 matching and prevents a friendly label from changing delivery or conversion joins.
