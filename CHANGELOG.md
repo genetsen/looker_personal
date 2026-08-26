@@ -4,7 +4,7 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-08-26
 
-**Manual impression overrides preserve spend and count once** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The master model now applies each populated manual metric once at package/date grain and preserves every unedited source metric. `DXCQ3 | National TV | FXBS` reports $50,000.40 spend and 15,909,800 impressions in the compatibility model, reporting mart, and V3, with zero active manual-metric mismatches. A separate V3 identity assertion still flags five legitimate weekly TV program groups sharing one placement ID; the warning is documented without changing those source rows.
+**Manual impression overrides preserve spend and count once** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The master model now applies each populated manual metric once at package/date grain and preserves every unedited source metric. `DXCQ3 | National TV | FXBS` reports $50,000.40 spend and 15,909,800 impressions in the compatibility model, reporting mart, and V3, with zero active manual-metric mismatches. The V3 refresh assertion now treats distinct TV programs sharing one placement as separate source rows and passes its complete grain contract without changing warehouse data.
 
 ## 2026-08-24
 
