@@ -68,11 +68,13 @@ creates two objects so future Sheet rows remain visible without exposing hundred
 | Object | Type | Use |
 |---|---|---|
 | [Raw Sheet link](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=purely_elizabeth_creative_mapping_sheet_raw&page=table) | External table | Faithful `Creative Mapping!A:M` connection, including blank Sheet-grid rows. |
-| [Clean linked view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=purely_elizabeth_creative_mapping_sheet&page=table) | View | Normal analyst surface; keeps rows with a supplier code and removes only unused blank grid rows. |
+| [Clean linked view](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=purely_elizabeth_creative_mapping_sheet&page=table) | View | Normal analyst surface; removes unused blank grid rows and converts measures and benchmark rates to usable numeric types. |
 
-All 13 fields remain text. This preserves source values such as percentages, ranges, dashes, `#N/A`, multiline
-benchmark descriptions, and blanks. Build typed benchmark fields in a separate downstream view only after their
-business meaning is approved.
+The raw link keeps all 13 fields as text so source values remain inspectable. The clean view exposes impressions as
+`INT64`, spend as `NUMERIC`, and the five benchmark percentage fields as decimal `NUMERIC` rates—for example,
+`0.04%` becomes `0.0004`. Text identifiers and the two explicitly marked `DO NOT USE` source columns remain text.
+Blank numeric cells and benchmark `#N/A` values become `NULL`; any other malformed populated numeric value causes
+the view query to fail instead of silently losing data.
 
 Query users need both BigQuery access and Google Drive access to the source Sheet. A credential can inspect the
 table metadata yet fail to read its rows when its OAuth token lacks Drive permission. The established R credential
