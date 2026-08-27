@@ -275,6 +275,48 @@ metric_specs <- tibble::tribble(
 planned_metric_names <- c("planned_spend", "planned_impressions")
 whole_number_metric_names <- c("impressions", "planned_impressions", "clicks", "video_plays", "video_comps")
 daily_total_proof_tolerance <- 0.01
+history_float_spend_fields <- c(
+  "current_spend",
+  "replacement_spend",
+  "delta_spend",
+  "current_planned_spend",
+  "replacement_planned_spend",
+  "delta_planned_spend"
+)
+
+assert_history_float_spend_schema <- function(history_table_ref) {
+  history_fields <- bq_table_fields(history_table_ref)
+  field_names <- vapply(history_fields, function(field) field$name, character(1))
+  field_types <- vapply(history_fields, function(field) toupper(field$type), character(1))
+  names(field_types) <- field_names
+
+  missing_fields <- setdiff(history_float_spend_fields, field_names)
+  wrong_type_fields <- history_float_spend_fields[
+    history_float_spend_fields %in% field_names &
+      !field_types[history_float_spend_fields] %in% c("FLOAT", "FLOAT64")
+  ]
+  if (length(missing_fields) == 0 && length(wrong_type_fields) == 0) {
+    return(invisible(TRUE))
+  }
+
+  details <- c(
+    if (length(missing_fields) > 0) {
+      paste0("missing: ", paste(missing_fields, collapse = ", "))
+    },
+    if (length(wrong_type_fields) > 0) {
+      paste0(
+        "not FLOAT64: ",
+        paste0(wrong_type_fields, "=", field_types[wrong_type_fields], collapse = ", ")
+      )
+    }
+  )
+  stop(
+    "Manual edit history spend schema is incompatible (",
+    paste(details, collapse = "; "),
+    "). Run migrate_manual_package_edit_history_spend_to_float64.sql before rerunning the loader.",
+    call. = FALSE
+  )
+}
 
 metadata_specs <- tibble::tribble(
   ~display_col, ~value_key, ~current_col, ~manual_col, ~value_type,
@@ -1801,6 +1843,7 @@ if (length(display_rows) == 0) {
 raw_ref <- bq_table(PROJECT_ID, DATASET_ID, RAW_TABLE)
 daily_ref <- bq_table(PROJECT_ID, DATASET_ID, DAILY_TABLE)
 history_ref <- bq_table(PROJECT_ID, DATASET_ID, HISTORY_TABLE)
+assert_history_float_spend_schema(history_ref)
 
 for (col in metric_specs$current_col) {
   raw_upload[[col]] <- parse_num(raw_upload[[col]])

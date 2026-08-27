@@ -110,6 +110,7 @@ Delivered actual metrics can be edited for any valid date range.
 - For one-day edits, set `Delivery Override Start Date` and `Delivery Override End Date` to the same date.
 - For one-week edits, set the dates to that week and enter weekly replacement totals.
 - The loader spreads replacement totals across the selected dates while preserving the exact total after upload. Count metrics allocate whole units across days; spend metrics preserve decimal precision from the source/editor value.
+- Current, replacement, and change fields for both spend and planned spend use `FLOAT64` in the raw, daily, and permanent-history tables, so values such as `$50,000.40` remain valid. The loader checks the permanent-history schema before upload; use `migrate_manual_package_edit_history_spend_to_float64.sql` if an older ledger still has integer or text spend fields.
 - The daily proof step blocks the upload if daily rows do not sum back to the replacement total beyond a one-cent tolerance.
 
 ## New Manual-Only Packages
