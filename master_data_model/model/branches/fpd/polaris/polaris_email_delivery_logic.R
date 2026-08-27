@@ -47,9 +47,17 @@
       suppressWarnings(as.Date(as_polaris_text(value), format = "%Y-%m-%d"))
     }
 
-  # ? Read one named source column or return an equally sized missing vector
+  # ? Read one named source column without treating capitalization as meaning
     polaris_column <- function(data, name) {
-      if (name %in% names(data)) data[[name]] else rep(NA_character_, nrow(data))
+      matches <- which(tolower(names(data)) == tolower(name))
+      if (length(matches) == 0L) return(rep(NA_character_, nrow(data)))
+      if (length(matches) > 1L) {
+        stop(
+          paste("Polaris source has duplicate columns ignoring case:", name),
+          call. = FALSE
+        )
+      }
+      data[[matches[[1L]]]]
     }
 
   # ? Remove a UTF-8 byte-order mark that may be attached to the first header
@@ -272,10 +280,21 @@
   # ? Identify a supported feed from its CSV headers without trusting its path
     classify_polaris_source_schema <- function(data) {
       data <- clean_polaris_headers(as.data.frame(data, stringsAsFactors = FALSE))
+      normalized_headers <- tolower(names(data))
+      duplicate_headers <- unique(normalized_headers[duplicated(normalized_headers)])
+      if (length(duplicate_headers) > 0L) {
+        stop(
+          paste(
+            "Polaris source has duplicate columns ignoring case:",
+            paste(duplicate_headers, collapse = ", ")
+          ),
+          call. = FALSE
+        )
+      }
       matches <- vapply(
         c("meta", "tiktok"),
         function(source_feed) {
-          all(polaris_required_headers(source_feed) %in% names(data))
+          all(tolower(polaris_required_headers(source_feed)) %in% normalized_headers)
         },
         logical(1)
       )
@@ -299,7 +318,7 @@
   # ? Stop when a source file no longer satisfies its documented schema contract
     validate_polaris_headers <- function(data, source_feed) {
       required <- polaris_required_headers(source_feed)
-      missing <- setdiff(required, names(data))
+      missing <- required[!tolower(required) %in% tolower(names(data))]
       if (length(missing) > 0) {
         stop(
           paste0(
@@ -321,29 +340,29 @@
         source_object_uri = rep(source_object_uri, nrow(data)),
         source_feed = rep("meta", nrow(data)),
         source_row_number = seq_len(nrow(data)) + 1L,
-        platform = as_polaris_text(data[["Platform"]]),
-        campaign_name = as_polaris_text(data[["campaign_name"]]),
-        ad_group_name = as_polaris_text(data[["adset_name"]]),
-        ad_name = as_polaris_text(data[["ad_name"]]),
-        date = parse_polaris_date(data[["date"]]),
-        spend = parse_polaris_numeric(data[["Billable Spend"]]),
-        impressions = parse_polaris_numeric(data[["impressions"]]),
-        clicks = parse_polaris_numeric(data[["Link_click"]]),
-        video_views = parse_polaris_numeric(data[["video_view"]]),
-        video_completions = parse_polaris_numeric(data[["Video View to 100%"]]),
-        raw_date = parse_polaris_date(data[["date"]]),
-        raw_spend = parse_polaris_numeric(data[["Billable Spend"]]),
-        raw_impressions = as.integer(parse_polaris_numeric(data[["impressions"]])),
-        raw_clicks = as.integer(parse_polaris_numeric(data[["Link_click"]])),
-        raw_video_views = as.integer(parse_polaris_numeric(data[["video_view"]])),
-        raw_video_completions = as.integer(parse_polaris_numeric(data[["Video View to 100%"]])),
-        source_date_present = !is.na(as_polaris_text(data[["date"]])),
+        platform = as_polaris_text(polaris_column(data, "Platform")),
+        campaign_name = as_polaris_text(polaris_column(data, "campaign_name")),
+        ad_group_name = as_polaris_text(polaris_column(data, "adset_name")),
+        ad_name = as_polaris_text(polaris_column(data, "ad_name")),
+        date = parse_polaris_date(polaris_column(data, "date")),
+        spend = parse_polaris_numeric(polaris_column(data, "Billable Spend")),
+        impressions = parse_polaris_numeric(polaris_column(data, "impressions")),
+        clicks = parse_polaris_numeric(polaris_column(data, "Link_click")),
+        video_views = parse_polaris_numeric(polaris_column(data, "video_view")),
+        video_completions = parse_polaris_numeric(polaris_column(data, "Video View to 100%")),
+        raw_date = parse_polaris_date(polaris_column(data, "date")),
+        raw_spend = parse_polaris_numeric(polaris_column(data, "Billable Spend")),
+        raw_impressions = as.integer(parse_polaris_numeric(polaris_column(data, "impressions"))),
+        raw_clicks = as.integer(parse_polaris_numeric(polaris_column(data, "Link_click"))),
+        raw_video_views = as.integer(parse_polaris_numeric(polaris_column(data, "video_view"))),
+        raw_video_completions = as.integer(parse_polaris_numeric(polaris_column(data, "Video View to 100%"))),
+        source_date_present = !is.na(as_polaris_text(polaris_column(data, "date"))),
         source_metric_invalid =
-          (!is.na(as_polaris_text(data[["Billable Spend"]])) & is.na(parse_polaris_numeric(data[["Billable Spend"]]))) |
-          (!is.na(as_polaris_text(data[["impressions"]])) & is.na(parse_polaris_numeric(data[["impressions"]]))) |
-          (!is.na(as_polaris_text(data[["Link_click"]])) & is.na(parse_polaris_numeric(data[["Link_click"]]))) |
-          (!is.na(as_polaris_text(data[["video_view"]])) & is.na(parse_polaris_numeric(data[["video_view"]]))) |
-          (!is.na(as_polaris_text(data[["Video View to 100%"]])) & is.na(parse_polaris_numeric(data[["Video View to 100%"]]))),
+          (!is.na(as_polaris_text(polaris_column(data, "Billable Spend"))) & is.na(parse_polaris_numeric(polaris_column(data, "Billable Spend")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "impressions"))) & is.na(parse_polaris_numeric(polaris_column(data, "impressions")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "Link_click"))) & is.na(parse_polaris_numeric(polaris_column(data, "Link_click")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "video_view"))) & is.na(parse_polaris_numeric(polaris_column(data, "video_view")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "Video View to 100%"))) & is.na(parse_polaris_numeric(polaris_column(data, "Video View to 100%")))),
         stringsAsFactors = FALSE
       )
     }
@@ -358,28 +377,28 @@
         source_feed = rep("tiktok", nrow(data)),
         source_row_number = seq_len(nrow(data)) + 1L,
         platform = rep("TikTok", nrow(data)),
-        campaign_name = as_polaris_text(data[["Campaign Name"]]),
-        ad_group_name = as_polaris_text(data[["Ad Group Name"]]),
-        ad_name = as_polaris_text(data[["Ad Name"]]),
-        date = parse_polaris_date(data[["Date Start"]]),
-        spend = parse_polaris_numeric(data[["Billable Spend"]]),
-        impressions = parse_polaris_numeric(data[["Impressions"]]),
-        clicks = parse_polaris_numeric(data[["Clicks (Destination)"]]),
-        video_views = parse_polaris_numeric(data[["Video Views"]]),
-        video_completions = parse_polaris_numeric(data[["Video Views at 100%"]]),
-        raw_date = parse_polaris_date(data[["Date Start"]]),
-        raw_spend = parse_polaris_numeric(data[["Billable Spend"]]),
-        raw_impressions = as.integer(parse_polaris_numeric(data[["Impressions"]])),
-        raw_clicks = as.integer(parse_polaris_numeric(data[["Clicks (Destination)"]])),
-        raw_video_views = as.integer(parse_polaris_numeric(data[["Video Views"]])),
-        raw_video_completions = as.integer(parse_polaris_numeric(data[["Video Views at 100%"]])),
-        source_date_present = !is.na(as_polaris_text(data[["Date Start"]])),
+        campaign_name = as_polaris_text(polaris_column(data, "Campaign Name")),
+        ad_group_name = as_polaris_text(polaris_column(data, "Ad Group Name")),
+        ad_name = as_polaris_text(polaris_column(data, "Ad Name")),
+        date = parse_polaris_date(polaris_column(data, "Date Start")),
+        spend = parse_polaris_numeric(polaris_column(data, "Billable Spend")),
+        impressions = parse_polaris_numeric(polaris_column(data, "Impressions")),
+        clicks = parse_polaris_numeric(polaris_column(data, "Clicks (Destination)")),
+        video_views = parse_polaris_numeric(polaris_column(data, "Video Views")),
+        video_completions = parse_polaris_numeric(polaris_column(data, "Video Views at 100%")),
+        raw_date = parse_polaris_date(polaris_column(data, "Date Start")),
+        raw_spend = parse_polaris_numeric(polaris_column(data, "Billable Spend")),
+        raw_impressions = as.integer(parse_polaris_numeric(polaris_column(data, "Impressions"))),
+        raw_clicks = as.integer(parse_polaris_numeric(polaris_column(data, "Clicks (Destination)"))),
+        raw_video_views = as.integer(parse_polaris_numeric(polaris_column(data, "Video Views"))),
+        raw_video_completions = as.integer(parse_polaris_numeric(polaris_column(data, "Video Views at 100%"))),
+        source_date_present = !is.na(as_polaris_text(polaris_column(data, "Date Start"))),
         source_metric_invalid =
-          (!is.na(as_polaris_text(data[["Billable Spend"]])) & is.na(parse_polaris_numeric(data[["Billable Spend"]]))) |
-          (!is.na(as_polaris_text(data[["Impressions"]])) & is.na(parse_polaris_numeric(data[["Impressions"]]))) |
-          (!is.na(as_polaris_text(data[["Clicks (Destination)"]])) & is.na(parse_polaris_numeric(data[["Clicks (Destination)"]]))) |
-          (!is.na(as_polaris_text(data[["Video Views"]])) & is.na(parse_polaris_numeric(data[["Video Views"]]))) |
-          (!is.na(as_polaris_text(data[["Video Views at 100%"]])) & is.na(parse_polaris_numeric(data[["Video Views at 100%"]]))),
+          (!is.na(as_polaris_text(polaris_column(data, "Billable Spend"))) & is.na(parse_polaris_numeric(polaris_column(data, "Billable Spend")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "Impressions"))) & is.na(parse_polaris_numeric(polaris_column(data, "Impressions")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "Clicks (Destination)"))) & is.na(parse_polaris_numeric(polaris_column(data, "Clicks (Destination)")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "Video Views"))) & is.na(parse_polaris_numeric(polaris_column(data, "Video Views")))) |
+          (!is.na(as_polaris_text(polaris_column(data, "Video Views at 100%"))) & is.na(parse_polaris_numeric(polaris_column(data, "Video Views at 100%")))),
         stringsAsFactors = FALSE
       )
     }

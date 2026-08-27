@@ -110,6 +110,25 @@ source(logic_path)
       "TikTok dates and metrics, including upstream audit fields, remain typed"
     )
 
+  # ? Every required Meta and TikTok header is matched without regard to case
+    meta_case_fixture <- meta_fixture
+    names(meta_case_fixture) <- toupper(names(meta_case_fixture))
+    tiktok_case_fixture <- tiktok_fixture
+    names(tiktok_case_fixture) <- tolower(names(tiktok_case_fixture))
+    expect_true(
+      classify_polaris_source_schema(meta_case_fixture) == "meta" &&
+        classify_polaris_source_schema(tiktok_case_fixture) == "tiktok" &&
+        identical(
+          normalize_polaris_meta(meta_case_fixture, "gs://fixture/meta-case.csv")$date,
+          as.Date(c("2026-07-20", "2026-07-21"))
+        ) &&
+        normalize_polaris_tiktok(
+          tiktok_case_fixture,
+          "gs://fixture/tiktok-case.csv"
+        )$video_completions[[1]] == 9,
+      "all required Meta and TikTok column names are case-insensitive"
+    )
+
   # ? Arbitrary paths are classified only from the documented source schemas
     expect_true(
       classify_polaris_source_schema(meta_fixture) == "meta" &&

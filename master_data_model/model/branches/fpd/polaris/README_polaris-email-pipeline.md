@@ -8,8 +8,10 @@ source_tables:
   - looker-studio-pro-452620.landing.polaris_email_delivery_daily
 refresh: universal runner jobs 12 and 20, or direct loader followed by the refresh wrapper
 loader_script: load_polaris_email_delivery.R
-verified: 2026-08-24
+verified: 2026-08-27
 verified_against:
+  - production runner jobs 12 and 20 with August 27 Meta and TikTok objects
+  - case-insensitive Meta and TikTok header regression fixtures
   - universal runner jobs 12 and 20 with a new Meta object
   - runner-owned Polaris wrapper --dry-run with no new source files
   - in-memory August 24 terminal-report regression fixture
@@ -76,7 +78,9 @@ Cloud Storage object metadata
 ```
 
 Filenames and folder names never identify a feed. Cloud Storage generation and
-creation time identify new objects; CSV columns identify Meta or TikTok. The
+creation time identify new objects; CSV columns identify Meta or TikTok without
+treating capitalization as meaningful. Duplicate columns that differ only by case
+remain invalid because the loader cannot safely choose between them. The
 loader stops before writing on unsupported schemas, invalid dates, backward
 source coverage, mapping failures, or duplicate rows. No new object is a clean
 no-op.
@@ -237,7 +241,7 @@ remains present while only Polaris rows carry final metrics in Polaris coverage.
 |---|---|
 | `permission denied` | Run the loader with `Rscript`; it is not a shell executable. |
 | Source state is not initialized | Run the state-table setup after verifying the current landing objects. |
-| Unsupported new object | Compare its CSV columns with the shared schemas; ignore its path. |
+| Unsupported new object | Compare its CSV column words and punctuation with the shared schemas; capitalization alone does not matter. |
 | Snapshot moved backward | Confirm whether the vendor uploaded stale history or an intentional correction. |
 | Unmapped rows | Check the complete feed/platform/campaign/ad-group key. |
 | Landing changed but V3 did not | Run the dependent refresh wrapper. |

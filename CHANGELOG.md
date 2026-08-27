@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-08-27
+
+**Polaris loads survive column capitalization changes** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/polaris_email_delivery_logic.R)) — 🟢 **Verified and committed**<br>The [Polaris Email pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now treats all required Meta and TikTok column names as case-insensitive while retaining strict duplicate-column protection. The production load and dependent V3 refresh both completed successfully through August 26.
+
+### Pending Next Actions
+
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
+- **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
+- **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
+
 ## 2026-08-26
 
 **Manual impression overrides preserve spend and count once** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The master model now applies each populated manual metric once at package/date grain and preserves every unedited source metric. `DXCQ3 | National TV | FXBS` reports $50,000.40 spend and 15,909,800 impressions in the compatibility model, reporting mart, and V3, with zero active manual-metric mismatches. The V3 refresh assertion now treats distinct TV programs sharing one placement as separate source rows and passes its complete grain contract without changing warehouse data.

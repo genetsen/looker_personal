@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-27
+
+**Polaris accepts vendor column capitalization changes** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/polaris_email_delivery_logic.R)) — 🟢 **Verified and committed**<br>The [Polaris Email loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now matches every required Meta and TikTok column without regard to capitalization while still rejecting duplicate case variants. The production runner loaded 1,324 incoming rows, advanced both feeds through August 26, and rebuilt the clustered and V3 models with all verification checks passing.
+
+### Pending Next Actions
+
+- **Since Aug 21** - Reconcile the DCM lineage label between the documented source and the live builder - NEEDS PROJECT ACCESS
+- **Since Aug 21** - Decide whether six always-NULL `conv_*` columns are reserved or dead before removing them from the v3 builder
+- **Since Aug 21** - Decide whether structurally valid TV estimate rows without a media outlet should be excluded - NEEDS SOURCE OWNER
+
 ## 2026-08-26
 
 **Manual impression overrides no longer multiply delivery or remove spend** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The stable model now publishes each manual daily metric once and leaves unedited source metrics intact; V3 suppresses only the source metric that was manually replaced. For `DXCQ3 | National TV | FXBS`, the compatibility model, reporting mart, and V3 now each report **$50,000.40 spend** and **15,909,800 impressions**, and all active manual package-dates have zero metric mismatches. SQL Change Guard passed 12 compatibility checks and 14 V3 checks. The stored-table refresh now also recognizes distinct TV programs sharing one placement and passes its complete grain contract.
