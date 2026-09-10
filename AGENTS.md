@@ -10,6 +10,8 @@ Primary docs: `DCM_API/README.md`.
 
 For `DCM_API/`, read the README first. Use the existing Python environment at `/Users/eugenetsenter/virtenvi-2025/bin/python`. Start with the package import check and `python -m scripts.list_profiles`. If authentication scopes fail, refresh application-default credentials with the Campaign Manager scope before using browser OAuth. Current scripts read metadata only unless the user asks for write behavior.
 
+For the Ritual QTD reach loader, run `/Users/eugenetsenter/virtenvi-2025/bin/python -m scripts.load_latest_ritual_qtd_email_to_bigquery`. Report whether the scheduled attachment was found, the downloaded filename when present, the target BigQuery table, the BigQuery load job id, terminal job state, output rows, and bad records. If no scheduled attachment is available, say that directly and include the Gmail query or missing-file reason.
+
 ### ADIF Updated FPD Integration (adif/)
 Primary docs: `adif/projects/updated_fpd_integration/README_Updated_FPD_Integration.md` and `adif/projects/updated_fpd_integration/DEPLOYMENT_CHECKLIST.md`.
 

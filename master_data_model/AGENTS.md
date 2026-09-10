@@ -23,6 +23,12 @@ When the user names a versioned target such as `v2`, create sibling versioned fi
 
 For current master-model work, start in `model/` and its function/source folders. Treat legacy root-level SQL and docs as compatibility or history unless the user explicitly names them.
 
+## Semantic Layer Refresh Automation
+
+For the master-data-model semantic-layer refresh automation, read the source inventory first and update the installed semantic-layer reference files only when checked sources prove a change. Use live BigQuery metadata or bounded read-only queries as production truth when available. Preserve unresolved conflicts as open questions.
+
+Validate persistent files directly: required files readable, Markdown tables consistent, checked-source dates accurate, and writes limited to the semantic-layer reference/evidence files. Do not use Data Analytics `semantic_layer_count` as proof.
+
 ## Lean BigQuery Deployment Workflow
 
 For a narrow, schema-preserving master-model change:
