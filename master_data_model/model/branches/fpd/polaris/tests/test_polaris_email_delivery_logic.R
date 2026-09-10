@@ -137,6 +137,16 @@ source(logic_path)
       "source schemas classify independently of filenames and folder names"
     )
 
+  # ? UTF-8 markers never change the first header's meaning
+    marked_meta_fixture <- clean_polaris_headers(meta_fixture)
+    names(marked_meta_fixture)[[1]] <- paste0(
+      "<ef><bb><bf>", names(marked_meta_fixture)[[1]]
+    )
+    expect_true(
+      classify_polaris_source_schema(marked_meta_fixture) == "meta",
+      "UTF-8 markers are harmless under restrictive text settings"
+    )
+
   # ? The uniquely newest business-date snapshot is selected for each feed
     selected_inventory <- validate_polaris_source_inventory(data.frame(
       source_object_uri = c(
@@ -276,6 +286,29 @@ source(logic_path)
     expect_true(
       !is.null(regression_error) && grepl("moved backward", regression_error),
       "a newly arrived snapshot cannot move a feed backward"
+    )
+
+  # ? Late backfills preserve batch coverage and checkpoint the latest arrival
+    selected_progress$source_snapshot_max_date <- as.Date(c("2026-09-07", "2026-09-02"))
+    expect_true(
+      isTRUE(validate_polaris_source_progress(selected_progress, source_state_fixture)),
+      "late historical windows do not reject a batch containing current data"
+    )
+    load_loader_definition(file.path(dirname(logic_path), "load_polaris_email_delivery.R"),
+                           "prepare_source_state_rows")
+    backfill_state <- prepare_source_state_rows(
+      selected_progress, list(client_id = "test", connection_id = "test"), Sys.time()
+    )
+    expect_true(
+      backfill_state$source_max_date[[1]] == as.Date("2026-09-07") &&
+        backfill_state$source_object_uri[[1]] == "gs://fixture/new-meta-b.csv",
+      "checkpoint retains newest data date and latest accepted object independently"
+    )
+    selected_progress$source_snapshot_max_date[[2]] <- as.Date(NA)
+    expect_true(
+      inherits(try(validate_polaris_source_progress(selected_progress, source_state_fixture),
+                   silent = TRUE), "try-error"),
+      "an unreadable backfill date remains blocked"
     )
 
   # ? Production mappings use the full feed/platform/campaign/ad-group key

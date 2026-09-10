@@ -8,8 +8,10 @@ source_tables:
   - looker-studio-pro-452620.landing.polaris_email_delivery_daily
 refresh: universal runner jobs 12 and 20, or direct loader followed by the refresh wrapper
 loader_script: load_polaris_email_delivery.R
-verified: 2026-08-27
+verified: 2026-09-10
 verified_against:
+  - production runner jobs 12 and 20 with thirteen waiting Meta and TikTok objects through September 9
+  - restrictive-text-setting header and late-backfill regression tests
   - production runner jobs 12 and 20 with August 27 Meta and TikTok objects
   - case-insensitive Meta and TikTok header regression fixtures
   - universal runner jobs 12 and 20 with a new Meta object
@@ -71,7 +73,7 @@ Cloud Storage object metadata
   -> discard accepted generations
   -> identify new Meta or TikTok files from header bytes
   -> download every object added after each feed's last successful checkpoint
-  -> process oldest to newest, validate, and map every row
+  -> process all arrivals, including late backfills, validate, and map every row
   -> keep the newest copy only where delivery windows overlap
   -> update overlapping natural keys, append new keys, and advance feed state
   -> refresh V3
@@ -79,11 +81,12 @@ Cloud Storage object metadata
 
 Filenames and folder names never identify a feed. Cloud Storage generation and
 creation time identify new objects; CSV columns identify Meta or TikTok without
-treating capitalization as meaningful. Duplicate columns that differ only by case
-remain invalid because the loader cannot safely choose between them. The
-loader stops before writing on unsupported schemas, invalid dates, backward
-source coverage, mapping failures, or duplicate rows. No new object is a clean
-no-op.
+treating capitalization, order, or UTF-8 file markers as meaningful. Late backfills
+can arrive after newer reports because the loader preserves the newest date covered
+by the complete batch. Duplicate columns that differ only by case remain invalid
+because the loader cannot safely choose between them. The loader stops before
+writing on unsupported schemas, invalid dates, backward batch coverage, mapping
+failures, or duplicate rows. No new object is a clean no-op.
 
 | Source | Purpose | Boundary |
 |---|---|---|
@@ -241,7 +244,7 @@ remains present while only Polaris rows carry final metrics in Polaris coverage.
 |---|---|
 | `permission denied` | Run the loader with `Rscript`; it is not a shell executable. |
 | Source state is not initialized | Run the state-table setup after verifying the current landing objects. |
-| Unsupported new object | Compare its CSV column words and punctuation with the shared schemas; capitalization alone does not matter. |
+| Unsupported new object | Compare its meaningful CSV columns with the shared schemas; encoding markers, capitalization, and column order do not matter. |
 | Snapshot moved backward | Confirm whether the vendor uploaded stale history or an intentional correction. |
 | Unmapped rows | Check the complete feed/platform/campaign/ad-group key. |
 | Landing changed but V3 did not | Run the dependent refresh wrapper. |

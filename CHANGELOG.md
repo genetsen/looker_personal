@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-09-10
+
+**Polaris delivery caught up through September 9** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [Polaris Email pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now accepts harmless UTF-8 file markers and late backfills while retaining its data-integrity checks. Production accepted thirteen waiting Meta and TikTok files, wrote 1,073 validated rows, advanced both feeds through September 9, and rebuilt the clustered, V3, and west-region reporting tables successfully.
+
 ## 2026-08-27
 
 **Polaris loads survive column capitalization changes** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/polaris_email_delivery_logic.R)) — 🟢 **Verified and committed**<br>The [Polaris Email pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now treats all required Meta and TikTok column names as case-insensitive while retaining strict duplicate-column protection. The production load and dependent V3 refresh both completed successfully through August 26.

@@ -62,7 +62,9 @@
 
   # ? Remove a UTF-8 byte-order mark that may be attached to the first header
     clean_polaris_headers <- function(data) {
-      names(data) <- sub("^\ufeff", "", names(data))
+      utf8_marker <- rawToChar(as.raw(c(0xef, 0xbb, 0xbf)))
+      headers <- sub(paste0("^", utf8_marker), "", names(data), useBytes = TRUE)
+      names(data) <- sub("^(<ef><bb><bf>)+", "", headers, ignore.case = TRUE)
       data
     }
 
@@ -167,7 +169,7 @@
       inventory[!duplicated(inventory$source_feed, fromLast = TRUE), , drop = FALSE]
     }
 
-  # ? Prevent a newly arrived rolling snapshot from moving a feed backward
+  # ? Check batch coverage while allowing backfills to arrive out of date order
     validate_polaris_source_progress <- function(selected_inventory, source_state) {
       selected_inventory <- as.data.frame(selected_inventory, stringsAsFactors = FALSE)
       source_state <- as.data.frame(source_state, stringsAsFactors = FALSE)
@@ -178,18 +180,16 @@
         ]
         state_row <- source_state[source_state$source_feed == feed, , drop = FALSE]
         prior_date <- if (nrow(state_row) == 0L) as.Date(NA) else as.Date(state_row$source_max_date[[1]])
-        for (index in seq_len(nrow(feed_inventory))) {
-          new_date <- as.Date(feed_inventory$source_snapshot_max_date[[index]])
-          if (is.na(new_date) || (!is.na(prior_date) && new_date < prior_date)) {
-            stop(
-              paste0(
-                "Polaris ", feed, " snapshot moved backward from ", prior_date,
-                " to ", ifelse(is.na(new_date), "an invalid date", as.character(new_date))
-              ),
-              call. = FALSE
-            )
-          }
-          prior_date <- new_date
+        new_dates <- as.Date(feed_inventory$source_snapshot_max_date)
+        new_date <- if (anyNA(new_dates)) as.Date(NA) else max(new_dates)
+        if (is.na(new_date) || (!is.na(prior_date) && new_date < prior_date)) {
+          stop(
+            paste0(
+              "Polaris ", feed, " snapshot moved backward from ", prior_date,
+              " to ", ifelse(is.na(new_date), "an invalid date", as.character(new_date))
+            ),
+            call. = FALSE
+          )
         }
       }
       invisible(TRUE)

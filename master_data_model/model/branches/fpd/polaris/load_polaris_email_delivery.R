@@ -490,6 +490,11 @@
 
   # ? Build one checkpoint row from the newest successfully processed object per feed
     prepare_source_state_rows <- function(selected_inventory, config, successful_load_at) {
+      # A late backfill owns arrival progress, but not the batch's newest data date.
+      newest_dates <- tapply(
+        as.numeric(selected_inventory$source_snapshot_max_date),
+        selected_inventory$source_feed, max
+      )
       selected_inventory <- latest_polaris_objects_by_feed(selected_inventory)
       data.frame(
         client_id = config$client_id,
@@ -498,7 +503,9 @@
         source_object_uri = selected_inventory$source_object_uri,
         source_object_generation = selected_inventory$source_object_generation,
         object_created_at = as.POSIXct(selected_inventory$object_created_at, tz = "UTC"),
-        source_max_date = as.Date(selected_inventory$source_snapshot_max_date),
+        source_max_date = as.Date(
+          as.numeric(newest_dates[selected_inventory$source_feed]), origin = "1970-01-01"
+        ),
         successful_load_at = as.POSIXct(successful_load_at, tz = "UTC"),
         stringsAsFactors = FALSE
       )
