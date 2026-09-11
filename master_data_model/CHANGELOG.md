@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-11
+
+**Polaris keeps a validated update when its optional totals summary is temporarily unavailable** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The loader still stops for data-integrity problems, including unmapped rows, missing required values, invalid dates or metrics, and duplicate natural rows. Its reader-facing before-and-after totals now warn and yield when BigQuery's policy service is temporarily unavailable, so a completed atomic write is no longer mislabeled as a failed load. Focused tests reproduced the outage, the direct runner retry passed, and live landing data was confirmed through September 10.
+
 ## 2026-09-10
 
 **Polaris delivery caught up through September 9** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [Polaris Email loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now ignores harmless UTF-8 file markers and accepts late backfills when the full batch still advances coverage. It validated and wrote 1,073 rows from thirteen waiting Meta and TikTok files, advanced both feeds through September 9, and rebuilt the clustered, V3, and west-region reporting tables with all integrity checks passing.

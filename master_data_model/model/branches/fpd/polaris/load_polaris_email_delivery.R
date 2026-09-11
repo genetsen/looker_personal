@@ -425,6 +425,21 @@
       summary
     }
 
+  # ? Keep the reader-facing totals optional because they do not protect the data
+    read_optional_production_package_summary <- function(config) {
+      tryCatch(
+        read_production_package_summary(config),
+        error = function(error) {
+          cat(
+            "⚠️ Production totals are temporarily unavailable; ",
+            "the validated data update will continue.\n",
+            sep = ""
+          )
+          NULL
+        }
+      )
+    }
+
   # ? Stop unless every source row is mapped, valid, and naturally unique
     validate_ready_snapshot <- function(rows) {
       problems <- character(0)
@@ -720,23 +735,28 @@
         sep = ""
       )
 
-      cat("DATE COVERAGE\n\n")
-      cat("  Package                Before             After\n")
-      for (index in seq_len(nrow(comparison))) {
-        cat(sprintf(
-          "  %-22s %-18s %s\n",
-          comparison$package_friendly_label[[index]],
-          format_polaris_date_range(
-            comparison$start_date_before[[index]], comparison$end_date_before[[index]]
-          ),
-          format_polaris_date_range(
-            comparison$start_date_after[[index]], comparison$end_date_after[[index]]
-          )
-        ))
-      }
+      if (is.null(comparison)) {
+        cat("PRODUCTION TOTALS\n\n")
+        cat("  Temporarily unavailable; the validated data update succeeded.\n")
+      } else {
+        cat("DATE COVERAGE\n\n")
+        cat("  Package                Before             After\n")
+        for (index in seq_len(nrow(comparison))) {
+          cat(sprintf(
+            "  %-22s %-18s %s\n",
+            comparison$package_friendly_label[[index]],
+            format_polaris_date_range(
+              comparison$start_date_before[[index]], comparison$end_date_before[[index]]
+            ),
+            format_polaris_date_range(
+              comparison$start_date_after[[index]], comparison$end_date_after[[index]]
+            )
+          ))
+        }
 
-      cat("\n\nPRODUCTION TOTALS — Before → After (Change)\n\n")
-      cat(paste(render_polaris_production_totals(comparison), collapse = "\n"), "\n")
+        cat("\n\nPRODUCTION TOTALS — Before → After (Change)\n\n")
+        cat(paste(render_polaris_production_totals(comparison), collapse = "\n"), "\n")
+      }
 
       cat("\n\nSOURCE AD GROUP ASSIGNMENTS\n\n")
       for (source_feed in unique(assignments$source_feed)) {
@@ -846,10 +866,14 @@
         )))
       }
 
-      before_summary <- read_production_package_summary(config)
+      before_summary <- read_optional_production_package_summary(config)
       load_gate <- upsert_delivery_feeds(delivery, state_rows, config)
-      after_summary <- read_production_package_summary(config)
-      comparison <- build_polaris_production_comparison(before_summary, after_summary)
+      after_summary <- read_optional_production_package_summary(config)
+      comparison <- if (is.null(before_summary) || is.null(after_summary)) {
+        NULL
+      } else {
+        build_polaris_production_comparison(before_summary, after_summary)
+      }
       print_production_run_report(
         source_rows = normalized,
         delivery = delivery,

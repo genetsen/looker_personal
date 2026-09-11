@@ -580,6 +580,28 @@ source(logic_path)
       "complete output names source files and keeps only approved production metrics"
     )
 
+  # ? A temporary totals outage never changes a successful load into a failure
+    load_loader_definition(loader_path, "read_optional_production_package_summary")
+    read_production_package_summary <- function(config) stop("temporary backend outage")
+    optional_lines <- capture.output(
+      optional_summary <- read_optional_production_package_summary(list())
+    )
+    fallback_report_lines <- capture.output(print_production_run_report(
+      source_rows = source_rows_fixture,
+      delivery = source_rows_fixture,
+      classified = classified_fixture,
+      comparison = NULL,
+      replaced_rows = 2L,
+      elapsed_seconds = 47
+    ))
+    expect_true(
+      is.null(optional_summary) &&
+        any(grepl("validated data update will continue", optional_lines, fixed = TRUE)) &&
+        any(grepl("Production load succeeded", fallback_report_lines, fixed = TRUE)) &&
+        any(grepl("validated data update succeeded", fallback_report_lines, fixed = TRUE)),
+      "temporary reporting outages warn without failing a validated production update"
+    )
+
 # * SECTION [8]: PRODUCTION UPSERT CONTRACT
 
   # Description: Prevent a future loader edit from deleting an entire feed again.

@@ -4,6 +4,8 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-09-11
 
+**Polaris no longer reports a successful data update as failed when its optional totals summary is unavailable** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The loader keeps all mapping, uniqueness, required-value, date, and metric checks, then treats its reader-facing before-and-after totals as optional. A temporary BigQuery policy-service outage can now warn without changing a validated production write into a failed runner result. Focused tests reproduced that outage, the direct runner retry passed, and live landing data was confirmed through September 10.
+
 **mft submodule properly registered, no longer double-tracked** ([Config](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/.gitmodules)) — 🟢 **Verified and committed**<br>The `mft` folder was committed directly into this repo while also keeping its own independent Git history and GitHub remote, so the two copies could silently drift apart. It is now tracked as a single git submodule pinned to its current commit, and every other top-level folder in this repo was confirmed to need no equivalent fix.
 
 ## 2026-09-10

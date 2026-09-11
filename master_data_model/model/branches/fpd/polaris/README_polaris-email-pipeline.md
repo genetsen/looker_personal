@@ -152,7 +152,11 @@ Run from the `master_data_model` folder.
 Tests plus the live dry run prove source-code changes before writing. The loader's
 terminal success names every ingested Cloud Storage object, its incoming date range,
 rows replaced and added, package coverage before and after, source ad-group assignment,
-and compact before/after/change values for production spend and impressions. The
+and compact before/after/change values for production spend and impressions. Those
+production totals are an optional reader summary: if BigQuery temporarily cannot
+return them after the validated write, the loader warns and still reports the data
+update as successful. Mapping, uniqueness, required-value, date, and metric checks
+remain mandatory and still stop an unsafe update. The
 refresh wrapper plus the queries below prove publication. Script startup, schema
 presence, row count alone, a dry run, or a started BigQuery job do not prove
 publication. A no-new-file dry run also cannot prove the complete production report;
