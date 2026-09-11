@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-09-11
+
+**mft submodule properly registered, no longer double-tracked** ([Config](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/.gitmodules)) — 🟢 **Verified and committed**<br>The `mft` folder was committed directly into this repo while also keeping its own independent Git history and GitHub remote, so the two copies could silently drift apart. It is now tracked as a single git submodule pinned to its current commit, and every other top-level folder in this repo was confirmed to need no equivalent fix.
+
 ## 2026-09-10
 
 **Polaris delivery caught up through September 9** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [Polaris Email pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now accepts harmless UTF-8 file markers and late backfills while retaining its data-integrity checks. Production accepted thirteen waiting Meta and TikTok files, wrote 1,073 validated rows, advanced both feeds through September 9, and rebuilt the clustered, V3, and west-region reporting tables successfully.
