@@ -6,3 +6,10 @@
 	path = olipop
 	url = https://github.com/genetsen/olipop.git
 	ignore = all
+[submodule "Reddit"]
+	path = Reddit
+	url = https://github.com/genetsen/reddit.git
+[submodule "Reddit"]
+	path = Reddit
+	url = https://github.com/genetsen/reddit.git
+	ignore = all
