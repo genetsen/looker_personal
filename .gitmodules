@@ -2,3 +2,7 @@
 	path = mft
 	url = https://github.com/genetsen/mft.git
 	ignore = all
+[submodule "olipop"]
+	path = olipop
+	url = https://github.com/genetsen/olipop.git
+	ignore = all
