@@ -311,7 +311,7 @@ Standalone and PrintInsertion rows are matched and produce actuals. See
 [section 4.1](#41-_package_type-has-four-values-not-two).
 
 **06 — The root-level v3 script is stale.**
-`master_data_model/create_master_stg_data_model_v3.sql` has no CM360 branch and does not match
+`master_data_model/model/final_model/create_master_stg_data_model_v3.sql` has no CM360 branch and does not match
 production. The canonical file is `model/final_model/create_master_stg_data_model_v3.sql`.
 
 **07 — Two upstream typos are load-bearing.**

@@ -264,7 +264,7 @@ Create the empty manual-edit landing tables before deploying the manual-aware mo
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_manual_package_edit_tables.sql
+  < master_data_model/model/manual_editor/create_manual_package_edit_tables.sql
 ```
 
 Load or refresh the Google Sheet manual-edit path:
@@ -282,12 +282,12 @@ Refresh the master view:
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_data_model_upstream_tables_sched.sql
+  < master_data_model/model/stable_base/create_master_data_model_upstream_tables_sched.sql
 ```
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_stg_data_model.sql
+  < master_data_model/model/stable_base/create_master_stg_data_model.sql
 ```
 
 Refresh the controlled WP production input and shared-social staging before the master view when the source Sheet changes:
@@ -320,7 +320,7 @@ Dry-run validation:
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false --dry_run \
-  < master_data_model/create_master_stg_data_model.sql
+  < master_data_model/model/stable_base/create_master_stg_data_model.sql
 ```
 
 ## Quick QA Queries

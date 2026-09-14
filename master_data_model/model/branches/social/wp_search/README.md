@@ -81,7 +81,7 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < wp/sql/create_stg_crossplatform_wp_primary_production.sql
 
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_stg_data_model.sql
+  < master_data_model/model/stable_base/create_master_stg_data_model.sql
 ```
 
 The daily shared-social scheduled query already runs the production builder SQL. The controlled loader command is required only when the source Sheet should be re-read into staging. After changing this SQL, update the saved scheduled-query config too; BigQuery does not automatically copy local file edits into the scheduled query.

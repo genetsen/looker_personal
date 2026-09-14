@@ -12,7 +12,7 @@ Another agent added `p_package_friendly` to the local SQL first. The live view w
 
 `p_package_friendly` is now included in:
 
-- `master_data_model/create_master_stg_data_model.sql`
+- `master_data_model/model/stable_base/create_master_stg_data_model.sql`
 - `looker-studio-pro-452620.master_stg.data_model`
 
 Verified live schema position:
