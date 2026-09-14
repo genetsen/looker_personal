@@ -6,6 +6,10 @@ Project-local instructions for `master_data_model`.
 
 Apply the global [BigQuery, SQL, and data-modeling rules](/Users/eugenetsenter/.codex/BIGQUERY_SQL_DATA_MODELING_RULES.md) before any master-model warehouse, SQL, or modeling work. This file only adds master-model-specific overlays.
 
+## Documentation Standard
+
+Apply the global [README content standard](/Users/eugenetsenter/.codex/README_STRUCTURE_STANDARD.md) before writing or revising any `README.md` or pipeline guide in this repository. `docs/archive/README_STRUCTURE_STANDARD.moved-to-codex-2026-08-21.md` is a superseded snapshot kept only per the archive-don't-delete rule — always use the live `.codex` copy, not the archived one.
+
 ## Missing-Field Lineage Rule
 
 When investigating why a field is missing or unexpectedly blank in the master model, apply the global missing-field rule, then trace the master-model lineage before answering:
