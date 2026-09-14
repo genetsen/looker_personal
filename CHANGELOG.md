@@ -4,6 +4,8 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-09-14
 
+**TikTok video refresh no longer depends on the removed `image_ids` field** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/tiktok/mart__tiktok__ad_daily.sql)) — 🟢 **Verified**<br>The TikTok daily mart now reads the two history fields it needs directly from the current deduplicated table, bypassing a legacy view that still selected the removed optional field. SQL Change Guard passed, the repaired mart retained all 24,028 date/ad rows and tested video totals, the saved shared-social schedule completed successfully under its service account, and the clustered and V3 master tables were refreshed with all integrity checks passing.
+
 **olipop registered as its own git repo, no more duplicate history risk** ([Config](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/.gitmodules)) — 🟢 **Verified and committed**<br>The `olipop` folder is now tracked as a single git submodule (github.com/genetsen/olipop) instead of plain files, the first step of a broader effort to split out the small set of folders with real data dependencies on the master data model. Its files did not move and its BigQuery outputs are unaffected.
 
 ## 2026-09-11
@@ -26,7 +28,6 @@ All notable changes to this repository are documented in this file.
 
 - **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
 - **Since Jul 14** - Run one final Package Lookup menu search after the one-field layout update and confirm its returned packages against the live warehouse
-- **Since Jul 7** - Update the saved shared-social transfer configuration with owner-account credentials
 - **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
 
 ## 2026-08-26

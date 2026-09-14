@@ -1,3 +1,7 @@
+-- Purpose: Build the daily TikTok delivery mart used by shared-social video metrics.
+-- Safety: The ad-history join reads only the two fields it needs from the
+-- already-deduplicated table, avoiding stale optional columns in the legacy
+-- filtered view while preserving this mart's existing schema and grain.
 create or replace view looker-studio-pro-452620.repo_tiktok.mart__tiktok__ad_daily as (
 
 WITH
@@ -20,7 +24,7 @@ ah as ( -- AD HISTORY CTE
     ad_id as ah_id, 
     optimization_event as ah_optimization_event,
     
-  from `looker-studio-pro-452620.repo_tiktok.stg2__ad_history_deduped_filtered`
+  from `looker-studio-pro-452620.repo_tiktok.stg__ad_history_deduped`
 ),
 
 ch as ( -- CAMPAIGN HISTORY CTE
@@ -90,10 +94,9 @@ FROM `giant-spoon-299605.tiktok_ads_tiktok_ads.tiktok_ads__ad_report` as main
 left join agh ON agh.adgroup_id = main.ad_group_id
 left join ah ON ah.ah_id = main.ad_id
 left join ch ON ch.ch_id = main.campaign_id
-left join ard on ard.ard_id = main.ad_id and ard.date = date_day
+left join ard on ard.ard_id = main.ad_id and DATE(ard.date) = date_day
 left join alft on alft.alft_id = main.ad_id 
 left join clft on clft.clft_id = main.campaign_id
 left join aglft on aglft.aglft_id = main.ad_group_id
  --where main.ad_id = 1831027660807202
 )
-
