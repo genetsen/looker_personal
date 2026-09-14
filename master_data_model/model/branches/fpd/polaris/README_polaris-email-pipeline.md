@@ -8,8 +8,9 @@ source_tables:
   - looker-studio-pro-452620.landing.polaris_email_delivery_daily
 refresh: universal runner jobs 12 and 20, or direct loader followed by the refresh wrapper
 loader_script: load_polaris_email_delivery.R
-verified: 2026-09-10
+verified: 2026-09-14
 verified_against:
+  - live no-write loader path with named and timed BigQuery stage markers
   - production runner jobs 12 and 20 with thirteen waiting Meta and TikTok objects through September 9
   - restrictive-text-setting header and late-backfill regression tests
   - production runner jobs 12 and 20 with August 27 Meta and TikTok objects
@@ -251,6 +252,7 @@ remains present while only Polaris rows carry final metrics in Polaris coverage.
 | Unsupported new object | Compare its meaningful CSV columns with the shared schemas; encoding markers, capitalization, and column order do not matter. |
 | Snapshot moved backward | Confirm whether the vendor uploaded stale history or an intentional correction. |
 | Unmapped rows | Check the complete feed/platform/campaign/ad-group key. |
+| `POLARIS_BQ_FAILURE` | Read its `stage`, elapsed seconds, and error. The stage identifies whether the timeout occurred while checking or reading source state, reading package mappings or production totals, or validating staged rows. |
 | Landing changed but V3 did not | Run the dependent refresh wrapper. |
 | V3 is lower than landing | Check approved Manual Package Editor overlaps. |
 

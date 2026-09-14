@@ -70,6 +70,32 @@
       }
     }
 
+  # ? Name and time one BigQuery boundary without exposing SQL or credentials
+    run_polaris_bq_stage <- function(stage, operation) {
+      started_at <- proc.time()[["elapsed"]]
+      cat("POLARIS_BQ_STAGE|stage=", stage, "|status=started\n", sep = "")
+      tryCatch({
+        result <- operation()
+        elapsed_seconds <- proc.time()[["elapsed"]] - started_at
+        cat(
+          "POLARIS_BQ_STAGE|stage=", stage,
+          "|status=completed|elapsed_seconds=", sprintf("%.2f", elapsed_seconds),
+          "\n",
+          sep = ""
+        )
+        result
+      }, error = function(error) {
+        elapsed_seconds <- proc.time()[["elapsed"]] - started_at
+        error_text <- gsub("[\r\n|]+", " ", conditionMessage(error))
+        stop(
+          "POLARIS_BQ_FAILURE|stage=", stage,
+          "|elapsed_seconds=", sprintf("%.2f", elapsed_seconds),
+          "|error=", error_text,
+          call. = FALSE
+        )
+      })
+    }
+
 
 # * SECTION [2]: SOURCE DISCOVERY AND NORMALIZATION
 
@@ -293,16 +319,26 @@
       invisible(output)
     }
 
-  # ? Run a SELECT and return its downloadable destination table
-    run_bq_query <- function(project, sql) {
-      bigrquery::bq_project_query(project, sql, use_legacy_sql = FALSE, quiet = TRUE)
+  # ? Run and download a SELECT inside one named, timed diagnostic boundary
+    run_bq_download <- function(project, sql, stage) {
+      run_polaris_bq_stage(stage, function() {
+        destination <- bigrquery::bq_project_query(
+          project,
+          sql,
+          use_legacy_sql = FALSE,
+          quiet = TRUE
+        )
+        bigrquery::bq_table_download(destination, quiet = TRUE)
+      })
     }
 
   # ? Identify whether the current per-feed checkpoint table has been deployed
     source_state_table_exists <- function(config) {
-      bigrquery::bq_table_exists(
-        bigrquery::bq_table(config$project, "landing", config$state_table)
-      )
+      run_polaris_bq_stage("source_state_table_check", function() {
+        bigrquery::bq_table_exists(
+          bigrquery::bq_table(config$project, "landing", config$state_table)
+        )
+      })
     }
 
   # ? Read one object's exact generation and creation time for state bootstrap
@@ -337,7 +373,7 @@
         gsub("'", "''", config$client_id),
         gsub("'", "''", config$connection_id)
       )
-      state <- bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+      state <- run_bq_download(config$project, sql, "source_state_bootstrap")
       if (!setequal(state$source_feed, c("meta", "tiktok"))) {
         stop("Cannot bootstrap Polaris source state: landing does not contain both feeds", call. = FALSE)
       }
@@ -369,7 +405,7 @@
           gsub("'", "''", config$client_id),
           gsub("'", "''", config$connection_id)
         )
-        state <- bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+        state <- run_bq_download(config$project, sql, "source_state_read")
       }
       if (setequal(state$source_feed, c("meta", "tiktok")) && nrow(state) == 2L) return(state)
       if (!config$dry_run) {
@@ -399,7 +435,7 @@
         gsub("'", "''", config$client_id),
         gsub("'", "''", config$connection_id)
       )
-      bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+      run_bq_download(config$project, sql, "active_mapping_read")
     }
 
   # ? Read the small package-level production summary used in the run comparison
@@ -419,7 +455,7 @@
         gsub("'", "''", config$client_id),
         gsub("'", "''", config$connection_id)
       )
-      summary <- bigrquery::bq_table_download(run_bq_query(config$project, sql), quiet = TRUE)
+      summary <- run_bq_download(config$project, sql, "production_summary_read")
       summary$start_date <- as.Date(summary$start_date)
       summary$end_date <- as.Date(summary$end_date)
       summary
@@ -430,6 +466,7 @@
       tryCatch(
         read_production_package_summary(config),
         error = function(error) {
+          cat(conditionMessage(error), "\n", sep = "")
           cat(
             "⚠️ Production totals are temporarily unavailable; ",
             "the validated data update will continue.\n",
@@ -598,7 +635,7 @@
         state_staging_id, state_staging_id, delivery_staging_id, state_staging_id,
         delivery_staging_id, production_id
       )
-      gate <- bigrquery::bq_table_download(run_bq_query(config$project, validation_sql), quiet = TRUE)
+      gate <- run_bq_download(config$project, validation_sql, "validation_gate")
       if (
         gate$row_count[[1]] != nrow(rows) ||
           gate$unmapped_rows[[1]] != 0 || gate$invalid_rows[[1]] != 0 || gate$duplicate_rows[[1]] != 0 ||

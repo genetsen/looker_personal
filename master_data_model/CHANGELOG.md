@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-14
+
+**Polaris BigQuery failures now identify the stalled operation** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The [Polaris Email loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/README_polaris-email-pipeline.md) now names and times each BigQuery read boundary, preserving a readable error when a request fails while leaving query, validation, and write behavior unchanged. Focused in-memory tests passed for both successful and timed-out operations; a live no-write run completed all current BigQuery stages and validated 586 incoming rows without changing production.
+- **⚠️ Unverified** - A real BigQuery timeout has not occurred since the diagnostic marker was added.
+
 ## 2026-09-11
 
 **Polaris keeps a validated update when its optional totals summary is temporarily unavailable** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The loader still stops for data-integrity problems, including unmapped rows, missing required values, invalid dates or metrics, and duplicate natural rows. Its reader-facing before-and-after totals now warn and yield when BigQuery's policy service is temporarily unavailable, so a completed atomic write is no longer mislabeled as a failed load. Focused tests reproduced the outage, the direct runner retry passed, and live landing data was confirmed through September 10.

@@ -596,10 +596,58 @@ source(logic_path)
     ))
     expect_true(
       is.null(optional_summary) &&
+        any(grepl("temporary backend outage", optional_lines, fixed = TRUE)) &&
         any(grepl("validated data update will continue", optional_lines, fixed = TRUE)) &&
         any(grepl("Production load succeeded", fallback_report_lines, fixed = TRUE)) &&
         any(grepl("validated data update succeeded", fallback_report_lines, fixed = TRUE)),
       "temporary reporting outages warn without failing a validated production update"
+    )
+
+  # ? Named BigQuery stages preserve timing and useful errors without calling BigQuery
+    load_loader_definition(loader_path, "run_polaris_bq_stage")
+    successful_stage_lines <- capture.output(
+      successful_stage_result <- run_polaris_bq_stage(
+        "source_state_read",
+        function() "fixture result"
+      )
+    )
+    failed_stage_lines <- capture.output(
+      failed_stage_error <- tryCatch(
+        run_polaris_bq_stage(
+          "active_mapping_read",
+          function() stop("backend | timeout\nrequest stopped", call. = FALSE)
+        ),
+        error = function(error) conditionMessage(error)
+      )
+    )
+    expect_true(
+      identical(successful_stage_result, "fixture result") &&
+        any(grepl(
+          "POLARIS_BQ_STAGE|stage=source_state_read|status=started",
+          successful_stage_lines,
+          fixed = TRUE
+        )) &&
+        any(grepl(
+          "POLARIS_BQ_STAGE|stage=source_state_read|status=completed|elapsed_seconds=",
+          successful_stage_lines,
+          fixed = TRUE
+        )),
+      "successful BigQuery stages identify the operation and elapsed time"
+    )
+    expect_true(
+      length(failed_stage_lines) == 1L &&
+        grepl(
+          "POLARIS_BQ_STAGE|stage=active_mapping_read|status=started",
+          failed_stage_lines,
+          fixed = TRUE
+        ) &&
+        grepl(
+          "POLARIS_BQ_FAILURE|stage=active_mapping_read|elapsed_seconds=",
+          failed_stage_error,
+          fixed = TRUE
+        ) &&
+        grepl("error=backend   timeout request stopped", failed_stage_error, fixed = TRUE),
+      "failed BigQuery stages preserve a sanitized original error"
     )
 
 # * SECTION [8]: PRODUCTION UPSERT CONTRACT
