@@ -1,3 +1,9 @@
+## HITL REVIEWERS
+
+- gene <gene.tsenter@giantspoon.com>
+
+---
+
 # Master Data Model Pipeline
 
 Complete documentation of the master data model pipeline that unifies planning, digital delivery, partner-reported delivery, digital conversion outcomes, social, TV, Amazon Ads, and manual package edits into one cross-client evidence layer.
@@ -5,6 +11,47 @@ Complete documentation of the master data model pipeline that unifies planning, 
 The current production endpoint is [Master evidence model v3](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_v3&page=table). The older package/date evidence and mart outputs remain live compatibility surfaces until their later migration and cleanup.
 
 This v2 README follows the MFT pipeline README format: start with the shape of the pipeline, then explain each source, model layer, operational workflow, current state, usage path, maintenance habit, and troubleshooting route.
+
+## Table of Contents
+
+- [Terminology](#terminology)
+- [Pipeline Overview](#pipeline-overview)
+- [Data Sources](#data-sources)
+- [Controlled Source Layer](#controlled-source-layer)
+- [Final Model And Output Layer](#final-model-and-output-layer)
+- [Manual Package Editor](#manual-package-editor)
+- [Operational Scripts](#operational-scripts)
+- [Key Concepts](#key-concepts)
+- [Current State](#current-state)
+- [Usage Examples](#usage-examples)
+- [Verification Guidance](#verification-guidance)
+- [Maintenance](#maintenance)
+- [Troubleshooting](#troubleshooting)
+- [Documentation Pattern](#documentation-pattern)
+
+---
+
+## Terminology
+
+Every specialized term used later in this README is defined here first. Plain
+meaning comes before the exact field or object name.
+
+| Term | Plain meaning |
+|---|---|
+| Grain | What one row represents. "Package/date grain" means one row per package per day. Mixing grains is the most common cause of double-counted totals. |
+| Package/date | One media package on one calendar day. The historical reporting unit of this model. |
+| Evidence layer | A table that keeps every source's own values visible side by side, plus labels saying where each value came from, instead of collapsing them into one answer. |
+| Reporting mart | The dashboard-facing table built from the evidence layer after reporting filters are applied and package labels are recalculated. |
+| Landing table | The first stop in the warehouse for data arriving from outside, stored close to its original shape. |
+| Staging | A cleaned, standardized version of a landing table, prepared for joining but not yet final. |
+| Source precedence | The rule deciding which source wins when two sources report the same thing. Manual corrections outrank partner data, which outranks platform data. |
+| Synthetic key | An identifier this model invents when a row has no natural package or placement ID, so the row can join without pretending it came from planning data. |
+| `_doNotSum` suffix | Marks a field whose value is repeated on many rows for context. Summing it double-counts. |
+| Compatibility surface | An older table or view kept alive so existing dashboards keep working, even though new work should not build on it. |
+| QA field | A column carrying provenance or warnings about the row itself (`qa_*`) rather than media performance. |
+| CTE | A named temporary query block inside one SQL statement, used to split a large query into readable steps. |
+
+---
 
 ## Pipeline Overview
 
@@ -128,23 +175,6 @@ flowchart TD
     RUNNER --> V3
 ```
 
-## Table of Contents
-
-- [Data Sources](#data-sources)
-- [Controlled Source Layer](#controlled-source-layer)
-- [Final Model And Output Layer](#final-model-and-output-layer)
-- [Manual Package Editor](#manual-package-editor)
-- [Operational Scripts](#operational-scripts)
-- [Key Concepts](#key-concepts)
-- [Current State](#current-state)
-- [Usage Examples](#usage-examples)
-- [Verification Guidance](#verification-guidance)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
-- [Documentation Pattern](#documentation-pattern)
-
----
-
 ## Data Sources
 
 ### Source Inventory
@@ -166,6 +196,12 @@ flowchart TD
 
 ### Source Boundaries
 
+**What this means:** a deliberate rule about what a source is *not* allowed to
+feed, and where it must stop. Boundaries exist because two sources can describe
+the same campaign while only one of them is the approved input for a given
+output. Reading the wrong side of a boundary produces numbers that look
+plausible and are wrong, so each boundary below names the correct path.
+
 | Boundary | Rule | Why it matters |
 |---|---|---|
 | Basis delivery | Basis is not a direct package/date master model source. It feeds Looker-owned Basis/DCM reporting views outside the master package/date DCM branch. | Prevents accidental debugging through the wrong reporting path. |
@@ -176,6 +212,13 @@ flowchart TD
 ---
 
 ## Controlled Source Layer
+
+**What this means:** the middle stage of the pipeline. Raw sources are never read
+straight into the final model. They are first turned into a small set of
+predictable, trusted tables — one stable package/date base, a few source-specific
+branches, and the manual correction tables. "Controlled" means the shape, grain,
+and column names of those tables are guaranteed, so the final model builder can
+rely on them instead of re-interpreting each raw source.
 
 ### Current Workspace
 
@@ -199,8 +242,8 @@ Start in [model workspace](/Users/eugenetsenter/Looker_clonedRepo/looker_persona
 | [Stable package/date base SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql) | Builds the stable base that the final model reads. | Checking package/date source assembly. |
 | [Final model v3 SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/final_model/create_master_stg_data_model_v3.sql) | Builds the current final master evidence model. | Changing master model behavior. |
 | [Reporting mart SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/reporting_outputs/create_master_stg_data_model_mart.sql) | Builds the reporting-ready mart. | Changing reporting filters or mart rollups. |
-| [Upstream scheduled helper SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_master_data_model_upstream_tables_sched.sql) | Refreshes upstream helper tables used before the main model. | Running a full refresh path. |
-| [Advertiser mapping SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/create_advertiser_mapping.sql) | Maintains canonical advertiser names and short codes. | Adding or fixing advertiser identity. |
+| [Upstream scheduled helper SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_data_model_upstream_tables_sched.sql) | Refreshes upstream helper tables used before the main model. | Running a full refresh path. |
+| [Advertiser mapping SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/mappings/create_advertiser_mapping.sql) | Maintains canonical advertiser names and short codes. | Adding or fixing advertiser identity. |
 | [Master model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/master-data-model-map.html) | Interactive map of inputs, branch logic, outputs, and warnings. | Orienting before a change or explaining lineage. |
 | [DCM cost model map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/dcm-cost-model-map.html) | DCM scheduled-query and handoff map. | Debugging DCM package rollups or DCM handoff. |
 | [Manual editor workflow map](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/manual-data-editor-workflow-map.html) | Visual map of Sheet edit to warehouse to mart. | Explaining or debugging manual edits. |
@@ -274,7 +317,7 @@ Run from the Looker repo root unless a command says otherwise.
 
 ```bash
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_data_model_upstream_tables_sched.sql
+  < master_data_model/model/stable_base/create_master_data_model_upstream_tables_sched.sql
 ```
 
 ```bash
@@ -544,22 +587,25 @@ Do not fill content-modified time from unrelated load timestamps.
 
 ## Documentation Pattern
 
-This README intentionally mirrors [MFT Data Pipeline README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md).
+This README is the reference implementation of the
+[README content standard](/Users/eugenetsenter/.codex/README_STRUCTURE_STANDARD.md),
+and it mirrors [MFT Data Pipeline README](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/mft/README.md).
 
-Future project READMEs should keep this reader-first structure when documenting a pipeline or workflow:
+The standard owns the details. Its essentials:
 
-1. Short purpose statement and final endpoint.
-2. ASCII pipeline overview.
-3. Mermaid pipeline diagram.
-4. Clickable table of contents.
-5. Source inventory with purpose, grain, and warnings.
-6. Layer-by-layer processing notes.
-7. Output and schema/field semantics.
-8. Operational scripts and refresh path.
-9. Key concepts in plain language.
-10. Current state and durable warnings.
-11. Usage examples.
-12. Verification guidance.
-13. Maintenance and troubleshooting.
+- **The content is required; the sections are not.** Every guide must carry the
+  content contract — sources and their boundaries, canonical and protected
+  surfaces, field semantics, operational commands, known gaps, proof plan,
+  troubleshooting, and verification queries. How those are grouped and named
+  should fit the pipeline. Do not add empty headings to match a template.
+- **The opening is fixed.** A clickable table of contents is the first section,
+  and terminology comes before any diagram or table.
+- **Define a section's own term before its first table.** Any heading naming a
+  concept opens with a short **What this means:** paragraph.
+- **No undefined jargon anywhere.** Write for a reader who knows software
+  generally but not this pipeline.
+- **Prefer a query to a recorded number.** Counts go stale; a query does not.
 
-Footnote: a CTE is a named temporary query block inside SQL. It helps split one large query into readable steps.
+A reader should never have to open a script to learn which entrypoint is
+canonical, what must not be written to, the join and grain, which field to read,
+what is known to be missing, or how to verify current state.
