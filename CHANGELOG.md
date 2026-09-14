@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-09-14
+
+**olipop registered as its own git repo, no more duplicate history risk** ([Config](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/.gitmodules)) — 🟢 **Verified and committed**<br>The `olipop` folder is now tracked as a single git submodule (github.com/genetsen/olipop) instead of plain files, the first step of a broader effort to split out the small set of folders with real data dependencies on the master data model. Its files did not move and its BigQuery outputs are unaffected.
+
 ## 2026-09-11
 
 **Polaris no longer reports a successful data update as failed when its optional totals summary is unavailable** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/fpd/polaris/load_polaris_email_delivery.R)) — 🟢 **Verified and committed**<br>The loader keeps all mapping, uniqueness, required-value, date, and metric checks, then treats its reader-facing before-and-after totals as optional. A temporary BigQuery policy-service outage can now warn without changing a validated production write into a failed runner result. Focused tests reproduced that outage, the direct runner retry passed, and live landing data was confirmed through September 10.
