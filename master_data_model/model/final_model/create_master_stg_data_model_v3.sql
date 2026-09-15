@@ -37,9 +37,13 @@ CREATE OR REPLACE TABLE `looker-studio-pro-452620.master_stg.data_model_v3`
 CLUSTER BY `_advertiser`
 AS
 WITH
+
 stable AS (
+  -- Base stable CTE that preserves the existing master-model columns
+  -- and appends placeholder columns for conversions and Polaris metrics.
   SELECT
     base.*,
+    -- CM360 Conversion placeholders
     CAST(NULL AS STRING) AS conv_activity,
     CAST(NULL AS INT64) AS conv_total_conversions,
     CAST(NULL AS INT64) AS conv_source_impressions,
@@ -55,6 +59,7 @@ stable AS (
     CAST(NULL AS STRING) AS conv_source_sheet_id,
     CAST(NULL AS STRING) AS conv_source_sheet_tab,
     CAST(NULL AS STRING) AS conv_source_sheet_gid,
+    -- Polaris ingestion placeholders
     CAST(NULL AS STRING) AS polaris_partner,
     CAST(NULL AS STRING) AS polaris_ingestion_path,
     CAST(NULL AS STRING) AS polaris_source_feed,
@@ -125,7 +130,6 @@ manual_delivery_daily AS (
     )
   GROUP BY package_id, DATE(date)
 ),
-
 package_plan_daily AS (
   SELECT
     `_package_id`,
@@ -504,11 +508,14 @@ digital_detail AS (
 ),
 
 digital_detail_ranked AS (
+  -- Rank digital details to determine which row carries the planned metrics.
+  -- Polaris email is prioritized first, followed by original FPD, updated FPD, and DCM.
   SELECT
     d.*,
     ROW_NUMBER() OVER (
       PARTITION BY d.`_package_id`, d.`_date`
       ORDER BY
+        -- Prioritize source types for planned metric carrier assignment
         CASE d.source_detail_type
           WHEN 'polaris_email' THEN 0
           WHEN 'fpd_original' THEN 1
