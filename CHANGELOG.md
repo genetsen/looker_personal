@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-09-15
+
+**Prisma registered as its own git repo, planned-side data kept with its model** ([Config](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/.gitmodules)) — 🟢 **Verified and committed**<br>The `Prisma` folder is now tracked as a single git submodule (github.com/genetsen/prisma) instead of plain files, continuing the effort to split out the folders with real data dependencies on the master data model. Prisma supplies the planned spend, rates, and package metadata that the master model's package rollups and manual package editor depend on, and its enriched view is built from the same DCM and FPD tables. Its files did not move, its BigQuery outputs are unaffected, and the two working files git had been ignoring (a supplier logo review CSV and a Python cache folder) were carried across byte-for-byte.
+
 ## 2026-09-14
 
 **TikTok video refresh no longer depends on the removed `image_ids` field** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/tiktok/mart__tiktok__ad_daily.sql)) — 🟢 **Verified**<br>The TikTok daily mart now reads the two history fields it needs directly from the current deduplicated table, bypassing a legacy view that still selected the removed optional field. SQL Change Guard passed, the repaired mart retained all 24,028 date/ad rows and tested video totals, the saved shared-social schedule completed successfully under its service account, and the clustered and V3 master tables were refreshed with all integrity checks passing.
