@@ -15,3 +15,16 @@
 .agent/
 .cline/
 .opencode/
+
+# Installer-managed BMAD config.
+#
+# _bmad/config.toml and config.user.toml both open with "Installer-managed.
+# Regenerated on every install — treat as read-only," and the module configs
+# and resolver scripts are rewritten the same way. What survives an install is
+# kept tracked instead: _config/manifest.yaml records which modules and
+# versions to reinstall, and custom/config.toml is the team override file BMAD
+# itself says to commit. Personal overrides stay out via _bmad/custom/.gitignore.
+/_bmad/config.toml
+/_bmad/config.user.toml
+/_bmad/*/config.yaml
+/_bmad/scripts/
