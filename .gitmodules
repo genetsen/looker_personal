@@ -17,3 +17,7 @@
 	path = Prisma
 	url = https://github.com/genetsen/prisma.git
 	ignore = all
+[submodule "wp"]
+	path = wp
+	url = https://github.com/genetsen/wp.git
+	ignore = all
