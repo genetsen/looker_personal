@@ -25,3 +25,7 @@
 	path = FPD
 	url = https://github.com/genetsen/fpd.git
 	ignore = all
+[submodule "adif"]
+	path = adif
+	url = https://github.com/genetsen/adif.git
+	ignore = all
