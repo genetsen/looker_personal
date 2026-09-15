@@ -13,3 +13,7 @@
 	path = Reddit
 	url = https://github.com/genetsen/reddit.git
 	ignore = all
+[submodule "Prisma"]
+	path = Prisma
+	url = https://github.com/genetsen/prisma.git
+	ignore = all
