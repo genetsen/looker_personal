@@ -14,6 +14,7 @@ In plain English: WP is now the first source for Apollo social/search/video deli
 | WP precedence | For matching Apollo campaign/ad rows, WP nonblank values win; numeric zeroes are treated as real values, not blanks. | Existing shared-social values fill fields WP does not provide, such as conversions and some video-percentile fields. |
 | Channel rules | `_Search_` in campaign names maps to Paid Search; `_YT_` maps to Online Video; otherwise the Sheet channel is used as fallback. | Rows with both markers are excluded as ambiguous. |
 | Agency campaign exclusion | Campaign names containing `1000heads`, case-insensitive, are removed in the shared-social production builder before the rows can feed the master model. | This is a source exclusion, not a dashboard filter or zeroed-out row. |
+| TikTok Smart+ hierarchy | Blank account, campaign, ad-group, and ad-name fields are filled from the latest TikTok ADIF Smart+ creative history while preserving the creative ID as the delivery ad ID. | Live on 2026-09-14; all 70 current rows across seven Smart+ ads have campaign and ad-group IDs. The separate social-pacing match became live on 2026-09-15. |
 | Pending source-owner clarification | Cross-campaign records sharing date/platform/ad ID are included and flagged `publish_pending_source_owner_review`. | Keep the flag visible until the source owner confirms the correct ownership rule. |
 | Dates | Uses `Report Start Date` as the reporting date. | Placeholder flight-date fields are intentionally ignored. |
 | Authentication | Uses the consolidated Google login for Sheets and BigQuery first, with the prior cached package credentials retained as fallback. | The canonical runner loaded 24,992 rows successfully on 2026-08-10. |
@@ -31,6 +32,8 @@ In plain English: WP is now the first source for Apollo social/search/video deli
 | [create_stg_crossplatform_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_qa.sql) | QA builder | Keep | Rebuilds the WP-first shared-social candidate without touching production, using the maintained WP production staging input. |
 | [create_data_model_social_wp_primary_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_data_model_social_wp_primary_qa.sql) | QA final-shape builder | Keep | Rebuilds a social-only final-data candidate for review. |
 | [validate_wp_primary_social_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/validate_wp_primary_social_qa.sql) | Read-only QA checks | Keep | Checks classification, overlap, new rows, and protected non-Apollo scopes. |
+| [create_stg_crossplatform_smart_plus_enrichment_qa.sql](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_smart_plus_enrichment_qa.sql) | Smart+ QA builder | Keep | Rebuilds the isolated comparison table used to prove the production change. |
+| [Smart+ Guard files](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/qa/smart_plus_hierarchy/) | QA comparison contract | Keep | Records the source snapshot and zero-tolerance row and delivery-metric checks used before deployment. |
 
 Cleanup note: the only unnecessary file found during cleanup was `.DS_Store`, a local macOS Finder metadata file. It was removed. No tracked workflow file was removed because each remaining file is either active code, active documentation, a test, a QA proof step, or rollback protection.
 
@@ -63,10 +66,19 @@ This matrix shows how workbook values move into staging and then into final repo
 | Object | Purpose | Current note |
 | --- | --- | --- |
 | [WP normalized staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__wp__search_data_template_daily&page=table) | Production daily-ad input from the workbook. | Live table verified on 2026-06-05. |
-| [Shared cross-platform raw staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_raw_tbl&page=table) | Production shared-social staging with WP-first Apollo behavior. | Excludes campaign names containing `1000heads` at source before the master model reads social rows. |
+| [Shared cross-platform raw staging](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_raw_tbl&page=table) | Production shared-social staging with WP-first Apollo behavior. | Excludes agency campaigns and enriches blank TikTok ADIF Smart+ hierarchy fields from creative history. |
 | [Master data model](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model&page=table) | Final reporting model. | Live view verified on 2026-06-05. |
 | [WP-primary cross-platform QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__crossplatform_wp_primary_qa&page=table) | Rebuildable QA merge candidate. | Created only when the QA SQL command runs. |
 | [WP-primary social reporting QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=master_stg&t=data_model_social_wp_primary_qa&page=table) | Rebuildable final-shape social QA view. | Not live during the 2026-06-05 cleanup check; rebuild before using. |
+| [Smart+ hierarchy QA](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&p=looker-studio-pro-452620&d=repo_stg&t=stg__olipop__crossplatform_smart_plus_enrichment_qa&page=table) | Rebuildable comparison for TikTok ADIF Smart+ hierarchy enrichment. | QA only and safe to delete after review. |
+
+## TikTok Smart+ Hierarchy Enrichment
+
+The production builder fills only blank hierarchy fields from the latest `tiktok_ads_adif.creative_history` record. It preserves each Smart+ `creative_id` as `ad_id`, so separate creative delivery is not merged into the parent `smart_plus_ad_id`; new eligible creatives and delivery dates receive the same enrichment automatically.
+
+The pre-deployment candidate contained the same 102,305 rows as production, retained zero duplicate full-grain keys, and preserved impressions, clicks, and all tested delivery metrics. After deployment, all 70 current delivery rows across seven eligible Smart+ ads had campaign and ad-group IDs in shared staging, the compatibility model, its clustered copy, and V3; each layer retained $46,589.59 spend, 17,529,965 impressions, and 22,288 clicks.
+
+Hierarchy enrichment and pacing remain independent joins: enrichment supplies the missing identifiers, while pacing separately matches platform, campaign, ad group, and date. The hierarchy schedule completed successfully on 2026-09-14; the unified pacing schedule completed successfully on 2026-09-15, after which all 70 current Smart+ delivery rows had pacing and no `missing_social_pacing` issue.
 
 ## Controlled Production Refresh
 
@@ -82,7 +94,7 @@ bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
   < wp/sql/create_stg_crossplatform_wp_primary_production.sql
 
 bq query --project_id=looker-studio-pro-452620 --use_legacy_sql=false \
-  < master_data_model/create_master_stg_data_model.sql
+  < master_data_model/model/stable_base/create_master_stg_data_model.sql
 ```
 
 The daily shared-social scheduled query already runs the production builder SQL. The controlled loader command is required only when the source Sheet should be re-read into staging. After changing this SQL, update the saved scheduled-query config too; BigQuery does not automatically copy local file edits into the scheduled query.

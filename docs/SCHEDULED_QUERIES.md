@@ -661,7 +661,8 @@ END AS video_flag
 
 **Schedule**: Daily 10:00 UTC
 **Status**: ✅ SUCCEEDED
-**Last Updated**: Aug 18, 2025
+**Verified Against Live Config**: Sep 15, 2026
+**Live owner**: [BigQuery scheduled query `mart__pacing_table`](https://console.cloud.google.com/bigquery/transfers/locations/us/configs/68a52b8f-0000-268d-81eb-001a114488f8/runs?project=looker-studio-pro-452620)
 
 #### Purpose
 Incremental refresh of cross-platform pacing data with 15-day rolling window.
@@ -669,11 +670,14 @@ Incremental refresh of cross-platform pacing data with 15-day rolling window.
 #### Target
 ```
 looker-studio-pro-452620.repo_mart.fct_crossplatform_pacing_daily
+looker-studio-pro-452620.repo_int.crossplatform_pacing_tbl
 ```
 
 #### Source Tables
 - `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report` (spend)
 - `repo_int.crossplatform_pacing` (budget/flight metadata)
+
+The pacing view reads both standard TikTok history and ADIF Smart+ creative history. TikTok campaigns qualify when their names contain `_gs_` or begin with `WP_`; Smart+ rows keep the creative ID while obtaining campaign and ad-group fields from their parent history. Active open-ended Smart+ flights stop at the current date, and a dynamic daily campaign budget is converted to an equivalent flight total before the existing daily allocation runs.
 
 #### Incremental Strategy
 ```sql
@@ -688,7 +692,15 @@ DELETE FROM fct_crossplatform_pacing_daily WHERE date >= window_start;
 
 -- 3. Insert recomputed data
 INSERT INTO fct_crossplatform_pacing_daily SELECT * FROM recent;
+
+-- 4. Rebuild the shared pacing snapshot from the same unified view
+CREATE OR REPLACE TABLE repo_int.crossplatform_pacing_tbl AS
+SELECT * FROM repo_int.crossplatform_pacing;
 ```
+
+The saved transfer has no destination dataset because the SQL writes its two fully qualified targets itself. Setting a destination dataset on the transfer causes the run to fail before the SQL executes.
+
+> Verified September 15, 2026: on-demand transfer run `6ac3563b-0000-2e3f-8d11-089e08265e58` succeeded. All seven current ADIF Smart+ creatives for campaign `1874529304610034` and ad group `1874529386162481` had hierarchy and pacing in the snapshot and daily mart; the 70 master-model delivery rows had no `missing_social_pacing` issue, while spend, impressions, and clicks remained unchanged.
 
 #### Pacing Metrics
 | Metric | Calculation |

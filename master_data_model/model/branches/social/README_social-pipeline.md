@@ -8,15 +8,17 @@ source_tables:
   - looker-studio-pro-452620.landing.reddit-ads-email
   - looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily
   - looker-studio-pro-452620.repo_int.crossplatform_pacing_tbl
-refresh: scheduled queries, daily 10:00 UTC (shared staging) and 10:15 UTC (pacing snapshot); WP workbook loader is manual
+refresh: scheduled queries, daily 10:00 UTC (shared staging and pacing mart/snapshot) and 10:15 UTC (master upstream snapshots); WP workbook loader is manual
 loader_script: model/branches/social/wp_search/load_wp_search_data_template.R (WP workbook only; nothing else has a loader)
-verified: 2026-08-25
+verified: 2026-09-15
 verified_against:
   - model/stable_base/create_master_stg_data_model.sql
   - model/final_model/create_master_stg_data_model_v3.sql
   - model/branches/social/wp_search/sql/create_stg_crossplatform_wp_primary_production.sql
   - model/branches/social/reddit/stg__olipop_reddit_crossplatform.sql
-  - live master_stg.data_model_v3, repo_stg.stg__olipop__crossplatform_raw_tbl, repo_stg.stg__wp__search_data_template_daily, repo_int.crossplatform_pacing_tbl, master_stg.advertiser_mapping
+  - ../sql/crossplatform/int__crossplatform_pacing.sql
+  - ../sql/marts/olipop/mart__pacing__table.sql
+  - live master_stg.data_model, master_stg.data_model_v3, repo_stg.stg__olipop__crossplatform_raw_tbl, repo_stg.stg__wp__search_data_template_daily, repo_int.crossplatform_pacing_tbl, repo_mart.fct_crossplatform_pacing_daily, master_stg.advertiser_mapping
 reviewers:
   - gene <gene.tsenter@giantspoon.com>
 ---
@@ -60,16 +62,16 @@ platform delivery (freshest of two ad_report tables) ─┐
 Reddit email landing → standardization view ──────────┼─→ stg__olipop__crossplatform_raw_tbl
 WP workbook → stg__wp__search_data_template_daily ────┘         (daily 10:00 UTC)
                                                                        │
-repo_int.crossplatform_pacing_tbl (daily 10:15 UTC) ───────────────────┤
+repo_int.crossplatform_pacing_tbl (daily 10:00 UTC) ───────────────────┤
                                                                        ▼
                                       social_daily → … → social_final (stable base)
                                                                        ▼
                                                             master_stg.data_model_v3
 ```
 
-Both schedules — `stg__olipop__crossplatform_raw_tbl_sched` and `master_data_model_upstream_tables_sched`, the latter shared with the TV snapshot — are documented in [BigQuery Scheduled Queries](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/SCHEDULED_QUERIES.md), including an outstanding owner-credential issue on the staging config. The WP workbook load is **deliberately manual** while the cross-campaign ad-ID question below is open. Campaign names containing `1000heads` or `pros_dysrupt` are agency-side rows excluded case-insensitively from both source legs and again from the final union. Effective live: **0 rows of 97,751 in staging match either token, verified 2026-08-25.**
+The shared-staging, pacing, and master-upstream schedules are documented in [BigQuery Scheduled Queries](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/docs/SCHEDULED_QUERIES.md). The pacing schedule `mart__pacing_table` is the live owner for the daily pacing mart and shared snapshot; it must keep its transfer-level destination dataset blank because its SQL writes fully qualified targets. The WP workbook load is **deliberately manual** while the cross-campaign ad-ID question below is open. Campaign names containing `1000heads` or `pros_dysrupt` are agency-side rows excluded case-insensitively from both source legs and again from the final union. Effective live: **0 rows of 97,751 in staging match either token, verified 2026-08-25.**
 
-TikTok ADIF Smart+ delivery keeps its creative ID as the ad-level identity. When hierarchy fields are blank, the shared-social builder fills them from the latest matching `creative_history` row; it does not replace the creative ID with the parent Smart+ ad ID. This lookup is independent of `crossplatform_pacing_tbl`: on 2026-09-14 all 70 current Smart+ rows across seven ads had campaign and ad-group IDs, while all 70 still carried `missing_social_pacing`.
+TikTok ADIF Smart+ delivery keeps its creative ID as the ad-level identity. When hierarchy fields are blank, the shared-social builder fills them from the latest matching `creative_history` row; it does not replace the creative ID with the parent Smart+ ad ID. Pacing is a separate match on platform, campaign, ad group, and date, but the unified pacing view now reads both standard TikTok and ADIF Smart+ history and admits both `_gs_` and `WP_` campaigns. Verified September 15, 2026: all 70 current delivery rows across seven Smart+ creatives had hierarchy and pacing, with unchanged actual spend, impressions, and clicks.
 
 ## Sources and Boundaries
 

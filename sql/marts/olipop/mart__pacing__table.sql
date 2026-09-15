@@ -26,8 +26,8 @@ WITH data AS (
 joined AS (
   SELECT
     d.ad_id,
-    d.ad_group_id,
-    d.campaign_id,
+    COALESCE(d.ad_group_id, p.ag_id) AS ad_group_id,
+    COALESCE(d.campaign_id, p.c_id) AS campaign_id,
     d.platform,
     d.date,
     d.spend,
@@ -51,7 +51,12 @@ joined AS (
   FROM data d
   LEFT JOIN `looker-studio-pro-452620.repo_int.crossplatform_pacing` p
     ON d.ad_id    = p.a_id
-   AND d.platform = p.platform
+   AND CASE
+         WHEN LOWER(d.platform) IN ('tiktok_ads', 'tiktok_ads_adif', 'tiktok') THEN 'tiktok'
+         WHEN LOWER(d.platform) IN ('facebook_ads', 'instagram_ads', 'meta', 'facebook', 'instagram') THEN 'facebook'
+         WHEN LOWER(d.platform) IN ('google_ads', 'google') THEN 'google_ads'
+         ELSE LOWER(d.platform)
+       END = p.platform
 ),
 calc AS (
   SELECT

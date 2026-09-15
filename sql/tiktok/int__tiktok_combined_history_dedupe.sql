@@ -116,7 +116,9 @@ ad_history_dedupe AS (
       display_name           AS a_display_name,
       profile_image_url      AS a_profile_image_url,
       creative_authorized    AS a_creative_authorized,
-      image_ids              AS a_image_ids,
+      -- TikTok removed image_ids from the standard ad history connector.
+      -- Preserve the downstream view schema while leaving the retired field blank.
+      CAST(NULL AS STRING)    AS a_image_ids,
       buying_type            AS a_buying_type,
       identity_id            AS a_identity_id,
       identity_type          AS a_identity_type,

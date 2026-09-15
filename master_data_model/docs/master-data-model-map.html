@@ -1019,6 +1019,7 @@
         callouts: { truth: "live", writes: true },
         notes: [
           "Feeds social metrics, creative names, video views, and WP provenance into the master model.",
+          "Fills blank TikTok ADIF Smart+ account, campaign, ad-group, and ad-name fields from the latest creative-history row while preserving the creative ID as the delivery ad ID.",
           "Reddit email-ingested rows preserve their landing-table lineage and share the standard social package key.",
           "WP campaign-separated ad-ID records stay visible with pending source-owner provenance."
         ],
@@ -1057,14 +1058,16 @@
         title: "Social Pacing",
         summary: "Pacing budgets spread to daily planned spend.",
         truth: "Table: repo_int.crossplatform_pacing_tbl.",
-        writes: "Refresh: master upstream scheduled query.",
-        freshness: "Current after the master upstream table refresh runs.",
+        writes: "Refresh: mart__pacing_table scheduled query at 10:00 UTC; the master upstream schedule may refresh the sibling snapshot again.",
+        freshness: "Current after the daily pacing schedule succeeds.",
         risk: "medium",
         reviewReason: "Mapping: pacing becomes planned daily spend; coverage affects plan-vs-actual reads.",
         kind: "source",
         callouts: { truth: "live", writes: true },
         notes: [
           "Feeds social_pacing_planned_spend and planned_daily_spend_pk.",
+          "TikTok pacing combines standard TikTok history with ADIF Smart+ creative history; _gs_ and WP_ campaigns are eligible while creative IDs remain the ad identity.",
+          "The transfer-level destination dataset stays blank because the schedule writes fully qualified mart and snapshot targets itself.",
           "Reddit pacing comes from the Reddit landing table campaign budget and campaign flight dates.",
           "The sibling view repo_int.crossplatform_pacing remains available for lineage comparison."
         ],
@@ -1094,6 +1097,7 @@
           "DCM creative is not collapsed into _creative_name because one package/date can contain multiple DCM creatives; use the delivery-detail view for that grain.",
           "Also exposes s_video_views, s_record_source, s_wp_row_key, and related WP provenance fields.",
           "Sets canonical _video_views from source video views where available, with video starts/plays as fallback.",
+          "Smart+ hierarchy enrichment and social pacing are separate joins; current ADIF Smart+ rows receive pacing because the unified pacing source now contains their campaign and ad-group flight.",
           "Excludes zero-value API tail rows after a known social pacing end before they enter the shared model; raw source records remain available for audit."
         ],
         sources: [

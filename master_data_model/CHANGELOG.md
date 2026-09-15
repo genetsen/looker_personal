@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-15
+
+**TikTok Smart+ delivery now receives social pacing** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/sql/crossplatform/int__crossplatform_pacing.sql)) — 🟢 **Verified and committed**<br>The [social delivery pipeline](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/social/README_social-pipeline.md) now uses one shared pacing path for standard TikTok and ADIF Smart+ campaigns, including `_gs_` and `WP_` names, while preserving creative-level delivery identity. The production schedule completed successfully; all 70 current rows across seven Smart+ creatives have hierarchy and pacing, and spend, impressions, and clicks remain unchanged.
+
 ## 2026-09-14
 
 **TikTok Smart+ hierarchy now reaches every master-model layer** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/sql/create_stg_crossplatform_wp_primary_production.sql)) — 🟢 **Verified**<br>The shared-social source now fills blank TikTok ADIF Smart+ campaign and ad-group fields from creative history without replacing creative-level ad IDs. All 70 current rows across seven ads retain identical spend, impressions, and clicks through the compatibility model, refreshed clustered copy, and refreshed V3; all 70 still lack a pacing match, proving the two conditions are independent. The saved shared-social schedule completed successfully after the TikTok daily mart stopped reading the legacy history view whose removed `image_ids` field had broken parsing.

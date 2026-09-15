@@ -2,15 +2,16 @@
 --               Template precedence for Apollo records and the established
 --               cross-platform delivery source as fallback.
 -- @sources:     Freshest live ad-report relation selected at runtime,
+--               TikTok ADIF Smart+ creative history for blank hierarchy fields,
 --               repo_stg.stg__olipop_videoviews_crossplatform,
 --               repo_stg.stg__wp__search_data_template_daily
 -- @output:      repo_stg.stg__olipop__crossplatform_raw_tbl at daily-ad grain.
 -- @safety:      Production replacement. Deploy only after QA candidate review.
 -- @decision:    Campaign-separated WP ad IDs are included for now and remain
 --               flagged publish_pending_source_owner_review until clarified.
--- @exclusion:   Campaigns containing "1000heads" are agency-side social rows
---               that must be excluded before shared-social staging reaches the
---               master data model.
+-- @enrichment:  Current and future TikTok ADIF Smart+ creative IDs keep their
+--               delivery identity while blank account, campaign, ad-group, and
+--               ad-name fields are filled from current creative history.
 
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop__crossplatform_raw_tbl`
 OPTIONS (
@@ -41,14 +42,43 @@ delivery_source AS (
   SELECT *
   FROM `giant-spoon-299605.ad_reporting_transformed.ad_reporting__ad_report`
   WHERE (SELECT source_name FROM source_choice) = 'transformed'
-    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
 
   UNION ALL
 
   SELECT *
   FROM `giant-spoon-299605.ad_reporting_reports.ad_reporting__ad_report`
   WHERE (SELECT source_name FROM source_choice) = 'reports'
-    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
+),
+tiktok_adif_smart_plus_creative AS (
+  SELECT
+    CAST(creative_id AS STRING) AS creative_id,
+    CAST(advertiser_id AS STRING) AS advertiser_id,
+    CAST(campaign_id AS STRING) AS campaign_id,
+    CAST(adgroup_id AS STRING) AS ad_group_id,
+    campaign_name,
+    adgroup_name AS ad_group_name,
+    creative_name AS ad_name
+  FROM `giant-spoon-299605.tiktok_ads_adif.creative_history`
+  WHERE campaign_automation_type = 'UPGRADED_SMART_PLUS_CREATIVE'
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY creative_id
+    ORDER BY updated_at DESC, _fivetran_synced DESC
+  ) = 1
+),
+delivery_source_enriched AS (
+  SELECT
+    delivery.* REPLACE (
+      COALESCE(NULLIF(delivery.account_id, ''), smart_plus.advertiser_id) AS account_id,
+      COALESCE(NULLIF(delivery.campaign_id, ''), smart_plus.campaign_id) AS campaign_id,
+      COALESCE(NULLIF(delivery.campaign_name, ''), smart_plus.campaign_name) AS campaign_name,
+      COALESCE(NULLIF(delivery.ad_group_id, ''), smart_plus.ad_group_id) AS ad_group_id,
+      COALESCE(NULLIF(delivery.ad_group_name, ''), smart_plus.ad_group_name) AS ad_group_name,
+      COALESCE(NULLIF(delivery.ad_name, ''), smart_plus.ad_name) AS ad_name
+    )
+  FROM delivery_source AS delivery
+  LEFT JOIN tiktok_adif_smart_plus_creative AS smart_plus
+    ON delivery.source_relation = 'tiktok_ads_adif'
+   AND CAST(delivery.ad_id AS STRING) = smart_plus.creative_id
 ),
 video_metrics AS (
   SELECT *
@@ -82,7 +112,7 @@ standard_extended AS (
     'standard_only' AS wp_record_source,
     FALSE AS wp_has_standard_fallback,
     CAST(NULL AS STRING) AS wp_fallback_fields
-  FROM delivery_source AS a
+  FROM delivery_source_enriched AS a
   LEFT JOIN video_metrics AS b
     ON a.source_relation = b.source_relation
    AND a.date_day = b.date_day
@@ -104,7 +134,6 @@ wp_publishable AS (
   SELECT *
   FROM `looker-studio-pro-452620.repo_stg.stg__wp__search_data_template_daily`
   WHERE wp_publication_status IN ('publish', 'publish_pending_source_owner_review')
-    AND NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads')
 ),
 merged_apollo AS (
   SELECT
@@ -174,8 +203,9 @@ merged_apollo AS (
    AND LOWER(s.platform) = LOWER(a.platform)
    AND CAST(s.ad_id AS STRING) = CAST(a.ad_id AS STRING)
    AND LOWER(TRIM(COALESCE(s.campaign_name, ''))) = LOWER(TRIM(COALESCE(a.campaign_name, '')))
-),
-combined_social AS (
+)
+SELECT *
+FROM (
   SELECT *
   FROM standard_non_apollo
 
@@ -189,9 +219,10 @@ combined_social AS (
   SELECT *
   FROM `looker-studio-pro-452620.repo_stg.stg__olipop_reddit_crossplatform`
 )
-SELECT *
-FROM combined_social
-WHERE NOT REGEXP_CONTAINS(LOWER(COALESCE(campaign_name, '')), r'1000heads');
+WHERE NOT REGEXP_CONTAINS(
+  LOWER(COALESCE(campaign_name, '')),
+  r'(1000heads|pros_dysrupt)'
+);
 
 -- Preserve the existing video-metric refresh in the live scheduled build.
 CREATE OR REPLACE TABLE `looker-studio-pro-452620.repo_stg.stg__olipop_videoviews_crossplatform_tbl` AS
