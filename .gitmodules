@@ -29,3 +29,7 @@
 	path = adif
 	url = https://github.com/genetsen/adif.git
 	ignore = all
+[submodule "master_data_model"]
+	path = master_data_model
+	url = https://github.com/genetsen/master_data_model.git
+	ignore = all
