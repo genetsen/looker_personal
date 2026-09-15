@@ -1,0 +1,14 @@
+# Vendored BMAD skill-pack installations.
+#
+# BMAD's installer writes the same skill pack once per AI tool it supports.
+# .agents/, .agent/ and .cline/ are byte-identical copies of .claude/, and
+# .opencode/ is the same content under that tool's own naming convention
+# (commands/ rather than skills/). Tracking four copies of one vendored pack
+# means every upstream bump lands four times in review.
+#
+# .claude/ is kept as the tracked canonical copy. The rest stay on disk so the
+# other tools keep working; they are just not versioned.
+.agents/
+.agent/
+.cline/
+.opencode/
