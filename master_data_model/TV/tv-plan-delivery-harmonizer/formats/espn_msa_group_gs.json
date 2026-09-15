@@ -1,0 +1,22 @@
+{
+  "format_id": "espn_msa_group_gs",
+  "label": "MSA post analysis, proposal group rollup (GS)",
+  "media": "xlsx",
+  "handler": "msa_post_analysis",
+  "row_grain": "prop_quarter",
+  "_note": "Same block grammar as the CS workbook, wrapped in a group. A 'Table of Contents' sheet lists member proposals, then one sheet per proposal, then a 'Group Total' sheet. The Group Total sheet is a rollup of the member sheets and is skipped so proposals are not counted twice.",
+  "fingerprint": {
+    "filename_regex": ["_GS_"],
+    "sheet_regex_any": ["^Table of Contents$"],
+    "cell_contains": [
+      {"any_cell_in_rows": 14, "value": "GROUP #:"}
+    ],
+    "min_score": 3
+  },
+  "rules": {
+    "impressions_in_thousands": true,
+    "skip_blocks": ["PROP TO DATE"],
+    "skip_sheets_regex": ["^Group Total$", "^Table of Contents$"],
+    "totals_labels": ["TOTALS", "TOTAL"]
+  }
+}

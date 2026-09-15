@@ -1,0 +1,21 @@
+{
+  "format_id": "espn_msa_detail_pdf",
+  "label": "MSA demographic detail report, spot level (DTL and GRPDTL)",
+  "media": "pdf",
+  "handler": "msa_detail_pdf",
+  "row_grain": "spot",
+  "_note": "DTL (single proposal) and GRPDTL (group) share one grammar, so one profile covers both. Network appears in the centered page header and changes mid-document, so it is tracked per page. Demo column names come from the table header, not from the 'Reporting Demo(s)' metadata line, which was observed to disagree with the actual column count.",
+  "fingerprint": {
+    "filename_regex": ["DTL"],
+    "text_contains": ["DEMOGRAPHIC DETAIL REPORT", "CASH/ADU/SPOT DATE/PROGRAM"],
+    "min_score": 3
+  },
+  "rules": {
+    "impressions_in_thousands": true,
+    "null_sentinels": ["NR"],
+    "value_type_sections": {"CASH": "Cash", "ADU": "ADU", "TRADE": "Trade", "BONUS": "Bonus"},
+    "totals_line_regex": "(UNEQUIVALENCED|EQUIVALENCED).*TOTAL",
+    "units_raw_from": "UNEQUIVALENCED",
+    "units_30eq_from": "EQUIVALENCED"
+  }
+}

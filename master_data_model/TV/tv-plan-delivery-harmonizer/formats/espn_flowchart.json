@@ -1,0 +1,22 @@
+{
+  "format_id": "espn_flowchart",
+  "label": "ESPN / Disney flow chart workbook (proposal + unit-by-unit)",
+  "media": "xlsx",
+  "handler": "espn_flowchart",
+  "row_grain": "spot",
+  "_note": "Sheets are per-network: 'ESPN Unit by Unit', 'ABC (ESPN TB) Unit by Unit'. The network is the sheet-name prefix. Column A ('Broadcast Week') is a real date-styled cell holding the Monday anchor that Prisma also uses, so no week derivation is needed for this source.",
+  "fingerprint": {
+    "filename_regex": ["flow[_ ]?chart"],
+    "sheet_regex_any": ["Unit by Unit$", "^Cover Page$"],
+    "cell_equals": [
+      {"sheet_regex": "Unit by Unit$", "ref": "A1", "value": "Broadcast Week"}
+    ],
+    "min_score": 3
+  },
+  "rules": {
+    "impressions_in_thousands": true,
+    "gtd_basis_from_cover": true,
+    "value_type_column": "Value",
+    "actualized_column": "Actualized"
+  }
+}

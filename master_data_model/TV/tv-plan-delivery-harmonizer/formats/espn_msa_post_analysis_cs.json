@@ -1,0 +1,23 @@
+{
+  "format_id": "espn_msa_post_analysis_cs",
+  "label": "MSA post analysis, single proposal (CS)",
+  "media": "xlsx",
+  "handler": "msa_post_analysis",
+  "row_grain": "prop_quarter",
+  "_note": "One sheet per network plus a 'TOTAL' sheet. Estimated-vs-delivered blocks are labelled EST when the deal is unguaranteed and GTD when it is guaranteed; that word is captured as gtd_basis because it decides whether a shortfall is a liability. The 'PROP TO DATE' block below the main table is prior-quarter history and is skipped to avoid double counting.",
+  "_note_anchors": "Anchors are scanned across the first rows rather than pinned to a cell reference: these reports are visually centered, so the title lands in D2 in one file and elsewhere in another, and the label block sits in column B.",
+  "fingerprint": {
+    "filename_regex": ["_CS_"],
+    "cell_contains": [
+      {"any_cell_in_rows": 4, "value": "POST ANALYSIS"},
+      {"any_cell_in_rows": 14, "value": "PROP #:"}
+    ],
+    "sheet_regex_none": ["^Table of Contents$"],
+    "min_score": 3
+  },
+  "rules": {
+    "impressions_in_thousands": true,
+    "skip_blocks": ["PROP TO DATE"],
+    "totals_labels": ["TOTALS", "TOTAL"]
+  }
+}
