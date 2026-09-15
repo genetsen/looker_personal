@@ -6,8 +6,11 @@
 # (commands/ rather than skills/). Tracking four copies of one vendored pack
 # means every upstream bump lands four times in review.
 #
-# .claude/ is kept as the tracked canonical copy. The rest stay on disk so the
-# other tools keep working; they are just not versioned.
+# None of them is a canonical original — they are sibling outputs of one
+# installer run, rebuilt from scratch on every `bmad install`. They are local
+# dev-tool config, the same category as .venv/ or node_modules/, so none is
+# versioned. All of them stay on disk so every tool keeps working.
+.claude/
 .agents/
 .agent/
 .cline/
