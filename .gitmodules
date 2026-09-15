@@ -21,3 +21,7 @@
 	path = wp
 	url = https://github.com/genetsen/wp.git
 	ignore = all
+[submodule "FPD"]
+	path = FPD
+	url = https://github.com/genetsen/fpd.git
+	ignore = all
