@@ -47,6 +47,13 @@ When working in this folder:
 - Do not recreate removed local modeling files unless the user explicitly asks for them.
 - Keep changes surgical: every changed step should map back to the current request.
 
+## Active Dashboard Scope
+
+- Include Ritual dashboards in relevant client-access, permission, and shared-model impact work.
+- For dashboard audits, previews, conclusions, and changes, treat only dashboards labeled exactly `Current` as active scope unless the user explicitly expands the scope.
+- Exclude unlabeled, copied, legacy, QA, and other non-`Current` dashboards from active-dashboard evidence and change targets.
+- Apply the `Current` label gate to dashboard selection only; continue to include the shared topics and warehouse objects that support those dashboards when the task concerns access control or model behavior.
+
 ## Dashboard Change Default
 
 For Omni dashboard or widget work in this project:

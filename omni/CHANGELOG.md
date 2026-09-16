@@ -3,14 +3,22 @@
 This file records meaningful changes to Omni administration, access control,
 semantic models, and user-facing Omni workflows.
 
-## 2026-06-30
+## 2026-08-26
 
-- **ADDED** - Created the Master Stg Data Model AI eval prompt set in Omni with 25 prompts covering standard performance questions, Ritual and Apollo topic routing, and QA checks for unmatched packages, missing delivery, pacing issues, source reconciliation, manual overrides, QTD reach, and v3 metric-grain behavior.
+**Client-access controls prepared for the Current DXC and Ritual dashboards** ([Evidence](/Users/eugenetsenter/.codex/sessions/2026/08/26/rollout-2026-08-26T15-06-13-01a03f77-39b7-7f01-bea6-6abfdb93f224.jsonl)) — 🟡 **Partially verified**<br>The unmerged shared-model branch applies `client_access` filtering to the five scoped data-model, DXC, Olipop QA, and Ritual topics while preserving expected access in representative user queries and introducing no new model-validation blockers versus production.
+- **⚠️ Unfinished** - Merge the shared-model branch and remove the Current Ritual workbook override after confirming the promoted package-conversion relationship.
+- **⚠️ Unverified** - The 423 `data_model_v3` rows whose short client value is `Ritual` remain hidden from users carrying only `RTL` until the user attribute or warehouse value is normalized.
+
+**Current-labeled dashboards define active Omni scope** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/AGENTS.md)) — 🟢 **Verified and committed**<br>The Omni project includes Ritual in relevant access and model work while limiting dashboard audits, previews, conclusions, and changes to dashboards labeled exactly `Current` unless the user explicitly expands the scope.
 
 ### Pending Next Actions
 
 - **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
 - **Since Jun 24** - Repair the pre-existing Ritual dashboard filter and missing-field issues
+
+## 2026-06-30
+
+- **ADDED** - Created the Master Stg Data Model AI eval prompt set in Omni with 25 prompts covering standard performance questions, Ritual and Apollo topic routing, and QA checks for unmatched packages, missing delivery, pacing issues, source reconciliation, manual overrides, QTD reach, and v3 metric-grain behavior.
 
 ## 2026-06-24
 
@@ -22,8 +30,8 @@ semantic models, and user-facing Omni workflows.
 
 ### Pending Next Actions
 
-- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use
-- **Since Jun 24** - Repair the pre-existing Ritual dashboard filter and missing-field issues
+- **Since Jun 24** - Observe the current Apollo, Ritual, and Olipop dashboards during normal end-user use - PENDING
+- **Since Jun 24** - Repair the pre-existing Ritual dashboard filter and missing-field issues - PENDING
 
 Related sessions:
 
