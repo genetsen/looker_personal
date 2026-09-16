@@ -48,12 +48,14 @@ Primary docs: `adif/projects/tv_digital_pipeline/README - ADIF TV & Digital Data
 Key ingestion scripts:
 
 ```bash
-# Ingest first-party data (FPD) from Google Sheets
-Rscript adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r
-
 # Ingest TV monthly estimates (local + national)
 Rscript adif/projects/tv_digital_pipeline/util_collect_monthly_estimates.r
 ```
+
+The former ADIF-specific De Beers FPD loader at
+`adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r` was retired on
+2026-09-16. Do not run or reschedule it; use the shared shortcut-aware FPD
+loader documented under `FPD/FPD_loader/` for the current original-FPD feed.
 
 ### FPD Loader Pipelines (FPD/FPD_loader and util/data_loaders/FPD_loader)
 Primary docs: `FPD/FPD_loader/README.md` for the shortcut-aware loader and `util/data_loaders/FPD_loader/README.md` for the older utility copy.

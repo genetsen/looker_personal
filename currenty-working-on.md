@@ -99,7 +99,7 @@ _Output file target: `currenty-working-on.md`_
   - `README.md`
   - `adif/sql/build__adif__prisma_expanded_plus_dcm_with_social_tbl.sql`
   - `adif/sql/query__adif__prisma_expanded_plus_dcm_with_social_tbl_sched.sql`
-  - `adif/util_collect_fpd_v2.r`
+  - `adif/util_collect_fpd_v2.r` — historical path; the ADIF-specific De Beers loader was retired on 2026-09-16
   - `util/data_loaders/FPD_loader/README.md`
   - `util/data_loaders/FPD_loader/util_collect_fpd_v3.r`
 

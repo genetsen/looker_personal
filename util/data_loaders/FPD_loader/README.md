@@ -6,7 +6,7 @@ This directory contains two pipelines:
 
 | Script | Purpose | BigQuery Target |
 |---|---|---|
-| `adif/util_collect_fpd_v2.r` | Ingest raw partner data from ADIF sheets (from Google Drive folder) | `landing.adif_fpd_data_ranged` |
+| `adif/projects/tv_digital_pipeline/util_collect_fpd_v2.r` | Retired historical De Beers partner-sheet loader; do not run or reschedule | `landing.adif_fpd_data_ranged` (historical target) |
 | `adif/util_collect_fpd_v3.r` | Ingest raw partner data from many sheets (from Google Drive Shortcuts folder) | `landing.fpd_data_ranged` |
 | `manually_updated_data_loader.r` | Process manually corrected/updated FPD figures from a single sheet | `landing.manually_updated_fpd_daily` |
 

@@ -386,7 +386,10 @@ looker-studio-pro-452620.landing.adif_fpd_data_ranged
 ```
 
 #### Source
-Google Sheets FPD data collected via `util_collect_fpd_v2.r`
+Historical Google Sheets FPD data collected via the now-retired ADIF-specific
+`util_collect_fpd_v2.r`. Do not run or reschedule that loader. This schedule
+entry is a historical inventory record; its current enabled state was not
+reverified as part of the 2026-09-16 retirement decision.
 
 ---
 
