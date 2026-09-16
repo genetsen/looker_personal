@@ -183,3 +183,6 @@ master_data_model/manual_package_edits/ai_context_summaries/2026-07-09-drive-sea
 master_data_model/manual_package_edits/ai_context_summaries/2026-07-09-drive-search-name-package-editor.json
 master_data_model/manual_package_edits/ai_context_summaries/2026-07-09-drive-workbook-search-tokeninfo.json
 .gitignore
+
+# Machine-specific Claude command approvals.
+.claude/settings.local.json
