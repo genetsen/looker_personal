@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-09-18
+
+**Prisma Lookup now carries source Sheets from the master model to the app** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/reporting_outputs/create_master_stg_prisma_lookup_app_packages.sql)) — 🟢 **Verified and committed**<br>The production package contract now preserves distinct FPD, social, and manual-editor Google Sheet links without changing package identities or delivery totals, allowing the local and coworker apps to open the exact Sheet behind Sheet-sourced delivery.
+
 ## 2026-09-16
 
 **Every operating guide now treats the ADIF De Beers collector as retired** ([Instructions](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/AGENTS.md)) — 🟢 **Verified and committed**<br>The parent operating instructions, scheduled-query inventory, shared FPD guides, master-model FPD guide, and historical work snapshot no longer present the sixteen-sheet ADIF collector as an active command. Current original-FPD work routes to the shared shortcut-aware loader, while the saved `adif update` schedule remains explicitly unverified rather than being declared disabled without a live check.
