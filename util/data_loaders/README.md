@@ -208,9 +208,10 @@ This is simpler than the national script, but it is also a little more fragile i
 
 After loading the CSV and cleaning the headers:
 
-- if a `month` column exists, rows with blank `month` are removed
+- rows without a usable date are removed
+- when year, quarter, or month is absent from the incoming file, the loader derives that missing calendar field from the row's date
 
-This is likely being used as a simple way to drop footer rows or incomplete rows.
+The date remains the authoritative value. Existing calendar columns are preserved when they are supplied, while date-only files continue to load and footer rows without dates are excluded.
 
 ### Local Column Mapping
 
@@ -336,7 +337,7 @@ The loader checks:
 | Gmail query | `subject:"TV | Local | daily scheadule" -National` | `subject:"TV | National | daily scheadule" -Local` |
 | Output table | `landing.tv_local_estimates` | `landing.tv_national_estimates` |
 | Attachment strategy | first attachment | smallest CSV attachment |
-| Row filter | drop rows with blank `month` if `month` exists | drop rows with blank `advertiser` if `advertiser` exists |
+| Row filter | drop rows without a usable date; derive missing calendar fields from date | drop rows with blank `advertiser` if `advertiser` exists |
 | Cost mapping | chooses first matching net-cost field | chooses first matching cost field, then multiplies by `0.85` |
 | Type label | hard-coded `Local` | set from top-level variable `National` |
 | Impressions fallback depth | several planned-impression variants | planned-impression variants, then objective-impression fallback |

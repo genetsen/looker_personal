@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-17
+
+**Date-only Prisma local-TV files load successfully** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r)) — 🟢 **Verified and committed**<br>The latest local-TV email stopped supplying separate year, quarter, and month columns even though every data row still carried its date. The loader now derives only the missing calendar fields from that date and removes footer rows whose dates are blank. A focused contract test covers the date-only layout, and the canonical runner loaded 344 rows whose 23,335,300 impressions, $2,909,033.86 spend, and December 25, 2026 maximum date exactly matched the incoming attachment.
+
 ## 2026-08-10
 
 **TV BigQuery writes restored to the shared Google authentication path** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r)) — 🟢 **Verified and committed**<br>The [local and national TV loaders](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/README.md) now prefer the consolidated Google login for BigQuery while keeping their established Gmail authentication and cached BigQuery credentials intact as fallbacks. Both loaders completed through the canonical runner and passed the runner-owned incoming-versus-post-load reconciliation checks.

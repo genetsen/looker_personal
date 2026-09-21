@@ -43,7 +43,7 @@ table <- "tv_local_estimates"
     source("/Users/eugenetsenter/.config/gspoon_google_auth/google_auth.R")
     !is.null(gspoon_google_auth(packages = c("bigrquery"), fallback = TRUE))
   }, error = function(e) {
-    message("gspoon-auth fallback: ", conditionMessage(e))
+    base::message("gspoon-auth fallback: ", conditionMessage(e))
     FALSE
   })
 
@@ -134,9 +134,7 @@ table <- "tv_local_estimates"
   colnames(raw_df) %>%  
     paste(collapse = ", ")
 
-  if ("month" %in% names(raw_df)) {
-    raw_df <- raw_df %>% dplyr::filter(!is.na(month))
-  }
+  raw_df <- f_tv_calendar_dimensions(raw_df)
   unique(raw_df$date)
   str(raw_df)
   #lubridate::as_date(raw_df$date, format = "%m-%d-%Y")
@@ -176,8 +174,6 @@ table <- "tv_local_estimates"
     year = as.integer(year),
     quarter = as.character(quarter),
     month = as.integer(month),
-    week = (weeks_in_week_begin_date),
-    #date = as.Date(Date),
     advertiser = as.character(advertiser),
     campaign_name = as.character(campaign_name),
     market = as.character(market),

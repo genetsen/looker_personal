@@ -43,4 +43,17 @@ assert_equal(
   "national uses planned first and objective when planned is missing or not positive"
 )
 
+local_date_only_source <- data.frame(
+  date = as.Date(c("2026-02-02", "2026-04-15", NA_character_)),
+  advertiser = c("AUTD", "GE", NA_character_)
+)
+local_date_dimensions <- f_tv_calendar_dimensions(local_date_only_source)
+
+stopifnot(
+  nrow(local_date_dimensions) == 2L,
+  identical(local_date_dimensions$year, c(2026L, 2026L)),
+  identical(local_date_dimensions$quarter, c("Q1", "Q2")),
+  identical(local_date_dimensions$month, c(2L, 4L))
+)
+
 cat("TV impressions contract tests passed\n")

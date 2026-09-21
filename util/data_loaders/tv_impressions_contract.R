@@ -30,6 +30,28 @@ f_tv_numeric_vector <- function(values, n = NULL) {
   suppressWarnings(as.numeric(gsub("[,$%]", "", as.character(values))))
 }
 
+f_tv_calendar_dimensions <- function(df) {
+  if (!"date" %in% names(df)) {
+    stop("TV source is missing the required date column.", call. = FALSE)
+  }
+
+  df$date <- as.Date(df$date)
+  df <- df[!is.na(df$date), , drop = FALSE]
+
+  derived_month <- as.integer(format(df$date, "%m"))
+  if (!"year" %in% names(df)) {
+    df$year <- as.integer(format(df$date, "%Y"))
+  }
+  if (!"quarter" %in% names(df)) {
+    df$quarter <- paste0("Q", ((derived_month - 1L) %/% 3L) + 1L)
+  }
+  if (!"month" %in% names(df)) {
+    df$month <- derived_month
+  }
+
+  df
+}
+
 f_tv_local_impressions_column <- function(df) {
   f_tv_first_present_column(
     df,
