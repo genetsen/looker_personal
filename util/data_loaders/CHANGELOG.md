@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-22
+
+**RTL conversion refresh confirmed in the daily automation** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/load_rtl_conv_report.R)) — 🟢 **Verified and committed**<br>The [scheduled daily runner](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/universal_script_runner.R) completed the RTL step during full runs on September 21 and 22. The September 22 run refreshed the compatibility table to 7,141 rows and 102,657 conversions with a September 22 refresh date. Another step failed in that run, while the September 21 full run succeeded across all 22 steps.
+
 ## 2026-09-17
 
 **Date-only Prisma local-TV files load successfully** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/util/data_loaders/gmail_to_bq__tv_local.r)) — 🟢 **Verified and committed**<br>The latest local-TV email stopped supplying separate year, quarter, and month columns even though every data row still carried its date. The loader now derives only the missing calendar fields from that date and removes footer rows whose dates are blank. A focused contract test covers the date-only layout, and the canonical runner loaded 344 rows whose 23,335,300 impressions, $2,909,033.86 spend, and December 25, 2026 maximum date exactly matched the incoming attachment.
@@ -23,8 +27,4 @@ Related sessions:
 
 ### Next
 
-- Test the RTL refresh through the complete daily automation - PENDING
-
-### Pending Next Actions
-
-- **Since Jun 15** - Test the RTL refresh through the complete daily automation - RECOMMENDED
+- Test the RTL refresh through the complete daily automation - DONE
