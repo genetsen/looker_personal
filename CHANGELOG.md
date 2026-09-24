@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-09-24
+
+**Prisma Lookup's app table now includes the native DCM campaign ID** ([model builder](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/reporting_outputs/create_master_stg_prisma_lookup_app_packages.sql)) — 🟢 **Verified and committed**<br>The production package table exposes nullable `dcm_campaign_id` when its DCM source proves one unique campaign for the package. SQL Change Guard passed all seven additive checks, and the refreshed live table has 416 populated IDs with no source mismatches or unsupported values.
+
 ## 2026-09-18
 
 **Prisma Lookup now carries source Sheets from the master model to the app** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/reporting_outputs/create_master_stg_prisma_lookup_app_packages.sql)) — 🟢 **Verified and committed**<br>The production package contract now preserves distinct FPD, social, and manual-editor Google Sheet links without changing package identities or delivery totals, allowing the local and coworker apps to open the exact Sheet behind Sheet-sourced delivery.
