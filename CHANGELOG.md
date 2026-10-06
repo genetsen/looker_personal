@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-10-05
+
+**WP history is retained through the master-model refresh** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/load_wp_search_data_template.R)) — 🟢 **Verified and committed**<br>The [WP delivery workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md) now carries accepted older dates forward when its source report rolls, while current dates continue to use workbook values. Two selected main-runner executions and direct warehouse readback verified the recovered social delivery and lookup result.
+
 ## 2026-10-01
 
 **PE weekly engagements now survive the automatic reporting refresh** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/reporting_outputs/create_master_ext_west_regional_reporting_sched.sql)) — 🟢 **Verified and committed**<br>The [regional reporting scheduler](https://console.cloud.google.com/bigquery/pipelines-and-connections/details/scheduled-queries/locations/us/configs/6a7a4904-0000-2e3c-a2e5-d43a2cdb304f?project=looker-studio-pro-452620) now uses one engagement-aware weekly rebuild every six hours, retaining the established sales fields. Its own run and executed job were verified against the saved SQL; engagement totals reconcile and existing field logic is preserved. The September 22 completion claim covered a manual rebuild, not the saved scheduler, and is corrected by this deployment record. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/verification/2026-10-01-pe-weekly-scheduler/verification.md)
