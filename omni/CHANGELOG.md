@@ -3,6 +3,18 @@
 This file records meaningful changes to Omni administration, access control,
 semantic models, and user-facing Omni workflows.
 
+## 2026-10-08
+
+**Ritual QA tile shows current data issue categories** ([Dashboard](https://giantspoon.omniapp.co/dashboards/e8319cff)) — 🟢 **Verified and committed**<br>The published [Ritual QA tile](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/README.md#ritual-qa-tile) now uses the existing data issue category instead of the missing callout field, preserving its filters, pacing measures, formatting and layout. All saved draft queries executed successfully; the fresh published QA query matches the tested draft. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/omni/verification/2026-10-08-ritual-qa-repair.md)
+- **⚠️ Unverified** - Browser rendering and interaction were not checked; full-model validation still reports existing field errors and stale test-table references.
+
+### Pending Next Actions
+
+- **Since Oct 8** - Investigate the remaining model-validation errors, including Ritual's missing Amazon cost field and deleted Guard test-table references
+- **Since Aug 26** - Resolve the earlier client-access branch and Ritual workbook-override follow-up
+- **Since Jun 24** - Observe the current dashboards during normal end-user use
+- **Since Jun 24** - Resolve the earlier Ritual filter and missing-field follow-ups if they still apply
+
 ## 2026-08-26
 
 **Client-access controls prepared for the Current DXC and Ritual dashboards** ([Evidence](/Users/eugenetsenter/.codex/sessions/2026/08/26/rollout-2026-08-26T15-06-13-01a03f77-39b7-7f01-bea6-6abfdb93f224.jsonl)) — 🟡 **Partially verified**<br>The unmerged shared-model branch applies `client_access` filtering to the five scoped data-model, DXC, Olipop QA, and Ritual topics while preserving expected access in representative user queries and introducing no new model-validation blockers versus production.
