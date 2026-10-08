@@ -2,6 +2,18 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-10-08
+
+**Master refresh preserves advertiser and package clustering** ([Shell](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh)) — 🟢 **Verified and committed**<br>The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/README.md#master-data-model-clustered-advertiser-refresh-in-the-main-runner) now stores the compatibility table with `_advertiser` first and `_package_id` second. The live table, saved scheduled query, and runner check agree, removing the clustering mismatch that stopped October 8’s scheduled run. A selected production runner execution succeeded through the clustered copy, reporting snapshot, V3, and lookup app; source columns and package-level records, impressions, spend, and clicks reconcile.
+- **⚠️ Unverified** - This selected manual execution does not establish a successful full scheduled run.
+
+### Pending Next Actions
+
+- **Since Oct 8** - Confirm the next full scheduled runner execution completes; retain the existing separate source-access limitations
+- **Since Oct 1** - Implement the deferred DCM refresh-order and mandatory-verification safeguards when the owner resumes the work
+- **Since Oct 1** - Keep the destructive legacy DCM cleanup paused; separately decide whether it is needed before repairing or retiring it
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
+
 ## 2026-10-05
 
 **WP history is retained through the master-model refresh** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/load_wp_search_data_template.R)) — 🟢 **Verified and committed**<br>The [WP delivery workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/wp/README.md) now carries accepted older dates forward when its source report rolls, while current dates continue to use workbook values. Two selected main-runner executions and direct warehouse readback verified the recovered social delivery and lookup result.
