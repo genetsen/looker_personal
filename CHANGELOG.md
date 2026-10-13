@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-10-12
+
+**Shared checkout records the Apollo image-reuse repair** ([Git submodule](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model)) — 🟢 **Verified and committed**<br>The [shared master-model checkout](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md) now points to the committed Apollo image-reuse repair. The loader changes, workflow contract, and production verification belong to that repository. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/verification/2026-10-12-apollo-github-image-reuse/verification.md)
+
+### Pending Next Actions
+
+- **Since Oct 8** - Confirm the next full scheduled runner execution completes; retain the existing separate source-access limitations
+- **Since Oct 1** - Implement the deferred DCM refresh-order and mandatory-verification safeguards when the owner resumes the work
+- **Since Oct 1** - Keep the destructive legacy DCM cleanup paused; separately decide whether it is needed before repairing or retiring it
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
+
 ## 2026-10-08
 
 **Master refresh preserves advertiser and package clustering** ([Shell](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/automation_hub/workloads/ops/bq_trigger/run_master_data_model_clustered_advertiser_refresh.sh)) — 🟢 **Verified and committed**<br>The [master-model refresh](/Users/eugenetsenter/Docs/R_Studio_Projects/universal_cron_runner/README.md#master-data-model-clustered-advertiser-refresh-in-the-main-runner) now stores the compatibility table with `_advertiser` first and `_package_id` second. The live table, saved scheduled query, and runner check agree, removing the clustering mismatch that stopped October 8’s scheduled run. A selected production runner execution succeeded through the clustered copy, reporting snapshot, V3, and lookup app; source columns and package-level records, impressions, spend, and clicks reconcile.
