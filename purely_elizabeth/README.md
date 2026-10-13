@@ -9,7 +9,7 @@ verified: 2026-10-13
 verified_against:
   - README.md
   - download_purely_elizabeth_sales_attachment.gs
-verification_scope: daily trigger reported by Gene; Cloud Storage upload and live table metadata checked; live trigger settings and September reporting not independently verified
+verification_scope: daily trigger reported by Gene; September 6 upload, successful source and reporting refreshes, source totals, and weekly reporting parity checked; live trigger settings and automatic daily execution not independently verified
 ---
 
 # Purely Elizabeth Sales Reporting

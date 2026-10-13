@@ -2,12 +2,11 @@
 
 ## 2026-10-13
 
-**Sales pickup schedule and reporting checks are now explicit** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md)) — 🟡 **Partially verified**<br>The [sales refresh workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#check-which-stage-has-updated) records Gene's daily attachment trigger separately from the two six-hour warehouse schedules and explains how to locate a delayed update. The September 6 CSV was observed in the loader input after Gene's manual run; the current sales table still selected August 9 at the check, and the last observed final-reporting rebuild preceded that upload.
-- **⚠️ Unverified** - Live daily-trigger settings and its next automatic execution were not independently inspected. September 6 sales have not yet been verified in the current sales table or final reporting.
+**September sales now reach reporting, with pickup schedules made explicit** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md)) — 🟡 **Partially verified**<br>The [sales refresh workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#check-which-stage-has-updated) records Gene's daily attachment trigger separately from the two six-hour warehouse schedules. After the September 6 upload, both manually triggered production refreshes succeeded; the loaded source matches the file's record count and dollars, units, and TDP totals within rounding tolerance. Weekly reporting reaches September 6, with every source week present and no mismatches in Protein Granola sales/TDP or the checked Total Brand and Total Brand Granola sales totals. The source run finished at 2:59 p.m. Eastern and the reporting run at 3:00 p.m. Eastern on October 13. [More details](codex://threads/01a13643-87a6-7462-a7a9-92a2c7f828bc)
+- **⚠️ Unverified** - Live daily-trigger settings and its next automatic execution were not independently inspected; the manual end-to-end refresh is verified.
 
 ### Pending Next Actions
 
-- **Since Oct 13** - Verify September 6 sales after the source and final-reporting refreshes.
 - **Since Oct 13** - Verify the daily downloader's next automatic execution and record its time window and timezone.
 - **Since Jul 30** - Connect the production sales views to the sales dashboard.
 
