@@ -31,7 +31,17 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-10-01
 
+**DCM incident recovery is recorded with the permanent safeguards deferred** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/CHANGELOG.md#2026-10-01)) — 🟡 **Partially verified**<br>The October 1 incident review confirmed that the legacy cleanup deleted native DCM exports. The cleanup job was paused, replacement delivery was ingested, and the stored master and lookup outputs were refreshed. The reporting copy matched the stored V3 master model for DCM row count, latest delivery date, impressions, and clicks. The owner explicitly deferred safeguard implementation on October 1. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/CHANGELOG.md#2026-10-01)
+- **⚠️ Unfinished** - Cleanup repair and enforced refresh ordering were deferred; the legacy cleanup must stay paused pending a separately approved repair or retirement decision.
+- **⚠️ Unverified** - Recovery checks do not establish complete dashboard parity or a successful unattended end-to-end refresh.
+
 **PE weekly engagements now survive the automatic reporting refresh** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/reporting_outputs/create_master_ext_west_regional_reporting_sched.sql)) — 🟢 **Verified and committed**<br>The [regional reporting scheduler](https://console.cloud.google.com/bigquery/pipelines-and-connections/details/scheduled-queries/locations/us/configs/6a7a4904-0000-2e3c-a2e5-d43a2cdb304f?project=looker-studio-pro-452620) now uses one engagement-aware weekly rebuild every six hours, retaining the established sales fields. Its own run and executed job were verified against the saved SQL; engagement totals reconcile and existing field logic is preserved. The September 22 completion claim covered a manual rebuild, not the saved scheduler, and is corrected by this deployment record. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/verification/2026-10-01-pe-weekly-scheduler/verification.md)
+
+### Pending Next Actions
+
+- **Since Oct 1** - Implement the deferred DCM refresh-order and mandatory-verification safeguards when the owner resumes the work
+- **Since Oct 1** - Keep the destructive legacy DCM cleanup paused; separately decide whether it is needed before repairing or retiring it
+- **Since Aug 21** - Build the separately requested scheduled Basis UTM refresh job - RECOMMENDED
 
 ## 2026-09-24
 
