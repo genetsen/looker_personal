@@ -1,4 +1,31 @@
+---
+pipeline: Purely Elizabeth Sales Reporting
+source_type: weekly SPINS retail sales workbook delivered by email
+output: looker-studio-pro-452620.master_ext_west.mart_PE_delivery_plus_sales_weekly
+output_grain: Sunday-ending week and product group
+refresh: daily Apps Script attachment download; separate six-hour BigQuery source and reporting refreshes
+loader_script: download_purely_elizabeth_sales_attachment.gs
+verified: 2026-10-13
+verified_against:
+  - README.md
+  - download_purely_elizabeth_sales_attachment.gs
+verification_scope: daily trigger reported by Gene; Cloud Storage upload and live table metadata checked; live trigger settings and September reporting not independently verified
+---
+
 # Purely Elizabeth Sales Reporting
+
+## Table of Contents
+
+- [Pipeline overview](#pipeline-overview)
+- [Source and output contract](#source-and-output-contract)
+- [Protein Granola definition](#protein-granola-definition)
+- [Verification](#verification)
+- [Production sales comparison views](#production-sales-comparison-views)
+- [Gmail-to-Drive conversion and upload](#gmail-to-drive-csv-conversion-and-cloud-storage-upload)
+- [Scheduled BigQuery refresh](#scheduled-bigquery-refresh)
+- [Current state](#current-state)
+
+In the source inventory, **grain** means what one row represents; **source contract** means the column, date, value, and uniqueness checks a file must pass before replacing reporting data.
 
 > **Dashboard migration:** The weekly dashboard table adds `product_group_sales_dollars` and `product_group_tdp` as the replacements for `sales_dollars` and `sales_tdp`. The old fields remain temporarily as identical Protein Granola-only compatibility copies. Follow the [weekly sales dashboard migration guide](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/WEEKLY_SALES_DASHBOARD_MIGRATION.md) before the old fields are removed.
 
@@ -10,7 +37,7 @@ For a short, non-technical overview, use the [Purely Elizabeth sales refresh wor
 
 ```text
 Tess email + SPINS workbook
-    -> Drive copy + private Cloud Storage archive
+    -> daily Apps Script: Drive copy + private Cloud Storage archive
     -> dated BigQuery-ready CSV
     -> six-hour guarded BigQuery scheduled query
     -> current typed sales table
@@ -20,7 +47,7 @@ Tess email + SPINS workbook
 
 ```mermaid
 flowchart LR
-  A["Tess email + SPINS workbook"] --> B["Apps Script validation"]
+  A["Tess email + SPINS workbook"] --> B["Daily Apps Script validation"]
   B --> C["Drive copy + private archive"]
   B --> D["Dated BigQuery-ready CSV"]
   D --> E["Six-hour guarded scheduled query"]
@@ -93,6 +120,8 @@ The typed SPINS table is refreshed automatically every six hours from the newest
 
 ## Gmail-to-Drive CSV Conversion and Cloud Storage Upload
 
+The Apps Script trigger for `downloadLatestPurelyElizabethSalesAttachment` runs daily, as confirmed by Gene on October 13, 2026. Its exact time window and timezone were not recorded, and the live trigger settings were not independently inspected. The daily trigger checks for the newest attachment; an email arrival does not itself start the script. A manual run of the same function can process a delivery sooner.
+
 The [Purely Elizabeth sales attachment downloader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/download_purely_elizabeth_sales_attachment.gs) searches Gmail for the newest email from `tess.vargas@giantspoon.com` whose subject is exactly `Purely Elizabeth Sales Data`. It saves non-inline attachments into a `Purely Elizabeth Sales Data` folder in My Drive and remembers each saved attachment so a rerun does not create a duplicate.
 
 For `.xlsx`, `.xls`, and `.ods` workbooks, the script also converts the attachment temporarily to Google Sheets. It finds tabs whose names start with `Data thru` followed by a valid date, such as `Data thru 7.12.26`, and exports only the tab with the latest date. The date may use periods, slashes, or hyphens and a two- or four-digit year. The script finds that tab's first row whose column A is `Geography`, removes every row above it, and writes `Geography` as the CSV's first cell. The temporary Google Sheets conversion is then moved to Trash; the original attachment and cleaned CSV remain in the destination Drive folder.
@@ -113,6 +142,20 @@ The first August 3, 2026 automatic run succeeded and loaded 34,042 rows across 1
 4. In **Project Settings**, change the Google Cloud Platform project to project number `671028410185`, which is the active `looker-studio-pro-452620` project where the Cloud Storage API is enabled.
 5. Select `downloadLatestPurelyElizabethSalesAttachment` at the top of the Apps Script editor and click **Run**.
 6. Approve the expanded Gmail, Drive, Sheets, external-request, and Cloud Storage permissions. The execution log returns the Drive filenames, worksheet-selection note, uploaded or verified GCS object paths, and the Drive folder link.
+7. In **Triggers**, confirm that a time-driven trigger runs `downloadLatestPurelyElizabethSalesAttachment` daily. For a new setup, create that trigger once; for the existing project, inspect the configured trigger rather than adding a duplicate. Record the selected time window and project timezone when they are available.
+
+### Check Which Stage Has Updated
+
+The downloader and the two warehouse refreshes run on separate schedules. A successful upload makes a new file available for the next source refresh; it does not immediately update the final weekly reporting table. Allow for both six-hour warehouse schedules after upload rather than assuming they run together.
+
+| Stage | What to check | Expected result |
+|---|---|---|
+| Daily attachment download | Apps Script **Triggers** and **Executions** | One daily trigger for the downloader; a successful execution that names the newest dated CSV |
+| Cloud Storage input | Run `gcloud storage ls --long gs://looker-studio-pro-452620-pe/bigquery_ready/` | A dated CSV matching the newest worksheet's data-through date |
+| Current sales table | Inspect `_source_snapshot_date`, `_source_object`, `_loaded_at`, and `time_period_end_date` in the [current sales table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2sPE!3ssales_data_current) | The selected file and snapshot date match the new input, and the loaded sales periods cover that file |
+| Final reporting | Inspect `_date` only where `product_group_sales_dollars` is populated in the [weekly reporting table](https://console.cloud.google.com/bigquery?project=looker-studio-pro-452620&ws=!1m5!1m4!4m3!1slooker-studio-pro-452620!2smaster_ext_west!3smart_PE_delivery_plus_sales_weekly) | Sales-populated weeks include the newly loaded period; future media-only dates do not prove sales freshness |
+
+If the file is absent, check the downloader execution first. If the file exists but the current sales table still selects an older snapshot, check the source-refresh execution and validation errors. If the current source has updated but final reporting has not, check the separate `master_raw_CopyToWest` refresh. A recent table modification time alone does not establish that new sales were loaded.
 
 ### Cloud Storage Authorization Check
 
@@ -129,4 +172,4 @@ The script does not delete, move, label, or mark any email as read. It does not 
 
 ## Current State
 
-The current typed source table, all three weekly sales views, and the sales-populated portion of the final delivery-plus-sales table are live through July 12, 2026. The typed table contains 34,042 rows across 156 weeks with zero duplicate business keys; the three sales views contain 156, 6,956, and 30,779 rows respectively, all ending July 12. The final weekly table has 172 total rows because it also carries future planned media through November 1, while its 156 sales-populated rows end July 12. The guarded source load and broader `master_raw_CopyToWest` workflow each run every six hours.
+The daily attachment downloader is configured by Gene in the live Apps Script project; the source and final-reporting warehouse refreshes remain separate six-hour schedules. Use [the stage checks](#check-which-stage-has-updated) to establish current sales coverage instead of relying on a date recorded in this guide. The final table can carry future media planning dates with no retail sales, so its latest overall `_date` is not a sales-freshness check. Live daily-trigger settings and the exact daily run window remain independently unverified.

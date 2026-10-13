@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-13
+
+**Sales pickup schedule and reporting checks are now explicit** ([Markdown](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md)) — 🟡 **Partially verified**<br>The [sales refresh workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#check-which-stage-has-updated) records Gene's daily attachment trigger separately from the two six-hour warehouse schedules and explains how to locate a delayed update. The September 6 CSV was observed in the loader input after Gene's manual run; the current sales table still selected August 9 at the check, and the last observed final-reporting rebuild preceded that upload.
+- **⚠️ Unverified** - Live daily-trigger settings and its next automatic execution were not independently inspected. September 6 sales have not yet been verified in the current sales table or final reporting.
+
+### Pending Next Actions
+
+- **Since Oct 13** - Verify September 6 sales after the source and final-reporting refreshes.
+- **Since Oct 13** - Verify the daily downloader's next automatic execution and record its time window and timezone.
+- **Since Jul 30** - Connect the production sales views to the sales dashboard.
+
 ## 2026-08-10
 
 **Automated SPINS sales refresh source is now preserved on the canonical branch** ([Apps Script](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/download_purely_elizabeth_sales_attachment.gs)) — 🟢 **Verified and committed**<br>The complete [Purely Elizabeth sales workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/README.md#scheduled-bigquery-refresh)—Gmail selection, dated Drive and Cloud Storage preservation, guarded BigQuery refresh, three sales views, and the master weekly table—is available on `dev`. Local syntax and file-integrity checks passed; the live 34,042-row July 12 snapshot has zero duplicate keys, matches its selected external file, and is reflected consistently in all downstream sales outputs after the August 10 scheduled rebuild. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/purely_elizabeth/sales_data_current.qa.json)
