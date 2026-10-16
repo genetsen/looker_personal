@@ -4,6 +4,8 @@ All notable changes to this repository are documented in this file.
 
 ## 2026-10-16
 
+**Apollo image diagnostics are recorded in the shared checkout** ([Git submodule](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model)) — 🟢 **Verified and committed**<br>The [master-model image loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md#creative-images-how-it-works-today) now reports the exact sheet cells and actions behind missing images, separately from successful map completion. The loader’s no-write preview and focused diagnostics checks passed; image publication and warehouse refreshes were not run.
+
 **Apollo FOS packages exclude DCM from reported delivery** ([SQL](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/stable_base/create_master_stg_data_model.sql)) — 🟢 **Verified and committed**<br>The [master-model source rules](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/README.md#rules-for-reading-model-values) now exclude DCM delivery for Patrick Cantlay packages P3H8WFD and P3H8WH8 across all dates while retaining source evidence. Scoped Guard comparisons passed, the canonical model and regional refreshes succeeded, and live model, Apollo reporting, snapshots, western copy, and lookup totals match the approved publisher delivery. [More details](/Users/eugenetsenter/ai-skills/sql-change-guard/evaluations/2026-10-16-apollo-dcm-delivery-exclusions/guard_evaluation.md)
 
 ## 2026-10-12
