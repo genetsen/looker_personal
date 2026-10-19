@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-10-19
+
+**Shared checkout protects Apollo image publication** ([Git submodule](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model)) — 🟢 **Verified and committed**<br>The [master-model publisher](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md#creative-images-how-it-works-today) now rejects empty, incomplete, changing, and invalid image reads before publication. The damaged images are restored, the registered image-refresh workload passes, and existing image-map assignments remain unchanged. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/verification/2026-10-19-apollo-empty-image-publication/verification.md)
+
 ## 2026-10-16
 
 **Apollo exact-image matching is deployed and verified** ([Git submodule](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model)) — 🟢 **Verified and committed**<br>The [master-model image workflow](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md#creative-images-how-it-works-today) now prefers the full creative name before its existing size-stripped fallback. Both PGA image assignments were verified in V3, Apollo reporting, and the refreshed western copy; the loader also reports actionable source-cell problems and omits blank-source detail rows. [More details](/Users/eugenetsenter/ai-skills/sql-change-guard/evaluations/2026-10-16-apollo-exact-image-match/guard_evaluation.md)
