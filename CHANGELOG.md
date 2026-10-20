@@ -2,6 +2,10 @@
 
 All notable changes to this repository are documented in this file.
 
+## 2026-10-20
+
+**Master-model Manual Editor refresh restored** ([R](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/manual_editor/load_manual_package_edits.R)) — 🟢 **Verified and committed**<br>The [Manual Editor loader](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/manual_editor/README.md#scripts) explicitly selects the shared R credential folder for Sheets, Drive and BigQuery when the account-specific credential attempt returns no token. The canonical runner job succeeded against the production editor, accepted all edited package rows and passed its daily total checks. The account-specific credential file itself remains unverified.
+
 ## 2026-10-19
 
 **Shared checkout protects Apollo image publication** ([Git submodule](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model)) — 🟢 **Verified and committed**<br>The [master-model publisher](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/model/branches/dcm/README_dcm-pipeline.md#creative-images-how-it-works-today) now rejects empty, incomplete, changing, and invalid image reads before publication. The damaged images are restored, the registered image-refresh workload passes, and existing image-map assignments remain unchanged. [More details](/Users/eugenetsenter/Looker_clonedRepo/looker_personal/master_data_model/docs/verification/2026-10-19-apollo-empty-image-publication/verification.md)
